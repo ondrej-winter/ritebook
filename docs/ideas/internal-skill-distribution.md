@@ -61,6 +61,8 @@ The first MVP should focus on the publisher-side index generation flow:
 
 - Discover skills by scanning a source tree for directories containing
   `SKILL.md`.
+- Require the maintainer to provide one explicit skills root directory; do not
+  infer or scan the whole repository by default.
 - Generate a deterministic index file from discovered skills.
 - Keep the index format simple and versioned so it can evolve later.
 - Include enough information for future consumer commands to list and locate
@@ -96,8 +98,6 @@ The follow-up MVP can add consumer-side behavior:
   or another name?
 - Which fields must index schema v1 include to support later consumer listing and
   installation without overcommitting to metadata policy?
-- Should the publisher command scan the whole repository by default or require an
-  explicit skills root directory?
 - Should generated index entries include content hashes from day one?
 - Should future consumer sync support Git URLs, raw HTTP index URLs, local paths,
   or all three?

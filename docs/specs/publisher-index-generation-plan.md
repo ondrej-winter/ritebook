@@ -310,9 +310,9 @@ rules and the spec, then fix root causes for any failures.
 
 **Acceptance criteria:**
 
-- [ ] Formatting, linting, type checking, tests, and build all pass.
-- [ ] No architecture boundary violations are introduced.
-- [ ] No out-of-scope functionality is included.
+- [x] Formatting, linting, type checking, tests, and build all pass.
+- [x] No architecture boundary violations are introduced.
+- [x] No out-of-scope functionality is included.
 
 **Verification:**
 

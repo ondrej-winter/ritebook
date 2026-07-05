@@ -274,17 +274,17 @@ for maintainers.
 
 **Acceptance criteria:**
 
-- [ ] README includes the `uv run ritebook publish-index --skills-root <path>
+- [x] README includes the `uv run ritebook publish-index --skills-root <path>
       --output ritebook-index.json` example.
-- [ ] README explains that `--skills-root` is explicit and that output defaults
+- [x] README explains that `--skills-root` is explicit and that output defaults
       to `ritebook-index.json`.
-- [ ] README notes the index is intended to be reviewed and committed by
+- [x] README notes the index is intended to be reviewed and committed by
       maintainers.
-- [ ] README does not document out-of-scope consumer install/sync/list behavior.
+- [x] README does not document out-of-scope consumer install/sync/list behavior.
 
 **Verification:**
 
-- [ ] Documentation review against the spec's publisher workflow.
+- [x] Documentation review against the spec's publisher workflow.
 
 **Dependencies:** Task 5, or can be drafted in parallel after the CLI shape is
 finalized.
@@ -299,7 +299,7 @@ finalized.
 
 - [x] Focused CLI tests pass.
 - [x] Manual CLI smoke test produces expected JSON.
-- [ ] README command matches actual CLI behavior.
+- [x] README command matches actual CLI behavior.
 
 ### Phase 4: Final Quality Gate
 

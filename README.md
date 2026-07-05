@@ -32,6 +32,26 @@ Build the package distributions:
 uv build
 ```
 
+## Publisher skill index generation
+
+Maintainers can generate a reviewable skill catalog index from an explicit skills
+root:
+
+```bash
+uv run ritebook publish-index --skills-root <path> --output ritebook-index.json
+```
+
+The `--skills-root` option is required so the command only scans the intended
+skills directory. The `--output` option defaults to `ritebook-index.json`, so the
+command can also be run as:
+
+```bash
+uv run ritebook publish-index --skills-root <path>
+```
+
+Review the generated `ritebook-index.json` before committing it with the related
+skill changes.
+
 ## Publishing
 
 The GitHub Actions workflow in `.github/workflows/ci-cd.yaml` runs formatting,

@@ -23,6 +23,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+ritebook = "ritebook.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/ondrej-winter/ritebook"
 Repository = "https://github.com/ondrej-winter/ritebook"

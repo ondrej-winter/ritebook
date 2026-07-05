@@ -237,24 +237,24 @@ adapter/application errors into clear user-facing output.
 
 **Acceptance criteria:**
 
-- [ ] `pyproject.toml` exposes a `ritebook` console script.
-- [ ] CLI requires `--skills-root` for `publish-index`.
-- [ ] CLI supports `--output` with default `ritebook-index.json`.
-- [ ] Relative `--output` paths are interpreted relative to the current working
+- [x] `pyproject.toml` exposes a `ritebook` console script.
+- [x] CLI requires `--skills-root` for `publish-index`.
+- [x] CLI supports `--output` with default `ritebook-index.json`.
+- [x] Relative `--output` paths are interpreted relative to the current working
       directory.
-- [ ] Missing or invalid skills root produces a clear error and non-zero exit
+- [x] Missing or invalid skills root produces a clear error and non-zero exit
       code.
-- [ ] CLI parse errors use `argparse` default formatting.
-- [ ] Success output includes discovered skill count and output path.
-- [ ] CLI wiring constructs filesystem discovery adapter, JSON writer adapter,
+- [x] CLI parse errors use `argparse` default formatting.
+- [x] Success output includes discovered skill count and output path.
+- [x] CLI wiring constructs filesystem discovery adapter, JSON writer adapter,
       and publish-index use case in an adapter/bootstrap boundary.
 
 **Verification:**
 
-- [ ] CLI adapter tests cover argument mapping, missing required argument,
+- [x] CLI adapter tests cover argument mapping, missing required argument,
       invalid root error handling, and success output.
-- [ ] Run `uv run pytest tests/unit/features/skill_catalog/adapters/inbound`.
-- [ ] Run a manual smoke check with a temporary local skills directory.
+- [x] Run `uv run pytest tests/unit/features/skill_catalog/adapters/inbound`.
+- [x] Run a manual smoke check with a temporary local skills directory.
 
 **Dependencies:** Tasks 3 and 4
 
@@ -297,8 +297,8 @@ finalized.
 
 ### Checkpoint: User-Facing Workflow
 
-- [ ] Focused CLI tests pass.
-- [ ] Manual CLI smoke test produces expected JSON.
+- [x] Focused CLI tests pass.
+- [x] Manual CLI smoke test produces expected JSON.
 - [ ] README command matches actual CLI behavior.
 
 ### Phase 4: Final Quality Gate

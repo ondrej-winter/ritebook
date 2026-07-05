@@ -85,18 +85,18 @@ catalogs, including deterministic ordering and basic invariants.
 
 **Acceptance criteria:**
 
-- [ ] `SkillEntry` represents `name`, `path`, `skill_file`, and optional `title`
+- [x] `SkillEntry` represents `name`, `path`, `skill_file`, and optional `title`
       without importing adapter or framework modules.
-- [ ] `SkillCatalog` or equivalent domain object stores schema version `1`,
+- [x] `SkillCatalog` or equivalent domain object stores schema version `1`,
       generated timestamp, scanned root string, and sorted skill entries.
-- [ ] Skill entries are sorted deterministically by relative path or another
+- [x] Skill entries are sorted deterministically by relative path or another
       documented stable key.
 
 **Verification:**
 
-- [ ] Domain unit tests cover entry creation, relative paths, optional title, and
+- [x] Domain unit tests cover entry creation, relative paths, optional title, and
       deterministic ordering.
-- [ ] Run `uv run pytest tests/unit/features/skill_catalog/domain`.
+- [x] Run `uv run pytest tests/unit/features/skill_catalog/domain`.
 
 **Dependencies:** None
 
@@ -114,24 +114,24 @@ orchestrate discovery plus writing through outbound ports.
 
 **Acceptance criteria:**
 
-- [ ] Application DTOs exist under `application/dtos/`, such as
+- [x] Application DTOs exist under `application/dtos/`, such as
       `PublishIndexCommand` and `PublishIndexResult`.
-- [ ] Application ports exist under `application/ports/`.
-- [ ] An inbound application port or service exposes the publish-index use case.
-- [ ] Outbound ports describe skill discovery and index writing without
+- [x] Application ports exist under `application/ports/`.
+- [x] An inbound application port or service exposes the publish-index use case.
+- [x] Outbound ports describe skill discovery and index writing without
       filesystem or JSON-specific types leaking into the core.
-- [ ] The use case accepts an injectable timestamp source for deterministic
+- [x] The use case accepts an injectable timestamp source for deterministic
       tests.
-- [ ] `generated_at` is represented as a timezone-aware UTC value and serialized
+- [x] `generated_at` is represented as a timezone-aware UTC value and serialized
       with a `Z` suffix by the JSON boundary.
-- [ ] The result includes discovered skill count and output path for CLI success
+- [x] The result includes discovered skill count and output path for CLI success
       output.
 
 **Verification:**
 
-- [ ] Application tests use fakes for discovery and writing ports.
-- [ ] Run `uv run pytest tests/unit/features/skill_catalog/application`.
-- [ ] Run `uv run mypy .` during iteration.
+- [x] Application tests use fakes for discovery and writing ports.
+- [x] Run `uv run pytest tests/unit/features/skill_catalog/application`.
+- [x] Run `uv run mypy .` during iteration.
 
 **Dependencies:** Task 1
 
@@ -146,9 +146,9 @@ orchestrate discovery plus writing through outbound ports.
 
 ### Checkpoint: Foundation
 
-- [ ] `uv run pytest tests/unit/features/skill_catalog/domain tests/unit/features/skill_catalog/application`
-- [ ] `uv run mypy .`
-- [ ] Confirm no adapter/framework imports leaked into domain/application.
+- [x] `uv run pytest tests/unit/features/skill_catalog/domain tests/unit/features/skill_catalog/application`
+- [x] `uv run mypy .`
+- [x] Confirm no adapter/framework imports leaked into domain/application.
 
 ### Phase 2: Outbound Adapters
 
@@ -161,22 +161,22 @@ directories.
 
 **Acceptance criteria:**
 
-- [ ] Missing or non-directory roots are rejected with adapter-level errors
+- [x] Missing or non-directory roots are rejected with adapter-level errors
       suitable for CLI translation.
-- [ ] Unreadable roots or unreadable `SKILL.md` files are translated into clear
+- [x] Unreadable roots or unreadable `SKILL.md` files are translated into clear
       adapter-level errors without exposing file contents.
-- [ ] Discovery recursively finds every non-hidden directory containing
+- [x] Discovery recursively finds every non-hidden directory containing
       `SKILL.md`.
-- [ ] Hidden directories are not traversed by default.
-- [ ] Returned entries use relative POSIX-style paths from the skills root.
-- [ ] `title` is the first Markdown H1 when available and absent otherwise.
-- [ ] Skill file contents are not logged or printed.
+- [x] Hidden directories are not traversed by default.
+- [x] Returned entries use relative POSIX-style paths from the skills root.
+- [x] `title` is the first Markdown H1 when available and absent otherwise.
+- [x] Skill file contents are not logged or printed.
 
 **Verification:**
 
-- [ ] Filesystem adapter tests use `tmp_path` and cover nested skills, hidden
+- [x] Filesystem adapter tests use `tmp_path` and cover nested skills, hidden
       directories, relative path handling, missing root, and title extraction.
-- [ ] Run `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`.
+- [x] Run `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`.
 
 **Dependencies:** Task 2
 
@@ -195,21 +195,21 @@ two-space indentation and stable ordering.
 
 **Acceptance criteria:**
 
-- [ ] Writer outputs valid JSON with `schema_version`, `generated_at`,
+- [x] Writer outputs valid JSON with `schema_version`, `generated_at`,
       `skills_root`, and `skills` fields.
-- [ ] Output is pretty-printed with two-space indentation.
-- [ ] Entry fields match the spec: `name`, `path`, `skill_file`, and optional
+- [x] Output is pretty-printed with two-space indentation.
+- [x] Entry fields match the spec: `name`, `path`, `skill_file`, and optional
       `title`; entries without a Markdown H1 omit `title` rather than writing
       `null`.
-- [ ] Existing output file is overwritten only when the explicit command/use case
+- [x] Existing output file is overwritten only when the explicit command/use case
       is run.
-- [ ] Serialization is deterministic for unchanged catalog input.
+- [x] Serialization is deterministic for unchanged catalog input.
 
 **Verification:**
 
-- [ ] JSON writer tests parse generated JSON and assert schema version, field
+- [x] JSON writer tests parse generated JSON and assert schema version, field
       names, order, optional title behavior, and indentation.
-- [ ] Run `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`.
+- [x] Run `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`.
 
 **Dependencies:** Task 2
 
@@ -222,10 +222,10 @@ two-space indentation and stable ordering.
 
 ### Checkpoint: Core Adapters
 
-- [ ] `uv run pytest tests/unit/features/skill_catalog`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy .`
-- [ ] Manually inspect generated JSON shape against the spec.
+- [x] `uv run pytest tests/unit/features/skill_catalog`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy .`
+- [x] Manually inspect generated JSON shape against the spec.
 
 ### Phase 3: CLI and Package Wiring
 

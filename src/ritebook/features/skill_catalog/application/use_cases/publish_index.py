@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 from ritebook.features.skill_catalog.application.dtos import (
+    CANONICAL_INDEX_FILENAME,
     PublishIndexCommand,
     PublishIndexResult,
 )
@@ -43,10 +44,10 @@ class PublishIndex(PublishIndexPort):
             skills_root=command.skills_root,
             skills=skills,
         )
-        self._index_writer.write_index(catalog, command.output_path)
+        self._index_writer.write_index(catalog, CANONICAL_INDEX_FILENAME)
         return PublishIndexResult(
             discovered_skill_count=len(skills),
-            output_path=command.output_path,
+            output_path=CANONICAL_INDEX_FILENAME,
         )
 
 

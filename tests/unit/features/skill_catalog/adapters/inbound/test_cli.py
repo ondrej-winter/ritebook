@@ -45,7 +45,7 @@ class FailingPublisher:
 
 def test_publish_index_maps_arguments_to_application_command() -> None:
     publisher = FakePublisher(
-        PublishIndexResult(discovered_skill_count=3, output_path="custom-index.json"),
+        PublishIndexResult(discovered_skill_count=3, output_path="ritebook-index.json"),
     )
     stdout = StringIO()
     stderr = StringIO()
@@ -55,8 +55,6 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
             "publish-index",
             "--skills-root",
             "skills",
-            "--output",
-            "custom-index.json",
         ],
         publisher=publisher,
         stdout=stdout,
@@ -65,15 +63,15 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
 
     assert exit_code == 0
     assert publisher.commands == [
-        PublishIndexCommand(skills_root="skills", output_path="custom-index.json"),
+        PublishIndexCommand(skills_root="skills"),
     ]
     assert stdout.getvalue() == (
-        "Published skill index with 3 skill(s) to custom-index.json\n"
+        "Published skill index with 3 skill(s) to ritebook-index.json\n"
     )
     assert stderr.getvalue() == ""
 
 
-def test_publish_index_defaults_output_path() -> None:
+def test_publish_index_uses_canonical_output_path() -> None:
     publisher = FakePublisher()
 
     exit_code = run(
@@ -85,8 +83,28 @@ def test_publish_index_defaults_output_path() -> None:
 
     assert exit_code == 0
     assert publisher.commands == [
-        PublishIndexCommand(skills_root=".", output_path="ritebook-index.json"),
+        PublishIndexCommand(skills_root="."),
     ]
+
+
+def test_publish_index_rejects_output_argument_with_argparse_error() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "publish-index",
+            "--skills-root",
+            "skills",
+            "--output",
+            "custom-index.json",
+        ],
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "unrecognized arguments: --output custom-index.json" in stderr.getvalue()
 
 
 def test_publish_index_requires_skills_root_with_argparse_error() -> None:

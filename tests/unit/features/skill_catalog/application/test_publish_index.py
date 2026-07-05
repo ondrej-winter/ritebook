@@ -53,7 +53,7 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(skills_root="skills", output_path="ritebook-index.json"),
+        PublishIndexCommand(skills_root="skills"),
     )
 
     assert discovery.discovered_roots == ["skills"]
@@ -77,7 +77,7 @@ def test_publish_index_writes_empty_catalog() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(skills_root=".", output_path="index.json"),
+        PublishIndexCommand(skills_root="."),
     )
 
     assert result.discovered_skill_count == 0
@@ -95,7 +95,7 @@ def test_publish_index_normalizes_generated_at_to_utc() -> None:
     )
 
     use_case.execute(
-        PublishIndexCommand(skills_root="skills", output_path="index.json"),
+        PublishIndexCommand(skills_root="skills"),
     )
 
     assert writer.written_catalogs[0].generated_at == datetime(
@@ -118,10 +118,10 @@ def test_publish_index_rejects_naive_clock_values() -> None:
 
     with pytest.raises(ValueError, match="timezone-aware"):
         use_case.execute(
-            PublishIndexCommand(skills_root="skills", output_path="index.json"),
+            PublishIndexCommand(skills_root="skills"),
         )
 
 
 def test_publish_index_command_rejects_empty_values() -> None:
     with pytest.raises(ValueError, match="skills root"):
-        PublishIndexCommand(skills_root="", output_path="index.json")
+        PublishIndexCommand(skills_root="")

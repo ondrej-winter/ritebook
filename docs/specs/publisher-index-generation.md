@@ -36,7 +36,7 @@ skills repository.
 2. Ritebook recursively scans the skills root for directories containing a file
    named `SKILL.md`.
 3. Ritebook builds a deterministic catalog of discovered skills.
-4. Ritebook writes the catalog to `ritebook-index.json` by default.
+4. Ritebook writes the catalog to the canonical `ritebook-index.json` file.
 5. The maintainer reviews and commits the generated index to the private skills
    repository through the normal pull request workflow.
 
@@ -54,7 +54,7 @@ skills repository.
 
 ### Index output
 
-- The default output filename is `ritebook-index.json`.
+- The canonical output filename is `ritebook-index.json`.
 - The index must be valid JSON.
 - The index must include a schema version so future versions can evolve without
   ambiguity.
@@ -106,7 +106,7 @@ Schema v1 should stay small and describe discovered skill package boundaries.
 The first CLI shape should be simple and explicit:
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --output ritebook-index.json
+uv run ritebook publish-index --skills-root <path>
 ```
 
 Requirements:
@@ -114,7 +114,7 @@ Requirements:
 - Require an explicit `--skills-root` for the first implementation.
 - Support one skills root per command invocation; multiple roots are out of scope
   for the MVP.
-- Default `--output` to `ritebook-index.json`.
+- Always write the canonical `ritebook-index.json`; no output argument is needed.
 - Overwrite an existing generated index only when the command is explicitly run;
   no background or implicit updates.
 - Emit concise success output that includes discovered skill count and output

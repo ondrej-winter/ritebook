@@ -17,7 +17,7 @@ hexagonal vertical-slice direction.
 Deliver the MVP publisher workflow:
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --output ritebook-index.json
+uv run ritebook publish-index --skills-root <path>
 ```
 
 The command must produce a valid JSON index listing every discovered skill under
@@ -42,7 +42,7 @@ the explicit skills root.
 
 - Require exactly one explicit `--skills-root`; do not implicitly scan a whole
   repository.
-- Default `--output` to `ritebook-index.json`.
+- Always write the canonical `ritebook-index.json`; no output argument is needed.
 - Skip hidden directories in the MVP.
 - Do not require mandatory metadata inside `SKILL.md`.
 - Do not add hashes, signatures, policy enforcement, consumer list/sync/install
@@ -66,8 +66,8 @@ the explicit skills root.
   human-reviewable lexical string derived from the explicit user input. Avoid
   resolving to machine-specific absolute paths unless the user supplied an
   absolute path.
-- **Output path semantics:** relative `--output` values follow normal CLI
-  behavior and are interpreted relative to the current working directory.
+- **Output path semantics:** `ritebook-index.json` is canonical and is written in
+  the current working directory.
 - **Title extraction:** keep Markdown H1 extraction in the filesystem adapter
   because it reads file contents; domain receives only the optional title value.
 - **Missing title:** omit the `title` field when no Markdown H1 is available.
@@ -239,9 +239,8 @@ adapter/application errors into clear user-facing output.
 
 - [x] `pyproject.toml` exposes a `ritebook` console script.
 - [x] CLI requires `--skills-root` for `publish-index`.
-- [x] CLI supports `--output` with default `ritebook-index.json`.
-- [x] Relative `--output` paths are interpreted relative to the current working
-      directory.
+- [x] CLI writes the canonical `ritebook-index.json` without requiring an output
+      argument.
 - [x] Missing or invalid skills root produces a clear error and non-zero exit
       code.
 - [x] CLI parse errors use `argparse` default formatting.
@@ -274,10 +273,10 @@ for maintainers.
 
 **Acceptance criteria:**
 
-- [x] README includes the `uv run ritebook publish-index --skills-root <path>
-      --output ritebook-index.json` example.
-- [x] README explains that `--skills-root` is explicit and that output defaults
-      to `ritebook-index.json`.
+- [x] README includes the `uv run ritebook publish-index --skills-root <path>`
+      example without an output argument.
+- [x] README explains that `--skills-root` is explicit and that Ritebook writes
+      the canonical `ritebook-index.json`.
 - [x] README notes the index is intended to be reviewed and committed by
       maintainers.
 - [x] README does not document out-of-scope consumer install/sync/list behavior.
@@ -341,7 +340,7 @@ uv build
 | Hidden directory traversal edge cases | Medium | Test hidden root children and nested hidden directories explicitly with `tmp_path`. |
 | Optional `title` encoding regresses | Medium | Omit `title` when unavailable; cover the behavior in JSON writer tests and documentation review. |
 | `skills_root` becomes machine-specific | Medium | Preserve a stable lexical form based on user input and avoid resolving relative paths to absolute paths. |
-| Output path semantics surprise users | Low | Treat relative `--output` values as current-working-directory relative and document the behavior. |
+| Output path semantics surprise users | Low | Document that `ritebook-index.json` is canonical and written in the current working directory. |
 
 ## Assumptions
 

@@ -20,7 +20,6 @@ if TYPE_CHECKING:
 
     from ritebook.features.skill_catalog.application.ports import PublishIndexPort
 
-DEFAULT_OUTPUT_PATH = "ritebook-index.json"
 PUBLISH_INDEX_COMMAND = "publish-index"
 
 
@@ -67,11 +66,6 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Explicit root directory to scan for SKILL.md files.",
     )
-    publish_index.add_argument(
-        "--output",
-        default=DEFAULT_OUTPUT_PATH,
-        help=f"Output index path. Defaults to {DEFAULT_OUTPUT_PATH}.",
-    )
     return parser
 
 
@@ -84,7 +78,6 @@ def _run_publish_index(
 ) -> int:
     command = PublishIndexCommand(
         skills_root=args.skills_root,
-        output_path=args.output,
     )
     try:
         result = publisher.execute(command)

@@ -1,6 +1,6 @@
 """Filesystem publisher skill discovery adapter."""
 
-from ritebook.features.linter.adapters.outbound.filesystem.exceptions import (
+from ritebook.adapters.outbound.filesystem import (
     FilesystemSkillDiscoveryError,
     SkillFileReadError,
     SkillsRootNotDirectoryError,

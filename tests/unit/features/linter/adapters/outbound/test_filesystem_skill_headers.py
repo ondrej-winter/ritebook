@@ -2,10 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from ritebook.features.linter.adapters.outbound.filesystem import (
-    FilesystemSkillHeaderDiscovery,
+from ritebook.adapters.outbound.filesystem import (
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
+)
+from ritebook.features.linter.adapters.outbound.filesystem import (
+    FilesystemSkillHeaderDiscovery,
 )
 
 

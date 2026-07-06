@@ -3,18 +3,11 @@ from pathlib import Path
 import pytest
 
 from ritebook.adapters.outbound.filesystem import (
-    FilesystemSkillDiscoveryError,
     SkillFileReadError,
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
     discover_skill_files,
     read_skill_file_text,
-)
-from ritebook.features.linter.adapters.outbound.filesystem import (
-    FilesystemSkillDiscoveryError as LinterFilesystemSkillDiscoveryError,
-)
-from ritebook.features.publisher.adapters.outbound.filesystem import (
-    FilesystemSkillDiscoveryError as PublisherFilesystemSkillDiscoveryError,
 )
 
 
@@ -80,11 +73,6 @@ def test_read_skill_file_text_wraps_read_errors(tmp_path: Path) -> None:
         match="Unable to read discovered skill file",
     ):
         read_skill_file_text(tmp_path / "missing" / "SKILL.md")
-
-
-def test_feature_filesystem_packages_reexport_shared_exceptions() -> None:
-    assert LinterFilesystemSkillDiscoveryError is FilesystemSkillDiscoveryError
-    assert PublisherFilesystemSkillDiscoveryError is FilesystemSkillDiscoveryError
 
 
 def write_skill(path: Path, content: str) -> None:

@@ -7,7 +7,7 @@ import sys
 from contextlib import redirect_stderr
 from typing import TYPE_CHECKING, TextIO
 
-from ritebook.features.linter.adapters.outbound.filesystem import (
+from ritebook.adapters.outbound.filesystem import (
     FilesystemSkillDiscoveryError,
 )
 from ritebook.features.linter.application.dtos import LintSkillsCommand

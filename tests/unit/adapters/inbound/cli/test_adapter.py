@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import StringIO
 
 from ritebook.adapters.inbound.cli import run
-from ritebook.features.linter.adapters.outbound.filesystem import (
+from ritebook.adapters.outbound.filesystem import (
     SkillsRootNotFoundError,
 )
 from ritebook.features.linter.application.dtos import (

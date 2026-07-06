@@ -16,6 +16,7 @@ from ritebook.features.skill_catalog.adapters.outbound.json_index import (
 from ritebook.features.skill_catalog.application.dtos import (
     LintSkillsCommand,
     PublishIndexCommand,
+    PublishIndexValidationError,
 )
 
 if TYPE_CHECKING:
@@ -135,6 +136,10 @@ def _run_publish_index(
     )
     try:
         result = publisher.execute(command)
+    except PublishIndexValidationError as err:
+        for issue in err.issues:
+            print(issue.format(), file=stderr)
+        return 1
     except (FilesystemSkillDiscoveryError, JsonIndexWriteError, ValueError) as err:
         print(f"ritebook: error: {err}", file=stderr)
         return 1

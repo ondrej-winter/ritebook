@@ -11,6 +11,7 @@ from ritebook.features.skill_catalog.application.dtos import (
     LintSkillsResult,
     PublishIndexCommand,
     PublishIndexResult,
+    PublishIndexValidationError,
     SkillValidationIssue,
 )
 
@@ -168,6 +169,30 @@ def test_publish_index_translates_invalid_root_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == "ritebook: error: Skills root missing\n"
+
+
+def test_publish_index_prints_validation_issues_to_stderr() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["publish-index", "--skills-root", "skills"],
+        linter=FakeLinter(),
+        publisher=FailingPublisher(
+            PublishIndexValidationError(
+                [
+                    SkillValidationIssue(
+                        skill_file="alpha/SKILL.md",
+                        message="description is required.",
+                    ),
+                ],
+            ),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == "alpha/SKILL.md: description is required.\n"
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

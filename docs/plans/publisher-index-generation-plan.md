@@ -304,21 +304,21 @@ using the same validation flow as `lint-skills` before writing
 
 **Acceptance criteria:**
 
-- [ ] `publish-index` calls the shared validation flow before index writing.
-- [ ] `publish-index` refuses to call `SkillIndexWriterPort.write_index(...)`
+- [x] `publish-index` calls the shared validation flow before index writing.
+- [x] `publish-index` refuses to call `SkillIndexWriterPort.write_index(...)`
       when validation fails.
-- [ ] CLI emits path-scoped validation issues and exits non-zero on validation
+- [x] CLI emits path-scoped validation issues and exits non-zero on validation
       failure.
-- [ ] Valid skills continue to produce schema v1 JSON with existing deterministic
+- [x] Valid skills continue to produce schema v1 JSON with existing deterministic
       behavior.
-- [ ] Existing publish tests are updated rather than replaced unnecessarily.
+- [x] Existing publish tests are updated rather than replaced unnecessarily.
 
 **Verification:**
 
-- [ ] Application test proves writer is not called on validation failure.
-- [ ] CLI test proves publish validation failure output and non-zero exit.
-- [ ] Existing JSON writer tests still pass.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/application/test_publish_index.py tests/unit/features/skill_catalog/adapters/inbound/test_cli.py`
+- [x] Application test proves writer is not called on validation failure.
+- [x] CLI test proves publish validation failure output and non-zero exit.
+- [x] Existing JSON writer tests still pass.
+- [x] `uv run pytest tests/unit/features/skill_catalog/application/test_publish_index.py tests/unit/features/skill_catalog/adapters/inbound/test_cli.py`
 
 **Dependencies:** Tasks 5-6
 

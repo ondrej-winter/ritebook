@@ -29,6 +29,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     publisher = PublishIndex(
         skill_discovery=FilesystemSkillDiscovery(),
+        header_discovery=FilesystemSkillHeaderDiscovery(),
+        header_validator=ValidateSkillHeaders(),
         index_writer=JsonIndexWriter(),
         clock=lambda: datetime.now(UTC),
     )

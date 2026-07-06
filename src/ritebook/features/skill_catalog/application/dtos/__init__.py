@@ -8,6 +8,7 @@ from ritebook.features.skill_catalog.application.dtos.publish_index import (
     CANONICAL_INDEX_FILENAME,
     PublishIndexCommand,
     PublishIndexResult,
+    PublishIndexValidationError,
 )
 from ritebook.features.skill_catalog.application.dtos.skill_validation import (
     FrontmatterMapping,
@@ -25,6 +26,7 @@ __all__ = [
     "ParsedSkillHeader",
     "PublishIndexCommand",
     "PublishIndexResult",
+    "PublishIndexValidationError",
     "SkillHeaderDiscoveryResult",
     "SkillValidationIssue",
     "SkillValidationReport",

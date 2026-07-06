@@ -2,6 +2,10 @@
 
 from dataclasses import dataclass
 
+from ritebook.features.skill_catalog.application.dtos.skill_validation import (
+    SkillValidationIssue,
+)
+
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 
 
@@ -33,3 +37,18 @@ class PublishIndexResult:
         if not self.output_path:
             msg = "Publish index output path must not be empty."
             raise ValueError(msg)
+
+
+class PublishIndexValidationError(ValueError):
+    """Raised when skill validation prevents index publication."""
+
+    def __init__(
+        self,
+        issues: list[SkillValidationIssue] | tuple[SkillValidationIssue, ...],
+    ) -> None:
+        """Store deterministic validation issues for adapter rendering."""
+        if not issues:
+            msg = "Publish index validation error requires at least one issue."
+            raise ValueError(msg)
+        self.issues = tuple(sorted(issues))
+        super().__init__("Skill validation failed.")

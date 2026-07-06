@@ -57,6 +57,58 @@ def test_validate_skill_headers_accepts_valid_header() -> None:
     assert report.issues == ()
 
 
+def test_validate_skill_headers_accepts_structured_dependency_header() -> None:
+    description = (
+        "Verify browser-facing changes in a real browser using visual checks, "
+        "console output, network behavior, accessibility basics, and user-flow "
+        "smoke tests. Use when building, debugging, or validating UI behavior "
+        "beyond static code and unit tests."
+    )
+    tool_purpose = (
+        "Open the changed application in a real browser and inspect visible "
+        "behavior, console output, network activity, and accessibility basics."
+    )
+    skill_purpose = (
+        "Provide implementation-focused UI guidance when designing, building, "
+        "or refactoring browser-facing interfaces."
+    )
+
+    report = ValidateSkillHeaders().execute(
+        (
+            ParsedSkillHeader(
+                skill_file="browser-runtime-verification/SKILL.md",
+                expected_name="browser-runtime-verification",
+                frontmatter={
+                    "name": "browser-runtime-verification",
+                    "description": description,
+                    "metadata": {
+                        "version": "1.0.4",
+                        "dependencies": {
+                            "tools": [
+                                {
+                                    "name": "browser runtime",
+                                    "purpose": tool_purpose,
+                                    "required": True,
+                                },
+                            ],
+                            "skills": [
+                                {
+                                    "name": "frontend-ui-engineering",
+                                    "purpose": skill_purpose,
+                                    "required": False,
+                                },
+                            ],
+                        },
+                    },
+                },
+            ),
+        ),
+    )
+
+    assert report.succeeded
+    assert report.issues == ()
+
+
 @pytest.mark.parametrize("frontmatter", [None, [], "name: alpha"])
 def test_validate_skill_headers_rejects_non_mapping_frontmatter(
     frontmatter: object,
@@ -180,6 +232,64 @@ def test_validate_skill_headers_rejects_missing_or_invalid_metadata(
     assert _messages(report) == expected_messages
 
 
+@pytest.mark.parametrize(
+    ("dependencies", "expected_messages"),
+    [
+        (
+            {"tools": ["git"], "skills": []},
+            ["metadata.dependencies.tools[0] must be a mapping."],
+        ),
+        (
+            {"tools": [{}], "skills": []},
+            [
+                "metadata.dependencies.tools[0].name is required.",
+                "metadata.dependencies.tools[0].purpose is required.",
+                "metadata.dependencies.tools[0].required is required.",
+            ],
+        ),
+        (
+            {
+                "tools": [
+                    {"name": 123, "purpose": "Run commands.", "required": True},
+                ],
+                "skills": [
+                    {"name": "testing", "purpose": 123, "required": "yes"},
+                ],
+            },
+            [
+                "metadata.dependencies.skills[0].purpose must be a string.",
+                "metadata.dependencies.skills[0].required must be a boolean.",
+                "metadata.dependencies.tools[0].name must be a string.",
+            ],
+        ),
+        (
+            {
+                "tools": [
+                    {"name": "", "purpose": "", "required": False},
+                ],
+                "skills": [],
+            },
+            [
+                "metadata.dependencies.tools[0].name must not be empty.",
+                "metadata.dependencies.tools[0].purpose must not be empty.",
+            ],
+        ),
+    ],
+)
+def test_validate_skill_headers_rejects_invalid_dependency_entries(
+    dependencies: dict[str, object],
+    expected_messages: list[str],
+) -> None:
+    frontmatter = _valid_frontmatter()
+    metadata = frontmatter["metadata"]
+    assert isinstance(metadata, dict)
+    metadata["dependencies"] = dependencies
+
+    report = _validate(frontmatter)
+
+    assert _messages(report) == expected_messages
+
+
 def _validate(
     frontmatter: dict[str, object],
     *,
@@ -203,8 +313,20 @@ def _valid_frontmatter(name: str = "alpha") -> dict[str, object]:
         "metadata": {
             "version": "1.0.0",
             "dependencies": {
-                "tools": ["git"],
-                "skills": ["git-workflow-and-versioning"],
+                "tools": [
+                    {
+                        "name": "git",
+                        "purpose": "Inspect version-control state and changed files.",
+                        "required": True,
+                    },
+                ],
+                "skills": [
+                    {
+                        "name": "git-workflow-and-versioning",
+                        "purpose": "Guide safe version-control workflows.",
+                        "required": False,
+                    },
+                ],
             },
         },
     }

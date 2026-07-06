@@ -129,13 +129,82 @@ def _validate_dependencies(
         issues.append(_issue(header, "metadata.dependencies.tools is required."))
     elif not isinstance(tools, list):
         issues.append(_issue(header, "metadata.dependencies.tools must be a list."))
+    else:
+        issues.extend(
+            _validate_dependency_entries(
+                header,
+                entries=tools,
+                field_path="metadata.dependencies.tools",
+            ),
+        )
 
     skills = dependencies.get("skills")
     if skills is None:
         issues.append(_issue(header, "metadata.dependencies.skills is required."))
     elif not isinstance(skills, list):
         issues.append(_issue(header, "metadata.dependencies.skills must be a list."))
+    else:
+        issues.extend(
+            _validate_dependency_entries(
+                header,
+                entries=skills,
+                field_path="metadata.dependencies.skills",
+            ),
+        )
     return tuple(issues)
+
+
+def _validate_dependency_entries(
+    header: ParsedSkillHeader,
+    *,
+    entries: list[object],
+    field_path: str,
+) -> tuple[SkillValidationIssue, ...]:
+    issues: list[SkillValidationIssue] = []
+    for index, entry in enumerate(entries):
+        entry_path = f"{field_path}[{index}]"
+        if not isinstance(entry, Mapping):
+            issues.append(_issue(header, f"{entry_path} must be a mapping."))
+            continue
+
+        issues.extend(
+            _validate_required_text_field(header, entry, f"{entry_path}.name"),
+        )
+        issues.extend(
+            _validate_required_text_field(header, entry, f"{entry_path}.purpose"),
+        )
+        issues.extend(
+            _validate_required_boolean_field(header, entry, f"{entry_path}.required"),
+        )
+    return tuple(issues)
+
+
+def _validate_required_text_field(
+    header: ParsedSkillHeader,
+    entry: FrontmatterMapping,
+    field_path: str,
+) -> tuple[SkillValidationIssue, ...]:
+    value = entry.get(field_path.rsplit(".", maxsplit=1)[-1])
+    if value is None:
+        return (_issue(header, f"{field_path} is required."),)
+    if not isinstance(value, str):
+        return (_issue(header, f"{field_path} must be a string."),)
+    if not value:
+        return (_issue(header, f"{field_path} must not be empty."),)
+    return ()
+
+
+def _validate_required_boolean_field(
+    header: ParsedSkillHeader,
+    entry: FrontmatterMapping,
+    field_path: str,
+) -> tuple[SkillValidationIssue, ...]:
+    value = entry.get(field_path.rsplit(".", maxsplit=1)[-1])
+    if value is None:
+        return (_issue(header, f"{field_path} is required."),)
+    if not isinstance(value, bool):
+        return (_issue(header, f"{field_path} must be a boolean."),)
+    return ()
 
 
 def _issue(header: ParsedSkillHeader, message: str) -> SkillValidationIssue:

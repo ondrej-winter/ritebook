@@ -31,7 +31,16 @@ def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> Non
         "description": "Alpha skill.",
         "metadata": {
             "version": "1.0.0",
-            "dependencies": {"tools": ["git"], "skills": []},
+            "dependencies": {
+                "tools": [
+                    {
+                        "name": "git",
+                        "purpose": "Inspect version-control state.",
+                        "required": True,
+                    },
+                ],
+                "skills": [],
+            },
         },
     }
 
@@ -137,7 +146,9 @@ metadata:
   version: "1.0.0"
   dependencies:
     tools:
-      - git
+      - name: git
+        purpose: Inspect version-control state.
+        required: true
     skills: []
 ---
 # {name}

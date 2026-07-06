@@ -16,7 +16,8 @@ class FilesystemSkillDiscovery:
     def discover_skills(self, skills_root: str) -> tuple[SkillEntry, ...]:
         """Discover non-hidden skill directories below the explicit skills root."""
         entries = [
-            _skill_entry(discovered) for discovered in discover_skill_files(skills_root)
+            _skill_entry(discovered)
+            for discovered in discover_skill_files(Path(skills_root))
         ]
         return tuple(sorted(entries, key=lambda entry: entry.path))
 

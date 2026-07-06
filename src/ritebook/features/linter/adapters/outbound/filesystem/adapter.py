@@ -1,5 +1,7 @@
 """Filesystem implementation of skill discovery."""
 
+from pathlib import Path
+
 from ritebook.adapters.outbound.filesystem import (
     discover_skill_files,
 )
@@ -20,7 +22,7 @@ class FilesystemSkillHeaderDiscovery:
         """Discover non-hidden skill headers below the explicit skills root."""
         headers: list[ParsedSkillHeader] = []
         issues: list[SkillValidationIssue] = []
-        for discovered in discover_skill_files(skills_root):
+        for discovered in discover_skill_files(Path(skills_root)):
             parsed = parse_skill_header(
                 discovered.path,
                 relative_skill_file=discovered.relative_skill_file,

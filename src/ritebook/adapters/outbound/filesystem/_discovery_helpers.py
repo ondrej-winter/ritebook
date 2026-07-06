@@ -9,17 +9,17 @@ from ritebook.adapters.outbound.filesystem.exceptions import (
 )
 
 
-def validate_root(root: Path, *, skills_root: str) -> None:
+def validate_root(root: Path) -> None:
     """Validate that the configured skills root exists and is a directory."""
     try:
         if not root.exists():
-            msg = f"Skills root does not exist: {skills_root}"
+            msg = f"Skills root does not exist: {root}"
             raise SkillsRootNotFoundError(msg)
         if not root.is_dir():
-            msg = f"Skills root is not a directory: {skills_root}"
+            msg = f"Skills root is not a directory: {root}"
             raise SkillsRootNotDirectoryError(msg)
     except OSError as err:
-        msg = f"Unable to inspect skills root: {skills_root}"
+        msg = f"Unable to inspect skills root: {root}"
         raise FilesystemSkillDiscoveryError(msg) from err
 
 

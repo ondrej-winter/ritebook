@@ -22,7 +22,7 @@ def test_discover_skill_files_returns_sorted_filesystem_facts(tmp_path: Path) ->
     write_skill(tmp_path / "zeta" / "SKILL.md", "# Zeta\n")
     write_skill(tmp_path / "group" / "alpha" / "SKILL.md", "# Alpha\n")
 
-    discovered = discover_skill_files(str(tmp_path))
+    discovered = discover_skill_files(tmp_path)
 
     assert [
         (skill.expected_name, skill.relative_skill_dir, skill.relative_skill_file)
@@ -38,7 +38,7 @@ def test_discover_skill_files_skips_hidden_directories(tmp_path: Path) -> None:
     write_skill(tmp_path / ".hidden" / "SKILL.md", "# Hidden\n")
     write_skill(tmp_path / "visible" / ".nested-hidden" / "SKILL.md", "# Hidden\n")
 
-    discovered = discover_skill_files(str(tmp_path))
+    discovered = discover_skill_files(tmp_path)
 
     assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
 
@@ -46,7 +46,7 @@ def test_discover_skill_files_skips_hidden_directories(tmp_path: Path) -> None:
 def test_discover_skill_files_supports_root_skill_directory(tmp_path: Path) -> None:
     write_skill(tmp_path / "SKILL.md", "# Root\n")
 
-    discovered = discover_skill_files(str(tmp_path))
+    discovered = discover_skill_files(tmp_path)
 
     assert [
         (skill.expected_name, skill.relative_skill_dir, skill.relative_skill_file)
@@ -56,7 +56,7 @@ def test_discover_skill_files_supports_root_skill_directory(tmp_path: Path) -> N
 
 def test_discover_skill_files_rejects_missing_root(tmp_path: Path) -> None:
     with pytest.raises(SkillsRootNotFoundError, match="does not exist"):
-        discover_skill_files(str(tmp_path / "missing"))
+        discover_skill_files(tmp_path / "missing")
 
 
 def test_discover_skill_files_rejects_non_directory_root(tmp_path: Path) -> None:
@@ -64,7 +64,7 @@ def test_discover_skill_files_rejects_non_directory_root(tmp_path: Path) -> None
     file_root.write_text("not a directory", encoding="utf-8")
 
     with pytest.raises(SkillsRootNotDirectoryError, match="not a directory"):
-        discover_skill_files(str(file_root))
+        discover_skill_files(file_root)
 
 
 def test_read_skill_file_text_reads_utf8_content(tmp_path: Path) -> None:
@@ -76,7 +76,8 @@ def test_read_skill_file_text_reads_utf8_content(tmp_path: Path) -> None:
 
 def test_read_skill_file_text_wraps_read_errors(tmp_path: Path) -> None:
     with pytest.raises(
-        SkillFileReadError, match="Unable to read discovered skill file",
+        SkillFileReadError,
+        match="Unable to read discovered skill file",
     ):
         read_skill_file_text(tmp_path / "missing" / "SKILL.md")
 

@@ -224,21 +224,21 @@ without writing any index file.
 
 **Acceptance criteria:**
 
-- [ ] `lint-skills` validates the same discovered skills as `publish-index`.
-- [ ] The use case succeeds only when all discovered skills are valid.
-- [ ] The use case returns validated skill count on success.
-- [ ] The use case returns deterministic issue lists on failure.
-- [ ] The use case has no dependency on the index writer.
+- [x] `lint-skills` validates the same discovered skills as `publish-index`.
+- [x] The use case succeeds only when all discovered skills are valid.
+- [x] The use case returns validated skill count on success.
+- [x] The use case returns deterministic issue lists on failure.
+- [x] The use case has no dependency on the index writer.
 
 **Verification:**
 
-- [ ] Application tests use fakes for validation input discovery/parsing.
-- [ ] Tests cover success with validated skill count.
-- [ ] Tests cover success with zero discovered skills unless implementation
+- [x] Application tests use fakes for validation input discovery/parsing.
+- [x] Tests cover success with validated skill count.
+- [x] Tests cover success with zero discovered skills unless implementation
       deliberately documents that an empty root is invalid.
-- [ ] Tests cover invalid skills producing a failure report.
-- [ ] Tests prove no index writer interaction is part of lint behavior.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/application`
+- [x] Tests cover invalid skills producing a failure report.
+- [x] Tests prove no index writer interaction is part of lint behavior.
+- [x] `uv run pytest tests/unit/features/skill_catalog/application`
 
 **Dependencies:** Tasks 2-4
 
@@ -261,22 +261,22 @@ without writing any index file.
 
 **Acceptance criteria:**
 
-- [ ] `lint-skills` requires explicit `--skills-root`.
-- [ ] On success, it prints concise validated skill count and exits `0`.
-- [ ] On validation issues, it prints deterministic `relative/path/SKILL.md:
+- [x] `lint-skills` requires explicit `--skills-root`.
+- [x] On success, it prints concise validated skill count and exits `0`.
+- [x] On validation issues, it prints deterministic `relative/path/SKILL.md:
       message` lines to stderr and exits non-zero.
-- [ ] On root inspection/read errors, it prints a clear `ritebook: error: ...`
+- [x] On root inspection/read errors, it prints a clear `ritebook: error: ...`
       message and exits non-zero.
-- [ ] It does not write or update `ritebook-index.json`.
+- [x] It does not write or update `ritebook-index.json`.
 
 **Verification:**
 
-- [ ] CLI tests cover argument mapping.
-- [ ] CLI tests cover missing `--skills-root`.
-- [ ] CLI tests cover success output.
-- [ ] CLI tests cover validation failure output.
-- [ ] CLI tests cover root error translation.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/adapters/inbound/test_cli.py`
+- [x] CLI tests cover argument mapping.
+- [x] CLI tests cover missing `--skills-root`.
+- [x] CLI tests cover success output.
+- [x] CLI tests cover validation failure output.
+- [x] CLI tests cover root error translation.
+- [x] `uv run pytest tests/unit/features/skill_catalog/adapters/inbound/test_cli.py`
 
 **Dependencies:** Task 5
 
@@ -290,9 +290,9 @@ without writing any index file.
 
 ### Checkpoint: Lint Workflow
 
-- [ ] Focused lint workflow tests pass.
-- [ ] CLI behavior is deterministic for valid and invalid skill fixtures.
-- [ ] `lint-skills` does not depend on or invoke JSON index writing.
+- [x] Focused lint workflow tests pass.
+- [x] CLI behavior is deterministic for valid and invalid skill fixtures.
+- [x] `lint-skills` does not depend on or invoke JSON index writing.
 
 ### Phase 4: Publish Validation Precondition
 

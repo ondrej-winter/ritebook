@@ -13,6 +13,8 @@ from ritebook.features.linter.application.dtos import (
 )
 
 FRONTMATTER_DELIMITER = "---"
+FRONTMATTER_START_LINE_INDEX = 0
+FRONTMATTER_CONTENT_START_LINE_INDEX = FRONTMATTER_START_LINE_INDEX + 1
 
 
 def parse_skill_header(
@@ -37,7 +39,9 @@ def parse_skill_header(
         )
 
     try:
-        frontmatter = yaml.safe_load("\n".join(lines[1:closing_index]))
+        frontmatter = yaml.safe_load(
+            "\n".join(lines[FRONTMATTER_CONTENT_START_LINE_INDEX:closing_index]),
+        )
     except yaml.YAMLError as err:
         return _issue(relative_skill_file, f"frontmatter must be valid YAML: {err}")
 
@@ -49,7 +53,10 @@ def parse_skill_header(
 
 
 def _closing_delimiter_index(lines: list[str]) -> int | None:
-    for index, line in enumerate(lines[1:], start=1):
+    for index, line in enumerate(
+        lines[FRONTMATTER_CONTENT_START_LINE_INDEX:],
+        start=FRONTMATTER_CONTENT_START_LINE_INDEX,
+    ):
         if line == FRONTMATTER_DELIMITER:
             return index
     return None

@@ -1,4 +1,4 @@
-"""Pure application validation for Agent Skill headers."""
+"""Validation helpers for Agent Skill headers."""
 
 from __future__ import annotations
 
@@ -9,32 +9,14 @@ from ritebook.features.linter.application.dtos import (
     FrontmatterMapping,
     ParsedSkillHeader,
     SkillValidationIssue,
-    SkillValidationReport,
 )
 
 VALID_SKILL_NAME_PATTERN = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 MAX_DESCRIPTION_LENGTH = 1024
 
 
-class ValidateSkillHeaders:
-    """Validate parsed skill headers against the Agent Skill contract."""
-
-    def execute(
-        self,
-        headers: tuple[ParsedSkillHeader, ...],
-    ) -> SkillValidationReport:
-        """Validate parsed headers and return a deterministic report."""
-        issues: list[SkillValidationIssue] = []
-        for header in headers:
-            issues.extend(_validate_header(header))
-
-        return SkillValidationReport.create(
-            validated_skill_count=len(headers),
-            issues=issues,
-        )
-
-
-def _validate_header(header: ParsedSkillHeader) -> tuple[SkillValidationIssue, ...]:
+def validate_header(header: ParsedSkillHeader) -> tuple[SkillValidationIssue, ...]:
+    """Validate a parsed skill header and return discovered issues."""
     frontmatter = header.frontmatter
     if not isinstance(frontmatter, Mapping):
         return (_issue(header, "frontmatter must be a mapping."),)

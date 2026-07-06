@@ -8,9 +8,9 @@ from ritebook.features.linter.application.ports import (
     LintSkillsPort,
     SkillHeaderDiscoveryPort,
 )
-from ritebook.features.linter.application.use_cases import validate_skill_headers
-
-ValidateSkillHeaders = validate_skill_headers.ValidateSkillHeaders
+from ritebook.features.linter.application.use_cases.validate_skill_headers import (
+    ValidateSkillHeaders,
+)
 
 
 class LintSkills(LintSkillsPort):

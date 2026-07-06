@@ -8,6 +8,7 @@ from ritebook.features.skill_catalog.application.dtos.publish_index import (
 from ritebook.features.skill_catalog.application.dtos.skill_validation import (
     FrontmatterMapping,
     ParsedSkillHeader,
+    SkillHeaderDiscoveryResult,
     SkillValidationIssue,
     SkillValidationReport,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "ParsedSkillHeader",
     "PublishIndexCommand",
     "PublishIndexResult",
+    "SkillHeaderDiscoveryResult",
     "SkillValidationIssue",
     "SkillValidationReport",
 ]

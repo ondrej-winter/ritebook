@@ -174,32 +174,32 @@ plain application DTOs, reporting parse and delimiter issues path-by-path.
 
 **Acceptance criteria:**
 
-- [ ] An application-owned outbound port defines the header/frontmatter discovery
+- [x] An application-owned outbound port defines the header/frontmatter discovery
       contract independently from `SkillDiscoveryPort`.
-- [ ] Traversal requires an explicit root and uses the same recursive rules as
+- [x] Traversal requires an explicit root and uses the same recursive rules as
       `publish-index`.
-- [ ] Hidden directories under the skills root are skipped by default.
-- [ ] Output order is deterministic.
-- [ ] Only discovered `SKILL.md` files are read.
-- [ ] Frontmatter must open with `---` on the first line.
-- [ ] Frontmatter must include a closing `---` delimiter before the Markdown body.
-- [ ] Empty YAML frontmatter where `yaml.safe_load()` returns `None` is reported
+- [x] Hidden directories under the skills root are skipped by default.
+- [x] Output order is deterministic.
+- [x] Only discovered `SKILL.md` files are read.
+- [x] Frontmatter must open with `---` on the first line.
+- [x] Frontmatter must include a closing `---` delimiter before the Markdown body.
+- [x] Empty YAML frontmatter where `yaml.safe_load()` returns `None` is reported
       as invalid non-mapping frontmatter.
-- [ ] The adapter uses `yaml.safe_load()` only on the bounded frontmatter block.
-- [ ] Adapter output contains parsed plain data or validation issues without full
+- [x] The adapter uses `yaml.safe_load()` only on the bounded frontmatter block.
+- [x] Adapter output contains parsed plain data or validation issues without full
       file contents.
-- [ ] Missing, non-directory, or unreadable roots produce clear adapter errors.
+- [x] Missing, non-directory, or unreadable roots produce clear adapter errors.
 
 **Verification:**
 
-- [ ] Filesystem adapter tests cover recursive discovery and relative paths.
-- [ ] Filesystem adapter tests cover hidden directory skipping.
-- [ ] Filesystem adapter tests cover missing frontmatter, missing closing
+- [x] Filesystem adapter tests cover recursive discovery and relative paths.
+- [x] Filesystem adapter tests cover hidden directory skipping.
+- [x] Filesystem adapter tests cover missing frontmatter, missing closing
       delimiter, delimiter placement, malformed YAML, empty YAML, and non-mapping
       YAML.
-- [ ] Filesystem adapter tests cover root inspection errors.
-- [ ] Filesystem adapter tests cover root-level `SKILL.md` relative paths.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`
+- [x] Filesystem adapter tests cover root inspection errors.
+- [x] Filesystem adapter tests cover root-level `SKILL.md` relative paths.
+- [x] `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`
 
 **Dependencies:** Tasks 1-3
 

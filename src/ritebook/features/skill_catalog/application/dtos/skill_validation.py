@@ -75,6 +75,33 @@ class SkillValidationReport:
         object.__setattr__(self, "issues", tuple(sorted(self.issues)))
 
 
+@dataclass(frozen=True)
+class SkillHeaderDiscoveryResult:
+    """Parsed skill headers and adapter-level issues from header discovery."""
+
+    headers: tuple[ParsedSkillHeader, ...] = field(default_factory=tuple)
+    issues: tuple[SkillValidationIssue, ...] = field(default_factory=tuple)
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        headers: list[ParsedSkillHeader] | tuple[ParsedSkillHeader, ...],
+        issues: list[SkillValidationIssue] | tuple[SkillValidationIssue, ...],
+    ) -> SkillHeaderDiscoveryResult:
+        """Create a deterministic header discovery result."""
+        return cls(headers=tuple(headers), issues=tuple(issues))
+
+    def __post_init__(self) -> None:
+        """Normalize discovery output ordering after initialization."""
+        object.__setattr__(
+            self,
+            "headers",
+            tuple(sorted(self.headers, key=lambda header: header.skill_file)),
+        )
+        object.__setattr__(self, "issues", tuple(sorted(self.issues)))
+
+
 FrontmatterMapping = Mapping[str, object]
 
 

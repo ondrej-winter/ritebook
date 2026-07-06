@@ -8,6 +8,14 @@ from ritebook.features.skill_catalog.adapters.outbound.filesystem.exceptions imp
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
 )
+from ritebook.features.skill_catalog.adapters.outbound.filesystem.frontmatter import (
+    parse_skill_header,
+)
+from ritebook.features.skill_catalog.application.dtos import (
+    ParsedSkillHeader,
+    SkillHeaderDiscoveryResult,
+    SkillValidationIssue,
+)
 from ritebook.features.skill_catalog.domain import SkillEntry
 
 SKILL_FILE_NAME = "SKILL.md"
@@ -25,6 +33,33 @@ class FilesystemSkillDiscovery:
             _skill_entry(root=root, skill_file=path) for path in _skill_files(root)
         ]
         return tuple(sorted(entries, key=lambda entry: entry.path))
+
+
+class FilesystemSkillHeaderDiscovery:
+    """Discover and parse skill headers from ``SKILL.md`` files."""
+
+    def discover_headers(self, skills_root: str) -> SkillHeaderDiscoveryResult:
+        """Discover non-hidden skill headers below the explicit skills root."""
+        root = Path(skills_root)
+        _validate_root(root, skills_root=skills_root)
+
+        headers: list[ParsedSkillHeader] = []
+        issues: list[SkillValidationIssue] = []
+        for skill_file in _skill_files(root):
+            parsed = parse_skill_header(
+                skill_file,
+                relative_skill_file=_relative_skill_file(
+                    root=root,
+                    skill_file=skill_file,
+                ),
+                expected_name=skill_file.parent.name,
+            )
+            if isinstance(parsed, SkillValidationIssue):
+                issues.append(parsed)
+            else:
+                headers.append(parsed)
+
+        return SkillHeaderDiscoveryResult.create(headers=headers, issues=issues)
 
 
 def _validate_root(root: Path, *, skills_root: str) -> None:
@@ -65,15 +100,24 @@ def _collect_skill_files(directory: Path, *, discovered: list[Path]) -> None:
 
 def _skill_entry(*, root: Path, skill_file: Path) -> SkillEntry:
     skill_dir = skill_file.parent
-    relative_dir = skill_dir.relative_to(root)
-    path = "." if relative_dir == Path() else relative_dir.as_posix()
-    skill_file_path = SKILL_FILE_NAME if path == "." else f"{path}/{SKILL_FILE_NAME}"
+    path = _relative_skill_dir(root=root, skill_file=skill_file)
+    skill_file_path = _relative_skill_file(root=root, skill_file=skill_file)
     return SkillEntry(
         name=skill_dir.name,
         path=path,
         skill_file=skill_file_path,
         title=_extract_title(skill_file),
     )
+
+
+def _relative_skill_dir(*, root: Path, skill_file: Path) -> str:
+    relative_dir = skill_file.parent.relative_to(root)
+    return "." if relative_dir == Path() else relative_dir.as_posix()
+
+
+def _relative_skill_file(*, root: Path, skill_file: Path) -> str:
+    path = _relative_skill_dir(root=root, skill_file=skill_file)
+    return SKILL_FILE_NAME if path == "." else f"{path}/{SKILL_FILE_NAME}"
 
 
 def _extract_title(skill_file: Path) -> str | None:

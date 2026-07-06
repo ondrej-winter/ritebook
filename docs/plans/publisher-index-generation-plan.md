@@ -63,14 +63,14 @@ frontmatter parsing.
 
 **Acceptance criteria:**
 
-- [ ] `pyproject.toml` includes `PyYAML` under `[project].dependencies`.
-- [ ] `uv.lock` is updated consistently.
-- [ ] YAML parsing is not treated as a development-only dependency.
+- [x] `pyproject.toml` includes `PyYAML` under `[project].dependencies`.
+- [x] `uv.lock` is updated consistently.
+- [x] YAML parsing is not treated as a development-only dependency.
 
 **Verification:**
 
-- [ ] `uv sync`
-- [ ] `uv run python -c "import yaml; print(yaml.__name__)"`
+- [x] `uv sync`
+- [x] `uv run python -c "import yaml; print(yaml.__name__)"`
 
 **Dependencies:** None
 
@@ -89,15 +89,15 @@ path-scoped validation semantics.
 
 **Acceptance criteria:**
 
-- [ ] Validation issues include a relative `skill_file` path and a rule/message.
-- [ ] Validation reports can answer whether validation succeeded.
-- [ ] Validation reports expose deterministic issue ordering.
-- [ ] DTOs reject invalid empty paths or messages where appropriate.
+- [x] Validation issues include a relative `skill_file` path and a rule/message.
+- [x] Validation reports can answer whether validation succeeded.
+- [x] Validation reports expose deterministic issue ordering.
+- [x] DTOs reject invalid empty paths or messages where appropriate.
 
 **Verification:**
 
-- [ ] Focused DTO tests pass, or equivalent use-case tests cover DTO behavior.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/application`
+- [x] Focused DTO tests pass, or equivalent use-case tests cover DTO behavior.
+- [x] `uv run pytest tests/unit/features/skill_catalog/application`
 
 **Dependencies:** None
 
@@ -117,36 +117,36 @@ must stay outside this validation core.
 
 **Acceptance criteria:**
 
-- [ ] Frontmatter/header data must be a mapping.
-- [ ] `name` is required.
-- [ ] `name` must be a string using valid kebab-case: 1-64 characters,
+- [x] Frontmatter/header data must be a mapping.
+- [x] `name` is required.
+- [x] `name` must be a string using valid kebab-case: 1-64 characters,
       lowercase ASCII letters, digits, and hyphens only; no leading/trailing
       hyphen; no consecutive hyphens.
-- [ ] `name` must match the parent skill directory name derived from the skill
+- [x] `name` must match the parent skill directory name derived from the skill
       path. For a root-level `SKILL.md`, compare against the explicit root
       directory basename already used by discovery.
-- [ ] `description` is required, must be a non-empty string, and must be at most
+- [x] `description` is required, must be a non-empty string, and must be at most
       1024 characters.
-- [ ] `metadata` is required and must be a mapping.
-- [ ] `metadata.version` is required and must be a string.
-- [ ] `metadata.dependencies` is required and must be a mapping.
-- [ ] `metadata.dependencies.tools` is required and must be a list.
-- [ ] `metadata.dependencies.skills` is required and must be a list.
-- [ ] Dependency list items may be strings for this milestone.
-- [ ] Validation issues identify the relative skill file path and violated rule
+- [x] `metadata` is required and must be a mapping.
+- [x] `metadata.version` is required and must be a string.
+- [x] `metadata.dependencies` is required and must be a mapping.
+- [x] `metadata.dependencies.tools` is required and must be a list.
+- [x] `metadata.dependencies.skills` is required and must be a list.
+- [x] Dependency list items may be strings for this milestone.
+- [x] Validation issues identify the relative skill file path and violated rule
       without including full file contents.
-- [ ] Application/domain validation logic does not import `yaml`, `pathlib.Path`,
+- [x] Application/domain validation logic does not import `yaml`, `pathlib.Path`,
       or filesystem APIs.
 
 **Verification:**
 
-- [ ] Tests cover a valid header.
-- [ ] Tests cover missing or non-mapping frontmatter data.
-- [ ] Tests cover invalid names and name/path mismatches.
-- [ ] Tests cover missing or invalid description.
-- [ ] Tests cover missing metadata, missing version, missing dependencies, and
+- [x] Tests cover a valid header.
+- [x] Tests cover missing or non-mapping frontmatter data.
+- [x] Tests cover invalid names and name/path mismatches.
+- [x] Tests cover missing or invalid description.
+- [x] Tests cover missing metadata, missing version, missing dependencies, and
       invalid dependency list types.
-- [ ] `uv run pytest tests/unit/features/skill_catalog/application`
+- [x] `uv run pytest tests/unit/features/skill_catalog/application`
 
 **Dependencies:** Task 2
 
@@ -160,9 +160,9 @@ must stay outside this validation core.
 
 ### Checkpoint: Validation Core
 
-- [ ] Application validation tests pass.
-- [ ] Validation logic has no filesystem or YAML dependency leaks.
-- [ ] Issue ordering and formatting are deterministic.
+- [x] Application validation tests pass.
+- [x] Validation logic has no filesystem or YAML dependency leaks.
+- [x] Issue ordering and formatting are deterministic.
 
 ### Phase 2: Filesystem Validation Adapter
 

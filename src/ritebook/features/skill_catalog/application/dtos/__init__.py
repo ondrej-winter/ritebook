@@ -5,5 +5,19 @@ from ritebook.features.skill_catalog.application.dtos.publish_index import (
     PublishIndexCommand,
     PublishIndexResult,
 )
+from ritebook.features.skill_catalog.application.dtos.skill_validation import (
+    FrontmatterMapping,
+    ParsedSkillHeader,
+    SkillValidationIssue,
+    SkillValidationReport,
+)
 
-__all__ = ["CANONICAL_INDEX_FILENAME", "PublishIndexCommand", "PublishIndexResult"]
+__all__ = [
+    "CANONICAL_INDEX_FILENAME",
+    "FrontmatterMapping",
+    "ParsedSkillHeader",
+    "PublishIndexCommand",
+    "PublishIndexResult",
+    "SkillValidationIssue",
+    "SkillValidationReport",
+]

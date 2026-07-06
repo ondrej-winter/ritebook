@@ -1,0 +1,142 @@
+"""Pure application validation for Agent Skill headers."""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Mapping
+
+from ritebook.features.skill_catalog.application.dtos import (
+    FrontmatterMapping,
+    ParsedSkillHeader,
+    SkillValidationIssue,
+    SkillValidationReport,
+)
+
+VALID_SKILL_NAME_PATTERN = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
+MAX_DESCRIPTION_LENGTH = 1024
+
+
+class ValidateSkillHeaders:
+    """Validate parsed skill headers against the Agent Skill contract."""
+
+    def execute(
+        self,
+        headers: tuple[ParsedSkillHeader, ...],
+    ) -> SkillValidationReport:
+        """Validate parsed headers and return a deterministic report."""
+        issues: list[SkillValidationIssue] = []
+        for header in headers:
+            issues.extend(_validate_header(header))
+
+        return SkillValidationReport.create(
+            validated_skill_count=len(headers),
+            issues=issues,
+        )
+
+
+def _validate_header(header: ParsedSkillHeader) -> tuple[SkillValidationIssue, ...]:
+    frontmatter = header.frontmatter
+    if not isinstance(frontmatter, Mapping):
+        return (_issue(header, "frontmatter must be a mapping."),)
+
+    issues = [
+        *_validate_name(header, frontmatter),
+        *_validate_description(header, frontmatter),
+        *_validate_metadata(header, frontmatter),
+    ]
+    return tuple(issues)
+
+
+def _validate_name(
+    header: ParsedSkillHeader,
+    frontmatter: FrontmatterMapping,
+) -> tuple[SkillValidationIssue, ...]:
+    name = frontmatter.get("name")
+    if name is None:
+        return (_issue(header, "name is required."),)
+    if not isinstance(name, str):
+        return (_issue(header, "name must be a string."),)
+
+    issues: list[SkillValidationIssue] = []
+    if not VALID_SKILL_NAME_PATTERN.fullmatch(name):
+        issues.append(
+            _issue(
+                header,
+                "name must be valid kebab-case: 1-64 lowercase ASCII letters, "
+                "digits, and hyphens; no leading, trailing, or consecutive hyphens.",
+            ),
+        )
+    if name != header.expected_name:
+        issues.append(
+            _issue(
+                header,
+                f"name must match skill directory name '{header.expected_name}'.",
+            ),
+        )
+    return tuple(issues)
+
+
+def _validate_description(
+    header: ParsedSkillHeader,
+    frontmatter: FrontmatterMapping,
+) -> tuple[SkillValidationIssue, ...]:
+    description = frontmatter.get("description")
+    if description is None:
+        return (_issue(header, "description is required."),)
+    if not isinstance(description, str):
+        return (_issue(header, "description must be a string."),)
+    if not description:
+        return (_issue(header, "description must not be empty."),)
+    if len(description) > MAX_DESCRIPTION_LENGTH:
+        return (_issue(header, "description must be at most 1024 characters."),)
+    return ()
+
+
+def _validate_metadata(
+    header: ParsedSkillHeader,
+    frontmatter: FrontmatterMapping,
+) -> tuple[SkillValidationIssue, ...]:
+    metadata = frontmatter.get("metadata")
+    if metadata is None:
+        return (_issue(header, "metadata is required."),)
+    if not isinstance(metadata, Mapping):
+        return (_issue(header, "metadata must be a mapping."),)
+
+    issues: list[SkillValidationIssue] = []
+    version = metadata.get("version")
+    if version is None:
+        issues.append(_issue(header, "metadata.version is required."))
+    elif not isinstance(version, str):
+        issues.append(_issue(header, "metadata.version must be a string."))
+
+    dependencies = metadata.get("dependencies")
+    if dependencies is None:
+        issues.append(_issue(header, "metadata.dependencies is required."))
+    elif not isinstance(dependencies, Mapping):
+        issues.append(_issue(header, "metadata.dependencies must be a mapping."))
+    else:
+        issues.extend(_validate_dependencies(header, dependencies))
+    return tuple(issues)
+
+
+def _validate_dependencies(
+    header: ParsedSkillHeader,
+    dependencies: FrontmatterMapping,
+) -> tuple[SkillValidationIssue, ...]:
+    issues: list[SkillValidationIssue] = []
+    tools = dependencies.get("tools")
+    if tools is None:
+        issues.append(_issue(header, "metadata.dependencies.tools is required."))
+    elif not isinstance(tools, list):
+        issues.append(_issue(header, "metadata.dependencies.tools must be a list."))
+
+    skills = dependencies.get("skills")
+    if skills is None:
+        issues.append(_issue(header, "metadata.dependencies.skills is required."))
+    elif not isinstance(skills, list):
+        issues.append(_issue(header, "metadata.dependencies.skills must be a list."))
+    return tuple(issues)
+
+
+def _issue(header: ParsedSkillHeader, message: str) -> SkillValidationIssue:
+    return SkillValidationIssue(skill_file=header.skill_file, message=message)

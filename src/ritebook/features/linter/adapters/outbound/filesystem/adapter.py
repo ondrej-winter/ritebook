@@ -1,0 +1,92 @@
+"""Filesystem implementation of skill discovery."""
+
+from pathlib import Path
+
+from ritebook.features.linter.adapters.outbound.filesystem.exceptions import (
+    FilesystemSkillDiscoveryError,
+    SkillsRootNotDirectoryError,
+    SkillsRootNotFoundError,
+)
+from ritebook.features.linter.adapters.outbound.filesystem.frontmatter import (
+    parse_skill_header,
+)
+from ritebook.features.linter.application.dtos import (
+    ParsedSkillHeader,
+    SkillHeaderDiscoveryResult,
+    SkillValidationIssue,
+)
+
+SKILL_FILE_NAME = "SKILL.md"
+
+
+class FilesystemSkillHeaderDiscovery:
+    """Discover and parse skill headers from ``SKILL.md`` files."""
+
+    def discover_headers(self, skills_root: str) -> SkillHeaderDiscoveryResult:
+        """Discover non-hidden skill headers below the explicit skills root."""
+        root = Path(skills_root)
+        _validate_root(root, skills_root=skills_root)
+
+        headers: list[ParsedSkillHeader] = []
+        issues: list[SkillValidationIssue] = []
+        for skill_file in _skill_files(root):
+            parsed = parse_skill_header(
+                skill_file,
+                relative_skill_file=_relative_skill_file(
+                    root=root,
+                    skill_file=skill_file,
+                ),
+                expected_name=skill_file.parent.name,
+            )
+            if isinstance(parsed, SkillValidationIssue):
+                issues.append(parsed)
+            else:
+                headers.append(parsed)
+
+        return SkillHeaderDiscoveryResult.create(headers=headers, issues=issues)
+
+
+def _validate_root(root: Path, *, skills_root: str) -> None:
+    try:
+        if not root.exists():
+            msg = f"Skills root does not exist: {skills_root}"
+            raise SkillsRootNotFoundError(msg)
+        if not root.is_dir():
+            msg = f"Skills root is not a directory: {skills_root}"
+            raise SkillsRootNotDirectoryError(msg)
+    except OSError as err:
+        msg = f"Unable to inspect skills root: {skills_root}"
+        raise FilesystemSkillDiscoveryError(msg) from err
+
+
+def _skill_files(root: Path) -> tuple[Path, ...]:
+    discovered: list[Path] = []
+    _collect_skill_files(root, discovered=discovered)
+    return tuple(discovered)
+
+
+def _collect_skill_files(directory: Path, *, discovered: list[Path]) -> None:
+    skill_file = directory / SKILL_FILE_NAME
+    if skill_file.is_file():
+        discovered.append(skill_file)
+
+    try:
+        children = sorted(directory.iterdir(), key=lambda path: path.name)
+    except OSError as err:
+        msg = f"Unable to read directory while discovering skills: {directory}"
+        raise FilesystemSkillDiscoveryError(msg) from err
+
+    for child in children:
+        if child.name.startswith(".") or not child.is_dir():
+            continue
+        _collect_skill_files(child, discovered=discovered)
+
+
+def _relative_skill_dir(*, root: Path, skill_file: Path) -> str:
+    relative_dir = skill_file.parent.relative_to(root)
+    return "." if relative_dir == Path() else relative_dir.as_posix()
+
+
+def _relative_skill_file(*, root: Path, skill_file: Path) -> str:
+    path = _relative_skill_dir(root=root, skill_file=skill_file)
+    return SKILL_FILE_NAME if path == "." else f"{path}/{SKILL_FILE_NAME}"

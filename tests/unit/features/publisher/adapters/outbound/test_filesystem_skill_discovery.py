@@ -10,25 +10,28 @@ from ritebook.features.publisher.adapters.outbound.filesystem import (
 
 
 def test_discover_skills_finds_nested_skill_directories(tmp_path: Path) -> None:
-    write_skill(tmp_path / "zeta" / "SKILL.md", "# Zeta Skill\n")
-    write_skill(tmp_path / "group" / "alpha" / "SKILL.md", "# Alpha Skill\n")
+    write_skill(tmp_path / "zeta" / "SKILL.md", skill_content(name="zeta-skill"))
+    write_skill(
+        tmp_path / "group" / "alpha" / "SKILL.md",
+        skill_content(name="alpha-skill"),
+    )
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
         (entry.name, entry.path, entry.skill_file, entry.title) for entry in entries
     ] == [
-        ("alpha", "group/alpha", "group/alpha/SKILL.md", "Alpha Skill"),
-        ("zeta", "zeta", "zeta/SKILL.md", "Zeta Skill"),
+        ("alpha", "group/alpha", "group/alpha/SKILL.md", "alpha-skill"),
+        ("zeta", "zeta", "zeta/SKILL.md", "zeta-skill"),
     ]
 
 
 def test_discover_skills_skips_hidden_directories(tmp_path: Path) -> None:
-    write_skill(tmp_path / "visible" / "SKILL.md", "# Visible Skill\n")
-    write_skill(tmp_path / ".hidden" / "SKILL.md", "# Hidden Skill\n")
+    write_skill(tmp_path / "visible" / "SKILL.md", skill_content(name="visible"))
+    write_skill(tmp_path / ".hidden" / "SKILL.md", skill_content(name="hidden"))
     write_skill(
         tmp_path / "visible" / ".nested-hidden" / "SKILL.md",
-        "# Nested Hidden\n",
+        skill_content(name="nested-hidden"),
     )
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
@@ -36,34 +39,63 @@ def test_discover_skills_skips_hidden_directories(tmp_path: Path) -> None:
     assert [entry.path for entry in entries] == ["visible"]
 
 
-def test_discover_skills_uses_none_when_title_is_missing(tmp_path: Path) -> None:
-    write_skill(tmp_path / "untitled" / "SKILL.md", "## Not a title\nBody\n")
+def test_discover_skills_uses_none_when_header_name_is_missing(tmp_path: Path) -> None:
+    write_skill(
+        tmp_path / "untitled" / "SKILL.md",
+        "---\ndescription: No name\n---\n# Not the source of truth\n",
+    )
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert entries[0].title is None
 
 
-def test_discover_skills_uses_first_markdown_h1_title(tmp_path: Path) -> None:
+def test_discover_skills_uses_yaml_header_name_as_title(tmp_path: Path) -> None:
     write_skill(
         tmp_path / "titled" / "SKILL.md",
-        "Intro\n# First Title\n# Second Title\n",
+        f"{skill_content(name='header-name')}\n# Markdown Heading Is Ignored\n",
     )
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
-    assert entries[0].title == "First Title"
+    assert entries[0].title == "header-name"
+
+
+def test_discover_skills_uses_none_when_header_name_is_not_text(
+    tmp_path: Path,
+) -> None:
+    write_skill(
+        tmp_path / "invalid-name" / "SKILL.md",
+        "---\nname: 123\n---\n# Not the source of truth\n",
+    )
+
+    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert entries[0].title is None
+
+
+def test_discover_skills_uses_none_when_frontmatter_is_invalid(
+    tmp_path: Path,
+) -> None:
+    write_skill(
+        tmp_path / "invalid-frontmatter" / "SKILL.md",
+        "---\nname: [unterminated\n---\n# Not the source of truth\n",
+    )
+
+    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert entries[0].title is None
 
 
 def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
-    write_skill(tmp_path / "SKILL.md", "# Root Skill\n")
+    write_skill(tmp_path / "SKILL.md", skill_content(name="root-skill"))
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
         (entry.name, entry.path, entry.skill_file, entry.title) for entry in entries
     ] == [
-        (tmp_path.name, ".", "SKILL.md", "Root Skill"),
+        (tmp_path.name, ".", "SKILL.md", "root-skill"),
     ]
 
 
@@ -85,3 +117,16 @@ def test_discover_skills_rejects_non_directory_root(tmp_path: Path) -> None:
 def write_skill(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def skill_content(*, name: str) -> str:
+    return f"""---
+name: {name}
+description: Example skill
+metadata:
+  version: "1.0.0"
+  dependencies:
+    tools: []
+    skills: []
+---
+"""

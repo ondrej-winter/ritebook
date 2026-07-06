@@ -1,11 +1,13 @@
 """Filesystem implementation of publisher skill discovery."""
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import (
     DiscoveredSkillFile,
+    FrontmatterParseError,
     discover_skill_files,
-    read_skill_file_text,
+    parse_yaml_frontmatter,
 )
 from ritebook.features.publisher.domain import SkillEntry
 
@@ -28,15 +30,22 @@ def _skill_entry(discovered: DiscoveredSkillFile) -> SkillEntry:
         name=skill_dir.name,
         path=discovered.relative_skill_dir,
         skill_file=discovered.relative_skill_file,
-        title=_extract_title(discovered.path),
+        title=_extract_header_name(discovered.path),
     )
 
 
-def _extract_title(skill_file: Path) -> str | None:
-    lines = read_skill_file_text(skill_file).splitlines()
-    for line in lines:
-        if line.startswith("# "):
-            title = line[2:].strip()
-            if title:
-                return title
+def _extract_header_name(skill_file: Path) -> str | None:
+    frontmatter = parse_yaml_frontmatter(skill_file)
+    if isinstance(frontmatter, FrontmatterParseError):
+        return None
+    if not isinstance(frontmatter, Mapping):
+        return None
+
+    name = frontmatter.get("name")
+    if not isinstance(name, str):
+        return None
+
+    title = name.strip()
+    if title:
+        return title
     return None

@@ -2,19 +2,14 @@
 
 from pathlib import Path
 
-import yaml
-
 from ritebook.adapters.outbound.filesystem import (
-    read_skill_file_text,
+    FrontmatterParseError,
+    parse_yaml_frontmatter,
 )
 from ritebook.features.linter.application.dtos import (
     ParsedSkillHeader,
     SkillValidationIssue,
 )
-
-FRONTMATTER_DELIMITER = "---"
-FRONTMATTER_START_LINE_INDEX = 0
-FRONTMATTER_CONTENT_START_LINE_INDEX = FRONTMATTER_START_LINE_INDEX + 1
 
 
 def parse_skill_header(
@@ -24,42 +19,15 @@ def parse_skill_header(
     expected_name: str,
 ) -> ParsedSkillHeader | SkillValidationIssue:
     """Parse bounded YAML frontmatter from a discovered skill file."""
-    lines = read_skill_file_text(skill_file).splitlines()
-    if not lines or lines[0] != FRONTMATTER_DELIMITER:
-        return _issue(
-            relative_skill_file,
-            "frontmatter must start on the first line with ---.",
-        )
-
-    closing_index = _closing_delimiter_index(lines)
-    if closing_index is None:
-        return _issue(
-            relative_skill_file,
-            "frontmatter must include a closing --- delimiter.",
-        )
-
-    try:
-        frontmatter = yaml.safe_load(
-            "\n".join(lines[FRONTMATTER_CONTENT_START_LINE_INDEX:closing_index]),
-        )
-    except yaml.YAMLError as err:
-        return _issue(relative_skill_file, f"frontmatter must be valid YAML: {err}")
+    frontmatter = parse_yaml_frontmatter(skill_file)
+    if isinstance(frontmatter, FrontmatterParseError):
+        return _issue(relative_skill_file, frontmatter.message)
 
     return ParsedSkillHeader(
         skill_file=relative_skill_file,
         expected_name=expected_name,
         frontmatter=frontmatter,
     )
-
-
-def _closing_delimiter_index(lines: list[str]) -> int | None:
-    for index, line in enumerate(
-        lines[FRONTMATTER_CONTENT_START_LINE_INDEX:],
-        start=FRONTMATTER_CONTENT_START_LINE_INDEX,
-    ):
-        if line == FRONTMATTER_DELIMITER:
-            return index
-    return None
 
 
 def _issue(skill_file: str, message: str) -> SkillValidationIssue:

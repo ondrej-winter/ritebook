@@ -12,14 +12,20 @@ from ritebook.adapters.outbound.filesystem.exceptions import (
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
 )
+from ritebook.adapters.outbound.filesystem.frontmatter import (
+    FrontmatterParseError,
+    parse_yaml_frontmatter,
+)
 
 __all__ = [
     "SKILL_FILE_NAME",
     "DiscoveredSkillFile",
     "FilesystemSkillDiscoveryError",
+    "FrontmatterParseError",
     "SkillFileReadError",
     "SkillsRootNotDirectoryError",
     "SkillsRootNotFoundError",
     "discover_skill_files",
+    "parse_yaml_frontmatter",
     "read_skill_file_text",
 ]

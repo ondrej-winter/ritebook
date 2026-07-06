@@ -35,6 +35,9 @@ run the full local quality gate.
   contracts in `application/`, and CLI/filesystem/JSON details in `adapters/`.
 - Keep YAML/frontmatter parsing in an outbound adapter. Pass plain parsed data or
   path-scoped parse issues into application validation.
+- Define an application-owned outbound port for skill header/frontmatter
+  discovery and parsing so validation inputs stay explicit and
+  `SkillDiscoveryPort` remains focused on catalog entry discovery.
 - Share validation between `lint-skills` and `publish-index` through one
   application use case or service so the rules cannot drift.
 - Keep `publish-index` deterministic for unchanged input except for the
@@ -171,6 +174,8 @@ plain application DTOs, reporting parse and delimiter issues path-by-path.
 
 **Acceptance criteria:**
 
+- [ ] An application-owned outbound port defines the header/frontmatter discovery
+      contract independently from `SkillDiscoveryPort`.
 - [ ] Traversal requires an explicit root and uses the same recursive rules as
       `publish-index`.
 - [ ] Hidden directories under the skills root are skipped by default.
@@ -178,6 +183,8 @@ plain application DTOs, reporting parse and delimiter issues path-by-path.
 - [ ] Only discovered `SKILL.md` files are read.
 - [ ] Frontmatter must open with `---` on the first line.
 - [ ] Frontmatter must include a closing `---` delimiter before the Markdown body.
+- [ ] Empty YAML frontmatter where `yaml.safe_load()` returns `None` is reported
+      as invalid non-mapping frontmatter.
 - [ ] The adapter uses `yaml.safe_load()` only on the bounded frontmatter block.
 - [ ] Adapter output contains parsed plain data or validation issues without full
       file contents.
@@ -188,8 +195,10 @@ plain application DTOs, reporting parse and delimiter issues path-by-path.
 - [ ] Filesystem adapter tests cover recursive discovery and relative paths.
 - [ ] Filesystem adapter tests cover hidden directory skipping.
 - [ ] Filesystem adapter tests cover missing frontmatter, missing closing
-      delimiter, malformed YAML, and non-mapping YAML.
+      delimiter, delimiter placement, malformed YAML, empty YAML, and non-mapping
+      YAML.
 - [ ] Filesystem adapter tests cover root inspection errors.
+- [ ] Filesystem adapter tests cover root-level `SKILL.md` relative paths.
 - [ ] `uv run pytest tests/unit/features/skill_catalog/adapters/outbound`
 
 **Dependencies:** Tasks 1-3
@@ -199,6 +208,7 @@ plain application DTOs, reporting parse and delimiter issues path-by-path.
 - `src/ritebook/features/skill_catalog/adapters/outbound/filesystem/adapter.py`
 - `src/ritebook/features/skill_catalog/adapters/outbound/filesystem/frontmatter.py`
 - `src/ritebook/features/skill_catalog/adapters/outbound/filesystem/__init__.py`
+- `src/ritebook/features/skill_catalog/application/ports/skill_header_discovery.py`
 - `tests/unit/features/skill_catalog/adapters/outbound/test_filesystem_skill_discovery.py`
 - `tests/unit/features/skill_catalog/adapters/outbound/test_filesystem_skill_headers.py`
 
@@ -224,6 +234,8 @@ without writing any index file.
 
 - [ ] Application tests use fakes for validation input discovery/parsing.
 - [ ] Tests cover success with validated skill count.
+- [ ] Tests cover success with zero discovered skills unless implementation
+      deliberately documents that an empty root is invalid.
 - [ ] Tests cover invalid skills producing a failure report.
 - [ ] Tests prove no index writer interaction is part of lint behavior.
 - [ ] `uv run pytest tests/unit/features/skill_catalog/application`
@@ -391,7 +403,7 @@ refusal-on-invalid behavior.
 | --- | --- | --- |
 | Validation responsibility leaks into the filesystem adapter | Medium | Keep YAML parsing in the adapter, but keep contract validation in application logic over plain DTOs. |
 | `publish-index` and `lint-skills` validation rules drift | High | Make both workflows call the same validation use case or service. |
-| `SkillDiscoveryPort` becomes overloaded | Medium | Add a separate validation/header reader port if needed instead of forcing discovery to own validation. |
+| `SkillDiscoveryPort` becomes overloaded | Medium | Add a separate application-owned validation/header reader port instead of forcing discovery to own validation. |
 | CLI error handling becomes inconsistent | Medium | Use explicit validation report/error types and centralize issue rendering in the CLI adapter. |
 | Root-level `SKILL.md` name matching is ambiguous | Medium | Preserve existing root skill behavior and compare the header `name` to the explicit root directory basename already used by discovery. |
 | PyYAML typing creates mypy friction | Low | Keep `yaml.safe_load()` behind adapter-local type guards or narrow casts. |

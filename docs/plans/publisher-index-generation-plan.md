@@ -341,15 +341,15 @@ refusal-on-invalid behavior.
 
 **Acceptance criteria:**
 
-- [ ] README shows `uv run ritebook publish-index --skills-root <path>`.
-- [ ] README shows `uv run ritebook lint-skills --skills-root <path>`.
-- [ ] README states invalid skills prevent index writes.
-- [ ] README remains concise and aligned with
+- [x] README shows `uv run ritebook publish-index --skills-root <path>`.
+- [x] README shows `uv run ritebook lint-skills --skills-root <path>`.
+- [x] README states invalid skills prevent index writes.
+- [x] README remains concise and aligned with
       `docs/specs/publisher-index-generation.md`.
 
 **Verification:**
 
-- [ ] Documentation review against the publisher index generation spec.
+- [x] Documentation review against the publisher index generation spec.
 
 **Dependencies:** Tasks 5-7
 
@@ -365,19 +365,19 @@ refusal-on-invalid behavior.
 
 **Acceptance criteria:**
 
-- [ ] Formatting is applied.
-- [ ] Ruff lint passes.
-- [ ] Mypy strict type checking passes.
-- [ ] Pytest passes.
-- [ ] Package build succeeds.
+- [x] Formatting is applied.
+- [x] Ruff lint passes.
+- [x] Mypy strict type checking passes.
+- [x] Pytest passes.
+- [x] Package build succeeds.
 
 **Verification:**
 
-- [ ] `uv run ruff format .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy .`
-- [ ] `uv run pytest`
-- [ ] `uv build`
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy .`
+- [x] `uv run pytest`
+- [x] `uv build`
 
 **Dependencies:** Tasks 1-8
 
@@ -387,15 +387,15 @@ refusal-on-invalid behavior.
 
 ### Checkpoint: Complete
 
-- [ ] `lint-skills` validates every discovered `SKILL.md` and exits non-zero on
+- [x] `lint-skills` validates every discovered `SKILL.md` and exits non-zero on
       invalid skills.
-- [ ] `publish-index` reuses the same validation flow and refuses to write on
+- [x] `publish-index` reuses the same validation flow and refuses to write on
       invalid skills.
-- [ ] Generated index schema remains version `1` and includes documented fields.
-- [ ] Missing or invalid input paths produce clear user-facing errors.
-- [ ] Relevant unit tests cover discovery, validation, index generation, JSON
+- [x] Generated index schema remains version `1` and includes documented fields.
+- [x] Missing or invalid input paths produce clear user-facing errors.
+- [x] Relevant unit tests cover discovery, validation, index generation, JSON
       output, and CLI argument mapping.
-- [ ] Full local quality gate and build pass.
+- [x] Full local quality gate and build pass.
 
 ## Risks and Mitigations
 

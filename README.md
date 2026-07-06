@@ -34,16 +34,26 @@ uv build
 
 ## Publisher skill index generation
 
-Maintainers can generate a reviewable skill catalog index from an explicit skills
-root:
+Maintainers can validate skill headers and generate a reviewable skill catalog
+index from an explicit skills root:
+
+```bash
+uv run ritebook lint-skills --skills-root <path>
+```
+
+The `lint-skills` command recursively discovers `SKILL.md` files under the
+skills root and validates their required Agent Skill headers without writing an
+index file.
 
 ```bash
 uv run ritebook publish-index --skills-root <path>
 ```
 
 The `--skills-root` option is required so the command only scans the intended
-skills directory. Ritebook always writes the canonical index file
-`ritebook-index.json` in the current working directory.
+skills directory. The `publish-index` command reuses the same validation flow as
+`lint-skills` and refuses to write or overwrite `ritebook-index.json` when any
+discovered skill is invalid. When validation succeeds, Ritebook writes the
+canonical index file `ritebook-index.json` in the current working directory.
 
 Review the generated `ritebook-index.json` before committing it with the related
 skill changes.

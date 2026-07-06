@@ -2,7 +2,7 @@
 name: planning-and-task-breakdown
 description: Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to estimate scope, or when parallel work is possible.
 metadata:
-  version: "1.1.6"
+  version: "1.2.1"
   dependencies:
     tools: []
     skills:
@@ -43,6 +43,9 @@ Produce a written implementation plan that includes:
 - dependencies, checkpoints, and sequencing constraints
 - likely files or components touched, using portable placeholders when needed
 - risks, assumptions, and open questions that affect safe implementation
+
+By default, create the plan at `docs/plans/<kebab-case-name>-plan.md`, where
+`<kebab-case-name>` is a short name derived from the feature, project, or task.
 
 ## Steps
 
@@ -168,6 +171,13 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 
 ## Plan Document Template
 
+Write the plan to `docs/plans/<kebab-case-name>-plan.md` by default unless the
+user or repository conventions specify another location.
+
+Treat the plan as a living document during implementation. Update task and
+checkpoint checkboxes, plus brief status notes when useful, as work is completed
+without waiting for the user to ask for progress updates.
+
 ```markdown
 # Implementation Plan: [Feature/Project Name]
 
@@ -179,6 +189,12 @@ If a task is L or larger, it should be broken into smaller tasks. An agent perfo
 
 - [Key decision 1 and rationale]
 - [Key decision 2 and rationale]
+
+## Progress Tracking
+
+Update task and checkpoint checkboxes as work is completed. Keep this plan
+current automatically during implementation without requiring the user to prompt
+for status updates.
 
 ## Task List
 

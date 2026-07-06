@@ -51,6 +51,9 @@ metadata:
       - name: git-workflow-and-versioning
         purpose: Route branch, commit, and version-control workflow work.
         required: false
+      - name: hexagonal-vertical-slices
+        purpose: Route architecture design, review, or refactoring work involving hexagonal architecture and vertical feature slices.
+        required: false
       - name: idea-refine
         purpose: Route rough concepts that need structured refinement.
         required: false
@@ -120,6 +123,7 @@ Task arrives
 - Have a spec and need tasks: planning-and-task-breakdown
   - Need plan review before coding: review-implementation-plan
 - Implementing code: incremental-implementation
+  - Hexagonal architecture or vertical-slice boundary work: hexagonal-vertical-slices
   - UI work: frontend-ui-engineering
   - API work: api-and-interface-design
   - Need better context: context-engineering
@@ -281,6 +285,7 @@ Not every task needs every skill. A bug fix might only need `debugging-and-error
 | Build  | context-engineering          | Right context at the right time                                                                      |
 | Build  | frontend-ui-engineering      | Production-quality UI with accessibility                                                             |
 | Build  | api-and-interface-design     | Stable interfaces with clear contracts                                                               |
+| Build  | hexagonal-vertical-slices    | Hexagonal architecture with business-owned vertical feature slices                                   |
 | Verify | test-driven-development      | Failing test first, then make it pass                                                                |
 | Verify | browser-runtime-verification | Real-browser verification of UI behavior, console output, network activity, and accessibility basics |
 | Verify | run-local-quality-gate       | Discover and run local formatting, linting, static analysis, test, and build checks                  |

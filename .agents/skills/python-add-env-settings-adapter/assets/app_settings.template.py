@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_OUTPUT_PATH = Path(".local-data/output.sqlite3")
-DEFAULT_SERVICE_URL = "https://service.example.test"
+DEFAULT_OUTPUT_PATH = Path('.local-data/output.sqlite3')
+DEFAULT_SERVICE_URL = 'https://service.example.test'
 
 
 @dataclass(frozen=True, slots=True)

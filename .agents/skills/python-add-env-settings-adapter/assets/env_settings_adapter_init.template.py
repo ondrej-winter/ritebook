@@ -4,4 +4,4 @@ from example_app.features.runtime_configuration.adapters.inbound.env_settings_ad
     EnvSettingsAdapter,
 )
 
-__all__ = ["EnvSettingsAdapter"]
+__all__ = ['EnvSettingsAdapter']

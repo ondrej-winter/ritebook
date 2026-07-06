@@ -21,8 +21,9 @@ installation is a later adoption benefit, not the first milestone.
 - The source idea is documented in `docs/ideas/internal-skill-distribution.md`.
 - Python 3.13, `uv`, `ruff`, `mypy`, and `pytest` are the project tooling
   baseline.
-- For the MVP, any directory containing `SKILL.md` is considered a skill
-  directory.
+- For discovery, any directory containing `SKILL.md` is considered a candidate
+  skill directory. Candidate skills must pass the skill-header validation flow
+  before they are publishable.
 
 ## Desired behavior
 
@@ -36,14 +37,45 @@ skills repository.
 2. Ritebook recursively scans the skills root for directories containing a file
    named `SKILL.md`.
 3. Ritebook builds a deterministic catalog of discovered skills.
-4. Ritebook writes the catalog to the canonical `ritebook-index.json` file.
-5. The maintainer reviews and commits the generated index to the private skills
+4. Ritebook validates every discovered skill with the same rules used by the
+   standalone skill lint workflow.
+5. If validation succeeds, Ritebook writes the catalog to the canonical
+   `ritebook-index.json` file.
+6. If validation fails, Ritebook reports the validation issues, exits non-zero,
+   and must not write or overwrite `ritebook-index.json`.
+7. The maintainer reviews and commits the generated index to the private skills
    repository through the normal pull request workflow.
+
+### Skill lint workflow
+
+Ritebook must provide a validation-only workflow for skill authors, maintainers,
+and CI:
+
+```bash
+uv run ritebook lint-skills --skills-root <path>
+```
+
+Requirements:
+
+- Require an explicit `--skills-root`.
+- Discover candidate skill directories with the same traversal rules used by
+  `publish-index`.
+- Validate every discovered `SKILL.md` against the required Agent Skill header
+  contract.
+- Emit deterministic, path-scoped validation output suitable for CI logs.
+- Exit with status code `0` only when all discovered skills are valid.
+- Exit non-zero when one or more skills are invalid or the skills root cannot be
+  inspected.
+- Do not write or update `ritebook-index.json`.
+- Share the validation implementation with `publish-index` so the lint and
+  publishing rules cannot drift.
 
 ### Skill discovery
 
 - A skill is any directory containing `SKILL.md`.
 - Discovery must be recursive under the explicit skills root.
+- Discovered skills are publishable only when their `SKILL.md` files satisfy the
+  required skill-header validation contract.
 - The generated index should use paths relative to the skills root so the index
   stays portable within the repository.
 - Output ordering must be deterministic, sorted by relative skill path or another
@@ -51,6 +83,56 @@ skills repository.
 - Hidden directories under the skills root are skipped by default in the MVP.
 - Missing or unreadable skills root paths must produce clear user-facing errors at the
   adapter boundary.
+
+### Skill header validation
+
+Every discovered `SKILL.md` must begin with YAML frontmatter that follows the
+Agent Skill header contract. The `conventional-commits` skill is the reference
+example for the required shape:
+
+```yaml
+---
+name: conventional-commits
+description: Write, review, and validate Conventional Commits v1.0.0 messages with correct type, scope, description, body, footer, and breaking-change syntax.
+metadata:
+  version: "1.0.0"
+  dependencies:
+    tools:
+      - git
+    skills:
+      - git-workflow-and-versioning
+---
+```
+
+Validation requirements:
+
+- Frontmatter must start on the first line with `---`.
+- Frontmatter must have a closing `---` delimiter before the Markdown body.
+- Frontmatter must parse as YAML with `PyYAML` using `yaml.safe_load()` over the
+  bounded frontmatter block.
+- Parsed frontmatter must be a mapping.
+- `name` is required.
+- `name` must be a string using valid kebab-case:
+  - 1 to 64 characters
+  - lowercase ASCII letters, digits, and hyphens only
+  - must not start or end with a hyphen
+  - must not contain consecutive hyphens
+- `name` must match the parent skill directory name.
+- `description` is required, must be a non-empty string, and must be at most
+  1024 characters.
+- `metadata` is required and must be a mapping.
+- `metadata.version` is required and must be a string.
+- `metadata.dependencies` is required and must be a mapping.
+- `metadata.dependencies.tools` is required and must be a list.
+- `metadata.dependencies.skills` is required and must be a list.
+- Dependency list items may be strings for the first validation milestone.
+
+Validation output must identify the skill file path and the violated rule without
+printing full skill file contents. Example:
+
+```text
+conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
+```
 
 ### Index output
 
@@ -62,7 +144,8 @@ skills repository.
   locate skills.
 - The index must be pretty-printed with two-space indentation for pull request
   review.
-- Schema v1 must not require a mandatory metadata block inside `SKILL.md`.
+- Schema v1 requires every published skill to have a valid `SKILL.md` header, but
+  it does not need to include the full parsed header in `ritebook-index.json`.
 - Schema v1 must not include content hashes. Hashing can be added later if
   consumer caching or tamper detection requires it.
 
@@ -107,6 +190,7 @@ The first CLI shape should be simple and explicit:
 
 ```bash
 uv run ritebook publish-index --skills-root <path>
+uv run ritebook lint-skills --skills-root <path>
 ```
 
 Requirements:
@@ -117,10 +201,16 @@ Requirements:
 - Always write the canonical `ritebook-index.json`; no output argument is needed.
 - Overwrite an existing generated index only when the command is explicitly run;
   no background or implicit updates.
+- `publish-index` must reuse the skill-header validation flow as a hard
+  precondition and must not write or overwrite the index when validation fails.
+- `lint-skills` must run the same validation flow without writing an index.
 - Emit concise success output that includes discovered skill count and output
   path.
+- Emit concise lint success output that includes validated skill count.
 - Keep process environment access, filesystem traversal, CLI parsing, and JSON
   serialization in adapters or bootstrap code, not in domain models.
+- Keep YAML/frontmatter parsing in adapters; pass parsed plain data into
+  application/domain validation.
 
 ## Project structure
 
@@ -129,11 +219,12 @@ Implementation should follow the repository's hexagonal vertical-slice direction
 - `src/ritebook/features/skill_catalog/domain/`: pure catalog concepts such as
   skill entries and catalog invariants.
 - `src/ritebook/features/skill_catalog/application/`: publisher use case,
-  inbound port, outbound filesystem/catalog writer ports, and DTOs.
+  lint use case, inbound ports, outbound filesystem/catalog writer ports, and
+  DTOs.
 - `src/ritebook/features/skill_catalog/adapters/inbound/`: CLI adapter that maps
   command-line arguments to application DTOs.
 - `src/ritebook/features/skill_catalog/adapters/outbound/`: filesystem scanner
-  and JSON index writer adapters.
+  with YAML frontmatter parsing and JSON index writer adapters.
 - `tests/unit/features/skill_catalog/`: focused unit tests mirroring the source
   structure.
 - `docs/specs/publisher-index-generation.md`: this specification.
@@ -149,19 +240,30 @@ gate before handoff.
 - Test: `uv run pytest`
 - Build: `uv build`
 
+Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
+`uv.lock`.
+
 ## Testing strategy
 
 The MVP should be covered primarily with fast, deterministic unit tests.
 
 - Domain tests verify catalog entry creation, deterministic ordering, and basic
   invariants.
-- Application tests use fakes for skill discovery and index writing ports.
+- Domain/application tests verify the skill-header validation contract, including
+  valid metadata, missing frontmatter, malformed YAML, invalid names, name/path
+  mismatches, missing required metadata, and invalid dependency list types.
+- Application tests use fakes for skill discovery, skill validation, and index
+  writing ports.
+- Application tests verify `publish-index` does not call the writer when skill
+  validation fails.
 - Filesystem adapter tests use temporary directories to verify recursive
-  `SKILL.md` discovery and relative path handling.
+  `SKILL.md` discovery, relative path handling, frontmatter parsing, and
+  path-scoped validation failures.
 - JSON writer tests verify schema version, deterministic output, optional title
   behavior, two-space indentation, and valid JSON.
-- CLI adapter tests verify argument mapping, clear errors for missing root paths, and
-  user-facing success output.
+- CLI adapter tests verify argument mapping, clear errors for missing root paths,
+  `lint-skills` success/failure behavior, `publish-index` show-stopper behavior,
+  and user-facing success output.
 
 Default tests must not rely on live external services, global developer state, or
 network access.
@@ -172,9 +274,11 @@ network access.
   and JSON serialization details.
 - Always validate external inputs at adapter boundaries before invoking the
   application use case.
+- Always validate skill headers before publishing an index.
 - Always keep output deterministic enough for pull request review.
 - Always pretty-print generated JSON with two-space indentation.
-- Ask before adding mandatory `SKILL.md` metadata requirements.
+- Mandatory `SKILL.md` header validation is in scope for this milestone and must
+  be shared by `lint-skills` and `publish-index`.
 - Ask before adding consumer install, sync, or list commands to this milestone.
 - Ask before adding content hashes, signatures, policy enforcement, or trust-chain
   behavior.
@@ -189,6 +293,10 @@ network access.
 - A maintainer can run a publisher workflow against an explicit skills root and
   produce `ritebook-index.json`.
 - The generated index lists every discovered directory containing `SKILL.md`.
+- `lint-skills` validates every discovered `SKILL.md` against the required header
+  contract and exits non-zero on invalid skills.
+- `publish-index` reuses the same validation flow and refuses to write or
+  overwrite `ritebook-index.json` when validation fails.
 - The generated index is deterministic for unchanged input except for the
   documented generation timestamp.
 - The generated index uses schema version `1` and includes the fields documented

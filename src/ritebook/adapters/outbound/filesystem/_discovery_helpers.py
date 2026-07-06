@@ -25,18 +25,16 @@ def validate_root(root: Path) -> None:
 
 def skill_files(root: Path, *, skill_file_name: str) -> tuple[Path, ...]:
     """Return non-hidden skill files discovered recursively below ``root``."""
-    discovered: list[Path] = []
-    collect_skill_files(root, discovered=discovered, skill_file_name=skill_file_name)
-    return tuple(discovered)
+    return collect_skill_files(root, skill_file_name=skill_file_name)
 
 
 def collect_skill_files(
     directory: Path,
     *,
-    discovered: list[Path],
     skill_file_name: str,
-) -> None:
-    """Collect matching skill files from ``directory`` and visible descendants."""
+) -> tuple[Path, ...]:
+    """Return matching skill files from ``directory`` and visible descendants."""
+    discovered: list[Path] = []
     skill_file = directory / skill_file_name
     if skill_file.is_file():
         discovered.append(skill_file)
@@ -50,11 +48,13 @@ def collect_skill_files(
     for child in children:
         if child.name.startswith(".") or not child.is_dir():
             continue
-        collect_skill_files(
-            child,
-            discovered=discovered,
-            skill_file_name=skill_file_name,
+        discovered.extend(
+            collect_skill_files(
+                child,
+                skill_file_name=skill_file_name,
+            ),
         )
+    return tuple(discovered)
 
 
 def relative_skill_dir(*, root: Path, skill_file: Path) -> str:

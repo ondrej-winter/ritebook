@@ -37,12 +37,35 @@ Issues = "https://github.com/ondrej-winter/ritebook/issues"
 dev = [
     "mypy>=1.17.0",
     "pytest>=8.4.1",
+    "python-semantic-release>=10.6.1",
     "ruff>=0.12.2",
     "types-pyyaml>=6.0.12.20260518",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ritebook"]
+
+[tool.semantic_release]
+build_command = "uv build"
+commit_message = "release: bump version to {version}"
+commit_parser = "conventional"
+tag_format = "v{version}"
+version_toml = ["pyproject.toml:project.version"]
+
+[tool.semantic_release.branches.master]
+match = "master"
+prerelease = false
+
+[tool.semantic_release.changelog.default_templates]
+output_format = ""
+
+[tool.semantic_release.remote]
+name = "origin"
+type = "github"
+
+[tool.semantic_release.publish]
+dist_glob_patterns = ["dist/*"]
+upload_to_vcs_release = true
 
 [tool.ruff]
 line-length = 88

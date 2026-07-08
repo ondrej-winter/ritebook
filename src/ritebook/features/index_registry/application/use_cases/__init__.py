@@ -1,0 +1,8 @@
+"""Application use cases for consumer index registration."""
+
+from ritebook.features.index_registry.application.use_cases.add_index import AddIndex
+from ritebook.features.index_registry.application.use_cases.update_index import (
+    UpdateIndex,
+)
+
+__all__ = ["AddIndex", "UpdateIndex"]

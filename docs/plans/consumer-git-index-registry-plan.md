@@ -125,6 +125,10 @@ Never:
   in errors.
 - Treat duplicate skill names across different indexes as an error.
 
+## Implementation Status
+
+Completed on 2026-07-08. The consumer Git index registry slice has been implemented end-to-end, including publisher index.name metadata, add-index and update-index CLI commands, the index_registry application slice, JSON/filesystem/Git outbound adapters, README updates, and final validation. Final checks passed: uv run ruff format ., uv run ruff check ., uv run mypy ., uv run pytest (134 passed), and uv build.
+
 ## Progress Tracking
 
 Update task and checkpoint checkboxes as implementation progresses. Keep this
@@ -143,20 +147,20 @@ deterministic output and existing skill entry behavior.
 
 **Acceptance criteria:**
 
-- [ ] `SkillCatalog` includes a required stable index name.
-- [ ] Index name uses the same kebab-case constraints as skill names.
-- [ ] JSON writer emits:
+- [x] `SkillCatalog` includes a required stable index name.
+- [x] Index name uses the same kebab-case constraints as skill names.
+- [x] JSON writer emits:
   ```json
   "index": { "name": "..." }
   ```
-- [ ] Existing schema version remains `1` unless implementation discovers a
+- [x] Existing schema version remains `1` unless implementation discovers a
       stronger reason to bump.
-- [ ] Existing publisher behavior remains deterministic except for
+- [x] Existing publisher behavior remains deterministic except for
       `generated_at`.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/publisher/domain tests/unit/features/publisher/adapters/outbound/test_json_index_writer.py`
+- [x] `uv run pytest tests/unit/features/publisher/domain tests/unit/features/publisher/adapters/outbound/test_json_index_writer.py`
 
 **Dependencies:** None
 
@@ -177,17 +181,17 @@ metadata.
 
 **Acceptance criteria:**
 
-- [ ] `PublishIndexCommand` carries `index_name`.
-- [ ] `publish-index` CLI requires an explicit `--index-name` to avoid guessing
+- [x] `PublishIndexCommand` carries `index_name`.
+- [x] `publish-index` CLI requires an explicit `--index-name` to avoid guessing
       repository identity.
-- [ ] Application validates empty/invalid index names before writing.
-- [ ] Success output remains concise.
-- [ ] README and CLI tests document that this is an intentional publisher CLI
+- [x] Application validates empty/invalid index names before writing.
+- [x] Success output remains concise.
+- [x] README and CLI tests document that this is an intentional publisher CLI
       compatibility change.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/publisher/application tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] `uv run pytest tests/unit/features/publisher/application tests/unit/adapters/inbound/cli/test_adapter.py`
 
 **Dependencies:** Task 1
 
@@ -204,10 +208,10 @@ metadata.
 
 ### Checkpoint: Publisher Metadata
 
-- [ ] Publisher output includes required index metadata.
-- [ ] Existing publish/lint behavior remains compatible except for the
+- [x] Publisher output includes required index metadata.
+- [x] Existing publish/lint behavior remains compatible except for the
       intentional `publish-index` metadata argument change.
-- [ ] Focused publisher and CLI tests pass.
+- [x] Focused publisher and CLI tests pass.
 
 ### Phase 2: Index Registry Application Core
 
@@ -219,25 +223,25 @@ records, source metadata, and path settings.
 
 **Acceptance criteria:**
 
-- [ ] DTOs represent Git URL and local Git repo source types without exposing
+- [x] DTOs represent Git URL and local Git repo source types without exposing
       adapter implementation details.
-- [ ] Add command supports `source`, optional `name`, `force`, `registry_path`,
+- [x] Add command supports `source`, optional `name`, `force`, `registry_path`,
       and `cache_root`.
-- [ ] Update command supports `name`, `registry_path`, and `cache_root`.
-- [ ] Registry entries include effective name, published name, source, source
+- [x] Update command supports `name`, `registry_path`, and `cache_root`.
+- [x] Registry entries include effective name, published name, source, source
       type, source cache path, cached index path, source schema version, skill
       count, `added_at`, and `updated_at`.
-- [ ] DTO validation rejects empty names, invalid kebab-case names, invalid
+- [x] DTO validation rejects empty names, invalid kebab-case names, invalid
       counts, and empty required paths.
-- [ ] DTOs use normalized strings for path values at application boundaries;
+- [x] DTOs use normalized strings for path values at application boundaries;
       adapters may convert to and from `Path` internally.
-- [ ] Application-specific errors are named and exported for duplicate index
+- [x] Application-specific errors are named and exported for duplicate index
       names, unknown index names, invalid index metadata, and failed registry or
       cache operations that the CLI must render clearly.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/index_registry/application`
+- [x] `uv run pytest tests/unit/features/index_registry/application`
 
 **Dependencies:** Task 1 for published index metadata shape
 
@@ -259,18 +263,18 @@ index cache writing.
 
 **Acceptance criteria:**
 
-- [ ] Inbound ports define `AddIndexPort.execute(...)` and
+- [x] Inbound ports define `AddIndexPort.execute(...)` and
       `UpdateIndexPort.execute(...)`.
-- [ ] Outbound ports hide Git, JSON, and filesystem details from application
+- [x] Outbound ports hide Git, JSON, and filesystem details from application
       services.
-- [ ] Port signatures use application DTOs or simple primitives, not `Path`,
+- [x] Port signatures use application DTOs or simple primitives, not `Path`,
       subprocess results, or JSON dicts.
-- [ ] Source preparation port can distinguish managed Git URL clones from
+- [x] Source preparation port can distinguish managed Git URL clones from
       read-only local Git repositories.
 
 **Verification:**
 
-- [ ] `uv run mypy src/ritebook/features/index_registry/application`
+- [x] `uv run mypy src/ritebook/features/index_registry/application`
 
 **Dependencies:** Task 3
 
@@ -293,20 +297,20 @@ filesystem mechanics.
 
 **Acceptance criteria:**
 
-- [ ] Resolves source to a readable repository/index location through outbound
+- [x] Resolves source to a readable repository/index location through outbound
       source port.
-- [ ] Reads and validates root `ritebook-index.json` through index reader port.
-- [ ] Uses published index name by default.
-- [ ] Uses `--name` override when supplied.
-- [ ] Refuses duplicate effective names unless `force=True`.
-- [ ] Writes cached index contents under the effective name.
-- [ ] Upserts registry metadata with injected timestamps.
+- [x] Reads and validates root `ritebook-index.json` through index reader port.
+- [x] Uses published index name by default.
+- [x] Uses `--name` override when supplied.
+- [x] Refuses duplicate effective names unless `force=True`.
+- [x] Writes cached index contents under the effective name.
+- [x] Upserts registry metadata with injected timestamps.
 
 **Verification:**
 
-- [ ] Tests cover Git URL source, local Git repository source, default name,
+- [x] Tests cover Git URL source, local Git repository source, default name,
       override name, duplicate refusal, and forced replacement.
-- [ ] `uv run pytest tests/unit/features/index_registry/application/test_add_index.py`
+- [x] `uv run pytest tests/unit/features/index_registry/application/test_add_index.py`
 
 **Dependencies:** Tasks 3-4
 
@@ -326,21 +330,21 @@ failure.
 
 **Acceptance criteria:**
 
-- [ ] Looks up existing registry entry by effective name.
-- [ ] Fails clearly for unknown index names.
-- [ ] Refreshes managed Git URL sources through source port.
-- [ ] Reads local Git repository sources without mutating them.
-- [ ] Validates refreshed root `ritebook-index.json` before replacing cached
+- [x] Looks up existing registry entry by effective name.
+- [x] Fails clearly for unknown index names.
+- [x] Refreshes managed Git URL sources through source port.
+- [x] Reads local Git repository sources without mutating them.
+- [x] Validates refreshed root `ritebook-index.json` before replacing cached
       contents.
-- [ ] Keeps local effective name even if published name changes.
-- [ ] Leaves previous cached index intact when validation/read fails.
+- [x] Keeps local effective name even if published name changes.
+- [x] Leaves previous cached index intact when validation/read fails.
 
 **Verification:**
 
-- [ ] Tests cover Git URL refresh, local repo refresh, unknown name, successful
+- [x] Tests cover Git URL refresh, local repo refresh, unknown name, successful
       metadata update, changed published name, and validation failure preserving
       cache.
-- [ ] `uv run pytest tests/unit/features/index_registry/application/test_update_index.py`
+- [x] `uv run pytest tests/unit/features/index_registry/application/test_update_index.py`
 
 **Dependencies:** Tasks 3-5
 
@@ -353,10 +357,10 @@ failure.
 
 ### Checkpoint: Application Core
 
-- [ ] Add/update application tests pass with fakes.
-- [ ] Application layer has no imports from Git, JSON, filesystem, subprocess,
+- [x] Add/update application tests pass with fakes.
+- [x] Application layer has no imports from Git, JSON, filesystem, subprocess,
       argparse, or user environment APIs.
-- [ ] Duplicate and failed-update semantics match the spec.
+- [x] Duplicate and failed-update semantics match the spec.
 
 ### Phase 3: Outbound Adapters
 
@@ -368,22 +372,22 @@ content.
 
 **Acceptance criteria:**
 
-- [ ] Requires `ritebook-index.json` at repository root.
-- [ ] Rejects invalid JSON.
-- [ ] Rejects unsupported `schema_version`.
-- [ ] Requires `index.name` and validates kebab-case.
-- [ ] Rejects legacy schema v1 indexes that omit `index.name` with a clear
+- [x] Requires `ritebook-index.json` at repository root.
+- [x] Rejects invalid JSON.
+- [x] Rejects unsupported `schema_version`.
+- [x] Requires `index.name` and validates kebab-case.
+- [x] Rejects legacy schema v1 indexes that omit `index.name` with a clear
       compatibility error instead of inferring a name.
-- [ ] Requires `skills` array and validates skill entries.
-- [ ] Rejects absolute paths, backslash paths, and `..` traversal in `path` and
+- [x] Requires `skills` array and validates skill entries.
+- [x] Rejects absolute paths, backslash paths, and `..` traversal in `path` and
       `skill_file`.
-- [ ] Returns skill count and deterministic/cacheable JSON content.
+- [x] Returns skill count and deterministic/cacheable JSON content.
 
 **Verification:**
 
-- [ ] Adapter tests cover invalid JSON, missing metadata, unsupported schema,
+- [x] Adapter tests cover invalid JSON, missing metadata, unsupported schema,
       malformed entries, absolute paths, and traversal paths.
-- [ ] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py`
+- [x] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py`
 
 **Dependencies:** Tasks 1 and 3-4
 
@@ -402,23 +406,23 @@ index file writing under configurable paths.
 
 **Acceptance criteria:**
 
-- [ ] Registry adapter reads missing registry as empty schema version `1`
+- [x] Registry adapter reads missing registry as empty schema version `1`
       registry.
-- [ ] Registry adapter writes deterministic `indexes.json` with stable ordering.
-- [ ] Registry adapter preserves unrelated entries on add/update.
-- [ ] Cache adapter writes current index contents under
+- [x] Registry adapter writes deterministic `indexes.json` with stable ordering.
+- [x] Registry adapter preserves unrelated entries on add/update.
+- [x] Cache adapter writes current index contents under
       `<cache-root>/indexes/<effective-name>/ritebook-index.json`.
-- [ ] Cache replacement is atomic enough for local use, e.g. write temp then
+- [x] Cache replacement is atomic enough for local use, e.g. write temp then
       replace.
-- [ ] Tests cover cache-write success followed by registry-write failure:
+- [x] Tests cover cache-write success followed by registry-write failure:
       previous registry metadata remains intact, the error is surfaced, and
       orphaned cache content is accepted as deferred cleanup.
-- [ ] Adapter creates required parent directories.
+- [x] Adapter creates required parent directories.
 
 **Verification:**
 
-- [ ] Tests use `tmp_path` and do not mutate real user state.
-- [ ] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_filesystem_registry.py tests/unit/features/index_registry/adapters/outbound/test_index_cache.py`
+- [x] Tests use `tmp_path` and do not mutate real user state.
+- [x] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_filesystem_registry.py tests/unit/features/index_registry/adapters/outbound/test_index_cache.py`
 
 **Dependencies:** Tasks 3-6
 
@@ -440,24 +444,24 @@ repositories using non-interactive Git subprocess calls.
 
 **Acceptance criteria:**
 
-- [ ] Classifies local paths versus Git URLs deterministically.
-- [ ] Local source must exist and appear to be a Git repository.
-- [ ] Local source is never mutated.
-- [ ] Git URL source clones into `<cache-root>/git/<source-cache-id>/` on add.
-- [ ] Managed clone cache IDs are deterministic, hash-based, and do not expose raw
+- [x] Classifies local paths versus Git URLs deterministically.
+- [x] Local source must exist and appear to be a Git repository.
+- [x] Local source is never mutated.
+- [x] Git URL source clones into `<cache-root>/git/<source-cache-id>/` on add.
+- [x] Managed clone cache IDs are deterministic, hash-based, and do not expose raw
       URLs, credentials, tokens, or private host/path details.
-- [ ] Git URL source refreshes existing managed clone on update or reclones if
+- [x] Git URL source refreshes existing managed clone on update or reclones if
       needed.
-- [ ] Git failures become clear sanitized adapter errors.
-- [ ] Tests do not require live network access; subprocess invocation is
+- [x] Git failures become clear sanitized adapter errors.
+- [x] Tests do not require live network access; subprocess invocation is
       faked/mocked.
 
 **Verification:**
 
-- [ ] Tests cover local repo validation, Git URL clone command construction,
+- [x] Tests cover local repo validation, Git URL clone command construction,
       refresh command construction, reclone fallback if chosen, and failure
       translation.
-- [ ] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_git_source.py`
+- [x] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_git_source.py`
 
 **Dependencies:** Tasks 3-6
 
@@ -471,9 +475,9 @@ repositories using non-interactive Git subprocess calls.
 
 ### Checkpoint: Adapter Layer
 
-- [ ] JSON reader, registry/cache, and Git adapter tests pass.
-- [ ] No default test uses network, real user config/cache, or global Git state.
-- [ ] Adapter errors are user-facing and do not include secrets or raw index
+- [x] JSON reader, registry/cache, and Git adapter tests pass.
+- [x] No default test uses network, real user config/cache, or global Git state.
+- [x] Adapter errors are user-facing and do not include secrets or raw index
       contents.
 
 ### Phase 4: CLI and Composition Root
@@ -485,17 +489,17 @@ arguments into the `AddIndexCommand` and render success/errors.
 
 **Acceptance criteria:**
 
-- [ ] Parser accepts `add-index --source ... [--name ...] [--force]
+- [x] Parser accepts `add-index --source ... [--name ...] [--force]
       [--registry-path ...] [--cache-root ...]`.
-- [ ] CLI maps arguments into application DTOs exactly.
-- [ ] Success output is `Added index <name> with <n> skill(s)`.
-- [ ] Duplicate effective name error is concise and mentions `--force`.
-- [ ] Source, JSON, registry, and cache adapter errors render as
+- [x] CLI maps arguments into application DTOs exactly.
+- [x] Success output is `Added index <name> with <n> skill(s)`.
+- [x] Duplicate effective name error is concise and mentions `--force`.
+- [x] Source, JSON, registry, and cache adapter errors render as
       `ritebook: error: ...`.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
 
 **Dependencies:** Tasks 3-9
 
@@ -515,15 +519,15 @@ registered index.
 
 **Acceptance criteria:**
 
-- [ ] Parser accepts `update-index --name ... [--registry-path ...]
+- [x] Parser accepts `update-index --name ... [--registry-path ...]
       [--cache-root ...]`.
-- [ ] CLI maps arguments into `UpdateIndexCommand` exactly.
-- [ ] Success output is `Updated index <name> with <n> skill(s)`.
-- [ ] Unknown index and validation failures render clear user-facing errors.
+- [x] CLI maps arguments into `UpdateIndexCommand` exactly.
+- [x] Success output is `Updated index <name> with <n> skill(s)`.
+- [x] Unknown index and validation failures render clear user-facing errors.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
 
 **Dependencies:** Task 10
 
@@ -543,21 +547,21 @@ including default config/cache path resolution.
 
 **Acceptance criteria:**
 
-- [ ] `main()` wires `AddIndex` and `UpdateIndex` with filesystem, JSON, Git,
+- [x] `main()` wires `AddIndex` and `UpdateIndex` with filesystem, JSON, Git,
       registry, cache, and clock dependencies.
-- [ ] Defaults resolve to `~/.config/ritebook/indexes.json` and
+- [x] Defaults resolve to `~/.config/ritebook/indexes.json` and
       `~/.cache/ritebook` unless CLI overrides are supplied.
-- [ ] Environment and user path expansion stays outside application use cases.
-- [ ] Focused tests cover default path expansion and CLI override handling without
+- [x] Environment and user path expansion stays outside application use cases.
+- [x] Focused tests cover default path expansion and CLI override handling without
       mutating real user state.
-- [ ] Existing `lint-skills` and `publish-index` wiring still works.
+- [x] Existing `lint-skills` and `publish-index` wiring still works.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
-- [ ] Focused default path resolver tests, if path resolution is split into a
+- [x] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] Focused default path resolver tests, if path resolution is split into a
       helper module.
-- [ ] `uv run mypy src/ritebook/cli.py src/ritebook/adapters/inbound/cli src/ritebook/features/index_registry`
+- [x] `uv run mypy src/ritebook/cli.py src/ritebook/adapters/inbound/cli src/ritebook/features/index_registry`
 
 **Dependencies:** Tasks 10-11
 
@@ -571,9 +575,9 @@ including default config/cache path resolution.
 
 ### Checkpoint: CLI Flow
 
-- [ ] CLI unit tests cover add/update argument mapping and output.
-- [ ] Composition root type-checks.
-- [ ] Existing publisher/linter CLI behavior still passes tests.
+- [x] CLI unit tests cover add/update argument mapping and output.
+- [x] Composition root type-checks.
+- [x] Existing publisher/linter CLI behavior still passes tests.
 
 ### Phase 5: Documentation and Final Validation
 
@@ -584,18 +588,18 @@ default local registry/cache paths, and test/automation overrides.
 
 **Acceptance criteria:**
 
-- [ ] README shows required `publish-index --index-name <name>` usage.
-- [ ] README shows `add-index` and `update-index` examples.
-- [ ] README documents default local registry/cache paths.
-- [ ] README notes that local Git repositories are read-only from Ritebook's
+- [x] README shows required `publish-index --index-name <name>` usage.
+- [x] README shows `add-index` and `update-index` examples.
+- [x] README documents default local registry/cache paths.
+- [x] README notes that local Git repositories are read-only from Ritebook's
       perspective.
-- [ ] README states listing and installation are not part of this milestone.
-- [ ] README or release-facing notes call out that consumer registration rejects
+- [x] README states listing and installation are not part of this milestone.
+- [x] README or release-facing notes call out that consumer registration rejects
       legacy schema v1 indexes without `index.name`.
 
 **Verification:**
 
-- [ ] Documentation reviewed against `docs/specs/consumer-git-index-registry.md`.
+- [x] Documentation reviewed against `docs/specs/consumer-git-index-registry.md`.
 
 **Dependencies:** Tasks 1-12
 
@@ -614,19 +618,19 @@ complete.
 
 **Acceptance criteria:**
 
-- [ ] Formatting is applied.
-- [ ] Ruff lint passes.
-- [ ] Mypy passes.
-- [ ] Pytest passes.
-- [ ] Package build succeeds.
+- [x] Formatting is applied.
+- [x] Ruff lint passes.
+- [x] Mypy passes.
+- [x] Pytest passes.
+- [x] Package build succeeds.
 
 **Verification:**
 
-- [ ] `uv run ruff format .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy .`
-- [ ] `uv run pytest`
-- [ ] `uv build`
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy .`
+- [x] `uv run pytest`
+- [x] `uv build`
 
 **Dependencies:** Tasks 1-13
 
@@ -636,15 +640,15 @@ complete.
 
 ### Checkpoint: Complete
 
-- [ ] Publisher-generated indexes include required `index.name` metadata.
-- [ ] `add-index` supports Git URLs and local Git repositories.
-- [ ] `update-index` refreshes registered indexes from remembered sources.
-- [ ] Cached index contents are stored locally under effective index name.
-- [ ] Failed update validation preserves previous cached index.
-- [ ] Duplicate effective names are refused unless `--force` is used.
-- [ ] Unit tests cover application, adapters, CLI, and publisher metadata
+- [x] Publisher-generated indexes include required `index.name` metadata.
+- [x] `add-index` supports Git URLs and local Git repositories.
+- [x] `update-index` refreshes registered indexes from remembered sources.
+- [x] Cached index contents are stored locally under effective index name.
+- [x] Failed update validation preserves previous cached index.
+- [x] Duplicate effective names are refused unless `--force` is used.
+- [x] Unit tests cover application, adapters, CLI, and publisher metadata
       updates.
-- [ ] Full local quality gate and build pass.
+- [x] Full local quality gate and build pass.
 
 ## Risks and Mitigations
 

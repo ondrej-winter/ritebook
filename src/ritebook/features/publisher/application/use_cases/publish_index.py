@@ -48,6 +48,7 @@ class PublishIndex(PublishIndexPort):
 
         skills = self._skill_discovery.discover_skills(command.skills_root)
         catalog = SkillCatalog.create(
+            index_name=command.index_name,
             generated_at=_utc_timestamp(self._clock()),
             skills_root=command.skills_root,
             skills=skills,

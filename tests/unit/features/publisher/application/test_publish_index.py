@@ -74,7 +74,7 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(skills_root="skills"),
+        PublishIndexCommand(index_name="company-skills", skills_root="skills"),
     )
 
     assert precheck.checked_roots == ["skills"]
@@ -84,6 +84,7 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     assert result.output_path == "ritebook-index.json"
 
     written_catalog = writer.written_catalogs[0]
+    assert written_catalog.index_name == "company-skills"
     assert written_catalog.skills_root == "skills"
     assert written_catalog.generated_at == generated_at
     assert [skill.path for skill in written_catalog.skills] == ["alpha", "zeta"]
@@ -100,7 +101,7 @@ def test_publish_index_writes_empty_catalog() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(skills_root="."),
+        PublishIndexCommand(index_name="company-skills", skills_root="."),
     )
 
     assert result.discovered_skill_count == 0
@@ -119,7 +120,7 @@ def test_publish_index_normalizes_generated_at_to_utc() -> None:
     )
 
     use_case.execute(
-        PublishIndexCommand(skills_root="skills"),
+        PublishIndexCommand(index_name="company-skills", skills_root="skills"),
     )
 
     assert writer.written_catalogs[0].generated_at == datetime(
@@ -143,13 +144,16 @@ def test_publish_index_rejects_naive_clock_values() -> None:
 
     with pytest.raises(ValueError, match="timezone-aware"):
         use_case.execute(
-            PublishIndexCommand(skills_root="skills"),
+            PublishIndexCommand(index_name="company-skills", skills_root="skills"),
         )
 
 
 def test_publish_index_command_rejects_empty_values() -> None:
     with pytest.raises(ValueError, match="skills root"):
-        PublishIndexCommand(skills_root="")
+        PublishIndexCommand(index_name="company-skills", skills_root="")
+
+    with pytest.raises(ValueError, match="Publish index name"):
+        PublishIndexCommand(index_name="Company Skills", skills_root="skills")
 
 
 def test_publish_index_refuses_to_write_when_validation_fails() -> None:
@@ -180,7 +184,9 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
     )
 
     with pytest.raises(PublishIndexValidationError) as err:
-        use_case.execute(PublishIndexCommand(skills_root="skills"))
+        use_case.execute(
+            PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+        )
 
     assert [issue.format() for issue in err.value.issues] == [
         "alpha/SKILL.md: description is required.",

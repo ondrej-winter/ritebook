@@ -10,6 +10,7 @@ from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
 def test_json_index_writer_writes_schema_v1_json(tmp_path: Path) -> None:
     output_path = tmp_path / "ritebook-index.json"
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
         skills_root="skills",
         skills=(
@@ -28,6 +29,7 @@ def test_json_index_writer_writes_schema_v1_json(tmp_path: Path) -> None:
     payload = read_json(output_path)
     assert payload == {
         "schema_version": 1,
+        "index": {"name": "company-skills"},
         "generated_at": "2026-07-04T18:49:00Z",
         "skills_root": "skills",
         "skills": [
@@ -45,6 +47,7 @@ def test_json_index_writer_writes_schema_v1_json(tmp_path: Path) -> None:
 def test_json_index_writer_pretty_prints_with_two_spaces(tmp_path: Path) -> None:
     output_path = tmp_path / "ritebook-index.json"
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
         skills_root=".",
         skills=(SkillEntry(name="alpha", path="alpha", skill_file="alpha/SKILL.md"),),
@@ -61,6 +64,7 @@ def test_json_index_writer_pretty_prints_with_two_spaces(tmp_path: Path) -> None
 def test_json_index_writer_normalizes_generated_at_to_utc(tmp_path: Path) -> None:
     output_path = tmp_path / "ritebook-index.json"
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=datetime(
             2026,
             7,
@@ -83,6 +87,7 @@ def test_json_index_writer_overwrites_existing_file_when_called(tmp_path: Path) 
     output_path = tmp_path / "ritebook-index.json"
     output_path.write_text("old content", encoding="utf-8")
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
         skills_root="skills",
         skills=(),

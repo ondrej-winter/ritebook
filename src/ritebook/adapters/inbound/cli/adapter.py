@@ -6,25 +6,38 @@ import sys
 from contextlib import redirect_stderr
 from typing import TYPE_CHECKING, TextIO
 
-from ritebook.adapters.inbound.cli.commands import run_lint_skills, run_publish_index
+from ritebook.adapters.inbound.cli.commands import (
+    run_add_index,
+    run_lint_skills,
+    run_publish_index,
+    run_update_index,
+)
 from ritebook.adapters.inbound.cli.parser import (
+    ADD_INDEX_COMMAND,
     LINT_SKILLS_COMMAND,
     PUBLISH_INDEX_COMMAND,
+    UPDATE_INDEX_COMMAND,
     build_parser,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from ritebook.features.index_registry.application.ports import (
+        AddIndexPort,
+        UpdateIndexPort,
+    )
     from ritebook.features.linter.application.ports import LintSkillsPort
     from ritebook.features.publisher.application.ports import PublishIndexPort
 
 
-def run(
+def run(  # noqa: PLR0913
     argv: Sequence[str] | None,
     *,
     linter: LintSkillsPort,
     publisher: PublishIndexPort,
+    add_index: AddIndexPort,
+    update_index: UpdateIndexPort,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -51,6 +64,22 @@ def run(
         return run_publish_index(
             args,
             publisher=publisher,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == ADD_INDEX_COMMAND:
+        return run_add_index(
+            args,
+            add_index=add_index,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == UPDATE_INDEX_COMMAND:
+        return run_update_index(
+            args,
+            update_index=update_index,
             stdout=stdout,
             stderr=stderr,
         )

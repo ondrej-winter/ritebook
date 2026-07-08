@@ -6,6 +6,17 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from ritebook.adapters.inbound.cli import run
+from ritebook.features.index_registry.adapters.outbound.filesystem_registry import (
+    FilesystemIndexRegistry,
+)
+from ritebook.features.index_registry.adapters.outbound.git import GitSourceAdapter
+from ritebook.features.index_registry.adapters.outbound.index_cache import (
+    FilesystemIndexCache,
+)
+from ritebook.features.index_registry.adapters.outbound.json_index import (
+    JsonIndexReader,
+)
+from ritebook.features.index_registry.application.use_cases import AddIndex, UpdateIndex
 from ritebook.features.linter.adapters.outbound.filesystem import (
     FilesystemSkillHeaderDiscovery,
 )
@@ -38,4 +49,28 @@ def main(argv: Sequence[str] | None = None) -> int:
         index_writer=JsonIndexWriter(),
         clock=lambda: datetime.now(UTC),
     )
-    return run(argv, linter=linter, publisher=publisher)
+    registry = FilesystemIndexRegistry()
+    cache = FilesystemIndexCache()
+    git_source = GitSourceAdapter()
+    index_reader = JsonIndexReader()
+    add_index = AddIndex(
+        git_source=git_source,
+        index_reader=index_reader,
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime.now(UTC),
+    )
+    update_index = UpdateIndex(
+        git_source=git_source,
+        index_reader=index_reader,
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime.now(UTC),
+    )
+    return run(
+        argv,
+        linter=linter,
+        publisher=publisher,
+        add_index=add_index,
+        update_index=update_index,
+    )

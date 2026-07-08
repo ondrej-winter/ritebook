@@ -49,6 +49,7 @@ def test_skill_entry_rejects_platform_specific_path_separators() -> None:
 
 def test_skill_catalog_sorts_entries_by_relative_path() -> None:
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
         skills_root=".",
         skills=[
@@ -72,15 +73,27 @@ def test_skill_catalog_exposes_schema_version_generated_at_and_root() -> None:
     generated_at = datetime(2026, 7, 4, 18, 49, tzinfo=UTC)
 
     catalog = SkillCatalog.create(
+        index_name="company-skills",
         generated_at=generated_at,
         skills_root="skills",
         skills=(),
     )
 
     assert catalog.schema_version == 1
+    assert catalog.index_name == "company-skills"
     assert catalog.generated_at == generated_at
     assert catalog.skills_root == "skills"
     assert catalog.skills == ()
+
+
+def test_skill_catalog_requires_valid_index_name() -> None:
+    with pytest.raises(ValueError, match="Catalog index name"):
+        SkillCatalog.create(
+            index_name="Company Skills",
+            generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+            skills_root="skills",
+            skills=(),
+        )
 
 
 def test_skill_catalog_requires_timezone_aware_generated_at() -> None:
@@ -88,6 +101,7 @@ def test_skill_catalog_requires_timezone_aware_generated_at() -> None:
 
     with pytest.raises(ValueError, match="timezone-aware"):
         SkillCatalog.create(
+            index_name="company-skills",
             generated_at=generated_at,
             skills_root="skills",
             skills=(),

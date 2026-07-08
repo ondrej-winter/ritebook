@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Self
 
+from ritebook.shared_kernel import require_kebab_case_identifier
+
 if TYPE_CHECKING:
     from datetime import datetime
 
@@ -41,6 +43,7 @@ class SkillCatalog:
 
     SCHEMA_VERSION: ClassVar[int] = 1
 
+    index_name: str
     generated_at: datetime
     skills_root: str
     skills: tuple[SkillEntry, ...] = field(default_factory=tuple)
@@ -49,12 +52,14 @@ class SkillCatalog:
     def create(
         cls,
         *,
+        index_name: str,
         generated_at: datetime,
         skills_root: str,
         skills: list[SkillEntry] | tuple[SkillEntry, ...],
     ) -> Self:
         """Create a catalog with deterministically sorted skill entries."""
         return cls(
+            index_name=index_name,
             generated_at=generated_at,
             skills_root=skills_root,
             skills=tuple(sorted(skills, key=lambda skill: skill.path)),
@@ -70,6 +75,7 @@ class SkillCatalog:
         if self.generated_at.tzinfo is None or self.generated_at.utcoffset() is None:
             msg = "Catalog generation timestamp must be timezone-aware."
             raise ValueError(msg)
+        require_kebab_case_identifier(self.index_name, field_name="Catalog index name")
         if not self.skills_root:
             msg = "Catalog skills root must not be empty."
             raise ValueError(msg)

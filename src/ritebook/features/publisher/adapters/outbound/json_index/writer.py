@@ -33,6 +33,7 @@ class JsonIndexWriter:
 def _catalog_to_json(catalog: SkillCatalog) -> dict[str, Any]:
     return {
         "schema_version": catalog.schema_version,
+        "index": {"name": catalog.index_name},
         "generated_at": _generated_at(catalog.generated_at),
         "skills_root": catalog.skills_root,
         "skills": [_entry_to_json(entry) for entry in catalog.skills],

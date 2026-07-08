@@ -68,6 +68,12 @@ IMPLEMENT: execute tasks and keep the spec current when decisions change.
 
 Start by surfacing assumptions. Do not silently fill requirement gaps.
 
+Create or update the spec in `docs/specs/<name>-spec.md` by default, where
+`<name>` is a short kebab-case project, feature, workflow, integration,
+migration, or change name. Create `docs/specs/` if it does not exist. Use a
+different location only when the project already has a clear spec convention or
+the user asks for one.
+
 ```text
 ASSUMPTIONS
 1. The primary user is <user_or_actor>.
@@ -124,6 +130,7 @@ Cover these areas at the appropriate level of detail:
 
 ## Project structure
 
+- Spec: `docs/specs/<name>-spec.md`
 - `<source_location>`: <implementation responsibility>
 - `<test_location>`: <test responsibility>
 - `<docs_location>`: <documentation responsibility>

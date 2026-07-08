@@ -58,14 +58,40 @@ config/cache path mechanics outside the application core.
   `src/ritebook/cli.py`.
 - Treat publisher index schema as schema version `1` with an added required
   `index.name` metadata object rather than bumping to schema `2`, matching the
-  spec's "schema v1 extension" option.
+  spec's "schema v1 extension" option. This is an intentional compatibility
+  break for consumer registration: `add-index` rejects legacy schema v1 indexes
+  that do not include `index.name` instead of guessing a default name.
 - Keep local effective index names as the registry namespace. Skill names may
   duplicate across indexes.
+- Require `publish-index --index-name <name>` for newly generated indexes. Do
+  not infer publisher index identity from the current directory or Git remote.
+- Use one canonical kebab-case identifier validator for skill names and index
+  names: 1-64 lowercase ASCII letters, digits, and hyphens; no leading/trailing
+  hyphen; no consecutive hyphens. The implementation must place this helper in a
+  reusable core location rather than duplicating regexes across publisher,
+  linter, and index registry code.
+- Keep application path values as strings at public DTO/port boundaries for this
+  milestone. Adapters and composition may use `pathlib.Path` internally, but they
+  must normalize path values to strings before crossing into application DTOs or
+  ports.
 - Use injected path settings and clocks for deterministic tests; default user
   paths are resolved only in composition/bootstrap or adapters.
 - Preserve cached index contents on failed `update-index` validation by
   validating into a temporary/loaded representation before replacing cache files
   or registry metadata.
+- Use best-effort local-file consistency for successful validation: read and
+  validate the refreshed index, write cached index content via temp file and
+  replace, then write registry metadata via temp file and replace. If registry
+  persistence fails after cache replacement, surface a clear error, leave the
+  previous registry intact, and accept orphaned cache content as an MVP cleanup
+  concern.
+- `--force` replacement overwrites the registry entry and cached index for the
+  effective name, but does not eagerly prune old managed Git or cache directories
+  unless the implementation naturally reuses the same paths. Add cache pruning as
+  deferred maintenance work.
+- Derive managed Git cache IDs deterministically from the original source string
+  with a secret-safe hash-based identifier, such as a SHA-256 prefix. Do not place
+  raw Git URLs, credentials, or tokens in directory names or user-facing errors.
 - Git adapter should shell out to `git` non-interactively via `subprocess`, never
   through shell heredocs or interactive prompts, and surface sanitized
   user-facing failures.
@@ -145,18 +171,19 @@ deterministic output and existing skill entry behavior.
 
 #### Task 2: Thread Publisher Index Name Through Publish Use Case and CLI
 
-**Description:** Add a simple way for `publish-index` to set the published index
-name, likely `--index-name`, so generated indexes satisfy the new required
+**Description:** Add required `--index-name` support so `publish-index` can set
+the published index name and generated indexes satisfy the new required
 metadata.
 
 **Acceptance criteria:**
 
 - [ ] `PublishIndexCommand` carries `index_name`.
-- [ ] `publish-index` CLI requires or accepts an explicit `--index-name`
-      according to final implementation choice; the plan recommends requiring it
-      to avoid guessing repository identity.
+- [ ] `publish-index` CLI requires an explicit `--index-name` to avoid guessing
+      repository identity.
 - [ ] Application validates empty/invalid index names before writing.
 - [ ] Success output remains concise.
+- [ ] README and CLI tests document that this is an intentional publisher CLI
+      compatibility change.
 
 **Verification:**
 
@@ -186,9 +213,9 @@ metadata.
 
 #### Task 3: Add Index Registry DTOs and Domain-Like Application Types
 
-**Description:** Create application-owned DTOs for add/update commands, results,
-published index payload summaries, registered index records, source metadata, and
-path settings.
+**Description:** Create application-owned DTOs and application error types for
+add/update commands, results, published index payload summaries, registered index
+records, source metadata, and path settings.
 
 **Acceptance criteria:**
 
@@ -202,6 +229,11 @@ path settings.
       count, `added_at`, and `updated_at`.
 - [ ] DTO validation rejects empty names, invalid kebab-case names, invalid
       counts, and empty required paths.
+- [ ] DTOs use normalized strings for path values at application boundaries;
+      adapters may convert to and from `Path` internally.
+- [ ] Application-specific errors are named and exported for duplicate index
+      names, unknown index names, invalid index metadata, and failed registry or
+      cache operations that the CLI must render clearly.
 
 **Verification:**
 
@@ -212,8 +244,10 @@ path settings.
 **Files likely touched:**
 
 - `src/ritebook/features/index_registry/application/dtos/index_registry.py`
+- `src/ritebook/features/index_registry/application/errors.py`
 - `src/ritebook/features/index_registry/application/dtos/__init__.py`
 - `tests/unit/features/index_registry/application/test_index_registry_dtos.py`
+- `tests/unit/features/index_registry/application/test_errors.py`
 
 **Estimated scope:** Medium
 
@@ -338,6 +372,8 @@ content.
 - [ ] Rejects invalid JSON.
 - [ ] Rejects unsupported `schema_version`.
 - [ ] Requires `index.name` and validates kebab-case.
+- [ ] Rejects legacy schema v1 indexes that omit `index.name` with a clear
+      compatibility error instead of inferring a name.
 - [ ] Requires `skills` array and validates skill entries.
 - [ ] Rejects absolute paths, backslash paths, and `..` traversal in `path` and
       `skill_file`.
@@ -374,6 +410,9 @@ index file writing under configurable paths.
       `<cache-root>/indexes/<effective-name>/ritebook-index.json`.
 - [ ] Cache replacement is atomic enough for local use, e.g. write temp then
       replace.
+- [ ] Tests cover cache-write success followed by registry-write failure:
+      previous registry metadata remains intact, the error is surfaced, and
+      orphaned cache content is accepted as deferred cleanup.
 - [ ] Adapter creates required parent directories.
 
 **Verification:**
@@ -405,6 +444,8 @@ repositories using non-interactive Git subprocess calls.
 - [ ] Local source must exist and appear to be a Git repository.
 - [ ] Local source is never mutated.
 - [ ] Git URL source clones into `<cache-root>/git/<source-cache-id>/` on add.
+- [ ] Managed clone cache IDs are deterministic, hash-based, and do not expose raw
+      URLs, credentials, tokens, or private host/path details.
 - [ ] Git URL source refreshes existing managed clone on update or reclones if
       needed.
 - [ ] Git failures become clear sanitized adapter errors.
@@ -507,11 +548,15 @@ including default config/cache path resolution.
 - [ ] Defaults resolve to `~/.config/ritebook/indexes.json` and
       `~/.cache/ritebook` unless CLI overrides are supplied.
 - [ ] Environment and user path expansion stays outside application use cases.
+- [ ] Focused tests cover default path expansion and CLI override handling without
+      mutating real user state.
 - [ ] Existing `lint-skills` and `publish-index` wiring still works.
 
 **Verification:**
 
 - [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [ ] Focused default path resolver tests, if path resolution is split into a
+      helper module.
 - [ ] `uv run mypy src/ritebook/cli.py src/ritebook/adapters/inbound/cli src/ritebook/features/index_registry`
 
 **Dependencies:** Tasks 10-11
@@ -520,6 +565,7 @@ including default config/cache path resolution.
 
 - `src/ritebook/cli.py`
 - Possibly `src/ritebook/adapters/inbound/cli/adapter.py`
+- Possibly a small composition/helper module for default registry/cache paths
 
 **Estimated scope:** Small
 
@@ -538,13 +584,14 @@ default local registry/cache paths, and test/automation overrides.
 
 **Acceptance criteria:**
 
-- [ ] README shows `publish-index --index-name <name>` if Task 2 makes it
-      required.
+- [ ] README shows required `publish-index --index-name <name>` usage.
 - [ ] README shows `add-index` and `update-index` examples.
 - [ ] README documents default local registry/cache paths.
 - [ ] README notes that local Git repositories are read-only from Ritebook's
       perspective.
 - [ ] README states listing and installation are not part of this milestone.
+- [ ] README or release-facing notes call out that consumer registration rejects
+      legacy schema v1 indexes without `index.name`.
 
 **Verification:**
 
@@ -614,8 +661,9 @@ complete.
 ## Open Questions and Assumptions
 
 - Assumption: publisher schema remains `schema_version: 1` with an added required
-  `index.name` object, as suggested by the spec.
-- Assumption: `publish-index` should require `--index-name` rather than infer a
+  `index.name` object, as suggested by the spec. Consumer `add-index` rejects
+  older schema v1 index files that omit the metadata.
+- Decision: `publish-index` requires `--index-name` rather than inferring a
   default from the current directory. This avoids unstable or surprising
   published names.
 - Assumption: `--registry-path` should point to the full `indexes.json` file,
@@ -624,11 +672,9 @@ complete.
 - Assumption: Git URL source detection can initially be pragmatic: existing local
   path means local repo; otherwise treat common Git URL forms such as `git@...`,
   `ssh://...`, `https://...`, and `file://...` as cloneable Git sources.
-- Open question for implementation: should `--force` replacement delete old
-  managed Git/cache directories immediately, or simply overwrite registry/cache
-  references and leave cleanup as a later maintenance workflow? The plan
-  recommends leaving cleanup out of scope unless replacement targets the same
-  effective name and path.
+- Decision: `--force` replacement does not eagerly delete old managed Git/cache
+  directories. Cleanup/pruning is deferred unless replacement naturally reuses
+  the same effective-name cache path.
 
 ## Parallelization Opportunities
 

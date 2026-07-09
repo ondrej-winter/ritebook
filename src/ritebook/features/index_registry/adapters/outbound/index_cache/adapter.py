@@ -14,7 +14,12 @@ class FilesystemIndexCache:
 
     def cached_index_path(self, *, name: str, cache_root: str | None) -> str:
         """Return the cache path for an effective index name."""
-        return str(_cache_root(cache_root) / "indexes" / name / "ritebook-index.json")
+        return str(
+            _cache_root(cache_root)
+            / "indexes"
+            / _cache_directory_name(name)
+            / "ritebook-index.json",
+        )
 
     def write_index(self, *, name: str, content: str, cache_root: str | None) -> str:
         """Write cached index contents via temp file replacement."""
@@ -32,3 +37,7 @@ class FilesystemIndexCache:
 
 def _cache_root(cache_root: str | None) -> Path:
     return Path(cache_root or DEFAULT_CACHE_ROOT).expanduser()
+
+
+def _cache_directory_name(index_name: str) -> str:
+    return index_name.replace("/", "_")

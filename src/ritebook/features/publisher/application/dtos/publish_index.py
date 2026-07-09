@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from ritebook.shared_kernel import require_kebab_case_identifier
+from ritebook.shared_kernel import require_index_name
 
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 
@@ -16,7 +16,7 @@ class PublishIndexCommand:
 
     def __post_init__(self) -> None:
         """Validate command shape after dataclass initialization."""
-        require_kebab_case_identifier(self.index_name, field_name="Publish index name")
+        require_index_name(self.index_name, field_name="Publish index name")
         if not self.skills_root:
             msg = "Publish index skills root must not be empty."
             raise ValueError(msg)

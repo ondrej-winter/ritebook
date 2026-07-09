@@ -51,11 +51,12 @@ uv run ritebook publish-index --skills-root <path> --index-name <name>
 
 The `--skills-root` option is required so the command only scans the intended
 skills directory. The `--index-name` option is required and must be a stable
-kebab-case identifier, such as `company-skills`; it is written to the generated
-index metadata as the default consumer registry name. The `publish-index` command
-reuses the same validation flow as `lint-skills` and refuses to write or
-overwrite `ritebook-index.json` when any discovered skill is invalid. When
-validation succeeds, Ritebook writes the canonical index file
+index name, either a kebab-case identifier such as `company-skills` or an
+owner/repository-style name such as `ondrej-winter/ritebook-shelf`; it is written
+to the generated index metadata as the default consumer registry name. The
+`publish-index` command reuses the same validation flow as `lint-skills` and
+refuses to write or overwrite `ritebook-index.json` when any discovered skill is
+invalid. When validation succeeds, Ritebook writes the canonical index file
 `ritebook-index.json` in the current working directory.
 
 Review the generated `ritebook-index.json` before committing it with the related
@@ -100,6 +101,11 @@ By default, Ritebook stores registry metadata and cached index contents under:
 ~/.cache/ritebook/indexes/<effective-index-name>/ritebook-index.json
 ~/.cache/ritebook/git/<source-cache-id>/
 ```
+
+When an effective index name includes an owner separator, Ritebook keeps the
+registry name unchanged but flattens the cache directory by replacing `/` with
+`_`; for example, `ondrej-winter/ritebook-shelf` is cached under
+`~/.cache/ritebook/indexes/ondrej-winter_ritebook-shelf/ritebook-index.json`.
 
 Tests and automation can override these locations:
 

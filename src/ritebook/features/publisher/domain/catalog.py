@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Self
 
-from ritebook.shared_kernel import require_kebab_case_identifier
+from ritebook.shared_kernel import require_index_name
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -75,7 +75,7 @@ class SkillCatalog:
         if self.generated_at.tzinfo is None or self.generated_at.utcoffset() is None:
             msg = "Catalog generation timestamp must be timezone-aware."
             raise ValueError(msg)
-        require_kebab_case_identifier(self.index_name, field_name="Catalog index name")
+        require_index_name(self.index_name, field_name="Catalog index name")
         if not self.skills_root:
             msg = "Catalog skills root must not be empty."
             raise ValueError(msg)

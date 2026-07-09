@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ritebook.shared_kernel import require_kebab_case_identifier
+from ritebook.shared_kernel import require_index_name
 
 
 class IndexSourceType(StrEnum):
@@ -29,7 +29,7 @@ class AddIndexCommand:
         """Validate command shape after initialization."""
         _require_non_empty(self.source, field_name="Index source")
         if self.name is not None:
-            require_kebab_case_identifier(self.name, field_name="Index name")
+            require_index_name(self.name, field_name="Index name")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
 
@@ -44,7 +44,7 @@ class UpdateIndexCommand:
 
     def __post_init__(self) -> None:
         """Validate command shape after initialization."""
-        require_kebab_case_identifier(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Index name")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
 
@@ -83,7 +83,7 @@ class PublishedIndex:
 
     def __post_init__(self) -> None:
         """Validate published index summary metadata."""
-        require_kebab_case_identifier(
+        require_index_name(
             self.published_name,
             field_name="Published index name",
         )
@@ -113,8 +113,8 @@ class RegisteredIndex:
 
     def __post_init__(self) -> None:
         """Validate registry entry metadata."""
-        require_kebab_case_identifier(self.name, field_name="Index name")
-        require_kebab_case_identifier(
+        require_index_name(self.name, field_name="Index name")
+        require_index_name(
             self.published_name,
             field_name="Published index name",
         )
@@ -147,7 +147,7 @@ class AddIndexResult:
 
     def __post_init__(self) -> None:
         """Validate add-index result metadata."""
-        require_kebab_case_identifier(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Index name")
         if self.skill_count < 0:
             msg = "Index skill count must not be negative."
             raise ValueError(msg)
@@ -162,7 +162,7 @@ class UpdateIndexResult:
 
     def __post_init__(self) -> None:
         """Validate update-index result metadata."""
-        require_kebab_case_identifier(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Index name")
         if self.skill_count < 0:
             msg = "Index skill count must not be negative."
             raise ValueError(msg)

@@ -2,14 +2,22 @@
 name: spec-driven-development
 description: Creates a specification before implementation. Use when starting a project, feature, integration, workflow, migration, or significant change with unclear or incomplete requirements.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   dependencies:
     tools: []
     skills:
-      - planning-and-task-breakdown
-      - review-implementation-plan
-      - interview-me
-      - idea-refine
+      - name: planning-and-task-breakdown
+        purpose: Break confirmed requirements into ordered, verifiable implementation tasks.
+        required: false
+      - name: review-implementation-plan
+        purpose: Review implementation plans derived from a specification before coding begins.
+        required: false
+      - name: interview-me
+        purpose: Clarify unclear user intent before writing a specification.
+        required: false
+      - name: idea-refine
+        purpose: Refine rough concepts into a clearer direction before defining requirements.
+        required: false
 ---
 
 # Spec-Driven Development

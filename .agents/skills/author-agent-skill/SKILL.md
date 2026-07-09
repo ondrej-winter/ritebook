@@ -2,7 +2,7 @@
 name: author-agent-skill
 description: Create, update, or review Agent Skill directories and SKILL.md files for valid frontmatter, structure, portability, progressive disclosure, and validation readiness.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   dependencies:
     tools: []
     skills: []

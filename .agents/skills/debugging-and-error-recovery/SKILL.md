@@ -2,13 +2,19 @@
 name: debugging-and-error-recovery
 description: Diagnose failures systematically by preserving evidence, reproducing the issue, localizing and reducing the cause, fixing the root problem, adding a guard, and verifying recovery.
 metadata:
-  version: "1.1.3"
+  version: "1.1.4"
   dependencies:
     tools: []
     skills:
-      - add-observability
-      - performance-optimization
-      - shipping-and-launch
+      - name: add-observability
+        purpose: Add or improve runtime signals when failures are hard to reproduce, observe, or diagnose.
+        required: false
+      - name: performance-optimization
+        purpose: Investigate failures caused by latency, resource pressure, throughput limits, or scalability bottlenecks.
+        required: false
+      - name: shipping-and-launch
+        purpose: Plan rollback, monitoring, and release-risk handling when a fix must be shipped safely.
+        required: false
 ---
 
 # Debugging and Error Recovery

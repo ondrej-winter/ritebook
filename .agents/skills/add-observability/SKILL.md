@@ -2,14 +2,22 @@
 name: add-observability
 description: Add logs, metrics, traces, profiling, or operational notes for meaningful workflows without unsupported performance claims.
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
   dependencies:
     tools: []
     skills:
-      - debugging-and-error-recovery
-      - performance-optimization
-      - shipping-and-launch
-      - update-project-docs
+      - name: debugging-and-error-recovery
+        purpose: Reproduce, localize, and fix active failures before adding observability around them.
+        required: false
+      - name: performance-optimization
+        purpose: Diagnose and optimize known or suspected performance bottlenecks after measurement signals exist.
+        required: false
+      - name: shipping-and-launch
+        purpose: Include observability in rollout, monitoring, and rollback-readiness planning.
+        required: false
+      - name: update-project-docs
+        purpose: Document operational signals, dashboards, alerts, or troubleshooting notes affected by observability changes.
+        required: false
 ---
 
 # Add Observability

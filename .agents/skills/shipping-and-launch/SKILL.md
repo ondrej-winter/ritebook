@@ -2,13 +2,19 @@
 name: shipping-and-launch
 description: Prepares production launches. Use when preparing to deploy to production. Use when you need a pre-launch checklist, when setting up monitoring, when planning a staged rollout, or when you need a rollback strategy.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   dependencies:
     tools: []
     skills:
-      - add-observability
-      - performance-optimization
-      - debugging-and-error-recovery
+      - name: add-observability
+        purpose: Ensure launch, rollout, and rollback plans include meaningful operational signals.
+        required: false
+      - name: performance-optimization
+        purpose: Address launch risks involving latency, throughput, resource usage, or scalability.
+        required: false
+      - name: debugging-and-error-recovery
+        purpose: Prepare recovery steps for known failure modes, incidents, or rollback scenarios.
+        required: false
 ---
 
 # Shipping and Launch

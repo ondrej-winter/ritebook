@@ -2,12 +2,16 @@
 name: conventional-commits
 description: Write, review, and validate Conventional Commits v1.0.0 messages with correct type, scope, description, body, footer, and breaking-change syntax.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   dependencies:
     tools:
-      - git
+      - name: git
+        purpose: Inspect staged changes, diffs, branch context, and commit history when drafting or reviewing commit messages.
+        required: false
     skills:
-      - git-workflow-and-versioning
+      - name: git-workflow-and-versioning
+        purpose: Coordinate Conventional Commits guidance with broader branch, diff, and version-control workflow decisions.
+        required: false
 ---
 
 # Conventional Commits

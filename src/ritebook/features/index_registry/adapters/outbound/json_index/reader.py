@@ -10,7 +10,7 @@ from ritebook.features.index_registry.application.dtos import PublishedIndex
 from ritebook.features.index_registry.application.errors import (
     InvalidPublishedIndexError,
 )
-from ritebook.shared_kernel import require_kebab_case_identifier
+from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
 
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 
@@ -54,7 +54,7 @@ def _validate_payload(payload: dict[str, Any], content: str) -> PublishedIndex:
         msg = "ritebook-index.json is missing required index.name metadata"
         raise InvalidPublishedIndexError(msg)
     try:
-        require_kebab_case_identifier(published_name, field_name="Published index name")
+        require_index_name(published_name, field_name="Published index name")
     except ValueError as err:
         raise InvalidPublishedIndexError(str(err)) from err
     skills = payload.get("skills")

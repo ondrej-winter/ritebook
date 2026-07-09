@@ -22,6 +22,16 @@ def test_json_index_reader_reads_valid_root_index(tmp_path: Path) -> None:
     assert result.cacheable_content.endswith("\n")
 
 
+def test_json_index_reader_accepts_repository_style_published_name(
+    tmp_path: Path,
+) -> None:
+    write_index(tmp_path, {"index": {"name": "ondrej-winter/ritebook-shelf"}})
+
+    result = JsonIndexReader().read_index(str(tmp_path))
+
+    assert result.published_name == "ondrej-winter/ritebook-shelf"
+
+
 def test_json_index_reader_requires_root_index(tmp_path: Path) -> None:
     with pytest.raises(InvalidPublishedIndexError, match="repository root"):
         JsonIndexReader().read_index(str(tmp_path))

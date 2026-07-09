@@ -122,8 +122,8 @@ are rejected instead of guessing a name.
 ## Publishing
 
 The GitHub Actions workflow in `.github/workflows/ci-cd.yaml` runs formatting,
-linting, type checking, tests, and package builds. It publishes to PyPI when a
-GitHub release is published.
+linting, type checking, tests, package builds, patch releases, and PyPI
+publishing.
 
 During the early project lifecycle, releases stay on the `0.1.x` line and every
 non-bot push to `master` increments the patch version. The CI/CD workflow uses
@@ -133,16 +133,17 @@ Python Semantic Release to:
 2. bump `pyproject.toml` from `0.1.x` to the next patch version,
 3. commit the version bump,
 4. create the matching `v0.1.x` tag, and
-5. publish a GitHub release without maintaining a changelog.
+5. publish a GitHub release without maintaining a changelog, and
+6. publish the built distributions to PyPI in the same workflow run.
 
-The published GitHub release then triggers the PyPI publishing workflow. When the
-project is ready to move beyond patch-only `0.1.x` releases, the same Semantic
-Release tooling can be used for normal commit-derived SemVer releases.
+The release job skips commits authored by `github-actions[bot]` so the automated
+version-bump commit does not trigger another release. When the project is ready
+to move beyond patch-only `0.1.x` releases, the same Semantic Release tooling can
+be used for normal commit-derived SemVer releases.
 
-Use GitHub's merge queue for PRs targeting `master` so changes are verified and
-merged serially before each automatic patch release. Configure the repository's
-`master` branch protection to require the merge queue and the `Quality checks`
-status from `.github/workflows/ci-cd.yaml`.
+For the current solo-maintainer workflow, `master` can allow direct pushes and
+CI/CD verifies changes after each push. Repository rules should allow GitHub
+Actions to write release bump commits and tags.
 
 Publishing uses PyPI Trusted Publishing through GitHub Actions OIDC. Before the
 first release, configure a trusted publisher for this repository in the PyPI

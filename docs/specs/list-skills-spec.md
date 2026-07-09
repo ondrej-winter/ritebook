@@ -1,0 +1,281 @@
+# Spec: Consumer List Skills
+
+## Objective
+
+Ritebook will add a consumer-facing `list-skills` workflow for users who have
+already registered one or more Git-backed skill indexes with `add-index`.
+
+The command helps a Ritebook consumer browse locally cached skill indexes from
+the terminal and pick a skill by name. It should be deterministic, offline-first,
+and grouped by effective index name so duplicate skill names across indexes
+remain valid.
+
+## Current context
+
+- Ritebook already supports publisher-side index generation through
+  `publish-index`.
+- Publisher indexes are root-level `ritebook-index.json` files with schema
+  version `1`.
+- Publisher schema v1 includes index metadata and skill entries with `name`,
+  `path`, `skill_file`, and optional `title`.
+- Consumer registry functionality already exists in
+  `src/ritebook/features/index_registry/`:
+  - `add-index` registers a Git URL or local Git repository source.
+  - `update-index` refreshes cached index contents.
+  - `list-indexes` lists registered index metadata.
+- Registry entries already store each index's local effective name and
+  `cached_index_path`.
+- `docs/specs/consumer-git-index-registry.md` explicitly left `list-skills` out
+  of scope for the first registry milestone, so this spec defines the next
+  consumer browsing milestone.
+- The project follows hexagonal architecture with vertical feature slices under
+  `src/ritebook/features/`.
+
+## Desired behavior
+
+### CLI shape
+
+A user can list skills from all registered cached indexes:
+
+```bash
+uv run ritebook list-skills
+```
+
+A user can list skills from one effective index name:
+
+```bash
+uv run ritebook list-skills --index-name platform-skills
+```
+
+Tests and automation can override the registry path:
+
+```bash
+uv run ritebook list-skills --registry-path /tmp/indexes.json
+uv run ritebook list-skills --index-name platform-skills --registry-path /tmp/indexes.json
+```
+
+If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
+
+### Data source
+
+- `list-skills` reads the existing local consumer registry.
+- `list-skills` reads each selected registry entry's `cached_index_path`.
+- `list-skills` does not clone, fetch, pull, or otherwise contact Git remotes.
+- `list-skills` does not scan publisher skill directories.
+- `list-skills` does not read raw `SKILL.md` files.
+- If a cached index file is missing, unreadable, or invalid, the command fails
+  with a clear user-facing error.
+
+### Listing all skills
+
+When no `--index-name` is provided:
+
+- Ritebook reads all registered indexes in deterministic effective-name order.
+- Ritebook reads each cached `ritebook-index.json`.
+- Ritebook lists skills from each cached index under its effective index name.
+- Output is deterministic by effective index name, then skill name.
+- Duplicate skill names across different indexes are allowed.
+
+### Listing one index
+
+When `--index-name <effective-name>` is provided:
+
+- Ritebook looks up the registered index by effective name.
+- If the index is unknown, Ritebook fails with a clear user-facing error.
+- Ritebook reads only that index's cached index file.
+- Output keeps the same tree shape as all-index output, including the `Indexes`
+  root and the matching index node.
+
+### Empty output
+
+If no skills are found, print:
+
+```text
+No skills found
+```
+
+This applies when no indexes are registered and when selected cached indexes
+contain no skills.
+
+### Default output format
+
+Use a concise tree intended for human browsing:
+
+```text
+Indexes
+├── platform-skills
+│   ├── skill-a
+│   └── skill-b
+└── data-skills
+    └── query-helper
+```
+
+Filtered output preserves the same shape:
+
+```text
+Indexes
+└── platform-skills
+    ├── skill-a
+    └── skill-b
+```
+
+Tree rules:
+
+- The root label is `Indexes`.
+- First-level children are effective index names.
+- Second-level children are skill names.
+- Skill titles are not shown in the default v1 output.
+- Paths and `skill_file` values may be parsed and carried in application DTOs for
+  future workflows, but they are not shown by this command.
+
+## Commands and validation
+
+Focused checks during implementation:
+
+```bash
+uv run pytest tests/unit/features/index_registry/application/test_list_skills.py
+uv run pytest tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py
+uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py
+```
+
+Full validation before handoff:
+
+```bash
+uv run ruff format .
+uv run ruff check .
+uv run mypy .
+uv run pytest
+```
+
+## Project structure
+
+- Spec: `docs/specs/list-skills-spec.md`
+- `src/ritebook/features/index_registry/application/dtos/index_registry.py`:
+  command, result, and skill summary DTOs for `list-skills`.
+- `src/ritebook/features/index_registry/application/ports/list_skills.py`:
+  inbound application port for listing skills.
+- `src/ritebook/features/index_registry/application/ports/cached_index_reader.py`:
+  outbound port for reading skill entries from cached index files, if a distinct
+  port is added.
+- `src/ritebook/features/index_registry/application/use_cases/list_skills.py`:
+  application service that coordinates registry lookup and cached index reading.
+- `src/ritebook/features/index_registry/adapters/outbound/json_index/reader.py`:
+  JSON/filesystem cached index parsing.
+- `src/ritebook/adapters/inbound/cli/parser.py`: `list-skills` arguments.
+- `src/ritebook/adapters/inbound/cli/commands.py`: CLI command handler and tree
+  rendering.
+- `src/ritebook/adapters/inbound/cli/adapter.py`: CLI dispatch and injected port.
+- `src/ritebook/cli.py`: composition-root wiring.
+- `tests/unit/features/index_registry/application/test_list_skills.py`:
+  application behavior tests.
+- `tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py`:
+  cached index reader behavior tests.
+- `tests/unit/adapters/inbound/cli/test_adapter.py`: CLI argument mapping and tree
+  output tests.
+- `README.md`: user-facing command documentation.
+
+## Conventions
+
+- Keep application logic independent of filesystem, JSON, and Git details.
+- Keep cached index parsing in an outbound adapter.
+- Use application-owned DTOs at application boundaries.
+- Use explicit inbound and outbound ports.
+- Keep tree rendering in the CLI adapter.
+- Preserve deterministic output and deterministic tests.
+- Keep errors user-facing at the CLI boundary.
+- Do not print secrets, Git credentials, raw index contents, or raw skill file
+  contents in errors.
+- Follow the existing hexagonal vertical-slice structure under
+  `src/ritebook/features/index_registry/`.
+
+## Testing strategy
+
+### Application tests
+
+Cover:
+
+- Lists skill names from all registered indexes.
+- Sorts output deterministically by effective index name and skill name.
+- Filters by `--index-name` / effective index name.
+- Returns an empty result when there are no registered indexes.
+- Returns an empty result when cached indexes contain no skills.
+- Fails clearly for an unknown effective index name.
+- Does not require or call any Git source port.
+
+### JSON cached-index reader tests
+
+Cover:
+
+- Reads valid schema v1 cached indexes and returns skill entries.
+- Ignores optional titles for default listing purposes.
+- Rejects invalid JSON.
+- Rejects missing or unsupported `schema_version`.
+- Rejects missing or malformed `skills`.
+- Rejects malformed skill entries.
+- Rejects unsafe absolute or parent-traversal paths using the same path-safety
+  expectations as existing index validation.
+
+### CLI tests
+
+Cover:
+
+- `list-skills` maps arguments to `ListSkillsCommand`.
+- `list-skills --index-name <name>` maps the filter correctly.
+- `list-skills --registry-path <path>` maps the registry path correctly.
+- Non-empty output is deterministic and tree-shaped.
+- Filtered output still includes the `Indexes` root and index node.
+- Empty output prints `No skills found`.
+- Application and adapter errors are rendered as concise
+  `ritebook: error: ...` messages.
+
+## Boundaries
+
+### Always
+
+- List from locally cached registered indexes.
+- Group skills under effective index names.
+- Include the `Indexes` root and index nodes in non-empty output.
+- Show skill names only in the default output.
+- Allow duplicate skill names across different effective indexes.
+- Keep output deterministic.
+- Keep Git and network behavior out of `list-skills`.
+- Keep implementation inside the existing `index_registry` feature slice unless a
+  later spec changes the product boundary.
+
+### Ask first
+
+- Adding `install-skill`.
+- Adding live Git refresh behavior to `list-skills`.
+- Adding title, path, description, or other metadata to default output.
+- Adding JSON, CSV, table, or other script-oriented output modes.
+- Adding search or filtering by title, tags, description, or path.
+- Changing publisher index schema.
+- Adding new persistent registry/cache locations or configuration mechanisms.
+
+### Never
+
+- Read live Git sources during `list-skills`.
+- Mutate registered indexes during `list-skills`.
+- Mutate cached index files during `list-skills`.
+- Read raw `SKILL.md` contents for listing.
+- Treat duplicate skill names across different indexes as an error.
+- Print secrets, credentials, raw index contents, or raw skill file contents.
+
+## Success criteria
+
+- `uv run ritebook list-skills` lists a tree of all locally cached registered
+  indexes and their skill names.
+- `uv run ritebook list-skills --index-name <effective-name>` lists only that
+  index's skills while preserving the `Indexes` root and index node.
+- Unknown index names fail with a clear user-facing error.
+- Empty registries or empty cached indexes print `No skills found`.
+- Output is deterministic and grouped by effective index name.
+- No Git or network operations happen during skill listing.
+- Application, adapter, and CLI unit tests cover the behavior.
+- README documents the new command.
+- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, and
+  `uv run pytest` pass before handoff.
+
+## Open questions
+
+- None. The current v1 intent and output shape were confirmed interactively.

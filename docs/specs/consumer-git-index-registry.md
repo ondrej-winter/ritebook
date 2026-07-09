@@ -7,10 +7,10 @@ users who consume curated internal Agent Skills from company-maintained Git
 repositories.
 
 The workflow lets a user add a Git-backed Ritebook skill index, cache the current
-root `ritebook-index.json` locally, and update that cached copy later from the
-remembered Git source. This establishes the consumer-side catalog foundation for
-future `list-skills` and `install-skill` workflows without implementing listing
-or installation yet.
+root `ritebook-index.json` locally, list registered indexes, and update one or
+all cached copies later from their remembered Git sources. This establishes the
+consumer-side catalog foundation for future `list-skills` and `install-skill`
+workflows without implementing skill listing or installation yet.
 
 ## Current context
 
@@ -71,6 +71,24 @@ Recommended duplicate replacement flag:
 uv run ritebook add-index --source <git-source> --name <name> --force
 ```
 
+### List indexes
+
+A user can list locally registered indexes.
+
+Example CLI shape:
+
+```bash
+uv run ritebook list-indexes
+```
+
+Requirements:
+
+- Ritebook reads the same local registry used by `add-index` and `update-index`.
+- Output is deterministic and sorted by effective index name.
+- Empty registries produce concise output: `No indexes registered`.
+- Non-empty output includes the effective index name, skill count, source type,
+  updated timestamp, and remembered source.
+
 ### Update index
 
 A user can refresh an existing registered index from its remembered Git source.
@@ -79,6 +97,7 @@ Example CLI shape:
 
 ```bash
 uv run ritebook update-index --name platform-skills
+uv run ritebook update-index --all
 ```
 
 Requirements:
@@ -95,6 +114,13 @@ Requirements:
 - If the index name inside the refreshed `ritebook-index.json` changes, Ritebook
   keeps the local effective name unless the user explicitly re-adds or renames
   the index in a later workflow.
+- `update-index` requires exactly one target mode: `--name <effective-name>` or
+  `--all`.
+- `update-index --all` refreshes all registered indexes in deterministic
+  effective-name order.
+- If one index fails during `--all`, Ritebook continues updating the remaining
+  indexes, reports failed effective names to stderr, and returns a non-zero exit
+  code after the batch completes.
 
 ## Publisher index metadata update
 
@@ -220,6 +246,8 @@ Initial commands:
 ```bash
 uv run ritebook add-index --source <git-url-or-local-git-repo> [--name <effective-name>] [--force]
 uv run ritebook update-index --name <effective-name>
+uv run ritebook update-index --all
+uv run ritebook list-indexes
 ```
 
 Potential test/automation path overrides:
@@ -234,6 +262,14 @@ uv run ritebook update-index \
   --name <name> \
   --registry-path <path> \
   --cache-root <path>
+
+uv run ritebook update-index \
+  --all \
+  --registry-path <path> \
+  --cache-root <path>
+
+uv run ritebook list-indexes \
+  --registry-path <path>
 ```
 
 Success output should be concise, for example:
@@ -241,6 +277,9 @@ Success output should be concise, for example:
 ```text
 Added index platform-skills with 12 skill(s)
 Updated index platform-skills with 14 skill(s)
+Updated 2 index(es) with 26 total skill(s)
+No indexes registered
+platform-skills	14 skill(s)	git_url	2026-07-08T18:20:00Z	git@github.com:company/internal-skills.git
 ```
 
 Error output should be clear and user-facing, for example:
@@ -249,6 +288,7 @@ Error output should be clear and user-facing, for example:
 ritebook: error: index platform-skills already exists; use --force to replace it
 ritebook: error: ritebook-index.json was not found at the repository root
 ritebook: error: unsupported index schema_version: 2
+Failed to update 1 index(es): platform-skills
 ```
 
 ## Project structure
@@ -262,6 +302,7 @@ src/ritebook/features/index_registry/
 │   │   └── index_registry.py
 │   ├── ports/
 │   │   ├── add_index.py
+│   │   ├── list_indexes.py
 │   │   ├── update_index.py
 │   │   ├── git_source.py
 │   │   ├── index_cache.py
@@ -269,6 +310,7 @@ src/ritebook/features/index_registry/
 │   │   └── index_source_reader.py
 │   └── use_cases/
 │       ├── add_index.py
+│       ├── list_indexes.py
 │       └── update_index.py
 └── adapters/
     └── outbound/
@@ -299,6 +341,7 @@ Tests should mirror source ownership:
 tests/unit/features/index_registry/
 ├── application/
 │   ├── test_add_index.py
+│   ├── test_list_indexes.py
 │   └── test_update_index.py
 └── adapters/outbound/
     ├── test_git_source.py
@@ -343,6 +386,15 @@ tests/unit/features/index_registry/
 - Updates cached index contents and metadata when validation succeeds.
 - Preserves existing cached index when refreshed source validation fails.
 - Fails clearly for unknown index names.
+- Requires either `--name` or `--all`, but not both.
+- Refreshes all registered indexes when requested.
+- Continues after per-index failures during all-index updates and reports failed
+  effective names.
+
+### List indexes application tests
+
+- Lists registered index summaries in deterministic effective-name order.
+- Returns an empty result for an empty registry.
 
 ### Adapter tests
 
@@ -359,6 +411,11 @@ tests/unit/features/index_registry/
 
 - `add-index` maps CLI args into application command DTOs.
 - `update-index` maps CLI args into application command DTOs.
+- `update-index --all` maps CLI args into application command DTOs.
+- `update-index` rejects missing or conflicting target modes.
+- `list-indexes` maps CLI args into application command DTOs.
+- `list-indexes` prints deterministic non-empty output and a concise empty
+  registry message.
 - Success output includes effective index name and skill count.
 - Error output is concise and user-facing.
 
@@ -379,6 +436,7 @@ uv build
 Always:
 
 - Support `add-index` and `update-index` only for this milestone.
+- Support `list-indexes` for registered index metadata only.
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
 - Cache the current index contents locally.
@@ -386,6 +444,7 @@ Always:
 - Allow local name override to avoid effective-name collisions.
 - Namespace duplicate skill names by effective index name.
 - Preserve the previous cached index when `update-index` fails validation.
+- Continue after per-index failures during `update-index --all`.
 
 Ask first:
 

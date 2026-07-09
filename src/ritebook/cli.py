@@ -16,7 +16,11 @@ from ritebook.features.index_registry.adapters.outbound.index_cache import (
 from ritebook.features.index_registry.adapters.outbound.json_index import (
     JsonIndexReader,
 )
-from ritebook.features.index_registry.application.use_cases import AddIndex, UpdateIndex
+from ritebook.features.index_registry.application.use_cases import (
+    AddIndex,
+    ListIndexes,
+    UpdateIndex,
+)
 from ritebook.features.linter.adapters.outbound.filesystem import (
     FilesystemSkillHeaderDiscovery,
 )
@@ -60,6 +64,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         cache=cache,
         clock=lambda: datetime.now(UTC),
     )
+    list_indexes = ListIndexes(registry=registry)
     update_index = UpdateIndex(
         git_source=git_source,
         index_reader=index_reader,
@@ -72,5 +77,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         linter=linter,
         publisher=publisher,
         add_index=add_index,
+        list_indexes=list_indexes,
         update_index=update_index,
     )

@@ -14,5 +14,8 @@ class IndexRegistryPort(Protocol):
     def get(self, name: str, registry_path: str | None) -> RegisteredIndex | None:
         """Return a registered index by effective name when it exists."""
 
+    def list(self, registry_path: str | None) -> tuple[RegisteredIndex, ...]:
+        """Return all registered indexes in deterministic effective-name order."""
+
     def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
         """Insert or replace a registered index entry."""

@@ -38,15 +38,31 @@ class AddIndexCommand:
 class UpdateIndexCommand:
     """Command for refreshing a registered index."""
 
-    name: str
+    name: str | None = None
+    all: bool = False
     registry_path: str | None = None
     cache_root: str | None = None
 
     def __post_init__(self) -> None:
         """Validate command shape after initialization."""
-        require_index_name(self.name, field_name="Index name")
+        if (self.name is None) == (not self.all):
+            msg = "Update index requires either a name or all=True."
+            raise ValueError(msg)
+        if self.name is not None:
+            require_index_name(self.name, field_name="Index name")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
+
+
+@dataclass(frozen=True)
+class ListIndexesCommand:
+    """Command for listing registered indexes."""
+
+    registry_path: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate command shape after initialization."""
+        _require_optional_non_empty(self.registry_path, field_name="Registry path")
 
 
 @dataclass(frozen=True)
@@ -157,15 +173,52 @@ class AddIndexResult:
 class UpdateIndexResult:
     """Result returned after refreshing an index."""
 
-    name: str
+    name: str | None
     skill_count: int
+    updated_indexes: tuple[str, ...] = ()
+    failed_indexes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate update-index result metadata."""
-        require_index_name(self.name, field_name="Index name")
+        if self.name is not None:
+            require_index_name(self.name, field_name="Index name")
         if self.skill_count < 0:
             msg = "Index skill count must not be negative."
             raise ValueError(msg)
+        for name in self.updated_indexes:
+            require_index_name(name, field_name="Updated index name")
+        for name in self.failed_indexes:
+            require_index_name(name, field_name="Failed index name")
+
+
+@dataclass(frozen=True)
+class RegisteredIndexSummary:
+    """User-facing summary for one registered index."""
+
+    name: str
+    published_name: str
+    source_type: str
+    source: str
+    skill_count: int
+    updated_at: str
+
+    def __post_init__(self) -> None:
+        """Validate list-indexes summary metadata."""
+        require_index_name(self.name, field_name="Index name")
+        require_index_name(self.published_name, field_name="Published index name")
+        _require_non_empty(self.source_type, field_name="Index source type")
+        _require_non_empty(self.source, field_name="Index source")
+        _require_non_empty(self.updated_at, field_name="Updated timestamp")
+        if self.skill_count < 0:
+            msg = "Index skill count must not be negative."
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True)
+class ListIndexesResult:
+    """Result returned after listing registered indexes."""
+
+    indexes: tuple[RegisteredIndexSummary, ...]
 
 
 def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:

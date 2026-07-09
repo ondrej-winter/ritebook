@@ -11,6 +11,9 @@ from ritebook.features.index_registry.application.ports.index_registry import (
 from ritebook.features.index_registry.application.ports.index_source_reader import (
     IndexSourceReaderPort,
 )
+from ritebook.features.index_registry.application.ports.list_indexes import (
+    ListIndexesPort,
+)
 from ritebook.features.index_registry.application.ports.update_index import (
     UpdateIndexPort,
 )
@@ -21,5 +24,6 @@ __all__ = [
     "IndexCachePort",
     "IndexRegistryPort",
     "IndexSourceReaderPort",
+    "ListIndexesPort",
     "UpdateIndexPort",
 ]

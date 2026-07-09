@@ -7,6 +7,7 @@ from ritebook.features.index_registry.application.dtos import (
     PreparedIndexSource,
     PublishedIndex,
     UpdateIndexCommand,
+    UpdateIndexResult,
 )
 from ritebook.features.index_registry.application.errors import (
     InvalidPublishedIndexError,
@@ -149,3 +150,76 @@ def test_update_index_preserves_cache_and_registry_when_validation_fails() -> No
     assert cache.write_calls == []
     assert registry.entries["company-skills"] == existing
     assert registry.upsert_calls == []
+
+
+def test_update_index_requires_name_or_all() -> None:
+    with pytest.raises(ValueError, match="requires either a name or all=True"):
+        UpdateIndexCommand()
+
+
+def test_update_index_rejects_name_and_all_together() -> None:
+    with pytest.raises(ValueError, match="requires either a name or all=True"):
+        UpdateIndexCommand(name="company-skills", all=True)
+
+
+def test_update_index_all_continues_after_failure() -> None:
+    alpha = registered_index(
+        name="alpha-skills",
+        source="git@example.com:company/alpha-skills.git",
+        skill_count=1,
+    )
+    beta = registered_index(
+        name="beta-skills",
+        source="git@example.com:company/beta-skills.git",
+        skill_count=2,
+    )
+    gamma = registered_index(
+        name="gamma-skills",
+        source="git@example.com:company/gamma-skills.git",
+        skill_count=3,
+    )
+    registry = FakeRegistry([gamma, beta, alpha])
+    cache = FakeCache()
+    git_source = FakeGitSource()
+    index_reader = FakeIndexReader(
+        published={
+            "alpha-skills": PublishedIndex(
+                published_name="alpha-skills",
+                schema_version=1,
+                skill_count=11,
+                cacheable_content='{"schema_version":1,"skills":[]}\n',
+            ),
+            "gamma-skills": PublishedIndex(
+                published_name="gamma-skills",
+                schema_version=1,
+                skill_count=13,
+                cacheable_content='{"schema_version":1,"skills":[{}]}\n',
+            ),
+        },
+        failures={"beta-skills": InvalidPublishedIndexError("invalid beta index")},
+    )
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=index_reader,
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 19, 0, tzinfo=UTC),
+    )
+
+    result = use_case.execute(UpdateIndexCommand(all=True))
+
+    assert result == UpdateIndexResult(
+        name=None,
+        skill_count=24,
+        updated_indexes=(
+            "alpha-skills",
+            "gamma-skills",
+        ),
+        failed_indexes=("beta-skills",),
+    )
+    assert registry.list_calls == [None]
+    assert cache.write_calls == [
+        ("alpha-skills", '{"schema_version":1,"skills":[]}\n', None),
+        ("gamma-skills", '{"schema_version":1,"skills":[{}]}\n', None),
+    ]
+    assert registry.entries["beta-skills"] == beta

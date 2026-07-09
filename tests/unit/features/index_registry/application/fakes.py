@@ -33,21 +33,41 @@ class FakeGitSource:
         cache_root: str | None,
     ) -> PreparedIndexSource:
         self.refresh_calls.append((source, source_cache_path, cache_root))
+        if self.prepared.source == "git@example.com:company/skills.git":
+            index_name = source.removeprefix("git@example.com:company/").removesuffix(
+                ".git",
+            )
+            return PreparedIndexSource(
+                source=source,
+                source_type=IndexSourceType.GIT_URL,
+                repository_path=f"/cache/git/{index_name}",
+                source_cache_path=source_cache_path or f"/cache/git/{index_name}",
+            )
         return self.prepared
 
 
 class FakeIndexReader:
-    def __init__(self, published: PublishedIndex | None = None) -> None:
+    def __init__(
+        self,
+        published: PublishedIndex | dict[str, PublishedIndex] | None = None,
+        failures: dict[str, Exception] | None = None,
+    ) -> None:
         self.published = published or PublishedIndex(
             published_name="company-skills",
             schema_version=1,
             skill_count=2,
             cacheable_content='{"schema_version":1}\n',
         )
+        self.failures = failures or {}
         self.read_paths: list[str] = []
 
     def read_index(self, repository_path: str) -> PublishedIndex:
         self.read_paths.append(repository_path)
+        index_name = repository_path.rsplit("/", maxsplit=1)[-1]
+        if index_name in self.failures:
+            raise self.failures[index_name]
+        if isinstance(self.published, dict):
+            return self.published[index_name]
         return self.published
 
 
@@ -63,6 +83,7 @@ class FakeRegistry:
     def __init__(self, entries: list[RegisteredIndex] | None = None) -> None:
         self.entries = {entry.name: entry for entry in entries or []}
         self.get_calls: list[tuple[str, str | None]] = []
+        self.list_calls: list[str | None] = []
         self.upsert_calls: list[tuple[RegisteredIndex, str | None]] = []
 
     def get(self, name: str, registry_path: str | None) -> RegisteredIndex | None:
@@ -72,6 +93,10 @@ class FakeRegistry:
     def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
         self.entries[entry.name] = entry
         self.upsert_calls.append((entry, registry_path))
+
+    def list(self, registry_path: str | None) -> tuple[RegisteredIndex, ...]:
+        self.list_calls.append(registry_path)
+        return tuple(self.entries[name] for name in sorted(self.entries))
 
 
 class FakeCache:

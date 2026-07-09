@@ -25,6 +25,11 @@ class FilesystemIndexRegistry:
         entries = _load_entries(_registry_path(registry_path))
         return entries.get(name)
 
+    def list(self, registry_path: str | None) -> tuple[RegisteredIndex, ...]:
+        """Return all registered indexes in deterministic name order."""
+        entries = _load_entries(_registry_path(registry_path))
+        return tuple(entries[name] for name in sorted(entries))
+
     def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
         """Insert or replace a registry entry and write the registry file."""
         path = _registry_path(registry_path)

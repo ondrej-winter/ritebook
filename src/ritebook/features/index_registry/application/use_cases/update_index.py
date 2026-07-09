@@ -10,7 +10,10 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexCommand,
     UpdateIndexResult,
 )
-from ritebook.features.index_registry.application.errors import UnknownIndexNameError
+from ritebook.features.index_registry.application.errors import (
+    IndexRegistryError,
+    UnknownIndexNameError,
+)
 from ritebook.features.index_registry.application.ports import UpdateIndexPort
 
 if TYPE_CHECKING:
@@ -45,10 +48,42 @@ class UpdateIndex(UpdateIndexPort):
 
     def execute(self, command: UpdateIndexCommand) -> UpdateIndexResult:
         """Refresh a remembered source and replace cached contents after validation."""
+        if command.all:
+            return self._execute_all(command)
+        if command.name is None:
+            msg = "Update index requires either a name or all=True."
+            raise ValueError(msg)
         existing = self._registry.get(command.name, command.registry_path)
         if existing is None:
             raise UnknownIndexNameError(command.name)
 
+        return self._update_entry(existing, command)
+
+    def _execute_all(self, command: UpdateIndexCommand) -> UpdateIndexResult:
+        updated_indexes: list[str] = []
+        failed_indexes: list[str] = []
+        skill_count = 0
+        for existing in self._registry.list(command.registry_path):
+            try:
+                result = self._update_entry(existing, command)
+            except (IndexRegistryError, ValueError):
+                failed_indexes.append(existing.name)
+                continue
+            updated_indexes.append(existing.name)
+            skill_count += result.skill_count
+        return UpdateIndexResult(
+            name=None,
+            skill_count=skill_count,
+            updated_indexes=tuple(updated_indexes),
+            failed_indexes=tuple(failed_indexes),
+        )
+
+    def _update_entry(
+        self,
+        existing: RegisteredIndex,
+        command: UpdateIndexCommand,
+    ) -> UpdateIndexResult:
+        """Refresh one registry entry and return its updated result."""
         prepared_source = self._git_source.refresh_source(
             source=existing.source,
             source_cache_path=existing.source_cache_path,

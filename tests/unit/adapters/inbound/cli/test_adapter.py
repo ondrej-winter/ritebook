@@ -10,6 +10,9 @@ from ritebook.adapters.outbound.filesystem import (
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
+    ListIndexesCommand,
+    ListIndexesResult,
+    RegisteredIndexSummary,
     UpdateIndexCommand,
     UpdateIndexResult,
 )
@@ -37,6 +40,7 @@ def run(
     stdout: TextIO,
     stderr: TextIO,
     add_index: FakeAddIndex | FailingAddIndex | None = None,
+    list_indexes: FakeListIndexes | FailingListIndexes | None = None,
     update_index: FakeUpdateIndex | FailingUpdateIndex | None = None,
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
@@ -45,6 +49,7 @@ def run(
         linter=linter,
         publisher=publisher,
         add_index=add_index or FakeAddIndex(),
+        list_indexes=list_indexes or FakeListIndexes(),
         update_index=update_index or FakeUpdateIndex(),
         stdout=stdout,
         stderr=stderr,
@@ -110,6 +115,31 @@ class FakeUpdateIndex:
         return self.result
 
 
+class FakeListIndexes:
+    """Test double for the list-indexes inbound application port."""
+
+    def __init__(self, result: ListIndexesResult | None = None) -> None:
+        """Store the result to return and commands received by the CLI."""
+        self.result = result or ListIndexesResult(
+            indexes=(
+                RegisteredIndexSummary(
+                    name="company-skills",
+                    published_name="company-skills",
+                    source_type="git_url",
+                    source="git@example.com:company/skills.git",
+                    skill_count=2,
+                    updated_at="2026-07-08T18:00:00Z",
+                ),
+            ),
+        )
+        self.commands: list[ListIndexesCommand] = []
+
+    def execute(self, command: ListIndexesCommand) -> ListIndexesResult:
+        """Record the command and return the configured result."""
+        self.commands.append(command)
+        return self.result
+
+
 class FailingPublisher:
     """Test double that raises a configured runtime error."""
 
@@ -154,6 +184,18 @@ class FailingUpdateIndex:
         self.error = error
 
     def execute(self, _command: UpdateIndexCommand) -> UpdateIndexResult:
+        """Raise the configured error for runtime error handling tests."""
+        raise self.error
+
+
+class FailingListIndexes:
+    """Test double that raises a configured list-indexes runtime error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Store the error raised when the CLI invokes the port."""
+        self.error = error
+
+    def execute(self, _command: ListIndexesCommand) -> ListIndexesResult:
         """Raise the configured error for runtime error handling tests."""
         raise self.error
 
@@ -399,12 +441,110 @@ def test_update_index_maps_arguments_to_application_command() -> None:
     assert update_index.commands == [
         UpdateIndexCommand(
             name="platform-skills",
+            all=False,
             registry_path="/tmp/indexes.json",
             cache_root="/tmp/cache",
         ),
     ]
     assert stdout.getvalue() == "Updated index platform-skills with 14 skill(s)\n"
     assert stderr.getvalue() == ""
+
+
+def test_update_index_all_maps_arguments_to_application_command() -> None:
+    update_index = FakeUpdateIndex(
+        UpdateIndexResult(
+            name=None,
+            skill_count=17,
+            updated_indexes=("alpha-skills", "gamma-skills"),
+            failed_indexes=("beta-skills",),
+        ),
+    )
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "update-index",
+            "--all",
+            "--registry-path",
+            "/tmp/indexes.json",
+            "--cache-root",
+            "/tmp/cache",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        update_index=update_index,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert update_index.commands == [
+        UpdateIndexCommand(
+            name=None,
+            all=True,
+            registry_path="/tmp/indexes.json",
+            cache_root="/tmp/cache",
+        ),
+    ]
+    assert stdout.getvalue() == ("Updated 2 index(es) with 17 total skill(s)\n")
+    assert stderr.getvalue() == "Failed to update 1 index(es): beta-skills\n"
+
+
+def test_update_index_requires_name_or_all_with_argparse_error() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["update-index"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "one of the arguments --name --all is required" in stderr.getvalue()
+
+
+def test_list_indexes_maps_arguments_to_application_command() -> None:
+    list_indexes = FakeListIndexes()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["list-indexes", "--registry-path", "/tmp/indexes.json"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_indexes=list_indexes,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert list_indexes.commands == [
+        ListIndexesCommand(registry_path="/tmp/indexes.json"),
+    ]
+    assert stdout.getvalue() == (
+        "company-skills\t2 skill(s)\tgit_url\t2026-07-08T18:00:00Z\t"
+        "git@example.com:company/skills.git\n"
+    )
+    assert stderr.getvalue() == ""
+
+
+def test_list_indexes_prints_empty_registry_message() -> None:
+    stdout = StringIO()
+
+    exit_code = run(
+        ["list-indexes"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_indexes=FakeListIndexes(ListIndexesResult(indexes=())),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == "No indexes registered\n"
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

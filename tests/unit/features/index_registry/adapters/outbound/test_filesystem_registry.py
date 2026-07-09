@@ -31,6 +31,21 @@ def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> Non
     assert registry.get("alpha-skills", str(path)) == entry(name="alpha-skills")
 
 
+def test_filesystem_registry_lists_entries_in_deterministic_order(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+
+    registry.upsert(entry(name="zeta-skills"), str(path))
+    registry.upsert(entry(name="alpha-skills"), str(path))
+
+    assert registry.list(str(path)) == (
+        entry(name="alpha-skills"),
+        entry(name="zeta-skills"),
+    )
+
+
 def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None:
     path = tmp_path / "indexes.json"
     registry = FilesystemIndexRegistry()

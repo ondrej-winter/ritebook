@@ -9,6 +9,7 @@ from ritebook.adapters.outbound.filesystem import (
 )
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
+    ListIndexesCommand,
     UpdateIndexCommand,
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 
     from ritebook.features.index_registry.application.ports import (
         AddIndexPort,
+        ListIndexesPort,
         UpdateIndexPort,
     )
     from ritebook.features.linter.application.ports import LintSkillsPort
@@ -125,6 +127,7 @@ def run_update_index(
     """Run update-index against the injected application port."""
     command = UpdateIndexCommand(
         name=args.name,
+        all=args.all,
         registry_path=args.registry_path,
         cache_root=args.cache_root,
     )
@@ -133,8 +136,50 @@ def run_update_index(
     except (IndexRegistryError, ValueError) as err:
         print(f"ritebook: error: {err}", file=stderr)
         return 1
+    if result.name is not None:
+        print(
+            f"Updated index {result.name} with {result.skill_count} skill(s)",
+            file=stdout,
+        )
+        return 0
     print(
-        f"Updated index {result.name} with {result.skill_count} skill(s)",
+        "Updated "
+        f"{len(result.updated_indexes)} index(es) with "
+        f"{result.skill_count} total skill(s)",
         file=stdout,
     )
+    if not result.failed_indexes:
+        return 0
+    print(
+        "Failed to update "
+        f"{len(result.failed_indexes)} index(es): "
+        f"{', '.join(result.failed_indexes)}",
+        file=stderr,
+    )
+    return 1
+
+
+def run_list_indexes(
+    args: argparse.Namespace,
+    *,
+    list_indexes: ListIndexesPort,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    """Run list-indexes against the injected application port."""
+    command = ListIndexesCommand(registry_path=args.registry_path)
+    try:
+        result = list_indexes.execute(command)
+    except (IndexRegistryError, ValueError) as err:
+        print(f"ritebook: error: {err}", file=stderr)
+        return 1
+    if not result.indexes:
+        print("No indexes registered", file=stdout)
+        return 0
+    for index in result.indexes:
+        print(
+            f"{index.name}\t{index.skill_count} skill(s)\t"
+            f"{index.source_type}\t{index.updated_at}\t{index.source}",
+            file=stdout,
+        )
     return 0

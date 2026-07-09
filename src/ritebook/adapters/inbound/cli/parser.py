@@ -7,6 +7,7 @@ import argparse
 LINT_SKILLS_COMMAND = "lint-skills"
 PUBLISH_INDEX_COMMAND = "publish-index"
 ADD_INDEX_COMMAND = "add-index"
+LIST_INDEXES_COMMAND = "list-indexes"
 UPDATE_INDEX_COMMAND = "update-index"
 
 
@@ -57,11 +58,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Root directory for Ritebook cache files.",
     )
 
+    list_indexes = subparsers.add_parser(
+        LIST_INDEXES_COMMAND,
+        help="List registered skill indexes.",
+    )
+    list_indexes.add_argument("--registry-path", help="Path to indexes.json registry.")
+
     update_index = subparsers.add_parser(
         UPDATE_INDEX_COMMAND,
         help="Refresh a registered skill index.",
     )
-    update_index.add_argument("--name", required=True, help="Effective index name.")
+    update_target = update_index.add_mutually_exclusive_group(required=True)
+    update_target.add_argument("--name", help="Effective index name.")
+    update_target.add_argument(
+        "--all",
+        action="store_true",
+        help="Refresh all registered indexes and continue after per-index failures.",
+    )
     update_index.add_argument("--registry-path", help="Path to indexes.json registry.")
     update_index.add_argument(
         "--cache-root",

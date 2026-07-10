@@ -64,8 +64,8 @@ skill changes.
 
 ## Consumer index registry
 
-Users can register and refresh Git-backed Ritebook skill indexes. Listing and
-skill installation are not part of this milestone.
+Users can register, refresh, and browse Git-backed Ritebook skill indexes. Skill
+installation is not part of this milestone.
 
 Register a Git URL source:
 
@@ -94,6 +94,40 @@ Refresh a registered index from its remembered Git source:
 uv run ritebook update-index --name platform-skills
 ```
 
+List skills from all locally cached registered indexes:
+
+```bash
+uv run ritebook list-skills
+```
+
+List skills from one effective index name:
+
+```bash
+uv run ritebook list-skills --index-name platform-skills
+```
+
+The `list-skills` command is offline-first: it reads the local registry and each
+selected registry entry's cached `ritebook-index.json` file only. It does not
+clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
+files.
+
+Non-empty output is grouped by effective index name in a deterministic tree:
+
+```text
+Indexes
+├── platform-skills
+│   ├── skill-a
+│   └── skill-b
+└── data-skills
+    └── query-helper
+```
+
+When no registered cached skills are available, Ritebook prints:
+
+```text
+No skills found
+```
+
 By default, Ritebook stores registry metadata and cached index contents under:
 
 ```text
@@ -119,6 +153,13 @@ uv run ritebook update-index \
   --name <effective-index-name> \
   --registry-path <path-to-indexes.json> \
   --cache-root <cache-directory>
+
+uv run ritebook list-skills \
+  --registry-path <path-to-indexes.json>
+
+uv run ritebook list-skills \
+  --index-name <effective-index-name> \
+  --registry-path <path-to-indexes.json>
 ```
 
 Consumer registration requires published schema version `1` indexes to include

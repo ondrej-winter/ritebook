@@ -77,7 +77,10 @@ def test_json_index_reader_requires_root_index(tmp_path: Path) -> None:
 
 
 def test_json_index_reader_requires_cached_index_file(tmp_path: Path) -> None:
-    with pytest.raises(InvalidPublishedIndexError, match="cached ritebook-index.json"):
+    with pytest.raises(
+        InvalidPublishedIndexError,
+        match=r"cached ritebook-index\.json",
+    ):
         JsonIndexReader().read_skills(str(tmp_path / "missing.json"))
 
 
@@ -248,7 +251,7 @@ def write_index_file(index_path: Path, overrides: dict[str, object]) -> None:
 
 
 def default_index_payload() -> dict[str, object]:
-    payload = {
+    return {
         "schema_version": 1,
         "index": {"name": "company-skills"},
         "generated_at": "2026-07-08T18:00:00Z",
@@ -257,4 +260,3 @@ def default_index_payload() -> dict[str, object]:
             {"name": "alpha", "path": "alpha", "skill_file": "alpha/SKILL.md"},
         ],
     }
-    return payload

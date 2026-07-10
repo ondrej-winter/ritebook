@@ -334,18 +334,18 @@ behavior, filtering option, registry-path override, and empty output behavior.
 
 **Acceptance criteria:**
 
-- [ ] README includes `uv run ritebook list-skills`.
-- [ ] README includes `uv run ritebook list-skills --index-name <effective-name>`.
-- [ ] README includes `--registry-path` test/automation override for
+- [x] README includes `uv run ritebook list-skills`.
+- [x] README includes `uv run ritebook list-skills --index-name <effective-name>`.
+- [x] README includes `--registry-path` test/automation override for
       `list-skills`.
-- [ ] README states `list-skills` reads local cached indexes only and does not
+- [x] README states `list-skills` reads local cached indexes only and does not
       fetch Git remotes.
-- [ ] README shows or describes the tree output shape.
-- [ ] README no longer says listing is not part of the milestone.
+- [x] README shows or describes the tree output shape.
+- [x] README no longer says listing is not part of the milestone.
 
 **Verification:**
 
-- [ ] Documentation reviewed against `docs/specs/list-skills-spec.md`.
+- [x] Documentation reviewed against `docs/specs/list-skills-spec.md`.
 
 **Dependencies:** Tasks 1-6
 
@@ -362,17 +362,17 @@ implementation and documentation are complete.
 
 **Acceptance criteria:**
 
-- [ ] Formatting applied.
-- [ ] Ruff lint passes.
-- [ ] Mypy passes.
-- [ ] Pytest passes.
+- [x] Formatting applied.
+- [x] Ruff lint passes.
+- [x] Mypy passes.
+- [x] Pytest passes.
 
 **Verification:**
 
-- [ ] `uv run ruff format .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy .`
-- [ ] `uv run pytest`
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy .`
+- [x] `uv run pytest`
 
 **Dependencies:** Tasks 1-7
 
@@ -382,13 +382,13 @@ implementation and documentation are complete.
 
 ### Checkpoint: Complete
 
-- [ ] `list-skills` works for all registered cached indexes.
-- [ ] `list-skills --index-name` works for one effective index.
-- [ ] Empty cases print `No skills found`.
-- [ ] Output is deterministic and tree-shaped.
-- [ ] No Git or network operations happen during listing.
-- [ ] Tests and README are updated.
-- [ ] Full local quality gate passes.
+- [x] `list-skills` works for all registered cached indexes.
+- [x] `list-skills --index-name` works for one effective index.
+- [x] Empty cases print `No skills found`.
+- [x] Output is deterministic and tree-shaped.
+- [x] No Git or network operations happen during listing.
+- [x] Tests and README are updated.
+- [x] Full local quality gate passes.
 
 ## Risks and Mitigations
 

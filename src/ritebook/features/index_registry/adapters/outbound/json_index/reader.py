@@ -26,7 +26,9 @@ class JsonIndexReader:
         content, payload = _read_json_index(
             Path(repository_path) / CANONICAL_INDEX_FILENAME,
             missing_message="ritebook-index.json was not found at the repository root",
-            unreadable_message="unable to read ritebook-index.json at the repository root",
+            unreadable_message=(
+                "unable to read ritebook-index.json at the repository root"
+            ),
         )
         return _validate_payload(payload, content)
 

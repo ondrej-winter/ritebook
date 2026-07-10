@@ -33,7 +33,6 @@ def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> 
                     "path": "alpha",
                     "skill_file": "alpha/SKILL.md",
                     "description": "Alpha helps with planning.",
-                    "title": "Alpha Skill",
                 },
                 {
                     "name": "beta",
@@ -50,9 +49,7 @@ def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> 
     assert result[0].path == "alpha"
     assert result[0].skill_file == "alpha/SKILL.md"
     assert result[0].description == "Alpha helps with planning."
-    assert result[0].title == "Alpha Skill"
     assert result[1].description is None
-    assert result[1].title is None
 
 
 def test_json_index_reader_reads_empty_cached_skills(tmp_path: Path) -> None:
@@ -175,7 +172,6 @@ def test_json_index_reader_rejects_cached_malformed_skills(tmp_path: Path) -> No
         ("path", "", "non-empty path"),
         ("skill_file", "", "non-empty skill_file"),
         ("description", "", "description must be a non-empty string"),
-        ("title", "", "title must be a non-empty string"),
     ],
 )
 def test_json_index_reader_rejects_cached_malformed_skill_entries(

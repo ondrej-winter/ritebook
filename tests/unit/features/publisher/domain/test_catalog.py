@@ -10,23 +10,22 @@ def test_skill_entry_represents_discovered_skill() -> None:
         name="example-skill",
         path="nested/example-skill",
         skill_file="nested/example-skill/SKILL.md",
-        title="Example Skill",
+        description="Example skill.",
     )
 
-    assert entry.name == "example-skill"
+    assert entry.description == "Example skill."
     assert entry.path == "nested/example-skill"
     assert entry.skill_file == "nested/example-skill/SKILL.md"
-    assert entry.title == "Example Skill"
 
 
-def test_skill_entry_allows_omitted_title() -> None:
+def test_skill_entry_allows_omitted_description() -> None:
     entry = SkillEntry(
         name="untitled-skill",
         path="untitled-skill",
         skill_file="untitled-skill/SKILL.md",
     )
 
-    assert entry.title is None
+    assert entry.description is None
 
 
 def test_skill_entry_rejects_absolute_paths() -> None:

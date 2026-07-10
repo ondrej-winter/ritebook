@@ -17,8 +17,8 @@ workflows without implementing skill listing or installation yet.
 - Ritebook already supports publisher-side skill index generation through
   `publish-index`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
-- Existing publisher schema v1 includes skill entries with `name`, `path`,
-  `skill_file`, and optional `title`.
+- Publisher schema v1 includes skill entries with `name`, `description`, `path`,
+  and `skill_file`.
 - The next product primitive is not skill installation yet. It is registering and
   refreshing curated indexes that future consumer commands can use.
 - Internal skill distribution should primarily support Git repositories because
@@ -142,7 +142,7 @@ Proposed publisher index schema v2 or schema v1 extension:
       "name": "skill-a",
       "path": "skill-a",
       "skill_file": "skill-a/SKILL.md",
-      "title": "Skill A"
+      "description": "Helps with skill A workflows."
     }
   ]
 }

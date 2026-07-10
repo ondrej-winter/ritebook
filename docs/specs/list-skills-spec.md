@@ -17,7 +17,7 @@ remain valid.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
 - Publisher schema v1 includes index metadata and skill entries with `name`,
-  `path`, `skill_file`, and optional `title`.
+  `description`, `path`, and `skill_file`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
   - `add-index` registers a Git URL or local Git repository source.
@@ -133,8 +133,7 @@ Tree rules:
 - Second-level children are skill names.
 - Skill descriptions are shown only when `--show-description` is provided and a
   cached description is present.
-- Skill titles are not shown in the default v1 output.
-- Paths, titles, and `skill_file` values may be parsed and carried in application
+- Paths and `skill_file` values may be parsed and carried in application
   DTOs for future workflows, but they are not shown by this command.
 
 When `--show-description` is provided, descriptions are appended to skill names:
@@ -230,7 +229,7 @@ Cover:
 Cover:
 
 - Reads valid schema v1 cached indexes and returns skill entries.
-- Ignores optional titles for default listing purposes.
+- Reads optional descriptions for opt-in display.
 - Rejects invalid JSON.
 - Rejects missing or unsupported `schema_version`.
 - Rejects missing or malformed `skills`.
@@ -274,9 +273,9 @@ Cover:
 
 - Adding `install-skill`.
 - Adding live Git refresh behavior to `list-skills`.
-- Adding title, path, description, or other metadata to default output.
+- Adding path, description, or other metadata to default output.
 - Adding JSON, CSV, table, or other script-oriented output modes.
-- Adding search or filtering by title, tags, description, or path.
+- Adding search or filtering by tags, description, or path.
 - Changing publisher index schema.
 - Adding new persistent registry/cache locations or configuration mechanisms.
 

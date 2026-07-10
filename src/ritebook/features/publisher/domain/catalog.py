@@ -24,7 +24,6 @@ class SkillEntry:
     name: str
     skill_file: str
     description: str | None = None
-    title: str | None = None
 
     def __post_init__(self) -> None:
         """Validate entry invariants after dataclass initialization."""
@@ -35,9 +34,6 @@ class SkillEntry:
             raise ValueError(msg)
         if self.description == "":
             msg = "Skill entry description must be omitted instead of empty."
-            raise ValueError(msg)
-        if self.title == "":
-            msg = "Skill entry title must be omitted instead of empty."
             raise ValueError(msg)
 
 

@@ -19,7 +19,7 @@ def test_discover_skills_finds_nested_skill_directories(tmp_path: Path) -> None:
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
-        (entry.name, entry.path, entry.skill_file, entry.description, entry.title)
+        (entry.name, entry.path, entry.skill_file, entry.description)
         for entry in entries
     ] == [
         (
@@ -27,9 +27,8 @@ def test_discover_skills_finds_nested_skill_directories(tmp_path: Path) -> None:
             "group/alpha",
             "group/alpha/SKILL.md",
             "Example skill",
-            "alpha-skill",
         ),
-        ("zeta", "zeta", "zeta/SKILL.md", "Example skill", "zeta-skill"),
+        ("zeta", "zeta", "zeta/SKILL.md", "Example skill"),
     ]
 
 
@@ -46,17 +45,6 @@ def test_discover_skills_skips_hidden_directories(tmp_path: Path) -> None:
     assert [entry.path for entry in entries] == ["visible"]
 
 
-def test_discover_skills_uses_none_when_header_name_is_missing(tmp_path: Path) -> None:
-    write_skill(
-        tmp_path / "untitled" / "SKILL.md",
-        "---\ndescription: No name\n---\n# Not the source of truth\n",
-    )
-
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
-
-    assert entries[0].title is None
-
-
 def test_discover_skills_uses_none_when_description_is_missing(tmp_path: Path) -> None:
     write_skill(
         tmp_path / "undocumented" / "SKILL.md",
@@ -68,28 +56,17 @@ def test_discover_skills_uses_none_when_description_is_missing(tmp_path: Path) -
     assert entries[0].description is None
 
 
-def test_discover_skills_uses_yaml_header_name_as_title(tmp_path: Path) -> None:
-    write_skill(
-        tmp_path / "titled" / "SKILL.md",
-        f"{skill_content(name='header-name')}\n# Markdown Heading Is Ignored\n",
-    )
-
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
-
-    assert entries[0].title == "header-name"
-
-
-def test_discover_skills_uses_none_when_header_name_is_not_text(
+def test_discover_skills_uses_none_when_description_is_not_text(
     tmp_path: Path,
 ) -> None:
     write_skill(
-        tmp_path / "invalid-name" / "SKILL.md",
-        "---\nname: 123\n---\n# Not the source of truth\n",
+        tmp_path / "invalid-description" / "SKILL.md",
+        "---\nname: invalid-description\ndescription: 123\n---\n",
     )
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
-    assert entries[0].title is None
+    assert entries[0].description is None
 
 
 def test_discover_skills_uses_none_when_frontmatter_is_invalid(
@@ -102,7 +79,7 @@ def test_discover_skills_uses_none_when_frontmatter_is_invalid(
 
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
-    assert entries[0].title is None
+    assert entries[0].description is None
 
 
 def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
@@ -111,10 +88,10 @@ def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
-        (entry.name, entry.path, entry.skill_file, entry.description, entry.title)
+        (entry.name, entry.path, entry.skill_file, entry.description)
         for entry in entries
     ] == [
-        (tmp_path.name, ".", "SKILL.md", "Example skill", "root-skill"),
+        (tmp_path.name, ".", "SKILL.md", "Example skill"),
     ]
 
 

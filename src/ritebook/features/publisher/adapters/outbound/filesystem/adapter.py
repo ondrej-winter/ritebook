@@ -31,7 +31,6 @@ def _skill_entry(discovered: DiscoveredSkillFile) -> SkillEntry:
         path=discovered.relative_skill_dir,
         skill_file=discovered.relative_skill_file,
         description=_extract_header_text(discovered.path, field_name="description"),
-        title=_extract_header_text(discovered.path, field_name="name"),
     )
 
 

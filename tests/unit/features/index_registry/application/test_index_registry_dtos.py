@@ -107,7 +107,7 @@ def test_list_skills_result_groups_validated_cached_skill_summaries() -> None:
         name="query-helper",
         path="skills/query-helper",
         skill_file="skills/query-helper/SKILL.md",
-        title="Query Helper",
+        description="Helps with queries.",
     )
     index = ListedIndexSkills(index_name="data-skills", skills=(skill,))
     result = ListSkillsResult(indexes=(index,))
@@ -133,9 +133,9 @@ def test_list_skills_result_groups_validated_cached_skill_summaries() -> None:
                 "name": "skill-a",
                 "path": "skills/a",
                 "skill_file": "skills/a/SKILL.md",
-                "title": "",
+                "description": "",
             },
-            "Skill title",
+            "Skill description",
         ),
     ],
 )

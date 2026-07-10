@@ -19,7 +19,6 @@ def test_json_index_writer_writes_schema_v1_json(tmp_path: Path) -> None:
                 path="zeta",
                 skill_file="zeta/SKILL.md",
                 description="Zeta helps with publishing.",
-                title="Zeta Skill",
             ),
             SkillEntry(name="alpha", path="alpha", skill_file="alpha/SKILL.md"),
         ),
@@ -40,7 +39,6 @@ def test_json_index_writer_writes_schema_v1_json(tmp_path: Path) -> None:
                 "path": "zeta",
                 "skill_file": "zeta/SKILL.md",
                 "description": "Zeta helps with publishing.",
-                "title": "Zeta Skill",
             },
         ],
     }

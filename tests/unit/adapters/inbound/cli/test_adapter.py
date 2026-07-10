@@ -653,7 +653,6 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
                         name="query-helper",
                         path="query-helper",
                         skill_file="query-helper/SKILL.md",
-                        title="Query Helper",
                     ),
                 ),
             ),

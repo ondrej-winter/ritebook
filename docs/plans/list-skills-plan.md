@@ -99,7 +99,7 @@ index registry DTO module.
       `registry_path`.
 - [x] `index_name`, when present, uses existing index-name validation.
 - [x] `CachedSkillSummary` or equivalent carries `name`, `path`, `skill_file`,
-      and optional `title`.
+      and optional `description`.
 - [x] `ListedIndexSkills` or equivalent groups skills under an effective index
       name.
 - [x] `ListSkillsResult` contains grouped index results.
@@ -225,8 +225,8 @@ by add/update.
 - [x] Rejects malformed skill entries.
 - [x] Rejects unsafe absolute, backslash, or parent-traversal `path` and
       `skill_file` values using existing path-safety rules.
-- [x] Returns skill summaries including `name`, `path`, `skill_file`, and
-      optional `title`.
+- [x] Returns skill summaries including `name`, `description`, `path`, and
+      `skill_file`.
 - [x] Does not read raw `SKILL.md` files.
 - [x] Error messages are concise and safe; they do not include raw JSON payloads,
       skill file contents, secrets, or credentials.
@@ -267,7 +267,8 @@ by add/update.
 - [x] Empty result prints `No skills found`.
 - [x] Non-empty output begins with `Indexes`.
 - [x] First-level children are effective index names.
-- [x] Second-level children are skill names only; titles/paths are not shown.
+- [x] Second-level children are skill names only by default; descriptions are
+      shown only when explicitly requested.
 - [x] Filtered output preserves the same tree shape.
 - [x] Tree connector characters match the spec examples.
 - [x] Application/adapter errors render as `ritebook: error: ...`.
@@ -416,8 +417,8 @@ implementation and documentation are complete.
 - Assumption: the existing `InvalidPublishedIndexError` can remain the
   adapter-facing error for malformed cached index files, unless naming clarity
   suggests adding a subclass/alias during implementation.
-- Assumption: cached skill entries should carry optional `title` internally but
-  CLI v1 must not display it.
+- Assumption: cached skill entries should carry optional `description` internally
+  and display it only when explicitly requested.
 
 ## Parallelization Opportunities
 

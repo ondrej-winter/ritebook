@@ -119,10 +119,6 @@ def _validate_skill_entry(value: object) -> CachedSkillSummary:
         raise InvalidPublishedIndexError(str(err)) from err
     _validate_relative_posix_path(str(value["path"]), field_name="path")
     _validate_relative_posix_path(str(value["skill_file"]), field_name="skill_file")
-    title = value.get("title")
-    if title is not None and (not isinstance(title, str) or not title):
-        msg = "index skill entry title must be a non-empty string when present"
-        raise InvalidPublishedIndexError(msg)
     description = value.get("description")
     if description is not None and (
         not isinstance(description, str) or not description
@@ -134,7 +130,6 @@ def _validate_skill_entry(value: object) -> CachedSkillSummary:
         path=str(value["path"]),
         skill_file=str(value["skill_file"]),
         description=description,
-        title=title,
     )
 
 

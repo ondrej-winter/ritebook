@@ -163,8 +163,7 @@ Schema v1 should stay small and describe discovered skill package boundaries.
       "name": "example-skill",
       "path": "example-skill",
       "skill_file": "example-skill/SKILL.md",
-      "description": "Helps users complete an example workflow.",
-      "title": "Example Skill"
+      "description": "Helps users complete an example workflow."
     }
   ]
 }
@@ -184,8 +183,6 @@ Schema v1 should stay small and describe discovered skill package boundaries.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
 - `skills[].description`: optional human-readable description derived from the
   validated skill header `description` field when available.
-- `skills[].title`: optional human-readable title derived from the validated skill
-  header `name` field when available.
 
 ## CLI and workflow requirements
 
@@ -262,8 +259,8 @@ The MVP should be covered primarily with fast, deterministic unit tests.
 - Filesystem adapter tests use temporary directories to verify recursive
   `SKILL.md` discovery, relative path handling, frontmatter parsing, and
   path-scoped validation failures.
-- JSON writer tests verify schema version, deterministic output, optional title
-  behavior, two-space indentation, and valid JSON.
+- JSON writer tests verify schema version, deterministic output, optional
+  description behavior, two-space indentation, and valid JSON.
 - CLI adapter tests verify argument mapping, clear errors for missing root paths,
   `lint-skills` success/failure behavior, `publish-index` show-stopper behavior,
   and user-facing success output.

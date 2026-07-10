@@ -5,7 +5,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from tests.e2e.conftest import CliRunner, GitRepositoryFactory, SkillWriter
+    from tests.e2e.conftest import (
+        CliRunner,
+        GitRepositoryFactory,
+        InvalidSkillWriter,
+        SkillWriter,
+    )
 
 
 def test_publisher_to_consumer_workflow_uses_local_git_cache(
@@ -110,4 +115,20 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         "    ├── alpha — Helps with alpha workflows.\n"
         "    ├── beta — Helps with beta workflows.\n"
         "    └── gamma — Helps with gamma workflows.\n"
+    )
+
+
+def test_lint_skills_reports_invalid_metadata_failure(
+    run_cli: CliRunner,
+    skills_root: Path,
+    write_invalid_skill: InvalidSkillWriter,
+) -> None:
+    write_invalid_skill("missing-description")
+
+    result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
+
+    result.assert_failure()
+    assert result.stdout == ""
+    assert result.stderr == (
+        "missing-description/SKILL.md: description is required.\n"
     )

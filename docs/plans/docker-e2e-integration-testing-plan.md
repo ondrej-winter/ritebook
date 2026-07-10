@@ -111,6 +111,13 @@ prompts for status updates.
   `uv run pytest tests/e2e/test_cli_workflows.py -q`.
 - Verified the default non-E2E pytest gate still excludes E2E tests with
   `uv run pytest -m "not e2e"`.
+- Added `test_lint_skills_reports_invalid_metadata_failure` to
+  `tests/e2e/test_cli_workflows.py`, covering the real CLI `lint-skills` failure
+  path for a skill missing required metadata.
+- Verified the focused E2E workflow file with
+  `uv run pytest tests/e2e/test_cli_workflows.py -q`; both E2E scenarios passed.
+- Re-verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`;
+  193 tests passed and 2 E2E tests were deselected.
 
 ## Task List
 
@@ -317,18 +324,18 @@ output.
 
 **Acceptance criteria:**
 
-- [ ] Test creates an invalid `SKILL.md` fixture with one stable validation
+- [x] Test creates an invalid `SKILL.md` fixture with one stable validation
       problem.
-- [ ] Test runs `uv run ritebook lint-skills --skills-root <skills-root>` through
+- [x] Test runs `uv run ritebook lint-skills --skills-root <skills-root>` through
       the subprocess helper.
-- [ ] Test asserts a non-zero exit code.
-- [ ] Test asserts a stable diagnostic message without depending on absolute temp
+- [x] Test asserts a non-zero exit code.
+- [x] Test asserts a stable diagnostic message without depending on absolute temp
       paths.
-- [ ] Test does not duplicate the unit-level validation matrix.
+- [x] Test does not duplicate the unit-level validation matrix.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/e2e/test_cli_workflows.py -q`
+- [x] `uv run pytest tests/e2e/test_cli_workflows.py -q`
 - [ ] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Task 3
@@ -341,7 +348,7 @@ output.
 
 ### Checkpoint: E2E Behavior
 
-- [ ] Focused E2E tests pass locally outside Docker.
+- [x] Focused E2E tests pass locally outside Docker.
 - [ ] Docker E2E image runs the same tests successfully.
 - [ ] No E2E test touches real `~/.config/ritebook` or `~/.cache/ritebook`.
 - [ ] No live network, credentials, private repositories, service containers, or

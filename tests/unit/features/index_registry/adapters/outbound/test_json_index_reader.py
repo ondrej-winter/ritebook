@@ -22,6 +22,45 @@ def test_json_index_reader_reads_valid_root_index(tmp_path: Path) -> None:
     assert result.cacheable_content.endswith("\n")
 
 
+def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "custom-cache.json"
+    write_index_file(
+        cached_index_path,
+        {
+            "skills": [
+                {
+                    "name": "alpha",
+                    "path": "alpha",
+                    "skill_file": "alpha/SKILL.md",
+                    "title": "Alpha Skill",
+                },
+                {
+                    "name": "beta",
+                    "path": "nested/beta",
+                    "skill_file": "nested/beta/SKILL.md",
+                },
+            ],
+        },
+    )
+
+    result = JsonIndexReader().read_skills(str(cached_index_path))
+
+    assert [skill.name for skill in result] == ["alpha", "beta"]
+    assert result[0].path == "alpha"
+    assert result[0].skill_file == "alpha/SKILL.md"
+    assert result[0].title == "Alpha Skill"
+    assert result[1].title is None
+
+
+def test_json_index_reader_reads_empty_cached_skills(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(cached_index_path, {"skills": []})
+
+    result = JsonIndexReader().read_skills(str(cached_index_path))
+
+    assert result == ()
+
+
 def test_json_index_reader_accepts_repository_style_published_name(
     tmp_path: Path,
 ) -> None:
@@ -37,6 +76,11 @@ def test_json_index_reader_requires_root_index(tmp_path: Path) -> None:
         JsonIndexReader().read_index(str(tmp_path))
 
 
+def test_json_index_reader_requires_cached_index_file(tmp_path: Path) -> None:
+    with pytest.raises(InvalidPublishedIndexError, match="cached ritebook-index.json"):
+        JsonIndexReader().read_skills(str(tmp_path / "missing.json"))
+
+
 def test_json_index_reader_rejects_invalid_json(tmp_path: Path) -> None:
     (tmp_path / "ritebook-index.json").write_text("not-json", encoding="utf-8")
 
@@ -44,11 +88,38 @@ def test_json_index_reader_rejects_invalid_json(tmp_path: Path) -> None:
         JsonIndexReader().read_index(str(tmp_path))
 
 
+def test_json_index_reader_rejects_cached_invalid_json(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    cached_index_path.write_text("not-json", encoding="utf-8")
+
+    with pytest.raises(InvalidPublishedIndexError, match="not valid JSON"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_cached_non_object_payload(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    cached_index_path.write_text("[]", encoding="utf-8")
+
+    with pytest.raises(InvalidPublishedIndexError, match="must contain a JSON object"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
 def test_json_index_reader_rejects_missing_index_metadata(tmp_path: Path) -> None:
     write_index(tmp_path, {"index": None})
 
     with pytest.raises(InvalidPublishedIndexError, match="index metadata"):
         JsonIndexReader().read_index(str(tmp_path))
+
+
+def test_json_index_reader_read_skills_does_not_require_index_metadata(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(cached_index_path, {"index": None})
+
+    result = JsonIndexReader().read_skills(str(cached_index_path))
+
+    assert [skill.name for skill in result] == ["alpha"]
 
 
 def test_json_index_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
@@ -59,6 +130,70 @@ def test_json_index_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
         match="unsupported index schema_version: 2",
     ):
         JsonIndexReader().read_index(str(tmp_path))
+
+
+def test_json_index_reader_rejects_cached_unsupported_schema(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(cached_index_path, {"schema_version": 2})
+
+    with pytest.raises(
+        InvalidPublishedIndexError,
+        match="unsupported index schema_version: 2",
+    ):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_cached_missing_skills(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    payload = default_index_payload()
+    del payload["skills"]
+    cached_index_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(InvalidPublishedIndexError, match="skills array"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_cached_malformed_skills(tmp_path: Path) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(cached_index_path, {"skills": {"name": "alpha"}})
+
+    with pytest.raises(InvalidPublishedIndexError, match="skills array"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value", "message"),
+    [
+        ("name", "", "non-empty name"),
+        ("name", "Not Kebab", "Skill name"),
+        ("path", "", "non-empty path"),
+        ("skill_file", "", "non-empty skill_file"),
+        ("title", "", "title must be a non-empty string"),
+    ],
+)
+def test_json_index_reader_rejects_cached_malformed_skill_entries(
+    tmp_path: Path,
+    field_name: str,
+    bad_value: str,
+    message: str,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    skill = {"name": "alpha", "path": "alpha", "skill_file": "alpha/SKILL.md"}
+    skill[field_name] = bad_value
+    write_index_file(cached_index_path, {"skills": [skill]})
+
+    with pytest.raises(InvalidPublishedIndexError, match=message):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_cached_non_object_skill_entries(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(cached_index_path, {"skills": ["alpha"]})
+
+    with pytest.raises(InvalidPublishedIndexError, match="JSON objects"):
+        JsonIndexReader().read_skills(str(cached_index_path))
 
 
 @pytest.mark.parametrize("bad_path", ["/absolute", "nested\\skill", "../escape"])
@@ -80,7 +215,39 @@ def test_json_index_reader_rejects_unsafe_skill_paths(
         JsonIndexReader().read_index(str(tmp_path))
 
 
+@pytest.mark.parametrize("bad_path", ["/absolute", "nested\\skill", "../escape"])
+def test_json_index_reader_rejects_cached_unsafe_skill_paths(
+    tmp_path: Path,
+    bad_path: str,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        cached_index_path,
+        {
+            "skills": [
+                {"name": "alpha", "path": bad_path, "skill_file": "alpha/SKILL.md"},
+            ],
+        },
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="safe relative POSIX path"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
 def write_index(tmp_path: Path, overrides: dict[str, object]) -> None:
+    write_index_file(tmp_path / "ritebook-index.json", overrides)
+
+
+def write_index_file(index_path: Path, overrides: dict[str, object]) -> None:
+    payload = default_index_payload()
+    payload.update(overrides)
+    index_path.write_text(
+        json.dumps(payload),
+        encoding="utf-8",
+    )
+
+
+def default_index_payload() -> dict[str, object]:
     payload = {
         "schema_version": 1,
         "index": {"name": "company-skills"},
@@ -90,8 +257,4 @@ def write_index(tmp_path: Path, overrides: dict[str, object]) -> None:
             {"name": "alpha", "path": "alpha", "skill_file": "alpha/SKILL.md"},
         ],
     }
-    payload.update(overrides)
-    (tmp_path / "ritebook-index.json").write_text(
-        json.dumps(payload),
-        encoding="utf-8",
-    )
+    return payload

@@ -208,7 +208,7 @@ cached index through the cached-index reader port.
 
 ### Phase 3: Cached Index Reader Adapter
 
-#### Task 4: Extend JSON Index Reader for Cached Skill Listing
+#### Task 4: Extend JSON Index Reader for Cached Skill Listing ✅
 
 **Description:** Add cached-index reading behavior to the existing JSON index
 reader adapter while preserving existing published-index validation behavior used
@@ -216,24 +216,24 @@ by add/update.
 
 **Acceptance criteria:**
 
-- [ ] Reads a cached `ritebook-index.json` by exact cached index file path.
-- [ ] Rejects missing/unreadable files with clear `InvalidPublishedIndexError` or
+- [x] Reads a cached `ritebook-index.json` by exact cached index file path.
+- [x] Rejects missing/unreadable files with clear `InvalidPublishedIndexError` or
       an equivalent index-registry adapter error.
-- [ ] Rejects invalid JSON and non-object payloads.
-- [ ] Rejects missing/unsupported `schema_version`.
-- [ ] Rejects missing/malformed `skills`.
-- [ ] Rejects malformed skill entries.
-- [ ] Rejects unsafe absolute, backslash, or parent-traversal `path` and
+- [x] Rejects invalid JSON and non-object payloads.
+- [x] Rejects missing/unsupported `schema_version`.
+- [x] Rejects missing/malformed `skills`.
+- [x] Rejects malformed skill entries.
+- [x] Rejects unsafe absolute, backslash, or parent-traversal `path` and
       `skill_file` values using existing path-safety rules.
-- [ ] Returns skill summaries including `name`, `path`, `skill_file`, and
+- [x] Returns skill summaries including `name`, `path`, `skill_file`, and
       optional `title`.
-- [ ] Does not read raw `SKILL.md` files.
-- [ ] Error messages are concise and safe; they do not include raw JSON payloads,
+- [x] Does not read raw `SKILL.md` files.
+- [x] Error messages are concise and safe; they do not include raw JSON payloads,
       skill file contents, secrets, or credentials.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py`
+- [x] `uv run pytest tests/unit/features/index_registry/adapters/outbound/test_json_index_reader.py`
 
 **Dependencies:** Tasks 1-2
 
@@ -247,9 +247,9 @@ by add/update.
 
 ### Checkpoint: Adapter Behavior
 
-- [ ] JSON reader tests cover both existing add/update index reading and cached
+- [x] JSON reader tests cover both existing add/update index reading and cached
       skill listing.
-- [ ] Adapter errors remain concise and safe; no raw index contents or skill file
+- [x] Adapter errors remain concise and safe; no raw index contents or skill file
       contents are printed.
 
 ### Phase 4: CLI and Composition

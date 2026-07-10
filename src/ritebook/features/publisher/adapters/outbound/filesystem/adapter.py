@@ -30,22 +30,23 @@ def _skill_entry(discovered: DiscoveredSkillFile) -> SkillEntry:
         name=skill_dir.name,
         path=discovered.relative_skill_dir,
         skill_file=discovered.relative_skill_file,
-        title=_extract_header_name(discovered.path),
+        description=_extract_header_text(discovered.path, field_name="description"),
+        title=_extract_header_text(discovered.path, field_name="name"),
     )
 
 
-def _extract_header_name(skill_file: Path) -> str | None:
+def _extract_header_text(skill_file: Path, *, field_name: str) -> str | None:
     frontmatter = parse_yaml_frontmatter(skill_file)
     if isinstance(frontmatter, FrontmatterParseError):
         return None
     if not isinstance(frontmatter, Mapping):
         return None
 
-    name = frontmatter.get("name")
-    if not isinstance(name, str):
+    value = frontmatter.get(field_name)
+    if not isinstance(value, str):
         return None
 
-    title = name.strip()
-    if title:
-        return title
+    text = value.strip()
+    if text:
+        return text
     return None

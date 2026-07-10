@@ -200,6 +200,7 @@ def run_list_skills(
     command = ListSkillsCommand(
         index_name=args.index_name,
         registry_path=args.registry_path,
+        show_description=args.show_description,
     )
     try:
         result = list_skills.execute(command)
@@ -209,7 +210,10 @@ def run_list_skills(
     if _total_skill_count(result) == 0:
         print("No skills found", file=stdout)
         return 0
-    print(_render_skill_tree(result), file=stdout)
+    print(
+        _render_skill_tree(result, show_description=command.show_description),
+        file=stdout,
+    )
     return 0
 
 
@@ -217,13 +221,19 @@ def _total_skill_count(result: ListSkillsResult) -> int:
     return sum(len(index.skills) for index in result.indexes)
 
 
-def _render_skill_tree(result: ListSkillsResult) -> str:
+def _render_skill_tree(result: ListSkillsResult, *, show_description: bool) -> str:
     lines = ["Indexes"]
     for index_position, index in enumerate(result.indexes):
         is_last_index = index_position == len(result.indexes) - 1
         index_connector = "└──" if is_last_index else "├──"
         lines.append(f"{index_connector} {index.index_name}")
-        lines.extend(_render_skill_lines(index, is_last_index=is_last_index))
+        lines.extend(
+            _render_skill_lines(
+                index,
+                is_last_index=is_last_index,
+                show_description=show_description,
+            ),
+        )
     return "\n".join(lines)
 
 
@@ -231,10 +241,14 @@ def _render_skill_lines(
     index: ListedIndexSkills,
     *,
     is_last_index: bool,
+    show_description: bool,
 ) -> list[str]:
     prefix = "    " if is_last_index else "│   "
     lines: list[str] = []
     for skill_position, skill in enumerate(index.skills):
         skill_connector = "└──" if skill_position == len(index.skills) - 1 else "├──"
-        lines.append(f"{prefix}{skill_connector} {skill.name}")
+        label = skill.name
+        if show_description and skill.description is not None:
+            label = f"{label} — {skill.description}"
+        lines.append(f"{prefix}{skill_connector} {label}")
     return lines

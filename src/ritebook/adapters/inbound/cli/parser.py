@@ -71,6 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     list_skills.add_argument("--index-name", help="Effective index name to list.")
     list_skills.add_argument("--registry-path", help="Path to indexes.json registry.")
+    list_skills.add_argument(
+        "--show-description",
+        action="store_true",
+        help="Show skill descriptions when cached index metadata includes them.",
+    )
 
     update_index = subparsers.add_parser(
         UPDATE_INDEX_COMMAND,

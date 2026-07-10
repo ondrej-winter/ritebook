@@ -46,6 +46,8 @@ def _entry_to_json(entry: SkillEntry) -> dict[str, str]:
         "path": entry.path,
         "skill_file": entry.skill_file,
     }
+    if entry.description is not None:
+        payload["description"] = entry.description
     if entry.title is not None:
         payload["title"] = entry.title
     return payload

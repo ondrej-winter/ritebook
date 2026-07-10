@@ -54,6 +54,13 @@ uv run ritebook list-skills --registry-path /tmp/indexes.json
 uv run ritebook list-skills --index-name platform-skills --registry-path /tmp/indexes.json
 ```
 
+A user can opt in to descriptions when cached index metadata includes them:
+
+```bash
+uv run ritebook list-skills --show-description
+uv run ritebook list-skills --index-name platform-skills --show-description
+```
+
 If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
 
 ### Data source
@@ -124,9 +131,23 @@ Tree rules:
 - The root label is `Indexes`.
 - First-level children are effective index names.
 - Second-level children are skill names.
+- Skill descriptions are shown only when `--show-description` is provided and a
+  cached description is present.
 - Skill titles are not shown in the default v1 output.
-- Paths and `skill_file` values may be parsed and carried in application DTOs for
-  future workflows, but they are not shown by this command.
+- Paths, titles, and `skill_file` values may be parsed and carried in application
+  DTOs for future workflows, but they are not shown by this command.
+
+When `--show-description` is provided, descriptions are appended to skill names:
+
+```text
+Indexes
+└── platform-skills
+    ├── skill-a — Helps with platform workflows.
+    └── skill-b
+```
+
+Older cached indexes without `description` metadata remain readable; entries
+without descriptions continue to render as skill names only.
 
 ## Commands and validation
 
@@ -151,7 +172,8 @@ uv run pytest
 
 - Spec: `docs/specs/list-skills-spec.md`
 - `src/ritebook/features/index_registry/application/dtos/index_registry.py`:
-  command, result, and skill summary DTOs for `list-skills`.
+  command, result, and skill summary DTOs for `list-skills`, including the
+  opt-in description display flag and cached skill descriptions.
 - `src/ritebook/features/index_registry/application/ports/list_skills.py`:
   inbound application port for listing skills.
 - `src/ritebook/features/index_registry/application/ports/cached_index_reader.py`:
@@ -182,6 +204,7 @@ uv run pytest
 - Use explicit inbound and outbound ports.
 - Keep tree rendering in the CLI adapter.
 - Preserve deterministic output and deterministic tests.
+- Keep description display opt-in so default output remains compact.
 - Keep errors user-facing at the CLI boundary.
 - Do not print secrets, Git credentials, raw index contents, or raw skill file
   contents in errors.
@@ -222,8 +245,10 @@ Cover:
 - `list-skills` maps arguments to `ListSkillsCommand`.
 - `list-skills --index-name <name>` maps the filter correctly.
 - `list-skills --registry-path <path>` maps the registry path correctly.
+- `list-skills --show-description` maps the description display flag correctly.
 - Non-empty output is deterministic and tree-shaped.
 - Filtered output still includes the `Indexes` root and index node.
+- Description output appends descriptions only when requested and present.
 - Empty output prints `No skills found`.
 - Application and adapter errors are rendered as concise
   `ritebook: error: ...` messages.
@@ -236,6 +261,9 @@ Cover:
 - Group skills under effective index names.
 - Include the `Indexes` root and index nodes in non-empty output.
 - Show skill names only in the default output.
+- Show skill descriptions only when explicitly requested with
+  `--show-description`.
+- Keep older cached indexes without descriptions readable.
 - Allow duplicate skill names across different effective indexes.
 - Keep output deterministic.
 - Keep Git and network behavior out of `list-skills`.
@@ -267,6 +295,8 @@ Cover:
   indexes and their skill names.
 - `uv run ritebook list-skills --index-name <effective-name>` lists only that
   index's skills while preserving the `Indexes` root and index node.
+- `uv run ritebook list-skills --show-description` appends cached descriptions
+  when present without changing default output.
 - Unknown index names fail with a clear user-facing error.
 - Empty registries or empty cached indexes print `No skills found`.
 - Output is deterministic and grouped by effective index name.

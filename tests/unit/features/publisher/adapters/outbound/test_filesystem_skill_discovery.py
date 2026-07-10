@@ -19,10 +19,17 @@ def test_discover_skills_finds_nested_skill_directories(tmp_path: Path) -> None:
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
-        (entry.name, entry.path, entry.skill_file, entry.title) for entry in entries
+        (entry.name, entry.path, entry.skill_file, entry.description, entry.title)
+        for entry in entries
     ] == [
-        ("alpha", "group/alpha", "group/alpha/SKILL.md", "alpha-skill"),
-        ("zeta", "zeta", "zeta/SKILL.md", "zeta-skill"),
+        (
+            "alpha",
+            "group/alpha",
+            "group/alpha/SKILL.md",
+            "Example skill",
+            "alpha-skill",
+        ),
+        ("zeta", "zeta", "zeta/SKILL.md", "Example skill", "zeta-skill"),
     ]
 
 
@@ -48,6 +55,17 @@ def test_discover_skills_uses_none_when_header_name_is_missing(tmp_path: Path) -
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert entries[0].title is None
+
+
+def test_discover_skills_uses_none_when_description_is_missing(tmp_path: Path) -> None:
+    write_skill(
+        tmp_path / "undocumented" / "SKILL.md",
+        "---\nname: undocumented\n---\n# Not the source of truth\n",
+    )
+
+    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert entries[0].description is None
 
 
 def test_discover_skills_uses_yaml_header_name_as_title(tmp_path: Path) -> None:
@@ -93,9 +111,10 @@ def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
     entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
     assert [
-        (entry.name, entry.path, entry.skill_file, entry.title) for entry in entries
+        (entry.name, entry.path, entry.skill_file, entry.description, entry.title)
+        for entry in entries
     ] == [
-        (tmp_path.name, ".", "SKILL.md", "root-skill"),
+        (tmp_path.name, ".", "SKILL.md", "Example skill", "root-skill"),
     ]
 
 

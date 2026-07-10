@@ -620,6 +620,7 @@ def test_list_skills_maps_arguments_to_application_command() -> None:
         ListSkillsCommand(
             index_name="platform-skills",
             registry_path="/tmp/indexes.json",
+            show_description=False,
         ),
     ]
     assert stdout.getvalue() == "Indexes\n└── company-skills\n    └── skill-a\n"
@@ -676,6 +677,63 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
         "│   └── skill-b\n"
         "└── data-skills\n"
         "    └── query-helper\n"
+    )
+
+
+def test_list_skills_maps_show_description_to_application_command() -> None:
+    list_skills = FakeListSkills()
+
+    exit_code = run(
+        ["list-skills", "--show-description"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=list_skills,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert list_skills.commands == [ListSkillsCommand(show_description=True)]
+
+
+def test_list_skills_prints_descriptions_when_requested() -> None:
+    stdout = StringIO()
+    result = ListSkillsResult(
+        indexes=(
+            ListedIndexSkills(
+                index_name="platform-skills",
+                skills=(
+                    CachedSkillSummary(
+                        name="skill-a",
+                        path="skill-a",
+                        skill_file="skill-a/SKILL.md",
+                        description="Helps with alpha workflows.",
+                    ),
+                    CachedSkillSummary(
+                        name="skill-b",
+                        path="skill-b",
+                        skill_file="skill-b/SKILL.md",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-skills", "--show-description"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == (
+        "Indexes\n"
+        "└── platform-skills\n"
+        "    ├── skill-a — Helps with alpha workflows.\n"
+        "    └── skill-b\n"
     )
 
 

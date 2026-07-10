@@ -123,10 +123,17 @@ def _validate_skill_entry(value: object) -> CachedSkillSummary:
     if title is not None and (not isinstance(title, str) or not title):
         msg = "index skill entry title must be a non-empty string when present"
         raise InvalidPublishedIndexError(msg)
+    description = value.get("description")
+    if description is not None and (
+        not isinstance(description, str) or not description
+    ):
+        msg = "index skill entry description must be a non-empty string when present"
+        raise InvalidPublishedIndexError(msg)
     return CachedSkillSummary(
         name=str(value["name"]),
         path=str(value["path"]),
         skill_file=str(value["skill_file"]),
+        description=description,
         title=title,
     )
 

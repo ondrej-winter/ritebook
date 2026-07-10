@@ -106,6 +106,12 @@ List skills from one effective index name:
 uv run ritebook list-skills --index-name platform-skills
 ```
 
+Show cached skill descriptions when available:
+
+```bash
+uv run ritebook list-skills --show-description
+```
+
 The `list-skills` command is offline-first: it reads the local registry and each
 selected registry entry's cached `ritebook-index.json` file only. It does not
 clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
@@ -120,6 +126,15 @@ Indexes
 │   └── skill-b
 └── data-skills
     └── query-helper
+```
+
+By default, the tree shows skill names only. With `--show-description`, Ritebook
+appends descriptions cached from publisher indexes when that metadata is present:
+
+```text
+Indexes
+└── platform-skills
+    └── skill-a — Helps with platform workflows.
 ```
 
 When no registered cached skills are available, Ritebook prints:

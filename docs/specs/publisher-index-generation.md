@@ -163,6 +163,7 @@ Schema v1 should stay small and describe discovered skill package boundaries.
       "name": "example-skill",
       "path": "example-skill",
       "skill_file": "example-skill/SKILL.md",
+      "description": "Helps users complete an example workflow.",
       "title": "Example Skill"
     }
   ]
@@ -181,8 +182,10 @@ Schema v1 should stay small and describe discovered skill package boundaries.
 - `skills[].name`: stable skill identifier derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
-- `skills[].title`: optional human-readable title derived from the first Markdown
-  H1 in `SKILL.md` when available.
+- `skills[].description`: optional human-readable description derived from the
+  validated skill header `description` field when available.
+- `skills[].title`: optional human-readable title derived from the validated skill
+  header `name` field when available.
 
 ## CLI and workflow requirements
 

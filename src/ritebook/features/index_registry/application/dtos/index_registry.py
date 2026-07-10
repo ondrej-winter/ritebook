@@ -71,6 +71,7 @@ class ListSkillsCommand:
 
     index_name: str | None = None
     registry_path: str | None = None
+    show_description: bool = False
 
     def __post_init__(self) -> None:
         """Validate command shape after initialization."""
@@ -242,6 +243,7 @@ class CachedSkillSummary:
     name: str
     path: str
     skill_file: str
+    description: str | None = None
     title: str | None = None
 
     def __post_init__(self) -> None:
@@ -249,6 +251,7 @@ class CachedSkillSummary:
         _require_non_empty(self.name, field_name="Skill name")
         _require_non_empty(self.path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")
+        _require_optional_non_empty(self.description, field_name="Skill description")
         _require_optional_non_empty(self.title, field_name="Skill title")
 
 

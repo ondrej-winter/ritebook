@@ -96,6 +96,14 @@ prompts for status updates.
   to run `uv run pytest -m "not e2e"`.
 - Verified pytest marker registration with `uv run pytest --markers`.
 - Verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`.
+- Added `tests/e2e/conftest.py` with black-box CLI subprocess helpers,
+  temporary registry/cache path fixtures, skill fixture writers, and local Git
+  repository helpers for future E2E workflow tests.
+- Verified the E2E fixture module with `uv run ruff check
+  tests/e2e/conftest.py`.
+- Verified E2E collection with `uv run pytest --collect-only tests/e2e -q`; no
+  tests were collected because Task 4 has not added workflow tests yet.
+- Re-verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`.
 
 ## Task List
 
@@ -218,25 +226,25 @@ repositories, and providing explicit registry/cache paths.
 
 **Acceptance criteria:**
 
-- [ ] CLI helper runs `uv run ritebook ...` and captures stdout, stderr, and exit
+- [x] CLI helper runs `uv run ritebook ...` and captures stdout, stderr, and exit
       code.
-- [ ] Helper assertion output includes captured stdout/stderr when a command
+- [x] Helper assertion output includes captured stdout/stderr when a command
       unexpectedly fails.
-- [ ] E2E fixtures do not import Ritebook application services directly.
-- [ ] Skill fixture helpers create minimal valid `SKILL.md` files with valid
+- [x] E2E fixtures do not import Ritebook application services directly.
+- [x] Skill fixture helpers create minimal valid `SKILL.md` files with valid
       Agent Skill headers and descriptions.
-- [ ] Invalid skill fixture helper creates one stable metadata failure for the
+- [x] Invalid skill fixture helper creates one stable metadata failure for the
       secondary scenario.
-- [ ] Git helper initializes a local repository and configures deterministic
+- [x] Git helper initializes a local repository and configures deterministic
       `user.name` and `user.email` before commits.
-- [ ] Registry path and cache root fixtures come from `tmp_path`, not user home
+- [x] Registry path and cache root fixtures come from `tmp_path`, not user home
       directories.
-- [ ] Helper code remains small, explicit, and focused on test orchestration.
+- [x] Helper code remains small, explicit, and focused on test orchestration.
 
 **Verification:**
 
 - [ ] `uv run pytest tests/e2e -q` once tests exist.
-- [ ] Code review confirms no direct application imports in E2E tests.
+- [x] Code review confirms no direct application imports in E2E tests.
 
 **Dependencies:** Tasks 1-2 are useful for Docker verification, but local pytest
 authoring can start before Docker is complete. Task 2.5 should be completed

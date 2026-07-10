@@ -71,6 +71,33 @@ deterministic generated installation state.
 - Treat cached index paths and skill paths as untrusted data at filesystem/source
   adapter boundaries.
 
+## Implementation Notes and Boundary Clarifications
+
+- The installation slice should own the application-facing ports used by its use
+  cases. When installation needs existing registry behavior, wire adapters in the
+  composition root that delegate to the index-registry slice or its published
+  contracts. Avoid importing another slice's private use cases, DTO internals, or
+  adapters into installation application code.
+- Keep application DTOs focused on install intent and manifest state. Existing
+  registry/index DTOs may be mapped at adapter boundaries, but installation use
+  cases should not depend on transport, JSON, TOML, Git, or filesystem shapes.
+- Treat requirements-file installs as a two-stage workflow where practical:
+  first build and validate the complete install plan, then perform copies, then
+  write `ritebook.lock`. If a late copy fails after some copies have already
+  succeeded, do not update the lockfile and surface the partial-copy warning
+  required by the spec.
+- Split path-safety responsibility deliberately: the TOML reader validates TOML
+  shape and target references; application planning rejects duplicate
+  requirements and duplicate resolved targets; filesystem/source adapters reject
+  dangerous resolved paths, traversal, symlink targets, and source containment
+  violations.
+- Separate manifest concerns in implementation and tests: application-owned
+  manifest entries/results, user installation registry conflict policy,
+  lockfile full-rewrite semantics, and adapter-owned atomic JSON writes.
+- Add lightweight `__init__.py` files only where packages need to be regular
+  packages or expose an intentional public API. Avoid broad re-export chains for
+  the new slice.
+
 ## Progress Tracking
 
 Update task and checkpoint checkboxes as work is completed. Keep this plan
@@ -99,6 +126,11 @@ copying skill directories, and writing manifests.
       recorded target, unsafe paths, and persistence failures.
 - [ ] Ports are small `Protocol`s under
       `features/skill_installation/application/ports/`.
+- [ ] Installation-owned ports describe the registry/index/source operations
+      needed by installation use cases instead of exposing concrete
+      index-registry adapters or storage details.
+- [ ] Package `__init__.py` files remain lightweight and expose only intentional
+      public application APIs.
 
 **Verification:**
 
@@ -132,6 +164,8 @@ installation registry.
 - [ ] Existing target refusal/force semantics are delegated through ports but
       surfaced clearly.
 - [ ] Successful install writes user installation state after copy succeeds.
+- [ ] Registry/index data needed for installation is mapped into
+      installation-owned DTOs or value objects before use-case orchestration.
 - [ ] The use case is deterministic with an injected clock and does not access
       filesystem, TOML, or JSON directly.
 
@@ -174,6 +208,8 @@ targets, validate duplicates, plan all installs, copy each skill, and write
 - [ ] `target_path` is used exactly as the target for that skill entry.
 - [ ] Duplicate skill requirements and duplicate resolved targets are rejected
       before copy attempts.
+- [ ] Unknown indexes, unknown skills, source resolution failures, and target
+      planning conflicts are detected before the first copy when possible.
 - [ ] Lockfile writer is invoked only after all planned installs succeed.
 - [ ] Partial copy rollback remains out of scope, but late-copy failure errors
       clearly say lockfile was not updated and already-copied directories may
@@ -212,6 +248,8 @@ for requirements nicknames, and `requirements_file` only for lockfiles.
 - [ ] Source revision is optional and included when resolvable.
 - [ ] Repo-relative lockfile paths can remain relative when supplied that way;
       direct user installation registry may store expanded/resolved targets.
+- [ ] Application tests distinguish manifest entry construction from adapter
+      concerns such as JSON field ordering and atomic file replacement.
 
 **Verification:**
 
@@ -287,6 +325,8 @@ target safety.
 - [ ] Rejects dangerous targets: empty, filesystem root, home directory itself,
       current working directory itself, and existing symlink targets.
 - [ ] Does not follow symlink targets outside the intended path in v1.
+- [ ] Assumes TOML shape validation has already happened, but independently
+      protects the filesystem boundary from unsafe resolved paths.
 
 **Verification:**
 
@@ -308,8 +348,9 @@ target safety.
 
 **Description:** Parse and validate `ritebook.toml` with standard-library
 `tomllib`, rejecting invalid root shapes, malformed targets, malformed skills,
-unknown fields, undefined target nicknames, and duplicate-like invalid entries at
-the adapter boundary where practical.
+unknown fields, and undefined target nicknames at the adapter boundary. Leave
+duplicate skill requirements, duplicate resolved targets, and dangerous resolved
+target decisions to application planning and filesystem boundary checks.
 
 **Acceptance criteria:**
 
@@ -320,6 +361,8 @@ the adapter boundary where practical.
       one target selector.
 - [ ] Rejects unknown fields in v1.
 - [ ] Uses clear errors without leaking file contents.
+- [ ] Does not attempt to resolve registered indexes, inspect cached index JSON,
+      or perform filesystem target-safety checks beyond TOML path field shape.
 
 **Verification:**
 
@@ -353,6 +396,10 @@ installation state and repo-local `ritebook.lock` with schema version `1`.
       sorted skills, optional `target_ref`, optional `source_revision`, and no
       stale entries for removed requirements.
 - [ ] Writes are atomic enough for local CLI use via temp-file replacement.
+- [ ] User registry conflict policy is tested separately from lockfile
+      full-rewrite behavior.
+- [ ] JSON writers receive application-owned manifest DTOs and do not read TOML,
+      cached indexes, or source repositories directly.
 
 **Verification:**
 
@@ -396,6 +443,8 @@ success/error output.
       `--registry-path`, and `--lockfile`.
 - [ ] Success output matches spec shape.
 - [ ] Application/adapter errors render as `ritebook: error: ...`.
+- [ ] Parser and handler tests verify new options without requiring real
+      filesystem, Git, TOML, or JSON adapters.
 
 **Verification:**
 
@@ -433,6 +482,9 @@ instances where appropriate.
 
 - [ ] Run CLI tests and a targeted import/smoke command if practical.
 - [ ] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
+- [ ] After wiring, run a local help smoke such as
+      `uv run ritebook --help` and, if supported by the parser,
+      `uv run ritebook install-skill --help`.
 
 **Dependencies:** Tasks 5-9
 
@@ -472,6 +524,8 @@ registry, force behavior, and path overrides.
 **Verification:**
 
 - [ ] Review README examples for consistency with parser options.
+- [ ] Check README examples against `uv run ritebook --help` and command help
+      output after parser wiring exists.
 
 **Dependencies:** Tasks 9-10
 
@@ -533,6 +587,14 @@ uv run pytest
 uv build
 ```
 
+Also run targeted CLI help smoke checks after command wiring exists:
+
+```bash
+uv run ritebook --help
+uv run ritebook install-skill --help
+uv run ritebook install --help
+```
+
 **Dependencies:** All implementation and docs tasks
 
 **Files likely touched:** None beyond formatting updates
@@ -545,8 +607,9 @@ uv build
 | --- | --- | --- |
 | Path safety around source index paths and target replacement | High | Put strict validation in `filesystem_installer`; test traversal, root/home/cwd targets, and symlink targets. |
 | Partial copies during `install` before a later failure | Medium | Validate full plan before copying; if copy still fails mid-batch, do not write lockfile and surface explicit partial-copy warning. |
-| Cross-slice dependency from installation to index registry DTOs | Medium | Accept read-only use of registry DTOs/ports as published application boundary, or wrap them in installation-owned DTOs at the source resolver boundary if coupling becomes awkward. |
-| Direct install state conflict semantics | Medium | Centralize conflict logic in JSON installation registry adapter and cover same-skill/same-target versus different-skill/same-target. |
+| Cross-slice dependency from installation to index registry DTOs | Medium | Prefer installation-owned ports and adapter-side mapping around existing registry behavior; only depend directly on explicitly published registry contracts when that boundary is intentional. |
+| Direct install state conflict semantics | Medium | Centralize conflict logic in JSON installation registry adapter, keep it separate from lockfile writing, and cover same-skill/same-target versus different-skill/same-target. |
+| Manifest responsibility drift between application and adapters | Medium | Keep manifest DTO construction in application tests, JSON serialization/atomic writes in adapter tests, and avoid adapters resolving source/index/TOML data directly. |
 | Machine-specific absolute paths in `ritebook.lock` | Medium | Preserve user-supplied repo-relative target strings for lockfile entries; avoid resolving to absolute paths for repo-local installs. |
 | CLI adapter test file growth | Low | Keep additions focused; if it becomes unwieldy later, use `split-python-module`, but do not refactor unrelated CLI tests during this feature. |
 

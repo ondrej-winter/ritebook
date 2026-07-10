@@ -23,7 +23,14 @@ Run local quality checks:
 uv run ruff format .
 uv run ruff check .
 uv run mypy .
-uv run pytest
+uv run pytest -m "not e2e"
+```
+
+The default local quality gate excludes Docker end-to-end tests while that
+workflow is being introduced. Run E2E tests explicitly once they exist:
+
+```bash
+uv run pytest tests/e2e -q
 ```
 
 Build the package distributions:

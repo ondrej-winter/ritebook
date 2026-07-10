@@ -82,6 +82,21 @@ Update task and checkpoint checkboxes as implementation progresses. Keep this
 plan current automatically during implementation without requiring separate user
 prompts for status updates.
 
+### Implementation progress notes
+
+- Added `Dockerfile.e2e` and `.dockerignore` for the Docker E2E runner
+  foundation.
+- Verified the local CLI entry point with `uv run ritebook --help`.
+- Verified focused package metadata tests with
+  `uv run pytest tests/unit/test_package_metadata.py -q`.
+- Docker image build verification is still pending because the local Docker
+  daemon was not running: `Cannot connect to the Docker daemon at
+  unix:///Users/owinter/.docker/run/docker.sock`.
+- Added pytest `e2e` marker isolation and updated the blocking CI pytest command
+  to run `uv run pytest -m "not e2e"`.
+- Verified pytest marker registration with `uv run pytest --markers`.
+- Verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`.
+
 ## Task List
 
 ### Phase 1: Docker Test Runner Foundation
@@ -94,17 +109,17 @@ running the E2E pytest suite.
 
 **Acceptance criteria:**
 
-- [ ] `Dockerfile.e2e` uses Python 3.13 to match `pyproject.toml`.
-- [ ] The image installs Git for local repository initialization and commits.
-- [ ] The image installs or copies `uv` in a reproducible, non-interactive way,
+- [x] `Dockerfile.e2e` uses Python 3.13 to match `pyproject.toml`.
+- [x] The image installs Git for local repository initialization and commits.
+- [x] The image installs or copies `uv` in a reproducible, non-interactive way,
       such as copying a pinned `uv` binary from an official Astral image or using
       another version-pinned package source.
-- [ ] The image does not pipe a remote installer script into a shell or
+- [x] The image does not pipe a remote installer script into a shell or
       interpreter.
-- [ ] The image uses `uv sync --frozen --group dev` or an equivalent frozen
+- [x] The image uses `uv sync --frozen --group dev` or an equivalent frozen
       dependency install.
-- [ ] The default command runs `uv run pytest tests/e2e`.
-- [ ] The Dockerfile is clearly scoped to E2E testing and does not introduce
+- [x] The default command runs `uv run pytest tests/e2e`.
+- [x] The Dockerfile is clearly scoped to E2E testing and does not introduce
       production image requirements.
 - [ ] Network access may be used during Docker build dependency installation,
       but `docker run --rm ritebook-e2e` does not depend on live external
@@ -131,11 +146,11 @@ image context.
 
 **Acceptance criteria:**
 
-- [ ] `.dockerignore` excludes `.venv/`, `.pytest_cache/`, `.ruff_cache/`,
+- [x] `.dockerignore` excludes `.venv/`, `.pytest_cache/`, `.ruff_cache/`,
       `.mypy_cache/`, `dist/`, `build/`, and Python cache files.
-- [ ] `.dockerignore` excludes local Ritebook cache/config artifacts if they are
+- [x] `.dockerignore` excludes local Ritebook cache/config artifacts if they are
       ever created in the repository tree.
-- [ ] `.dockerignore` does not exclude files needed to build/install the project
+- [x] `.dockerignore` does not exclude files needed to build/install the project
       and run E2E tests, including `src/`, `tests/`, `pyproject.toml`, `uv.lock`,
       `README.md`, and relevant docs.
 - [ ] Docker builds remain reproducible from repository content.
@@ -166,19 +181,19 @@ when default pytest discovery scans `tests/`.
 
 **Acceptance criteria:**
 
-- [ ] `pyproject.toml` declares an `e2e` pytest marker with a concise
+- [x] `pyproject.toml` declares an `e2e` pytest marker with a concise
       description.
 - [ ] E2E tests are marked with `pytest.mark.e2e` at module or test level.
-- [ ] The existing CI/CD `quality` job continues to run the blocking test suite
+- [x] The existing CI/CD `quality` job continues to run the blocking test suite
       without Docker E2E tests, for example with `uv run pytest -m "not e2e"`.
-- [ ] Local README guidance distinguishes the default quality gate from the
+- [x] Local README guidance distinguishes the default quality gate from the
       explicit E2E commands.
 - [ ] The manual Docker E2E workflow remains the first milestone's CI visibility
       path for E2E tests.
 
 **Verification:**
 
-- [ ] `uv run pytest -m "not e2e"`
+- [x] `uv run pytest -m "not e2e"`
 - [ ] `uv run pytest tests/e2e -q` after E2E tests exist.
 
 **Dependencies:** Tasks 1-2 can be implemented before this, but this task should

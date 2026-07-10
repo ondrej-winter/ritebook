@@ -47,7 +47,7 @@ jobs:
         run: uv run mypy .
 
       - name: Test
-        run: uv run pytest
+        run: uv run pytest -m "not e2e"
 
       - name: Build distribution packages
         run: uv build

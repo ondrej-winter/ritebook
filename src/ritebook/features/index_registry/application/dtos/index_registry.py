@@ -66,6 +66,20 @@ class ListIndexesCommand:
 
 
 @dataclass(frozen=True)
+class ListSkillsCommand:
+    """Command for listing skills from registered cached indexes."""
+
+    index_name: str | None = None
+    registry_path: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate command shape after initialization."""
+        if self.index_name is not None:
+            require_index_name(self.index_name, field_name="Index name")
+        _require_optional_non_empty(self.registry_path, field_name="Registry path")
+
+
+@dataclass(frozen=True)
 class PreparedIndexSource:
     """A Git source prepared by an outbound adapter for index reading."""
 
@@ -219,6 +233,42 @@ class ListIndexesResult:
     """Result returned after listing registered indexes."""
 
     indexes: tuple[RegisteredIndexSummary, ...]
+
+
+@dataclass(frozen=True)
+class CachedSkillSummary:
+    """Skill metadata loaded from a cached published index."""
+
+    name: str
+    path: str
+    skill_file: str
+    title: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate cached skill metadata."""
+        _require_non_empty(self.name, field_name="Skill name")
+        _require_non_empty(self.path, field_name="Skill path")
+        _require_non_empty(self.skill_file, field_name="Skill file")
+        _require_optional_non_empty(self.title, field_name="Skill title")
+
+
+@dataclass(frozen=True)
+class ListedIndexSkills:
+    """Cached skills grouped under one effective index name."""
+
+    index_name: str
+    skills: tuple[CachedSkillSummary, ...]
+
+    def __post_init__(self) -> None:
+        """Validate listed index metadata."""
+        require_index_name(self.index_name, field_name="Index name")
+
+
+@dataclass(frozen=True)
+class ListSkillsResult:
+    """Result returned after listing skills from cached registered indexes."""
+
+    indexes: tuple[ListedIndexSkills, ...]
 
 
 def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:

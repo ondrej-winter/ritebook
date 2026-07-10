@@ -3,7 +3,11 @@ import pytest
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
+    CachedSkillSummary,
     IndexSourceType,
+    ListedIndexSkills,
+    ListSkillsCommand,
+    ListSkillsResult,
     PreparedIndexSource,
     PublishedIndex,
     RegisteredIndex,
@@ -78,6 +82,74 @@ def test_add_index_command_rejects_unsafe_repository_style_names(name: str) -> N
 def test_update_index_command_rejects_invalid_name() -> None:
     with pytest.raises(ValueError, match="Index name"):
         UpdateIndexCommand(name="-bad")
+
+
+def test_list_skills_command_accepts_optional_filter_and_registry_path() -> None:
+    command = ListSkillsCommand(
+        index_name="ondrej-winter/ritebook-shelf",
+        registry_path="/tmp/indexes.json",
+    )
+
+    assert command.index_name == "ondrej-winter/ritebook-shelf"
+    assert command.registry_path == "/tmp/indexes.json"
+
+
+def test_list_skills_command_rejects_invalid_filter_and_empty_registry_path() -> None:
+    with pytest.raises(ValueError, match="Index name"):
+        ListSkillsCommand(index_name="Company Skills")
+
+    with pytest.raises(ValueError, match="Registry path"):
+        ListSkillsCommand(registry_path="")
+
+
+def test_list_skills_result_groups_validated_cached_skill_summaries() -> None:
+    skill = CachedSkillSummary(
+        name="query-helper",
+        path="skills/query-helper",
+        skill_file="skills/query-helper/SKILL.md",
+        title="Query Helper",
+    )
+    index = ListedIndexSkills(index_name="data-skills", skills=(skill,))
+    result = ListSkillsResult(indexes=(index,))
+
+    assert result.indexes == (index,)
+    assert result.indexes[0].skills == (skill,)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        (
+            {"name": "", "path": "skills/a", "skill_file": "skills/a/SKILL.md"},
+            "Skill name",
+        ),
+        (
+            {"name": "skill-a", "path": "", "skill_file": "skills/a/SKILL.md"},
+            "Skill path",
+        ),
+        ({"name": "skill-a", "path": "skills/a", "skill_file": ""}, "Skill file"),
+        (
+            {
+                "name": "skill-a",
+                "path": "skills/a",
+                "skill_file": "skills/a/SKILL.md",
+                "title": "",
+            },
+            "Skill title",
+        ),
+    ],
+)
+def test_cached_skill_summary_rejects_empty_required_fields(
+    kwargs: dict[str, str],
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        CachedSkillSummary(**kwargs)
+
+
+def test_listed_index_skills_rejects_invalid_index_name() -> None:
+    with pytest.raises(ValueError, match="Index name"):
+        ListedIndexSkills(index_name="Data Skills", skills=())
 
 
 def test_prepared_git_url_source_requires_cache_path() -> None:

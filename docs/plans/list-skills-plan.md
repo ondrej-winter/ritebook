@@ -88,28 +88,28 @@ prompts for status updates.
 
 ### Phase 1: Application Boundary
 
-#### Task 1: Add List Skills DTOs
+#### Task 1: Add List Skills DTOs ✅
 
 **Description:** Add command/result DTOs and skill summary types to the existing
 index registry DTO module.
 
 **Acceptance criteria:**
 
-- [ ] `ListSkillsCommand` accepts optional `index_name` and optional
+- [x] `ListSkillsCommand` accepts optional `index_name` and optional
       `registry_path`.
-- [ ] `index_name`, when present, uses existing index-name validation.
-- [ ] `CachedSkillSummary` or equivalent carries `name`, `path`, `skill_file`,
+- [x] `index_name`, when present, uses existing index-name validation.
+- [x] `CachedSkillSummary` or equivalent carries `name`, `path`, `skill_file`,
       and optional `title`.
-- [ ] `ListedIndexSkills` or equivalent groups skills under an effective index
+- [x] `ListedIndexSkills` or equivalent groups skills under an effective index
       name.
-- [ ] `ListSkillsResult` contains grouped index results.
-- [ ] DTOs reject empty names/paths and malformed required fields.
-- [ ] New DTOs are exported from the application DTO package consistently with
+- [x] `ListSkillsResult` contains grouped index results.
+- [x] DTOs reject empty names/paths and malformed required fields.
+- [x] New DTOs are exported from the application DTO package consistently with
       existing public-import patterns.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/index_registry/application/test_index_registry_dtos.py`
+- [x] `uv run pytest tests/unit/features/index_registry/application/test_index_registry_dtos.py`
 
 **Dependencies:** None
 
@@ -121,7 +121,7 @@ index registry DTO module.
 
 **Estimated scope:** Small
 
-#### Task 2: Define List Skills Ports
+#### Task 2: Define List Skills Ports ✅
 
 **Description:** Add the inbound `ListSkillsPort` and a dedicated outbound
 `CachedIndexReaderPort` for reading cached skill entries from a cached index file
@@ -129,21 +129,21 @@ path.
 
 **Acceptance criteria:**
 
-- [ ] `ListSkillsPort.execute(command: ListSkillsCommand) -> ListSkillsResult`
+- [x] `ListSkillsPort.execute(command: ListSkillsCommand) -> ListSkillsResult`
       exists.
-- [ ] `CachedIndexReaderPort.read_skills(cached_index_path: str) ->
+- [x] `CachedIndexReaderPort.read_skills(cached_index_path: str) ->
       tuple[CachedSkillSummary, ...]` or an equivalent explicitly named method
       exists.
-- [ ] Cached index reader port accepts a cached index path string and returns
+- [x] Cached index reader port accepts a cached index path string and returns
       validated skill summaries.
-- [ ] Port signatures use application DTOs/simple primitives only, not `Path`,
+- [x] Port signatures use application DTOs/simple primitives only, not `Path`,
       raw JSON dictionaries, or framework types.
-- [ ] Ports are exported from the index registry application ports package.
-- [ ] The cached reader port remains separate from `IndexSourceReaderPort`.
+- [x] Ports are exported from the index registry application ports package.
+- [x] The cached reader port remains separate from `IndexSourceReaderPort`.
 
 **Verification:**
 
-- [ ] `uv run mypy src/ritebook/features/index_registry/application`
+- [x] `uv run mypy src/ritebook/features/index_registry/application`
 
 **Dependencies:** Task 1
 
@@ -157,8 +157,8 @@ path.
 
 ### Checkpoint: Application Contracts
 
-- [ ] DTOs and ports type-check.
-- [ ] Application boundary exposes no JSON/filesystem/Git details.
+- [x] DTOs and ports type-check.
+- [x] Application boundary exposes no JSON/filesystem/Git details.
 
 ### Phase 2: Application Use Case
 

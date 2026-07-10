@@ -10,6 +10,7 @@ from ritebook.adapters.inbound.cli.commands import (
     run_add_index,
     run_lint_skills,
     run_list_indexes,
+    run_list_skills,
     run_publish_index,
     run_update_index,
 )
@@ -17,6 +18,7 @@ from ritebook.adapters.inbound.cli.parser import (
     ADD_INDEX_COMMAND,
     LINT_SKILLS_COMMAND,
     LIST_INDEXES_COMMAND,
+    LIST_SKILLS_COMMAND,
     PUBLISH_INDEX_COMMAND,
     UPDATE_INDEX_COMMAND,
     build_parser,
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
     from ritebook.features.index_registry.application.ports import (
         AddIndexPort,
         ListIndexesPort,
+        ListSkillsPort,
         UpdateIndexPort,
     )
     from ritebook.features.linter.application.ports import LintSkillsPort
@@ -41,6 +44,7 @@ def run(  # noqa: PLR0911, PLR0913
     publisher: PublishIndexPort,
     add_index: AddIndexPort,
     list_indexes: ListIndexesPort,
+    list_skills: ListSkillsPort,
     update_index: UpdateIndexPort,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
@@ -84,6 +88,14 @@ def run(  # noqa: PLR0911, PLR0913
         return run_list_indexes(
             args,
             list_indexes=list_indexes,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == LIST_SKILLS_COMMAND:
+        return run_list_skills(
+            args,
+            list_skills=list_skills,
             stdout=stdout,
             stderr=stderr,
         )

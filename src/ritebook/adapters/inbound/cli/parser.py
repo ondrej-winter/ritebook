@@ -8,6 +8,7 @@ LINT_SKILLS_COMMAND = "lint-skills"
 PUBLISH_INDEX_COMMAND = "publish-index"
 ADD_INDEX_COMMAND = "add-index"
 LIST_INDEXES_COMMAND = "list-indexes"
+LIST_SKILLS_COMMAND = "list-skills"
 UPDATE_INDEX_COMMAND = "update-index"
 
 
@@ -63,6 +64,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="List registered skill indexes.",
     )
     list_indexes.add_argument("--registry-path", help="Path to indexes.json registry.")
+
+    list_skills = subparsers.add_parser(
+        LIST_SKILLS_COMMAND,
+        help="List skills from registered cached indexes.",
+    )
+    list_skills.add_argument("--index-name", help="Effective index name to list.")
+    list_skills.add_argument("--registry-path", help="Path to indexes.json registry.")
 
     update_index = subparsers.add_parser(
         UPDATE_INDEX_COMMAND,

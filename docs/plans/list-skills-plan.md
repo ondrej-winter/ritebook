@@ -254,27 +254,27 @@ by add/update.
 
 ### Phase 4: CLI and Composition
 
-#### Task 5: Add `list-skills` Parser, CLI Mapping, and Tree Rendering
+#### Task 5: Add `list-skills` Parser, CLI Mapping, and Tree Rendering ✅
 
 **Description:** Extend the CLI adapter to parse `list-skills`, map arguments to
 `ListSkillsCommand`, and render the default human-readable tree.
 
 **Acceptance criteria:**
 
-- [ ] Parser accepts `list-skills [--index-name <effective-name>]
+- [x] Parser accepts `list-skills [--index-name <effective-name>]
       [--registry-path <path>]`.
-- [ ] CLI maps arguments exactly into `ListSkillsCommand`.
-- [ ] Empty result prints `No skills found`.
-- [ ] Non-empty output begins with `Indexes`.
-- [ ] First-level children are effective index names.
-- [ ] Second-level children are skill names only; titles/paths are not shown.
-- [ ] Filtered output preserves the same tree shape.
-- [ ] Tree connector characters match the spec examples.
-- [ ] Application/adapter errors render as `ritebook: error: ...`.
+- [x] CLI maps arguments exactly into `ListSkillsCommand`.
+- [x] Empty result prints `No skills found`.
+- [x] Non-empty output begins with `Indexes`.
+- [x] First-level children are effective index names.
+- [x] Second-level children are skill names only; titles/paths are not shown.
+- [x] Filtered output preserves the same tree shape.
+- [x] Tree connector characters match the spec examples.
+- [x] Application/adapter errors render as `ritebook: error: ...`.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
 
 **Dependencies:** Tasks 1-4
 
@@ -287,7 +287,7 @@ by add/update.
 
 **Estimated scope:** Medium
 
-#### Task 6: Wire List Skills in Composition Root
+#### Task 6: Wire List Skills in Composition Root ✅
 
 **Description:** Instantiate `ListSkills` in `src/ritebook/cli.py` using the
 existing registry adapter and JSON index reader adapter, then inject it into the
@@ -295,19 +295,19 @@ CLI adapter.
 
 **Acceptance criteria:**
 
-- [ ] `main()` wires `ListSkills(registry=..., cached_index_reader=...)` or
+- [x] `main()` wires `ListSkills(registry=..., cached_index_reader=...)` or
       equivalent.
-- [ ] Existing `add-index`, `update-index`, `list-indexes`, `publish-index`, and
+- [x] Existing `add-index`, `update-index`, `list-indexes`, `publish-index`, and
       `lint-skills` wiring remains intact.
-- [ ] Composition root keeps default path resolution inside adapters/bootstrap,
+- [x] Composition root keeps default path resolution inside adapters/bootstrap,
       not application use cases.
-- [ ] `ListSkills` is exported from the index registry application use cases
+- [x] `ListSkills` is exported from the index registry application use cases
       package consistently with existing use-case exports.
 
 **Verification:**
 
-- [ ] `uv run mypy src/ritebook/cli.py src/ritebook/adapters/inbound/cli src/ritebook/features/index_registry`
-- [ ] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
+- [x] `uv run mypy src/ritebook/cli.py src/ritebook/adapters/inbound/cli src/ritebook/features/index_registry`
+- [x] `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`
 
 **Dependencies:** Task 5
 
@@ -320,10 +320,10 @@ CLI adapter.
 
 ### Checkpoint: CLI Flow
 
-- [ ] CLI tests cover argument mapping, tree output, filtered output, empty
+- [x] CLI tests cover argument mapping, tree output, filtered output, empty
       output, and error translation.
-- [ ] Composition root type-checks.
-- [ ] Existing commands still pass CLI tests.
+- [x] Composition root type-checks.
+- [x] Existing commands still pass CLI tests.
 
 ### Phase 5: Documentation and Final Validation
 

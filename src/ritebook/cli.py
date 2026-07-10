@@ -19,6 +19,7 @@ from ritebook.features.index_registry.adapters.outbound.json_index import (
 from ritebook.features.index_registry.application.use_cases import (
     AddIndex,
     ListIndexes,
+    ListSkills,
     UpdateIndex,
 )
 from ritebook.features.linter.adapters.outbound.filesystem import (
@@ -65,6 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         clock=lambda: datetime.now(UTC),
     )
     list_indexes = ListIndexes(registry=registry)
+    list_skills = ListSkills(registry=registry, cached_index_reader=index_reader)
     update_index = UpdateIndex(
         git_source=git_source,
         index_reader=index_reader,
@@ -78,5 +80,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         publisher=publisher,
         add_index=add_index,
         list_indexes=list_indexes,
+        list_skills=list_skills,
         update_index=update_index,
     )

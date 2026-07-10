@@ -10,13 +10,20 @@ from ritebook.adapters.outbound.filesystem import (
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
+    CachedSkillSummary,
+    ListedIndexSkills,
     ListIndexesCommand,
     ListIndexesResult,
+    ListSkillsCommand,
+    ListSkillsResult,
     RegisteredIndexSummary,
     UpdateIndexCommand,
     UpdateIndexResult,
 )
-from ritebook.features.index_registry.application.errors import DuplicateIndexNameError
+from ritebook.features.index_registry.application.errors import (
+    DuplicateIndexNameError,
+    UnknownIndexNameError,
+)
 from ritebook.features.linter.application.dtos import (
     LintSkillsCommand,
     LintSkillsResult,
@@ -41,6 +48,7 @@ def run(
     stderr: TextIO,
     add_index: FakeAddIndex | FailingAddIndex | None = None,
     list_indexes: FakeListIndexes | FailingListIndexes | None = None,
+    list_skills: FakeListSkills | FailingListSkills | None = None,
     update_index: FakeUpdateIndex | FailingUpdateIndex | None = None,
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
@@ -50,6 +58,7 @@ def run(
         publisher=publisher,
         add_index=add_index or FakeAddIndex(),
         list_indexes=list_indexes or FakeListIndexes(),
+        list_skills=list_skills or FakeListSkills(),
         update_index=update_index or FakeUpdateIndex(),
         stdout=stdout,
         stderr=stderr,
@@ -140,6 +149,33 @@ class FakeListIndexes:
         return self.result
 
 
+class FakeListSkills:
+    """Test double for the list-skills inbound application port."""
+
+    def __init__(self, result: ListSkillsResult | None = None) -> None:
+        """Store the result to return and commands received by the CLI."""
+        self.result = result or ListSkillsResult(
+            indexes=(
+                ListedIndexSkills(
+                    index_name="company-skills",
+                    skills=(
+                        CachedSkillSummary(
+                            name="skill-a",
+                            path="skill-a",
+                            skill_file="skill-a/SKILL.md",
+                        ),
+                    ),
+                ),
+            ),
+        )
+        self.commands: list[ListSkillsCommand] = []
+
+    def execute(self, command: ListSkillsCommand) -> ListSkillsResult:
+        """Record the command and return the configured result."""
+        self.commands.append(command)
+        return self.result
+
+
 class FailingPublisher:
     """Test double that raises a configured runtime error."""
 
@@ -196,6 +232,18 @@ class FailingListIndexes:
         self.error = error
 
     def execute(self, _command: ListIndexesCommand) -> ListIndexesResult:
+        """Raise the configured error for runtime error handling tests."""
+        raise self.error
+
+
+class FailingListSkills:
+    """Test double that raises a configured list-skills runtime error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Store the error raised when the CLI invokes the port."""
+        self.error = error
+
+    def execute(self, _command: ListSkillsCommand) -> ListSkillsResult:
         """Raise the configured error for runtime error handling tests."""
         raise self.error
 
@@ -545,6 +593,143 @@ def test_list_indexes_prints_empty_registry_message() -> None:
 
     assert exit_code == 0
     assert stdout.getvalue() == "No indexes registered\n"
+
+
+def test_list_skills_maps_arguments_to_application_command() -> None:
+    list_skills = FakeListSkills()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "list-skills",
+            "--index-name",
+            "platform-skills",
+            "--registry-path",
+            "/tmp/indexes.json",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=list_skills,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert list_skills.commands == [
+        ListSkillsCommand(
+            index_name="platform-skills",
+            registry_path="/tmp/indexes.json",
+        ),
+    ]
+    assert stdout.getvalue() == "Indexes\n└── company-skills\n    └── skill-a\n"
+    assert stderr.getvalue() == ""
+
+
+def test_list_skills_prints_deterministic_tree_output() -> None:
+    stdout = StringIO()
+    result = ListSkillsResult(
+        indexes=(
+            ListedIndexSkills(
+                index_name="platform-skills",
+                skills=(
+                    CachedSkillSummary(
+                        name="skill-a",
+                        path="skill-a",
+                        skill_file="skill-a/SKILL.md",
+                    ),
+                    CachedSkillSummary(
+                        name="skill-b",
+                        path="skill-b",
+                        skill_file="skill-b/SKILL.md",
+                    ),
+                ),
+            ),
+            ListedIndexSkills(
+                index_name="data-skills",
+                skills=(
+                    CachedSkillSummary(
+                        name="query-helper",
+                        path="query-helper",
+                        skill_file="query-helper/SKILL.md",
+                        title="Query Helper",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == (
+        "Indexes\n"
+        "├── platform-skills\n"
+        "│   ├── skill-a\n"
+        "│   └── skill-b\n"
+        "└── data-skills\n"
+        "    └── query-helper\n"
+    )
+
+
+def test_list_skills_prints_empty_result_message() -> None:
+    stdout = StringIO()
+
+    exit_code = run(
+        ["list-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(ListSkillsResult(indexes=())),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == "No skills found\n"
+
+
+def test_list_skills_prints_empty_selected_index_message() -> None:
+    stdout = StringIO()
+    result = ListSkillsResult(
+        indexes=(ListedIndexSkills(index_name="platform-skills", skills=()),),
+    )
+
+    exit_code = run(
+        ["list-skills", "--index-name", "platform-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == "No skills found\n"
+
+
+def test_list_skills_translates_application_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["list-skills", "--index-name", "missing-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FailingListSkills(UnknownIndexNameError("missing-skills")),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: index missing-skills is not registered\n"
+    )
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

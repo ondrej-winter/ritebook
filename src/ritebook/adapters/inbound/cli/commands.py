@@ -9,7 +9,10 @@ from ritebook.adapters.outbound.filesystem import (
 )
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
+    ListedIndexSkills,
     ListIndexesCommand,
+    ListSkillsCommand,
+    ListSkillsResult,
     UpdateIndexCommand,
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
     from ritebook.features.index_registry.application.ports import (
         AddIndexPort,
         ListIndexesPort,
+        ListSkillsPort,
         UpdateIndexPort,
     )
     from ritebook.features.linter.application.ports import LintSkillsPort
@@ -183,3 +187,54 @@ def run_list_indexes(
             file=stdout,
         )
     return 0
+
+
+def run_list_skills(
+    args: argparse.Namespace,
+    *,
+    list_skills: ListSkillsPort,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    """Run list-skills against the injected application port."""
+    command = ListSkillsCommand(
+        index_name=args.index_name,
+        registry_path=args.registry_path,
+    )
+    try:
+        result = list_skills.execute(command)
+    except (IndexRegistryError, ValueError) as err:
+        print(f"ritebook: error: {err}", file=stderr)
+        return 1
+    if _total_skill_count(result) == 0:
+        print("No skills found", file=stdout)
+        return 0
+    print(_render_skill_tree(result), file=stdout)
+    return 0
+
+
+def _total_skill_count(result: ListSkillsResult) -> int:
+    return sum(len(index.skills) for index in result.indexes)
+
+
+def _render_skill_tree(result: ListSkillsResult) -> str:
+    lines = ["Indexes"]
+    for index_position, index in enumerate(result.indexes):
+        is_last_index = index_position == len(result.indexes) - 1
+        index_connector = "└──" if is_last_index else "├──"
+        lines.append(f"{index_connector} {index.index_name}")
+        lines.extend(_render_skill_lines(index, is_last_index=is_last_index))
+    return "\n".join(lines)
+
+
+def _render_skill_lines(
+    index: ListedIndexSkills,
+    *,
+    is_last_index: bool,
+) -> list[str]:
+    prefix = "    " if is_last_index else "│   "
+    lines: list[str] = []
+    for skill_position, skill in enumerate(index.skills):
+        skill_connector = "└──" if skill_position == len(index.skills) - 1 else "├──"
+        lines.append(f"{prefix}{skill_connector} {skill.name}")
+    return lines

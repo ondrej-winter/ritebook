@@ -1,0 +1,28 @@
+name: Docker E2E
+
+"on":
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  docker-e2e:
+    name: Docker E2E
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker E2E image
+        run: docker build -f Dockerfile.e2e -t ritebook-e2e .
+
+      - name: Run Docker E2E tests
+        run: docker run --rm ritebook-e2e

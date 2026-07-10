@@ -121,6 +121,9 @@ prompts for status updates.
 - Updated `README.md` with focused local E2E and Docker E2E commands, plus the
   first-milestone scope note that Docker E2E is a clean-room test boundary rather
   than production packaging.
+- Added `.github/workflows/docker-e2e.yaml` as a manual `workflow_dispatch`
+  workflow for Docker E2E visibility without adding it to the blocking quality or
+  release dependency chain.
 
 ## Task List
 
@@ -399,19 +402,19 @@ in the first milestone.
 
 **Acceptance criteria:**
 
-- [ ] A manual `workflow_dispatch` workflow exists for Docker E2E.
-- [ ] The workflow checks out the repository and runs Docker build/run commands.
-- [ ] The workflow is separate from the existing blocking `quality` and
+- [x] A manual `workflow_dispatch` workflow exists for Docker E2E.
+- [x] The workflow checks out the repository and runs Docker build/run commands.
+- [x] The workflow is separate from the existing blocking `quality` and
       `patch-release` dependency chain.
-- [ ] The existing `.github/workflows/ci-cd.yaml` release behavior remains
+- [x] The existing `.github/workflows/ci-cd.yaml` release behavior remains
       unchanged except for any deliberate default pytest marker exclusion needed
       to keep E2E non-blocking in the first milestone.
-- [ ] README or workflow naming makes clear that Docker E2E is manually triggered
+- [x] README or workflow naming makes clear that Docker E2E is manually triggered
       for the first milestone.
 
 **Verification:**
 
-- [ ] YAML review for valid GitHub Actions syntax and a non-blocking dependency
+- [x] YAML review for valid GitHub Actions syntax and a non-blocking dependency
       graph.
 - [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
 - [ ] `docker run --rm ritebook-e2e`

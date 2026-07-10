@@ -118,6 +118,9 @@ prompts for status updates.
   `uv run pytest tests/e2e/test_cli_workflows.py -q`; both E2E scenarios passed.
 - Re-verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`;
   193 tests passed and 2 E2E tests were deselected.
+- Updated `README.md` with focused local E2E and Docker E2E commands, plus the
+  first-milestone scope note that Docker E2E is a clean-room test boundary rather
+  than production packaging.
 
 ## Task List
 
@@ -363,21 +366,21 @@ the Docker E2E runner and explain what workflow it verifies.
 
 **Acceptance criteria:**
 
-- [ ] README documents `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
-- [ ] README documents `docker run --rm ritebook-e2e`.
-- [ ] README documents the focused local command `uv run pytest tests/e2e -q`.
-- [ ] README explains that the default quality gate excludes E2E tests in the
+- [x] README documents `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
+- [x] README documents `docker run --rm ritebook-e2e`.
+- [x] README documents the focused local command `uv run pytest tests/e2e -q`.
+- [x] README explains that the default quality gate excludes E2E tests in the
       first milestone, while Docker E2E is run explicitly.
-- [ ] README states the runner is a clean-room E2E test boundary, not production
+- [x] README states the runner is a clean-room E2E test boundary, not production
       packaging.
-- [ ] README briefly describes that the Docker E2E suite verifies the
+- [x] README briefly describes that the Docker E2E suite verifies the
       publisher-to-consumer CLI workflow with local Git, registry, and cache
       files.
-- [ ] Existing local quality gate and package build instructions remain intact.
+- [x] Existing local quality gate and package build instructions remain intact.
 
 **Verification:**
 
-- [ ] Documentation review against
+- [x] Documentation review against
       `docs/specs/docker-e2e-integration-testing-spec.md`.
 
 **Dependencies:** Tasks 1-5

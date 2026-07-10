@@ -27,11 +27,25 @@ uv run pytest -m "not e2e"
 ```
 
 The default local quality gate excludes Docker end-to-end tests while that
-workflow is being introduced. Run E2E tests explicitly once they exist:
+workflow is being introduced. Run E2E tests explicitly:
 
 ```bash
 uv run pytest tests/e2e -q
 ```
+
+Run the same E2E suite in a clean Docker test runner:
+
+```bash
+docker build -f Dockerfile.e2e -t ritebook-e2e .
+docker run --rm ritebook-e2e
+```
+
+`Dockerfile.e2e` is a clean-room end-to-end test boundary, not production
+packaging. The Docker runner verifies the publisher-to-consumer CLI workflow
+using local Git repositories, explicit registry files, and explicit cache
+directories without relying on developer-local Ritebook state. For the first
+milestone, Docker E2E remains an explicit workflow rather than part of the
+default quality gate.
 
 Build the package distributions:
 

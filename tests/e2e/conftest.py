@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
+from typing import Protocol
 
 import pytest
 
@@ -48,7 +49,21 @@ class GitRepository:
         run_git(self.path, "commit", "--message", message)
 
 
-CliRunner = Callable[[Sequence[str]], CliResult]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+class CliRunner(Protocol):
+    """Callable contract for invoking the real Ritebook CLI."""
+
+    def __call__(
+        self,
+        arguments: Sequence[str],
+        *,
+        cwd: Path | None = None,
+    ) -> CliResult:
+        """Run Ritebook with arguments and an optional working directory."""
+
+
 SkillWriter = Callable[[str, str], Path]
 InvalidSkillWriter = Callable[[str], Path]
 GitRepositoryFactory = Callable[[Path], GitRepository]
@@ -77,12 +92,13 @@ def cache_root(tmp_path: Path) -> Path:
 def run_cli() -> CliRunner:
     """Return a helper that invokes the real Ritebook CLI through uv."""
 
-    def run(arguments: Sequence[str]) -> CliResult:
-        command = ("uv", "run", "ritebook", *arguments)
+    def run(arguments: Sequence[str], *, cwd: Path | None = None) -> CliResult:
+        command = ("uv", "run", "--project", str(PROJECT_ROOT), "ritebook", *arguments)
         completed = subprocess.run(  # noqa: S603 - E2E tests intentionally drive the local CLI.
             command,
             check=False,
             capture_output=True,
+            cwd=cwd,
             text=True,
         )
         return CliResult(

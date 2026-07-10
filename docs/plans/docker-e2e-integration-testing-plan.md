@@ -104,6 +104,13 @@ prompts for status updates.
 - Verified E2E collection with `uv run pytest --collect-only tests/e2e -q`; no
   tests were collected because Task 4 has not added workflow tests yet.
 - Re-verified the default non-E2E pytest gate with `uv run pytest -m "not e2e"`.
+- Added `tests/e2e/test_cli_workflows.py` with the publisher-to-consumer happy
+  path through the real CLI, local Git, explicit registry/cache paths, cached
+  listing, source update, and refreshed listing.
+- Verified the happy-path E2E test with
+  `uv run pytest tests/e2e/test_cli_workflows.py -q`.
+- Verified the default non-E2E pytest gate still excludes E2E tests with
+  `uv run pytest -m "not e2e"`.
 
 ## Task List
 
@@ -191,7 +198,7 @@ when default pytest discovery scans `tests/`.
 
 - [x] `pyproject.toml` declares an `e2e` pytest marker with a concise
       description.
-- [ ] E2E tests are marked with `pytest.mark.e2e` at module or test level.
+- [x] E2E tests are marked with `pytest.mark.e2e` at module or test level.
 - [x] The existing CI/CD `quality` job continues to run the blocking test suite
       without Docker E2E tests, for example with `uv run pytest -m "not e2e"`.
 - [x] Local README guidance distinguishes the default quality gate from the
@@ -202,7 +209,7 @@ when default pytest discovery scans `tests/`.
 **Verification:**
 
 - [x] `uv run pytest -m "not e2e"`
-- [ ] `uv run pytest tests/e2e -q` after E2E tests exist.
+- [x] `uv run pytest tests/e2e -q` after E2E tests exist.
 
 **Dependencies:** Tasks 1-2 can be implemented before this, but this task should
 be completed before adding E2E tests to avoid accidental CI behavior.
@@ -267,30 +274,30 @@ listing, source update, `update-index`, and updated cached listing.
 
 **Acceptance criteria:**
 
-- [ ] Test creates temporary valid skill fixtures.
-- [ ] Test runs `uv run ritebook lint-skills --skills-root <skills-root>` and
+- [x] Test creates temporary valid skill fixtures.
+- [x] Test runs `uv run ritebook lint-skills --skills-root <skills-root>` and
       asserts success.
-- [ ] Test runs `uv run ritebook publish-index --skills-root <skills-root>
+- [x] Test runs `uv run ritebook publish-index --skills-root <skills-root>
       --index-name <name>` and asserts `ritebook-index.json` exists.
-- [ ] Test initializes and commits a local Git repository containing the generated
+- [x] Test initializes and commits a local Git repository containing the generated
       `ritebook-index.json`.
-- [ ] Test runs `add-index` with explicit `--registry-path` and `--cache-root`.
-- [ ] Test runs `list-skills --registry-path <path> --show-description` and
+- [x] Test runs `add-index` with explicit `--registry-path` and `--cache-root`.
+- [x] Test runs `list-skills --registry-path <path> --show-description` and
       asserts stable high-signal output for the initial cached index.
-- [ ] Test does not pass `--cache-root` to `list-skills`, because the current CLI
+- [x] Test does not pass `--cache-root` to `list-skills`, because the current CLI
       only supports cache-root isolation through registry entries created or
       refreshed by `add-index` and `update-index`.
-- [ ] Test modifies the source skills, regenerates the publisher index, and
+- [x] Test modifies the source skills, regenerates the publisher index, and
       commits the repository update.
-- [ ] Test runs `update-index --name <name> --registry-path <path> --cache-root
+- [x] Test runs `update-index --name <name> --registry-path <path> --cache-root
       <path>`.
-- [ ] Test runs `list-skills --registry-path <path> --show-description` again and
+- [x] Test runs `list-skills --registry-path <path> --show-description` again and
       verifies output reflects the updated cached index.
-- [ ] Assertions avoid absolute temporary paths and fragile incidental output.
+- [x] Assertions avoid absolute temporary paths and fragile incidental output.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/e2e/test_cli_workflows.py -q`
+- [x] `uv run pytest tests/e2e/test_cli_workflows.py -q`
 - [ ] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Task 3

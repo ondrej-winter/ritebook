@@ -124,6 +124,11 @@ prompts for status updates.
 - Added `.github/workflows/docker-e2e.yaml` as a manual `workflow_dispatch`
   workflow for Docker E2E visibility without adding it to the blocking quality or
   release dependency chain.
+- Ran the final validation sequence successfully: `uv run ruff format .`,
+  `uv run ruff check .`, `uv run mypy .`, `uv run pytest`,
+  `uv run pytest tests/e2e -q`, `uv build`,
+  `docker build -f Dockerfile.e2e -t ritebook-e2e .`, and
+  `docker run --rm ritebook-e2e`.
 
 ## Task List
 
@@ -149,14 +154,14 @@ running the E2E pytest suite.
 - [x] The default command runs `uv run pytest tests/e2e`.
 - [x] The Dockerfile is clearly scoped to E2E testing and does not introduce
       production image requirements.
-- [ ] Network access may be used during Docker build dependency installation,
+- [x] Network access may be used during Docker build dependency installation,
       but `docker run --rm ritebook-e2e` does not depend on live external
       services, remote Git repositories, or credentials.
 
 **Verification:**
 
-- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
-- [ ] `docker run --rm ritebook-e2e` after E2E tests exist.
+- [x] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [x] `docker run --rm ritebook-e2e` after E2E tests exist.
 
 **Dependencies:** None
 
@@ -181,11 +186,11 @@ image context.
 - [x] `.dockerignore` does not exclude files needed to build/install the project
       and run E2E tests, including `src/`, `tests/`, `pyproject.toml`, `uv.lock`,
       `README.md`, and relevant docs.
-- [ ] Docker builds remain reproducible from repository content.
+- [x] Docker builds remain reproducible from repository content.
 
 **Verification:**
 
-- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [x] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
 
 **Dependencies:** None
 
@@ -197,9 +202,9 @@ image context.
 
 ### Checkpoint: Docker Foundation
 
-- [ ] Docker image builds successfully.
-- [ ] The image can invoke `uv`, `git`, and `uv run ritebook --help`.
-- [ ] The runner command is ready for `tests/e2e`.
+- [x] Docker image builds successfully.
+- [x] The image can invoke `uv`, `git`, and `uv run ritebook --help`.
+- [x] The runner command is ready for `tests/e2e`.
 
 #### Task 2.5: Isolate E2E Tests from the Default Blocking Pytest Gate
 
@@ -216,7 +221,7 @@ when default pytest discovery scans `tests/`.
       without Docker E2E tests, for example with `uv run pytest -m "not e2e"`.
 - [x] Local README guidance distinguishes the default quality gate from the
       explicit E2E commands.
-- [ ] The manual Docker E2E workflow remains the first milestone's CI visibility
+- [x] The manual Docker E2E workflow remains the first milestone's CI visibility
       path for E2E tests.
 
 **Verification:**
@@ -263,7 +268,7 @@ repositories, and providing explicit registry/cache paths.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/e2e -q` once tests exist.
+- [x] `uv run pytest tests/e2e -q` once tests exist.
 - [x] Code review confirms no direct application imports in E2E tests.
 
 **Dependencies:** Tasks 1-2 are useful for Docker verification, but local pytest
@@ -311,7 +316,7 @@ listing, source update, `update-index`, and updated cached listing.
 **Verification:**
 
 - [x] `uv run pytest tests/e2e/test_cli_workflows.py -q`
-- [ ] `docker run --rm ritebook-e2e`
+- [x] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Task 3
 
@@ -342,7 +347,7 @@ output.
 **Verification:**
 
 - [x] `uv run pytest tests/e2e/test_cli_workflows.py -q`
-- [ ] `docker run --rm ritebook-e2e`
+- [x] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Task 3
 
@@ -355,9 +360,9 @@ output.
 ### Checkpoint: E2E Behavior
 
 - [x] Focused E2E tests pass locally outside Docker.
-- [ ] Docker E2E image runs the same tests successfully.
-- [ ] No E2E test touches real `~/.config/ritebook` or `~/.cache/ritebook`.
-- [ ] No live network, credentials, private repositories, service containers, or
+- [x] Docker E2E image runs the same tests successfully.
+- [x] No E2E test touches real `~/.config/ritebook` or `~/.cache/ritebook`.
+- [x] No live network, credentials, private repositories, service containers, or
       Docker Compose are required during test execution.
 
 ### Phase 4: Documentation and CI Visibility
@@ -416,8 +421,8 @@ in the first milestone.
 
 - [x] YAML review for valid GitHub Actions syntax and a non-blocking dependency
       graph.
-- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
-- [ ] `docker run --rm ritebook-e2e`
+- [x] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [x] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Tasks 1-6
 
@@ -440,25 +445,25 @@ complete.
 
 **Acceptance criteria:**
 
-- [ ] Formatting is applied.
-- [ ] Ruff lint passes.
-- [ ] Mypy strict type checking passes.
-- [ ] Full pytest suite passes.
-- [ ] Focused E2E pytest suite passes outside Docker.
-- [ ] Package build succeeds.
-- [ ] Docker image builds.
-- [ ] Docker container run succeeds.
+- [x] Formatting is applied.
+- [x] Ruff lint passes.
+- [x] Mypy strict type checking passes.
+- [x] Full pytest suite passes.
+- [x] Focused E2E pytest suite passes outside Docker.
+- [x] Package build succeeds.
+- [x] Docker image builds.
+- [x] Docker container run succeeds.
 
 **Verification:**
 
-- [ ] `uv run ruff format .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run mypy .`
-- [ ] `uv run pytest`
-- [ ] `uv run pytest tests/e2e -q`
-- [ ] `uv build`
-- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
-- [ ] `docker run --rm ritebook-e2e`
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run mypy .`
+- [x] `uv run pytest`
+- [x] `uv run pytest tests/e2e -q`
+- [x] `uv build`
+- [x] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [x] `docker run --rm ritebook-e2e`
 
 **Dependencies:** Tasks 1-7
 
@@ -468,14 +473,14 @@ complete.
 
 ### Checkpoint: Complete
 
-- [ ] Docker E2E runner builds and runs successfully.
-- [ ] E2E tests exercise the real CLI through `uv run ritebook`.
-- [ ] Publisher-to-consumer workflow passes through local Git registration,
+- [x] Docker E2E runner builds and runs successfully.
+- [x] E2E tests exercise the real CLI through `uv run ritebook`.
+- [x] Publisher-to-consumer workflow passes through local Git registration,
       cached listing, update, and refreshed listing.
-- [ ] Invalid metadata scenario reports a stable non-zero CLI failure.
-- [ ] README documents local Docker E2E usage and manual CI visibility.
-- [ ] Manual Docker E2E GitHub Actions workflow is available.
-- [ ] Full local quality gate, package build, and Docker validation pass.
+- [x] Invalid metadata scenario reports a stable non-zero CLI failure.
+- [x] README documents local Docker E2E usage and manual CI visibility.
+- [x] Manual Docker E2E GitHub Actions workflow is available.
+- [x] Full local quality gate, package build, and Docker validation pass.
 
 ## Risks and Mitigations
 

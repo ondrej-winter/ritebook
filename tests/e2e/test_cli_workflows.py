@@ -129,6 +129,4 @@ def test_lint_skills_reports_invalid_metadata_failure(
 
     result.assert_failure()
     assert result.stdout == ""
-    assert result.stderr == (
-        "missing-description/SKILL.md: description is required.\n"
-    )
+    assert result.stderr == ("missing-description/SKILL.md: description is required.\n")

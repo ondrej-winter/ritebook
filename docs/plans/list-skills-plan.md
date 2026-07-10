@@ -162,7 +162,7 @@ path.
 
 ### Phase 2: Application Use Case
 
-#### Task 3: Implement List Skills Use Case with Fakes
+#### Task 3: Implement List Skills Use Case with Fakes ✅
 
 **Description:** Implement `ListSkills` orchestration by reading registered
 indexes, optionally filtering by effective index name, and reading each selected
@@ -170,24 +170,24 @@ cached index through the cached-index reader port.
 
 **Acceptance criteria:**
 
-- [ ] With no `index_name`, lists all registry entries in deterministic
+- [x] With no `index_name`, lists all registry entries in deterministic
       effective-name order.
-- [ ] With `index_name`, reads only the selected registry entry.
-- [ ] Unknown effective index name raises the existing or new user-facing
+- [x] With `index_name`, reads only the selected registry entry.
+- [x] Unknown effective index name raises the existing or new user-facing
       unknown-index application error.
-- [ ] Skills within each index are sorted deterministically by skill name.
-- [ ] Empty registry returns an empty result, not an error.
-- [ ] Empty cached indexes are represented with empty `skills` tuples in the
+- [x] Skills within each index are sorted deterministically by skill name.
+- [x] Empty registry returns an empty result, not an error.
+- [x] Empty cached indexes are represented with empty `skills` tuples in the
       application result; the CLI prints `No skills found` when total skills are
       zero.
-- [ ] Use case does not depend on Git source, cache writer, filesystem, JSON,
+- [x] Use case does not depend on Git source, cache writer, filesystem, JSON,
       argparse, or environment APIs.
-- [ ] Tests construct the use case with only registry and cached-reader fakes,
+- [x] Tests construct the use case with only registry and cached-reader fakes,
       proving no Git source or cache writer dependency is required.
 
 **Verification:**
 
-- [ ] `uv run pytest tests/unit/features/index_registry/application/test_list_skills.py`
+- [x] `uv run pytest tests/unit/features/index_registry/application/test_list_skills.py`
 
 **Dependencies:** Tasks 1-2
 
@@ -202,9 +202,9 @@ cached index through the cached-index reader port.
 
 ### Checkpoint: Application Behavior
 
-- [ ] Focused application tests pass.
-- [ ] No Git/network-capable dependency is present in the list-skills use case.
-- [ ] Unknown index, empty registry, and deterministic ordering are covered.
+- [x] Focused application tests pass.
+- [x] No Git/network-capable dependency is present in the list-skills use case.
+- [x] Unknown index, empty registry, and deterministic ordering are covered.
 
 ### Phase 3: Cached Index Reader Adapter
 

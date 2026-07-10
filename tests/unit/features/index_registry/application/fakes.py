@@ -1,4 +1,5 @@
 from ritebook.features.index_registry.application.dtos import (
+    CachedSkillSummary,
     IndexSourceType,
     PreparedIndexSource,
     PublishedIndex,
@@ -77,6 +78,19 @@ class FailingIndexReader:
 
     def read_index(self, _repository_path: str) -> PublishedIndex:
         raise self.error
+
+
+class FakeCachedIndexReader:
+    def __init__(
+        self,
+        skills_by_path: dict[str, tuple[CachedSkillSummary, ...]] | None = None,
+    ) -> None:
+        self.skills_by_path = skills_by_path or {}
+        self.read_paths: list[str] = []
+
+    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
+        self.read_paths.append(cached_index_path)
+        return self.skills_by_path.get(cached_index_path, ())
 
 
 class FakeRegistry:

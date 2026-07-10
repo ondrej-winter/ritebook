@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1
+
+# Dedicated clean-room test runner for Docker E2E checks.
+# This image is intentionally not production runtime packaging.
+FROM ghcr.io/astral-sh/uv:0.9.5 AS uv
+
+FROM python:3.13-slim
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+
+ENV UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock README.md ./
+COPY src/ ./src/
+COPY tests/ ./tests/
+
+RUN uv sync --frozen --group dev
+
+CMD ["uv", "run", "pytest", "tests/e2e"]

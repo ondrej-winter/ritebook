@@ -27,6 +27,8 @@ repositories, or unit-test fakes.
   path and one invalid metadata failure scenario.
 - README documentation for local Docker E2E usage.
 - A manually triggered GitHub Actions workflow for Docker E2E visibility.
+- Pytest marker/configuration updates that keep Docker E2E tests out of the
+  default blocking quality/release gate for the first milestone.
 
 ## Success Criteria
 
@@ -45,8 +47,12 @@ repositories, or unit-test fakes.
 - README documents the local Docker E2E workflow.
 - CI exposes a manual Docker E2E workflow without making it a blocking release
   gate in the first milestone.
+- Default local and CI `uv run pytest` behavior remains intentional: E2E tests
+  are marker-isolated from the blocking quality/release gate, while Docker runs
+  them explicitly.
 - Final checks pass: `uv run ruff format .`, `uv run ruff check .`,
-  `uv run mypy .`, `uv run pytest`, `uv build`, Docker build, and Docker run.
+  `uv run mypy .`, the default pytest gate, the focused E2E pytest suite,
+  `uv build`, Docker build, and Docker run.
 
 ## Architecture Decisions
 
@@ -62,6 +68,10 @@ repositories, or unit-test fakes.
 - Add CI as a manual workflow only for now. Do not add Docker E2E as a blocking
   dependency of the existing quality or release jobs until the workflow proves
   stable enough to promote.
+- Mark E2E tests explicitly and configure default pytest/CI behavior so the
+  first milestone does not accidentally promote Docker E2E into the blocking
+  quality/release gate. The Docker runner and focused local E2E commands should
+  execute `tests/e2e` explicitly.
 - Keep assertions stable and high-signal. The E2E suite should prove system
   behavior, not duplicate unit-level validation matrices or tree-rendering edge
   cases.
@@ -86,12 +96,19 @@ running the E2E pytest suite.
 
 - [ ] `Dockerfile.e2e` uses Python 3.13 to match `pyproject.toml`.
 - [ ] The image installs Git for local repository initialization and commits.
-- [ ] The image installs or copies `uv` in a reproducible, non-interactive way.
+- [ ] The image installs or copies `uv` in a reproducible, non-interactive way,
+      such as copying a pinned `uv` binary from an official Astral image or using
+      another version-pinned package source.
+- [ ] The image does not pipe a remote installer script into a shell or
+      interpreter.
 - [ ] The image uses `uv sync --frozen --group dev` or an equivalent frozen
       dependency install.
 - [ ] The default command runs `uv run pytest tests/e2e`.
 - [ ] The Dockerfile is clearly scoped to E2E testing and does not introduce
       production image requirements.
+- [ ] Network access may be used during Docker build dependency installation,
+      but `docker run --rm ritebook-e2e` does not depend on live external
+      services, remote Git repositories, or credentials.
 
 **Verification:**
 
@@ -141,6 +158,41 @@ image context.
 - [ ] The image can invoke `uv`, `git`, and `uv run ritebook --help`.
 - [ ] The runner command is ready for `tests/e2e`.
 
+#### Task 2.5: Isolate E2E Tests from the Default Blocking Pytest Gate
+
+**Description:** Add pytest marker/configuration so `tests/e2e` is explicit and
+does not accidentally become part of the existing blocking quality/release gate
+when default pytest discovery scans `tests/`.
+
+**Acceptance criteria:**
+
+- [ ] `pyproject.toml` declares an `e2e` pytest marker with a concise
+      description.
+- [ ] E2E tests are marked with `pytest.mark.e2e` at module or test level.
+- [ ] The existing CI/CD `quality` job continues to run the blocking test suite
+      without Docker E2E tests, for example with `uv run pytest -m "not e2e"`.
+- [ ] Local README guidance distinguishes the default quality gate from the
+      explicit E2E commands.
+- [ ] The manual Docker E2E workflow remains the first milestone's CI visibility
+      path for E2E tests.
+
+**Verification:**
+
+- [ ] `uv run pytest -m "not e2e"`
+- [ ] `uv run pytest tests/e2e -q` after E2E tests exist.
+
+**Dependencies:** Tasks 1-2 can be implemented before this, but this task should
+be completed before adding E2E tests to avoid accidental CI behavior.
+
+**Files likely touched:**
+
+- `pyproject.toml`
+- `.github/workflows/ci-cd.yaml`
+- `README.md`
+- `tests/e2e/test_cli_workflows.py` after tests exist
+
+**Estimated scope:** Small
+
 ### Phase 2: Black-Box E2E Test Fixtures
 
 #### Task 3: Create E2E Pytest Subprocess Fixtures
@@ -172,7 +224,8 @@ repositories, and providing explicit registry/cache paths.
 - [ ] Code review confirms no direct application imports in E2E tests.
 
 **Dependencies:** Tasks 1-2 are useful for Docker verification, but local pytest
-authoring can start before Docker is complete.
+authoring can start before Docker is complete. Task 2.5 should be completed
+before E2E tests are added to the default-discovered `tests/` tree.
 
 **Files likely touched:**
 
@@ -201,6 +254,9 @@ listing, source update, `update-index`, and updated cached listing.
 - [ ] Test runs `add-index` with explicit `--registry-path` and `--cache-root`.
 - [ ] Test runs `list-skills --registry-path <path> --show-description` and
       asserts stable high-signal output for the initial cached index.
+- [ ] Test does not pass `--cache-root` to `list-skills`, because the current CLI
+      only supports cache-root isolation through registry entries created or
+      refreshed by `add-index` and `update-index`.
 - [ ] Test modifies the source skills, regenerates the publisher index, and
       commits the repository update.
 - [ ] Test runs `update-index --name <name> --registry-path <path> --cache-root
@@ -259,7 +315,7 @@ output.
 - [ ] Docker E2E image runs the same tests successfully.
 - [ ] No E2E test touches real `~/.config/ritebook` or `~/.cache/ritebook`.
 - [ ] No live network, credentials, private repositories, service containers, or
-      Docker Compose are required.
+      Docker Compose are required during test execution.
 
 ### Phase 4: Documentation and CI Visibility
 
@@ -272,6 +328,9 @@ the Docker E2E runner and explain what workflow it verifies.
 
 - [ ] README documents `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
 - [ ] README documents `docker run --rm ritebook-e2e`.
+- [ ] README documents the focused local command `uv run pytest tests/e2e -q`.
+- [ ] README explains that the default quality gate excludes E2E tests in the
+      first milestone, while Docker E2E is run explicitly.
 - [ ] README states the runner is a clean-room E2E test boundary, not production
       packaging.
 - [ ] README briefly describes that the Docker E2E suite verifies the
@@ -305,7 +364,8 @@ in the first milestone.
 - [ ] The workflow is separate from the existing blocking `quality` and
       `patch-release` dependency chain.
 - [ ] The existing `.github/workflows/ci-cd.yaml` release behavior remains
-      unchanged unless a separate manual workflow file is not chosen.
+      unchanged except for any deliberate default pytest marker exclusion needed
+      to keep E2E non-blocking in the first milestone.
 - [ ] README or workflow naming makes clear that Docker E2E is manually triggered
       for the first milestone.
 
@@ -321,6 +381,8 @@ in the first milestone.
 **Files likely touched:**
 
 - `.github/workflows/docker-e2e.yaml`
+- `.github/workflows/ci-cd.yaml` if the blocking pytest command is updated to
+  exclude the `e2e` marker
 - `README.md`
 
 **Estimated scope:** Small
@@ -339,6 +401,7 @@ complete.
 - [ ] Ruff lint passes.
 - [ ] Mypy strict type checking passes.
 - [ ] Full pytest suite passes.
+- [ ] Focused E2E pytest suite passes outside Docker.
 - [ ] Package build succeeds.
 - [ ] Docker image builds.
 - [ ] Docker container run succeeds.
@@ -349,6 +412,7 @@ complete.
 - [ ] `uv run ruff check .`
 - [ ] `uv run mypy .`
 - [ ] `uv run pytest`
+- [ ] `uv run pytest tests/e2e -q`
 - [ ] `uv build`
 - [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
 - [ ] `docker run --rm ritebook-e2e`
@@ -380,6 +444,7 @@ complete.
 | E2E tests duplicate unit coverage and become brittle | Medium | Keep one high-value happy path and one invalid metadata scenario with high-signal assertions. |
 | Subprocess failures are hard to diagnose | Low | Capture stdout, stderr, command arguments, and return code in the CLI helper and include them in assertion messages. |
 | Git behavior differs between local macOS and Linux Docker | Medium | Treat Docker as the authoritative clean-room runner, configure Git identity explicitly, and avoid assertions tied to platform-specific paths. |
+| E2E tests accidentally become a blocking release gate | High | Mark E2E tests explicitly, exclude them from the existing blocking pytest command, and run them through the manual Docker workflow until promoted deliberately. |
 
 ## Open Questions and Assumptions
 
@@ -389,10 +454,12 @@ complete.
   than building and installing the wheel for this first milestone.
 - Decision: E2E subprocess helpers invoke `uv run ritebook` to align with README
   and current development workflows.
-- Assumption: `uv run pytest tests/e2e` should be included in `uv run pytest`
-  because project pytest discovery already uses `testpaths = ["tests"]`. If the
-  Docker E2E suite later becomes too slow for default local runs, revisit pytest
-  markers or command separation explicitly.
+- Decision: E2E tests should be marked and excluded from the existing blocking
+  default pytest gate for the first milestone. Run them explicitly with
+  `uv run pytest tests/e2e -q` locally and through `docker run --rm ritebook-e2e`.
+- Assumption: Docker build may need network access to install dependencies, but
+  Docker test execution must not require live external services, remote Git
+  repositories, credentials, or network-dependent scenarios.
 - Assumption: E2E tests may create local Git repositories under pytest temporary
   directories, but must not depend on live remote repositories, credentials, or
   network access.
@@ -403,6 +470,8 @@ complete.
 ## Parallelization Opportunities
 
 - Tasks 1 and 2 can be implemented together as Docker foundation work.
+- Task 2.5 should be completed before adding E2E tests under `tests/` so default
+  pytest and CI behavior stays intentional.
 - After Task 3 defines shared fixtures, Tasks 4 and 5 can be implemented in
   sequence by one agent or split between agents with coordination on fixture
   names.
@@ -415,11 +484,15 @@ complete.
 
 ## Handoff Notes for Implementers
 
-- Start with the Dockerfile and `.dockerignore`, then build the E2E fixtures and
-  one complete happy path before adding the invalid metadata scenario.
+- Start with the Dockerfile and `.dockerignore`, then add pytest marker
+  isolation before building the E2E fixtures and one complete happy path. Add the
+  invalid metadata scenario after the happy path is stable.
 - Keep E2E tests black-box: use subprocesses and the real CLI, not application
   use-case imports.
 - Keep all registry and cache paths explicit and temporary.
+- Remember that `list-skills` currently accepts `--registry-path` but not
+  `--cache-root`; cache isolation comes from registry entries created or updated
+  with explicit cache roots.
 - Configure Git identity inside tests before committing.
 - Avoid broad production code rewrites. If E2E tests reveal a product bug, fix the
   smallest root cause and add focused lower-level regression coverage when useful.

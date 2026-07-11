@@ -71,6 +71,10 @@ class InstallationPersistenceError(SkillInstallationError):
     """Raised when generated installation state cannot be persisted."""
 
 
+class RequirementsReadError(SkillInstallationError):
+    """Raised when an installation requirements file cannot be read or parsed."""
+
+
 class SkillSourceResolutionError(SkillInstallationError):
     """Raised when source repository metadata cannot be resolved."""
 

@@ -349,6 +349,9 @@ target safety.
 
 #### Task 7: Implement TOML requirements reader adapter
 
+**Status:** Complete. Implemented `TomlRequirementsReader` with focused outbound
+adapter tests.
+
 **Description:** Parse and validate `ritebook.toml` with standard-library
 `tomllib`, rejecting invalid root shapes, malformed targets, malformed skills,
 unknown fields, and undefined target nicknames at the adapter boundary. Leave
@@ -357,20 +360,20 @@ target decisions to application planning and filesystem boundary checks.
 
 **Acceptance criteria:**
 
-- [ ] Supports optional `[targets]` when all skills use `target_path`.
-- [ ] Validates `[targets]` as non-empty string paths with simple nickname
+- [x] Supports optional `[targets]` when all skills use `target_path`.
+- [x] Validates `[targets]` as non-empty string paths with simple nickname
       identifiers.
-- [ ] Validates `[[skills]]` as array of tables with required `name` and exactly
+- [x] Validates `[[skills]]` as array of tables with required `name` and exactly
       one target selector.
-- [ ] Rejects unknown fields in v1.
-- [ ] Uses clear errors without leaking file contents.
-- [ ] Does not attempt to resolve registered indexes, inspect cached index JSON,
+- [x] Rejects unknown fields in v1.
+- [x] Uses clear errors without leaking file contents.
+- [x] Does not attempt to resolve registered indexes, inspect cached index JSON,
       or perform filesystem target-safety checks beyond TOML path field shape.
 
 **Verification:**
 
-- [ ] Unit tests cover all TOML reader cases listed in the spec.
-- [ ] Run:
+- [x] Unit tests cover all TOML reader cases listed in the spec.
+- [x] Run:
       `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_toml_requirements_reader.py`.
 
 **Dependencies:** Tasks 1 and 3

@@ -1,0 +1,108 @@
+from ritebook.features.skill_installation.application.dtos import (
+    InstallableSkill,
+    InstallationManifestEntry,
+    RegisteredSkillIndex,
+    ResolvedSkillSource,
+)
+
+
+class FakeSkillCatalog:
+    def __init__(
+        self,
+        *,
+        indexes: list[RegisteredSkillIndex] | None = None,
+        skills_by_path: dict[str, tuple[InstallableSkill, ...]] | None = None,
+    ) -> None:
+        self.indexes = {entry.name: entry for entry in indexes or []}
+        self.skills_by_path = skills_by_path or {}
+        self.get_index_calls: list[tuple[str, str | None]] = []
+        self.read_skills_calls: list[str] = []
+
+    def get_index(
+        self,
+        name: str,
+        registry_path: str | None,
+    ) -> RegisteredSkillIndex | None:
+        self.get_index_calls.append((name, registry_path))
+        return self.indexes.get(name)
+
+    def read_skills(self, cached_index_path: str) -> tuple[InstallableSkill, ...]:
+        self.read_skills_calls.append(cached_index_path)
+        return self.skills_by_path.get(cached_index_path, ())
+
+
+class FakeSkillSourceResolver:
+    def __init__(self, source: ResolvedSkillSource | None = None) -> None:
+        self.source = source or ResolvedSkillSource(
+            source="git@example.com:company/skills.git",
+            source_type="git_url",
+            repository_path="/cache/git/company-skills",
+            source_revision="abc123",
+        )
+        self.resolve_calls: list[RegisteredSkillIndex] = []
+
+    def resolve_source(self, index: RegisteredSkillIndex) -> ResolvedSkillSource:
+        self.resolve_calls.append(index)
+        return self.source
+
+
+class FakeSkillInstaller:
+    def __init__(self, failure: Exception | None = None) -> None:
+        self.failure = failure
+        self.install_calls: list[
+            tuple[ResolvedSkillSource, InstallableSkill, str, bool]
+        ] = []
+
+    def install(
+        self,
+        *,
+        source: ResolvedSkillSource,
+        skill: InstallableSkill,
+        target: str,
+        force: bool,
+    ) -> None:
+        self.install_calls.append((source, skill, target, force))
+        if self.failure is not None:
+            raise self.failure
+
+
+class FakeInstallationManifest:
+    def __init__(self) -> None:
+        self.write_calls: list[tuple[InstallationManifestEntry, str | None, bool]] = []
+
+    def write_installation(
+        self,
+        entry: InstallationManifestEntry,
+        registry_path: str | None,
+        *,
+        force: bool,
+    ) -> None:
+        self.write_calls.append((entry, registry_path, force))
+
+
+def registered_skill_index(
+    *,
+    name: str = "company-skills",
+    source: str = "git@example.com:company/skills.git",
+    source_type: str = "git_url",
+    source_cache_path: str | None = "/cache/git/company-skills",
+    cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
+    index_schema_version: int = 1,
+) -> RegisteredSkillIndex:
+    return RegisteredSkillIndex(
+        name=name,
+        source=source,
+        source_type=source_type,
+        source_cache_path=source_cache_path,
+        cached_index_path=cached_index_path,
+        index_schema_version=index_schema_version,
+    )
+
+
+def installable_skill(
+    *,
+    name: str = "code-review",
+    path: str = "skills/code-review",
+    skill_file: str = "skills/code-review/SKILL.md",
+) -> InstallableSkill:
+    return InstallableSkill(name=name, path=path, skill_file=skill_file)

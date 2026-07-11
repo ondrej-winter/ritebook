@@ -116,27 +116,27 @@ copying skill directories, and writing manifests.
 
 **Acceptance criteria:**
 
-- [ ] `InstallSkillCommand` validates fully qualified
+- [x] `InstallSkillCommand` validates fully qualified
       `<index-name>/<skill-name>`, explicit non-empty target, optional registry
       paths, optional installation registry override, and `force`.
-- [ ] Shared result/manifest DTOs capture requirement, index name, skill name,
+- [x] Shared result/manifest DTOs capture requirement, index name, skill name,
       target, source metadata, schema version, skill path/file, and timestamp.
-- [ ] Application-specific errors provide clear user-facing messages for unknown
+- [x] Application-specific errors provide clear user-facing messages for unknown
       index, unknown skill, invalid reference, existing target, conflicting
       recorded target, unsafe paths, and persistence failures.
-- [ ] Ports are small `Protocol`s under
+- [x] Ports are small `Protocol`s under
       `features/skill_installation/application/ports/`.
-- [ ] Installation-owned ports describe the registry/index/source operations
+- [x] Installation-owned ports describe the registry/index/source operations
       needed by installation use cases instead of exposing concrete
       index-registry adapters or storage details.
-- [ ] Package `__init__.py` files remain lightweight and expose only intentional
+- [x] Package `__init__.py` files remain lightweight and expose only intentional
       public application APIs.
 
 **Verification:**
 
-- [ ] Add focused DTO validation tests in
+- [x] Add focused DTO validation tests in
       `tests/unit/features/skill_installation/application/test_install_skill.py`.
-- [ ] Run: `uv run pytest tests/unit/features/skill_installation/application/test_install_skill.py`.
+- [x] Run: `uv run pytest tests/unit/features/skill_installation/application/test_install_skill.py`.
 
 **Dependencies:** None
 
@@ -159,22 +159,22 @@ installation registry.
 
 **Acceptance criteria:**
 
-- [ ] Unknown index and unknown skill fail before copy attempts.
-- [ ] Bare or malformed skill references are rejected.
-- [ ] Existing target refusal/force semantics are delegated through ports but
+- [x] Unknown index and unknown skill fail before copy attempts.
+- [x] Bare or malformed skill references are rejected.
+- [x] Existing target refusal/force semantics are delegated through ports but
       surfaced clearly.
-- [ ] Successful install writes user installation state after copy succeeds.
-- [ ] Registry/index data needed for installation is mapped into
+- [x] Successful install writes user installation state after copy succeeds.
+- [x] Registry/index data needed for installation is mapped into
       installation-owned DTOs or value objects before use-case orchestration.
-- [ ] The use case is deterministic with an injected clock and does not access
+- [x] The use case is deterministic with an injected clock and does not access
       filesystem, TOML, or JSON directly.
 
 **Verification:**
 
-- [ ] Application tests cover happy path, malformed reference, unknown index,
+- [x] Application tests cover happy path, malformed reference, unknown index,
       unknown skill, refusal without force, replacement with force, and
       manifest-write-after-copy ordering.
-- [ ] Run: `uv run pytest tests/unit/features/skill_installation/application/test_install_skill.py`.
+- [x] Run: `uv run pytest tests/unit/features/skill_installation/application/test_install_skill.py`.
 
 **Dependencies:** Task 1
 
@@ -189,9 +189,9 @@ installation registry.
 
 ### Checkpoint: Direct application foundation
 
-- [ ] Direct installation application tests pass.
-- [ ] No outbound adapter details appear in application use case code.
-- [ ] DTOs/ports are small and installation-slice-owned.
+- [x] Direct installation application tests pass.
+- [x] No outbound adapter details appear in application use case code.
+- [x] DTOs/ports are small and installation-slice-owned.
 
 ### Phase 2: Requirements-file install and manifest model
 

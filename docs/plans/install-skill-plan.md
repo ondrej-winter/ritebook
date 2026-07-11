@@ -285,19 +285,19 @@ sources, use `source_cache_path`; for local Git repositories, use the remembered
 
 **Acceptance criteria:**
 
-- [ ] Git URL source uses the managed clone path already stored in the registry
+- [x] Git URL source uses the managed clone path already stored in the registry
       entry.
-- [ ] Local Git source uses the remembered local repository path.
-- [ ] Adapter does not fetch, pull, clone, or mutate repositories.
-- [ ] Missing source paths or unreadable revision checks fail clearly; inability
+- [x] Local Git source uses the remembered local repository path.
+- [x] Adapter does not fetch, pull, clone, or mutate repositories.
+- [x] Missing source paths or unreadable revision checks fail clearly; inability
       to determine revision can be represented as `None` if the source path is
       otherwise usable.
 
 **Verification:**
 
-- [ ] Unit tests cover Git URL, local Git repo, missing required path, and
+- [x] Unit tests cover Git URL, local Git repo, missing required path, and
       optional revision behavior.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_source_repository.py`.
 
 **Dependencies:** Task 1

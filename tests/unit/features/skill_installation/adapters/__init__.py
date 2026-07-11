@@ -1,0 +1,1 @@
+"""Skill installation adapter tests."""

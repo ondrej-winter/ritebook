@@ -236,6 +236,9 @@ targets, validate duplicates, plan all installs, copy each skill, and write
 
 #### Task 4: Add manifest DTO semantics for lockfile and user registry
 
+**Status:** Complete. Guarded direct registry sorting and repo-relative lockfile
+target preservation through JSON manifest writer tests.
+
 **Description:** Finalize DTOs/results needed by both manifest writers so direct
 installs and requirements installs share source metadata consistently while
 preserving schema differences: `installed_at` vs `locked_at`, `target_ref` only
@@ -243,10 +246,10 @@ for requirements nicknames, and `requirements_file` only for lockfiles.
 
 **Acceptance criteria:**
 
-- [ ] Direct install manifest entries sort by target.
+- [x] Direct install manifest entries sort by target.
 - [x] Lockfile entries sort by index name then skill name.
 - [x] Source revision is optional and included when resolvable.
-- [ ] Repo-relative lockfile paths can remain relative when supplied that way;
+- [x] Repo-relative lockfile paths can remain relative when supplied that way;
       direct user installation registry may store expanded/resolved targets.
 - [x] Application tests distinguish manifest entry construction from adapter
       concerns such as JSON field ordering and atomic file replacement.
@@ -387,31 +390,34 @@ target decisions to application planning and filesystem boundary checks.
 
 #### Task 8: Implement JSON manifest writers
 
+**Status:** Complete. Implemented `JsonInstallationRegistryAdapter` and
+`JsonLockfileAdapter` with focused outbound adapter tests.
+
 **Description:** Implement deterministic JSON writers for user-level direct
 installation state and repo-local `ritebook.lock` with schema version `1`.
 
 **Acceptance criteria:**
 
-- [ ] `installations.json` default path is
+- [x] `installations.json` default path is
       `~/.config/ritebook/installations.json`, overrideable through the CLI and
       application command.
-- [ ] Direct reinstall of the same skill/target with `--force` replaces that
+- [x] Direct reinstall of the same skill/target with `--force` replaces that
       entry.
-- [ ] Different skill already recorded for target is refused unless `--force`.
-- [ ] `ritebook.lock` writes deterministic schema v1 with `requirements_file`,
+- [x] Different skill already recorded for target is refused unless `--force`.
+- [x] `ritebook.lock` writes deterministic schema v1 with `requirements_file`,
       sorted skills, optional `target_ref`, optional `source_revision`, and no
       stale entries for removed requirements.
-- [ ] Writes are atomic enough for local CLI use via temp-file replacement.
-- [ ] User registry conflict policy is tested separately from lockfile
+- [x] Writes are atomic enough for local CLI use via temp-file replacement.
+- [x] User registry conflict policy is tested separately from lockfile
       full-rewrite behavior.
-- [ ] JSON writers receive application-owned manifest DTOs and do not read TOML,
+- [x] JSON writers receive application-owned manifest DTOs and do not read TOML,
       cached indexes, or source repositories directly.
 
 **Verification:**
 
-- [ ] Unit tests cover deterministic JSON, entry replacement/conflict behavior,
+- [x] Unit tests cover deterministic JSON, entry replacement/conflict behavior,
       stale lockfile removal by rewrite, and schema fields.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_json_installation_registry.py tests/unit/features/skill_installation/adapters/outbound/test_json_lockfile.py`.
 
 **Dependencies:** Tasks 1, 3, and 4
@@ -427,9 +433,9 @@ installation state and repo-local `ritebook.lock` with schema version `1`.
 
 ### Checkpoint: Adapter behavior complete
 
-- [ ] All skill installation adapter tests pass.
+- [x] All skill installation adapter tests pass.
 - [x] Path-safety tests cover source and target hazards.
-- [ ] Manifest JSON output is deterministic and reviewable.
+- [x] Manifest JSON output is deterministic and reviewable.
 
 ### Phase 4: CLI and composition root wiring
 

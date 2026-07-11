@@ -36,6 +36,7 @@ Issues = "https://github.com/ondrej-winter/ritebook/issues"
 [dependency-groups]
 dev = [
     "mypy>=1.17.0",
+    "pre-commit>=4.6.0",
     "pytest>=8.4.1",
     "python-semantic-release>=10.6.1",
     "ruff>=0.12.2",

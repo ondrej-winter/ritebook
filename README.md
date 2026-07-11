@@ -17,6 +17,23 @@ Install development dependencies:
 uv sync --group dev
 ```
 
+Install the Git pre-commit hook:
+
+```bash
+uv run pre-commit install
+```
+
+Run the pre-commit hooks across the full repository when changing the hook
+configuration or before opening a PR:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
+linting, and mypy type checking. It complements, but does not replace, the full
+local quality gate.
+
 Run local quality checks:
 
 ```bash

@@ -311,28 +311,31 @@ sources, use `source_cache_path`; for local Git repositories, use the remembered
 
 #### Task 6: Implement safe filesystem installer adapter
 
+**Status:** Complete. Implemented
+`FilesystemSkillInstallerAdapter` with focused outbound adapter tests.
+
 **Description:** Copy the whole skill directory from the resolved source
 repository to the explicit target path, validating source path containment and
 target safety.
 
 **Acceptance criteria:**
 
-- [ ] Copies directories recursively and creates missing target parents.
-- [ ] Refuses existing target without `force`.
-- [ ] With `force`, removes/replaces only the resolved target path.
-- [ ] Rejects source `path`/`skill_file` traversal, absolute paths, backslashes,
+- [x] Copies directories recursively and creates missing target parents.
+- [x] Refuses existing target without `force`.
+- [x] With `force`, removes/replaces only the resolved target path.
+- [x] Rejects source `path`/`skill_file` traversal, absolute paths, backslashes,
       or paths escaping the source repository.
-- [ ] Rejects dangerous targets: empty, filesystem root, home directory itself,
+- [x] Rejects dangerous targets: empty, filesystem root, home directory itself,
       current working directory itself, and existing symlink targets.
-- [ ] Does not follow symlink targets outside the intended path in v1.
-- [ ] Assumes TOML shape validation has already happened, but independently
+- [x] Does not follow symlink targets outside the intended path in v1.
+- [x] Assumes TOML shape validation has already happened, but independently
       protects the filesystem boundary from unsafe resolved paths.
 
 **Verification:**
 
-- [ ] Unit tests cover recursive copy, parent creation, refusal, forced
+- [x] Unit tests cover recursive copy, parent creation, refusal, forced
       replacement, unsafe source paths, dangerous targets, and symlink rejection.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_filesystem_installer.py`.
 
 **Dependencies:** Tasks 1-2
@@ -422,7 +425,7 @@ installation state and repo-local `ritebook.lock` with schema version `1`.
 ### Checkpoint: Adapter behavior complete
 
 - [ ] All skill installation adapter tests pass.
-- [ ] Path-safety tests cover source and target hazards.
+- [x] Path-safety tests cover source and target hazards.
 - [ ] Manifest JSON output is deterministic and reviewable.
 
 ### Phase 4: CLI and composition root wiring

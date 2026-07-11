@@ -31,7 +31,7 @@ uv run pre-commit run --all-files
 ```
 
 Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
-linting, and mypy type checking. It complements, but does not replace, the full
+linting, and ty type checking. It complements, but does not replace, the full
 local quality gate.
 
 Run local quality checks:
@@ -39,7 +39,7 @@ Run local quality checks:
 ```bash
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest -m "not e2e"
 ```
 

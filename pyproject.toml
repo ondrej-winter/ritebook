@@ -35,11 +35,11 @@ Issues = "https://github.com/ondrej-winter/ritebook/issues"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.17.0",
     "pre-commit>=4.6.0",
     "pytest>=8.4.1",
     "python-semantic-release>=10.6.1",
     "ruff>=0.12.2",
+    "ty>=0.0.1a23",
     "types-pyyaml>=6.0.12.20260518",
 ]
 
@@ -86,10 +86,8 @@ ignore = [
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.mypy]
-python_version = "3.13"
-strict = true
-packages = ["ritebook"]
+[tool.ty.src]
+include = ["src/ritebook"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -163,7 +163,7 @@ Full validation before handoff:
 ```bash
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest
 ```
 
@@ -302,7 +302,7 @@ Cover:
 - No Git or network operations happen during skill listing.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new command.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, and
+- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`, and
   `uv run pytest` pass before handoff.
 
 ## Open questions

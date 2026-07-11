@@ -492,7 +492,7 @@ uv run pytest tests/unit/features/skill_installation/adapters/outbound
 uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest
 uv build
 ```
@@ -551,7 +551,7 @@ Never:
   errors.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new commands and file formats.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`,
+- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
   `uv run pytest`, and `uv build` pass before handoff.
 
 ## Out of scope

@@ -50,7 +50,7 @@ deterministic generated installation state.
   `ritebook: error: ...` messages.
 - No installation command fetches, pulls, mutates source repositories, or
   installs from unregistered remotes.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`,
+- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
   `uv run pytest`, and `uv build` pass before handoff.
 
 ## Architecture Decisions
@@ -597,7 +597,7 @@ required by the spec and repository rules.
 
 - [ ] Formatting applied.
 - [ ] Ruff lint passes.
-- [ ] Mypy passes.
+- [ ] Ty passes.
 - [ ] Pytest passes.
 - [ ] Package build succeeds.
 
@@ -606,7 +606,7 @@ required by the spec and repository rules.
 ```bash
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest
 uv build
 ```

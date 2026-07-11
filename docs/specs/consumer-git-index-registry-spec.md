@@ -426,7 +426,7 @@ During implementation, use focused tests first, then the full quality gate:
 ```bash
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest
 uv build
 ```
@@ -477,7 +477,7 @@ Never:
 - Duplicate effective index names are refused unless explicitly replaced.
 - Relevant unit tests cover application behavior, JSON validation, registry/cache
   persistence, Git source handling, and CLI argument mapping.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`,
+- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
   `uv run pytest`, and `uv build` pass before handoff.
 
 ## Out of scope

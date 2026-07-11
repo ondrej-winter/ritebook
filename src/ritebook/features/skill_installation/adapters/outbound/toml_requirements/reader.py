@@ -3,7 +3,7 @@
 import re
 import tomllib
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from ritebook.features.skill_installation.application.dtos import (
     SkillReference,
@@ -58,9 +58,10 @@ def _parse_targets(value: object) -> dict[str, str]:
     if not isinstance(value, dict):
         msg = "[targets] must be a table"
         raise RequirementsReadError(msg)
+    target_values = cast("dict[str, object]", value)
 
     targets: dict[str, str] = {}
-    for nickname, target_path in value.items():
+    for nickname, target_path in target_values.items():
         if not TARGET_NICKNAME_PATTERN.fullmatch(nickname):
             msg = (
                 "target nickname must contain only ASCII letters, digits, "
@@ -88,8 +89,9 @@ def _parse_skills(
         if not isinstance(entry, dict):
             msg = "each [[skills]] entry must be a table"
             raise RequirementsReadError(msg)
-        _require_fields(entry, SKILL_FIELDS, context="skill entry")
-        skills.append(_parse_skill(entry, targets, requirements_file))
+        skill_entry = cast("dict[str, Any]", entry)
+        _require_fields(skill_entry, SKILL_FIELDS, context="skill entry")
+        skills.append(_parse_skill(skill_entry, targets, requirements_file))
     return tuple(skills)
 
 

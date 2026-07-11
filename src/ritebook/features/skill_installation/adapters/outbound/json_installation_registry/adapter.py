@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ritebook.features.skill_installation.application.errors import (
     ConflictingRecordedTargetError,
@@ -93,7 +93,7 @@ def _read_entries(path: Path) -> list[dict[str, Any]]:
     ):
         msg = f"installation registry is malformed: {path}"
         raise InstallationPersistenceError(msg)
-    return list(entries)
+    return cast("list[dict[str, Any]]", entries)
 
 
 def _upsert_entry(

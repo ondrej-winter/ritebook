@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from typing import cast
 
 from ritebook.features.linter.application.dtos import (
     FrontmatterMapping,
@@ -20,11 +21,12 @@ def validate_header(header: ParsedSkillHeader) -> tuple[SkillValidationIssue, ..
     frontmatter = header.frontmatter
     if not isinstance(frontmatter, Mapping):
         return (_issue(header, "frontmatter must be a mapping."),)
+    frontmatter_mapping = cast("FrontmatterMapping", frontmatter)
 
     issues = [
-        *_validate_name(header, frontmatter),
-        *_validate_description(header, frontmatter),
-        *_validate_metadata(header, frontmatter),
+        *_validate_name(header, frontmatter_mapping),
+        *_validate_description(header, frontmatter_mapping),
+        *_validate_metadata(header, frontmatter_mapping),
     ]
     return tuple(issues)
 
@@ -97,7 +99,9 @@ def _validate_metadata(
     elif not isinstance(dependencies, Mapping):
         issues.append(_issue(header, "metadata.dependencies must be a mapping."))
     else:
-        issues.extend(_validate_dependencies(header, dependencies))
+        issues.extend(
+            _validate_dependencies(header, cast("FrontmatterMapping", dependencies)),
+        )
     return tuple(issues)
 
 
@@ -115,7 +119,7 @@ def _validate_dependencies(
         issues.extend(
             _validate_dependency_entries(
                 header,
-                entries=tools,
+                entries=cast("list[object]", tools),
                 field_path="metadata.dependencies.tools",
             ),
         )
@@ -129,7 +133,7 @@ def _validate_dependencies(
         issues.extend(
             _validate_dependency_entries(
                 header,
-                entries=skills,
+                entries=cast("list[object]", skills),
                 field_path="metadata.dependencies.skills",
             ),
         )
@@ -150,13 +154,25 @@ def _validate_dependency_entries(
             continue
 
         issues.extend(
-            _validate_required_text_field(header, entry, f"{entry_path}.name"),
+            _validate_required_text_field(
+                header,
+                cast("FrontmatterMapping", entry),
+                f"{entry_path}.name",
+            ),
         )
         issues.extend(
-            _validate_required_text_field(header, entry, f"{entry_path}.purpose"),
+            _validate_required_text_field(
+                header,
+                cast("FrontmatterMapping", entry),
+                f"{entry_path}.purpose",
+            ),
         )
         issues.extend(
-            _validate_required_boolean_field(header, entry, f"{entry_path}.required"),
+            _validate_required_boolean_field(
+                header,
+                cast("FrontmatterMapping", entry),
+                f"{entry_path}.required",
+            ),
         )
     return tuple(issues)
 

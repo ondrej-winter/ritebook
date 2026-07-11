@@ -19,7 +19,7 @@ installation is a later adoption benefit, not the first milestone.
   under `src/ritebook/features/` with domain, application, ports, and adapters
   separated according to hexagonal architecture principles.
 - The source idea is documented in `docs/ideas/internal-skill-distribution.md`.
-- Python 3.13, `uv`, `ruff`, `mypy`, and `pytest` are the project tooling
+- Python 3.13, `uv`, `ruff`, `ty`, and `pytest` are the project tooling
   baseline.
 - For discovery, any directory containing `SKILL.md` is considered a candidate
   skill directory. Candidate skills must pass the skill-header validation flow
@@ -236,7 +236,7 @@ gate before handoff.
 
 - Format: `uv run ruff format .`
 - Lint: `uv run ruff check .`
-- Type check: `uv run mypy .`
+- Type check: `uv run ty check src/ritebook`
 - Test: `uv run pytest`
 - Build: `uv build`
 
@@ -306,7 +306,7 @@ network access.
   direction.
 - Relevant unit tests cover discovery, index generation, JSON output, and CLI
   argument mapping.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run mypy .`, and
+- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`, and
   `uv run pytest` pass before handoff.
 
 ## Open questions

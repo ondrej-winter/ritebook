@@ -75,7 +75,7 @@ Existing project validation remains:
 ```bash
 uv run ruff format .
 uv run ruff check .
-uv run mypy .
+uv run ty check src/ritebook
 uv run pytest
 uv build
 ```

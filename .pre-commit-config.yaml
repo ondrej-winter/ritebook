@@ -32,10 +32,10 @@ repos:
 
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: uv run mypy
-        args: ["."]
+      - id: ty
+        name: ty
+        entry: uv run ty check
+        args: ["src/ritebook"]
         language: system
         pass_filenames: false
         types_or: [python, pyi]

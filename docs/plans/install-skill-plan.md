@@ -525,26 +525,30 @@ instances where appropriate.
 
 #### Task 11: Update README usage docs
 
+**Status:** Complete. Updated README consumer documentation for direct
+`install-skill`, requirements-file `install`, generated state paths, overrides,
+force behavior, and offline-first install behavior.
+
 **Description:** Document the new consumer installation workflows,
 `ritebook.toml` format, `ritebook.lock` behavior, user-level installation
 registry, force behavior, and path overrides.
 
 **Acceptance criteria:**
 
-- [ ] README no longer says skill installation is not part of the consumer
+- [x] README no longer says skill installation is not part of the consumer
       registry milestone.
-- [ ] README includes examples for `install-skill`, `install`, `--force`,
+- [x] README includes examples for `install-skill`, `install`, `--force`,
       `--file`, `--registry-path`, `--installation-registry-path`, and
       `--lockfile`.
-- [ ] README documents default generated state paths and recommends committing
+- [x] README documents default generated state paths and recommends committing
       `ritebook.lock` when using `ritebook.toml`.
-- [ ] README states that installs are offline-first and do not fetch/pull; users
+- [x] README states that installs are offline-first and do not fetch/pull; users
       should run `update-index` first.
 
 **Verification:**
 
-- [ ] Review README examples for consistency with parser options.
-- [ ] Check README examples against `uv run ritebook --help` and command help
+- [x] Review README examples for consistency with parser options.
+- [x] Check README examples against `uv run ritebook --help` and command help
       output after parser wiring exists.
 
 **Dependencies:** Tasks 9-10

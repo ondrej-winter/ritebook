@@ -85,8 +85,8 @@ skill changes.
 
 ## Consumer index registry
 
-Users can register, refresh, and browse Git-backed Ritebook skill indexes. Skill
-installation is not part of this milestone.
+Users can register, refresh, browse, and install skills from Git-backed Ritebook
+skill indexes.
 
 Register a Git URL source:
 
@@ -163,6 +163,96 @@ When no registered cached skills are available, Ritebook prints:
 ```text
 No skills found
 ```
+
+## Consumer skill installation
+
+Ritebook installs skills from already registered and cached indexes. Installation
+commands are offline-first: they read the local registry and cached
+`ritebook-index.json` files, then copy skill directories from the remembered
+source repository path or managed local clone. They do not clone, fetch, pull, or
+mutate source repositories. Run `update-index` first when you want to refresh the
+cached index and managed Git clone before installing.
+
+Install one fully qualified skill into an explicit target path:
+
+```bash
+uv run ritebook install-skill platform-skills/code-review \
+  --target .claude/skills/code-review
+```
+
+Ritebook copies the whole skill directory, creates missing target parent
+directories, and refuses to overwrite an existing target unless `--force` is
+provided:
+
+```bash
+uv run ritebook install-skill platform-skills/code-review \
+  --target .claude/skills/code-review \
+  --force
+```
+
+Direct `install-skill` runs write generated user-level installation state to:
+
+```text
+~/.config/ritebook/installations.json
+```
+
+Tests and automation can override both the index registry and direct-install
+state paths:
+
+```bash
+uv run ritebook install-skill platform-skills/code-review \
+  --target .claude/skills/code-review \
+  --registry-path <path-to-indexes.json> \
+  --installation-registry-path <path-to-installations.json>
+```
+
+Repositories can declare repeatable skill installations in `ritebook.toml`:
+
+```toml
+[targets]
+claude = ".claude/skills"
+agents = ".agents/skills"
+
+[[skills]]
+name = "platform-skills/code-review"
+target = "claude"
+
+[[skills]]
+name = "platform-skills/test-driven-development"
+target = "agents"
+
+[[skills]]
+name = "company-agents/security-review"
+target_path = "../shared-agent-skills/security-review"
+```
+
+Install all declared skills from the default `ritebook.toml` in the current
+working directory:
+
+```bash
+uv run ritebook install
+```
+
+Use `--file` to read a different requirements file, `--force` to replace existing
+target directories, and `--lockfile` to choose where generated lock state is
+written:
+
+```bash
+uv run ritebook install \
+  --file path/to/ritebook.toml \
+  --force \
+  --registry-path <path-to-indexes.json> \
+  --lockfile <path-to-ritebook.lock>
+```
+
+`target = "nickname"` resolves to `<targets.nickname>/<skill-name>`.
+`target_path` is used exactly as the target path for that skill entry. Each skill
+entry must use exactly one of `target` or `target_path`.
+
+After a successful requirements install, Ritebook writes deterministic generated
+state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
+`ritebook.toml` so repo-local skill installation state is reviewable and
+repeatable.
 
 By default, Ritebook stores registry metadata and cached index contents under:
 

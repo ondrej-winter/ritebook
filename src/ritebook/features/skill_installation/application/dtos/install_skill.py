@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
 
 SCHEMA_VERSION = 1
+TARGET_NICKNAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,67 @@ class InstallSkillCommand:
             self.installation_registry_path,
             field_name="Installation registry path",
         )
+
+
+@dataclass(frozen=True)
+class InstallFromRequirementsCommand:
+    """Command for installing all skills declared in a requirements file."""
+
+    requirements_file: str = "ritebook.toml"
+    force: bool = False
+    registry_path: str | None = None
+    lockfile_path: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate requirements-install command shape."""
+        _require_non_empty(self.requirements_file, field_name="Requirements file")
+        _require_optional_non_empty(self.registry_path, field_name="Registry path")
+        _require_optional_non_empty(self.lockfile_path, field_name="Lockfile path")
+
+
+@dataclass(frozen=True)
+class SkillRequirement:
+    """One parsed skill requirement from a requirements file."""
+
+    name: str
+    target: str | None = None
+    target_path: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate a parsed requirement entry."""
+        SkillReference.parse(self.name)
+        _require_optional_non_empty(self.target, field_name="Target nickname")
+        _require_optional_non_empty(self.target_path, field_name="Target path")
+        if (self.target is None) == (self.target_path is None):
+            msg = "Skill entries must define exactly one of target or target_path."
+            raise ValueError(msg)
+        if self.target is not None and not TARGET_NICKNAME_PATTERN.fullmatch(
+            self.target,
+        ):
+            msg = (
+                "Target nickname must contain only ASCII letters, digits, "
+                "underscores, or hyphens."
+            )
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True)
+class SkillRequirements:
+    """Parsed requirements-file content for application planning."""
+
+    targets: dict[str, str]
+    skills: tuple[SkillRequirement, ...]
+
+    def __post_init__(self) -> None:
+        """Validate parsed requirements content."""
+        for nickname, target_base in self.targets.items():
+            if not TARGET_NICKNAME_PATTERN.fullmatch(nickname):
+                msg = (
+                    "Target nickname must contain only ASCII letters, digits, "
+                    "underscores, or hyphens."
+                )
+                raise ValueError(msg)
+            _require_non_empty(target_base, field_name="Target path")
 
 
 @dataclass(frozen=True)
@@ -153,6 +216,45 @@ class InstallationManifestEntry:
 
 
 @dataclass(frozen=True)
+class LockfileManifestEntry:
+    """Generated repo-local lockfile manifest entry."""
+
+    requirement: str
+    index_name: str
+    skill_name: str
+    target: str
+    source: str
+    source_type: str
+    index_schema_version: int
+    skill_path: str
+    skill_file: str
+    locked_at: str
+    schema_version: int = SCHEMA_VERSION
+    target_ref: str | None = None
+    source_revision: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate generated lockfile metadata."""
+        SkillReference.parse(self.requirement)
+        require_index_name(self.index_name, field_name="Index name")
+        require_kebab_case_identifier(self.skill_name, field_name="Skill name")
+        _require_non_empty(self.target, field_name="Target")
+        _require_non_empty(self.source, field_name="Index source")
+        _require_non_empty(self.source_type, field_name="Index source type")
+        _require_non_empty(self.skill_path, field_name="Skill path")
+        _require_non_empty(self.skill_file, field_name="Skill file")
+        _require_non_empty(self.locked_at, field_name="Locked timestamp")
+        _require_optional_non_empty(self.target_ref, field_name="Target reference")
+        _require_optional_non_empty(self.source_revision, field_name="Source revision")
+        if self.schema_version != SCHEMA_VERSION:
+            msg = f"unsupported lockfile schema_version: {self.schema_version}"
+            raise ValueError(msg)
+        if self.index_schema_version != SCHEMA_VERSION:
+            msg = f"unsupported index schema_version: {self.index_schema_version}"
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True)
 class InstallSkillResult:
     """Result returned after installing one skill."""
 
@@ -164,6 +266,22 @@ class InstallSkillResult:
         """Validate direct install result metadata."""
         SkillReference.parse(self.requirement)
         _require_non_empty(self.target, field_name="Target")
+
+
+@dataclass(frozen=True)
+class InstallFromRequirementsResult:
+    """Result returned after installing requirements-file skills."""
+
+    requirements_file: str
+    installed_count: int
+    lockfile_entries: tuple[LockfileManifestEntry, ...]
+
+    def __post_init__(self) -> None:
+        """Validate requirements install result metadata."""
+        _require_non_empty(self.requirements_file, field_name="Requirements file")
+        if self.installed_count < 0:
+            msg = "Installed count must not be negative."
+            raise ValueError(msg)
 
 
 def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:

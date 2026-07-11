@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
         InstallationManifestEntry,
+        LockfileManifestEntry,
     )
 
 
@@ -21,3 +22,12 @@ class InstallationManifestPort(Protocol):
         force: bool,
     ) -> None:
         """Persist a generated direct-install manifest entry."""
+
+    def write_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        """Persist generated repo-local lockfile entries."""

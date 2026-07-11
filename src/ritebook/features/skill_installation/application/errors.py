@@ -25,6 +25,32 @@ class UnknownInstallSkillError(SkillInstallationError):
         super().__init__(f"unknown skill {requirement}")
 
 
+class UndefinedInstallTargetError(SkillInstallationError):
+    """Raised when a requirement references an undefined target nickname."""
+
+    def __init__(self, nickname: str, requirements_file: str) -> None:
+        """Build an undefined-target error for CLI rendering."""
+        super().__init__(
+            f"target nickname {nickname} is not defined in {requirements_file}",
+        )
+
+
+class DuplicateSkillRequirementError(SkillInstallationError):
+    """Raised when a requirements file repeats a skill requirement."""
+
+    def __init__(self, requirement: str) -> None:
+        """Build a duplicate-requirement error for CLI rendering."""
+        super().__init__(f"duplicate skill requirement: {requirement}")
+
+
+class DuplicateInstallTargetError(SkillInstallationError):
+    """Raised when multiple requirements resolve to the same target."""
+
+    def __init__(self, target: str) -> None:
+        """Build a duplicate-target error for CLI rendering."""
+        super().__init__(f"duplicate install target: {target}")
+
+
 class ExistingInstallTargetError(SkillInstallationError):
     """Raised when an install target exists and force was not requested."""
 
@@ -47,3 +73,14 @@ class InstallationPersistenceError(SkillInstallationError):
 
 class SkillSourceResolutionError(SkillInstallationError):
     """Raised when source repository metadata cannot be resolved."""
+
+
+class PartialInstallationError(SkillInstallationError):
+    """Raised when requirements installation copied some skills before failing."""
+
+    def __init__(self) -> None:
+        """Build a partial-install failure error for CLI rendering."""
+        super().__init__(
+            "installation failed after copying one or more skills; "
+            "ritebook.lock was not updated and copied directories may remain",
+        )

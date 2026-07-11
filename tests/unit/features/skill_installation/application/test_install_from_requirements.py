@@ -1,0 +1,416 @@
+from datetime import UTC, datetime
+
+import pytest
+
+from ritebook.features.skill_installation.application.dtos import (
+    InstallFromRequirementsCommand,
+    SkillRequirement,
+    SkillRequirements,
+)
+from ritebook.features.skill_installation.application.errors import (
+    DuplicateInstallTargetError,
+    DuplicateSkillRequirementError,
+    ExistingInstallTargetError,
+    PartialInstallationError,
+    UndefinedInstallTargetError,
+    UnknownInstallIndexError,
+    UnknownInstallSkillError,
+)
+from ritebook.features.skill_installation.application.use_cases import (
+    InstallFromRequirements,
+)
+
+from .fakes import (
+    FakeInstallationManifest,
+    FakeRequirementsReader,
+    FakeSkillCatalog,
+    FakeSkillInstaller,
+    FakeSkillSourceResolver,
+    installable_skill,
+    registered_skill_index,
+)
+
+
+def test_install_from_requirements_resolves_target_nickname_and_writes_lockfile() -> (
+    None
+):
+    index = registered_skill_index(name="platform-skills")
+    skill = installable_skill(name="code-review")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (skill,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = _use_case(
+        reader=reader,
+        catalog=catalog,
+        installer=installer,
+        manifest=manifest,
+    )
+
+    result = use_case.execute(
+        InstallFromRequirementsCommand(
+            requirements_file="ritebook.toml",
+            registry_path="/tmp/indexes.json",
+            lockfile_path="/tmp/ritebook.lock",
+        ),
+    )
+
+    assert result.installed_count == 1
+    assert reader.read_calls == ["ritebook.toml"]
+    assert catalog.get_index_calls == [("platform-skills", "/tmp/indexes.json")]
+    assert installer.install_calls == [
+        (FakeSkillSourceResolver().source, skill, ".claude/skills/code-review", False),
+    ]
+    assert manifest.lockfile_write_calls == [
+        (result.lockfile_entries, "/tmp/ritebook.lock", "ritebook.toml"),
+    ]
+    entry = result.lockfile_entries[0]
+    assert entry.requirement == "platform-skills/code-review"
+    assert entry.target == ".claude/skills/code-review"
+    assert entry.target_ref == "claude"
+    assert entry.locked_at == "2026-07-10T21:00:00Z"
+
+
+def test_install_from_requirements_uses_target_path_exactly() -> None:
+    index = registered_skill_index(name="platform-skills")
+    skill = installable_skill(name="code-review")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (skill,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path="../shared-agent-skills/review",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls[0][2] == "../shared-agent-skills/review"
+    assert result.lockfile_entries[0].target == "../shared-agent-skills/review"
+    assert result.lockfile_entries[0].target_ref is None
+
+
+def test_skill_requirement_requires_exactly_one_target_selector() -> None:
+    with pytest.raises(ValueError, match="exactly one"):
+        SkillRequirement(name="platform-skills/code-review")
+
+    with pytest.raises(ValueError, match="exactly one"):
+        SkillRequirement(
+            name="platform-skills/code-review",
+            target="claude",
+            target_path=".claude/skills/code-review",
+        )
+
+
+def test_install_from_requirements_rejects_undefined_target_before_copy() -> None:
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"agents": ".agents/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = _use_case(reader=reader, installer=installer, manifest=manifest)
+
+    with pytest.raises(UndefinedInstallTargetError, match="target nickname claude"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+    assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_rejects_duplicate_requirements_before_copy() -> None:
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path=".agents/skills/code-review",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, installer=installer)
+
+    with pytest.raises(
+        DuplicateSkillRequirementError,
+        match="platform-skills/code-review",
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_rejects_duplicate_targets_before_copy() -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="code-review"),
+                installable_skill(name="test-driven-development"),
+            ),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path=".claude/skills/shared",
+                ),
+                SkillRequirement(
+                    name="platform-skills/test-driven-development",
+                    target_path=".claude/skills/shared",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    with pytest.raises(DuplicateInstallTargetError, match=r"\.claude/skills/shared"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_fails_unknown_index_before_copy() -> None:
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="missing-index/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, installer=installer)
+
+    with pytest.raises(UnknownInstallIndexError, match="missing-index"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_fails_unknown_skill_before_copy() -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (installable_skill(name="other-skill"),),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    with pytest.raises(UnknownInstallSkillError, match="platform-skills/code-review"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_passes_force_to_all_installs() -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (installable_skill(name="code-review"),),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    use_case.execute(InstallFromRequirementsCommand(force=True))
+
+    assert installer.install_calls[0][3] is True
+
+
+def test_install_from_requirements_does_not_write_lockfile_when_first_copy_fails() -> (
+    None
+):
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (installable_skill(name="code-review"),),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    manifest = FakeInstallationManifest()
+    installer = FakeSkillInstaller(
+        ExistingInstallTargetError(".claude/skills/code-review"),
+    )
+    use_case = _use_case(
+        reader=reader,
+        catalog=catalog,
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(ExistingInstallTargetError):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_reports_partial_copy_without_lockfile_write() -> (
+    None
+):
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="code-review"),
+                installable_skill(name="test-driven-development"),
+            ),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+                SkillRequirement(
+                    name="platform-skills/test-driven-development",
+                    target="claude",
+                ),
+            ),
+        ),
+    )
+    manifest = FakeInstallationManifest()
+    installer = _FailOnSecondInstall()
+    use_case = _use_case(
+        reader=reader,
+        catalog=catalog,
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(
+        PartialInstallationError,
+        match=r"ritebook\.lock was not updated",
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert len(installer.install_calls) == 2
+    assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_sorts_lockfile_entries() -> None:
+    platform = registered_skill_index(
+        name="platform-skills",
+        cached_index_path="/cache/indexes/platform-skills/ritebook-index.json",
+    )
+    company = registered_skill_index(
+        name="company-skills",
+        cached_index_path="/cache/indexes/company-skills/ritebook-index.json",
+    )
+    platform_skill = installable_skill(
+        name="zeta-skill",
+        path="skills/zeta-skill",
+        skill_file="skills/zeta-skill/SKILL.md",
+    )
+    company_skill = installable_skill(
+        name="alpha-skill",
+        path="skills/alpha-skill",
+        skill_file="skills/alpha-skill/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[platform, company],
+        skills_by_path={
+            platform.cached_index_path: (platform_skill,),
+            company.cached_index_path: (company_skill,),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/zeta-skill", target="claude"),
+                SkillRequirement(name="company-skills/alpha-skill", target="claude"),
+            ),
+        ),
+    )
+    use_case = _use_case(reader=reader, catalog=catalog)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert [entry.requirement for entry in result.lockfile_entries] == [
+        "company-skills/alpha-skill",
+        "platform-skills/zeta-skill",
+    ]
+
+
+class _FailOnSecondInstall(FakeSkillInstaller):
+    def install(self, **kwargs: object) -> None:
+        super().install(**kwargs)  # type: ignore[arg-type]
+        if len(self.install_calls) == 2:
+            raise ExistingInstallTargetError(str(kwargs["target"]))
+
+
+def _use_case(
+    *,
+    reader: FakeRequirementsReader,
+    catalog: FakeSkillCatalog | None = None,
+    installer: FakeSkillInstaller | None = None,
+    manifest: FakeInstallationManifest | None = None,
+) -> InstallFromRequirements:
+    return InstallFromRequirements(
+        requirements_reader=reader,
+        catalog=catalog or FakeSkillCatalog(),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer or FakeSkillInstaller(),
+        manifest=manifest or FakeInstallationManifest(),
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )

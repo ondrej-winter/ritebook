@@ -204,23 +204,23 @@ targets, validate duplicates, plan all installs, copy each skill, and write
 
 **Acceptance criteria:**
 
-- [ ] `target = "nickname"` resolves to `<targets.nickname>/<skill-name>`.
-- [ ] `target_path` is used exactly as the target for that skill entry.
-- [ ] Duplicate skill requirements and duplicate resolved targets are rejected
+- [x] `target = "nickname"` resolves to `<targets.nickname>/<skill-name>`.
+- [x] `target_path` is used exactly as the target for that skill entry.
+- [x] Duplicate skill requirements and duplicate resolved targets are rejected
       before copy attempts.
-- [ ] Unknown indexes, unknown skills, source resolution failures, and target
+- [x] Unknown indexes, unknown skills, source resolution failures, and target
       planning conflicts are detected before the first copy when possible.
-- [ ] Lockfile writer is invoked only after all planned installs succeed.
-- [ ] Partial copy rollback remains out of scope, but late-copy failure errors
+- [x] Lockfile writer is invoked only after all planned installs succeed.
+- [x] Partial copy rollback remains out of scope, but late-copy failure errors
       clearly say lockfile was not updated and already-copied directories may
       remain.
 
 **Verification:**
 
-- [ ] Application tests cover target nickname resolution, direct target path,
+- [x] Application tests cover target nickname resolution, direct target path,
       both/neither target fields, duplicate requirements, duplicate targets,
       successful lockfile writing, and no lockfile on failure.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_installation/application/test_install_from_requirements.py`.
 
 **Dependencies:** Tasks 1-2
@@ -244,18 +244,18 @@ for requirements nicknames, and `requirements_file` only for lockfiles.
 **Acceptance criteria:**
 
 - [ ] Direct install manifest entries sort by target.
-- [ ] Lockfile entries sort by index name then skill name.
-- [ ] Source revision is optional and included when resolvable.
+- [x] Lockfile entries sort by index name then skill name.
+- [x] Source revision is optional and included when resolvable.
 - [ ] Repo-relative lockfile paths can remain relative when supplied that way;
       direct user installation registry may store expanded/resolved targets.
-- [ ] Application tests distinguish manifest entry construction from adapter
+- [x] Application tests distinguish manifest entry construction from adapter
       concerns such as JSON field ordering and atomic file replacement.
 
 **Verification:**
 
-- [ ] Extend application tests to assert manifest DTO values and ordering
+- [x] Extend application tests to assert manifest DTO values and ordering
       expectations passed to writer fakes.
-- [ ] Run: `uv run pytest tests/unit/features/skill_installation/application`.
+- [x] Run: `uv run pytest tests/unit/features/skill_installation/application`.
 
 **Dependencies:** Tasks 2-3
 
@@ -269,9 +269,9 @@ for requirements nicknames, and `requirements_file` only for lockfiles.
 
 ### Checkpoint: Application behavior complete
 
-- [ ] Direct and requirements application tests pass.
-- [ ] Manifest writing order is guarded by tests.
-- [ ] No JSON, TOML, or filesystem implementation details leaked into
+- [x] Direct and requirements application tests pass.
+- [x] Manifest writing order is guarded by tests.
+- [x] No JSON, TOML, or filesystem implementation details leaked into
       application use cases.
 
 ### Phase 3: Outbound adapters

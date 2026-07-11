@@ -1,8 +1,10 @@
 from ritebook.features.skill_installation.application.dtos import (
     InstallableSkill,
     InstallationManifestEntry,
+    LockfileManifestEntry,
     RegisteredSkillIndex,
     ResolvedSkillSource,
+    SkillRequirements,
 )
 
 
@@ -69,6 +71,9 @@ class FakeSkillInstaller:
 class FakeInstallationManifest:
     def __init__(self) -> None:
         self.write_calls: list[tuple[InstallationManifestEntry, str | None, bool]] = []
+        self.lockfile_write_calls: list[
+            tuple[tuple[LockfileManifestEntry, ...], str | None, str]
+        ] = []
 
     def write_installation(
         self,
@@ -78,6 +83,25 @@ class FakeInstallationManifest:
         force: bool,
     ) -> None:
         self.write_calls.append((entry, registry_path, force))
+
+    def write_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        self.lockfile_write_calls.append((entries, lockfile_path, requirements_file))
+
+
+class FakeRequirementsReader:
+    def __init__(self, requirements: SkillRequirements) -> None:
+        self.requirements = requirements
+        self.read_calls: list[str] = []
+
+    def read_requirements(self, requirements_file: str) -> SkillRequirements:
+        self.read_calls.append(requirements_file)
+        return self.requirements
 
 
 def registered_skill_index(

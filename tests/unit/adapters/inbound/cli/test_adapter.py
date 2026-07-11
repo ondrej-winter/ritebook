@@ -35,6 +35,17 @@ from ritebook.features.publisher.application.dtos import (
     PublishIndexValidationError,
     SkillPrecheckIssue,
 )
+from ritebook.features.skill_installation.application.dtos import (
+    InstallationManifestEntry,
+    InstallFromRequirementsCommand,
+    InstallFromRequirementsResult,
+    InstallSkillCommand,
+    InstallSkillResult,
+)
+from ritebook.features.skill_installation.application.errors import (
+    ExistingInstallTargetError,
+    UnknownInstallIndexError,
+)
 
 ARGPARSE_USAGE_ERROR = 2
 
@@ -50,6 +61,10 @@ def run(
     list_indexes: FakeListIndexes | FailingListIndexes | None = None,
     list_skills: FakeListSkills | FailingListSkills | None = None,
     update_index: FakeUpdateIndex | FailingUpdateIndex | None = None,
+    install_skill: FakeInstallSkill | FailingInstallSkill | None = None,
+    install_from_requirements: (
+        FakeInstallFromRequirements | FailingInstallFromRequirements | None
+    ) = None,
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
     return run_cli(
@@ -60,6 +75,9 @@ def run(
         list_indexes=list_indexes or FakeListIndexes(),
         list_skills=list_skills or FakeListSkills(),
         update_index=update_index or FakeUpdateIndex(),
+        install_skill=install_skill or FakeInstallSkill(),
+        install_from_requirements=install_from_requirements
+        or FakeInstallFromRequirements(),
         stdout=stdout,
         stderr=stderr,
     )
@@ -176,6 +194,56 @@ class FakeListSkills:
         return self.result
 
 
+class FakeInstallSkill:
+    """Test double for the install-skill inbound application port."""
+
+    def __init__(self, result: InstallSkillResult | None = None) -> None:
+        """Store the result to return and commands received by the CLI."""
+        self.result = result or InstallSkillResult(
+            requirement="platform-skills/code-review",
+            target=".claude/skills/code-review",
+            manifest_entry=InstallationManifestEntry(
+                requirement="platform-skills/code-review",
+                index_name="platform-skills",
+                skill_name="code-review",
+                target=".claude/skills/code-review",
+                source="git@example.com:company/skills.git",
+                source_type="git_url",
+                index_schema_version=1,
+                skill_path="skills/code-review",
+                skill_file="skills/code-review/SKILL.md",
+                installed_at="2026-07-10T21:00:00Z",
+            ),
+        )
+        self.commands: list[InstallSkillCommand] = []
+
+    def execute(self, command: InstallSkillCommand) -> InstallSkillResult:
+        """Record the command and return the configured result."""
+        self.commands.append(command)
+        return self.result
+
+
+class FakeInstallFromRequirements:
+    """Test double for the install inbound application port."""
+
+    def __init__(self, result: InstallFromRequirementsResult | None = None) -> None:
+        """Store the result to return and commands received by the CLI."""
+        self.result = result or InstallFromRequirementsResult(
+            requirements_file="ritebook.toml",
+            installed_count=3,
+            lockfile_entries=(),
+        )
+        self.commands: list[InstallFromRequirementsCommand] = []
+
+    def execute(
+        self,
+        command: InstallFromRequirementsCommand,
+    ) -> InstallFromRequirementsResult:
+        """Record the command and return the configured result."""
+        self.commands.append(command)
+        return self.result
+
+
 class FailingPublisher:
     """Test double that raises a configured runtime error."""
 
@@ -244,6 +312,33 @@ class FailingListSkills:
         self.error = error
 
     def execute(self, _command: ListSkillsCommand) -> ListSkillsResult:
+        """Raise the configured error for runtime error handling tests."""
+        raise self.error
+
+
+class FailingInstallSkill:
+    """Test double that raises a configured install-skill runtime error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Store the error raised when the CLI invokes the port."""
+        self.error = error
+
+    def execute(self, _command: InstallSkillCommand) -> InstallSkillResult:
+        """Raise the configured error for runtime error handling tests."""
+        raise self.error
+
+
+class FailingInstallFromRequirements:
+    """Test double that raises a configured install runtime error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Store the error raised when the CLI invokes the port."""
+        self.error = error
+
+    def execute(
+        self,
+        _command: InstallFromRequirementsCommand,
+    ) -> InstallFromRequirementsResult:
         """Raise the configured error for runtime error handling tests."""
         raise self.error
 
@@ -787,6 +882,170 @@ def test_list_skills_translates_application_errors() -> None:
     assert stderr.getvalue() == (
         "ritebook: error: index missing-skills is not registered\n"
     )
+
+
+def test_install_skill_maps_arguments_to_application_command() -> None:
+    install_skill = FakeInstallSkill()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "install-skill",
+            "platform-skills/code-review",
+            "--target",
+            ".claude/skills/code-review",
+            "--force",
+            "--registry-path",
+            "/tmp/indexes.json",
+            "--installation-registry-path",
+            "/tmp/installations.json",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_skill=install_skill,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert install_skill.commands == [
+        InstallSkillCommand(
+            skill_reference="platform-skills/code-review",
+            target=".claude/skills/code-review",
+            force=True,
+            registry_path="/tmp/indexes.json",
+            installation_registry_path="/tmp/installations.json",
+        ),
+    ]
+    assert stdout.getvalue() == (
+        "Installed platform-skills/code-review to .claude/skills/code-review\n"
+    )
+    assert stderr.getvalue() == ""
+
+
+def test_install_skill_requires_target_with_argparse_error() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["install-skill", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "usage: ritebook install-skill" in stderr.getvalue()
+    assert "the following arguments are required: --target" in stderr.getvalue()
+
+
+def test_install_skill_translates_application_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "install-skill",
+            "platform-skills/code-review",
+            "--target",
+            ".claude/skills/code-review",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_skill=FailingInstallSkill(
+            ExistingInstallTargetError(".claude/skills/code-review"),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: target .claude/skills/code-review already exists; "
+        "use --force to replace it\n"
+    )
+
+
+def test_install_maps_default_arguments_to_application_command() -> None:
+    install_from_requirements = FakeInstallFromRequirements()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["install"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=install_from_requirements,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert install_from_requirements.commands == [
+        InstallFromRequirementsCommand(requirements_file="ritebook.toml"),
+    ]
+    assert stdout.getvalue() == "Installed 3 skill(s) from ritebook.toml\n"
+    assert stderr.getvalue() == ""
+
+
+def test_install_maps_overrides_to_application_command() -> None:
+    install_from_requirements = FakeInstallFromRequirements(
+        InstallFromRequirementsResult(
+            requirements_file="config/ritebook.toml",
+            installed_count=2,
+            lockfile_entries=(),
+        ),
+    )
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "install",
+            "--file",
+            "config/ritebook.toml",
+            "--force",
+            "--registry-path",
+            "/tmp/indexes.json",
+            "--lockfile",
+            "/tmp/ritebook.lock",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=install_from_requirements,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert install_from_requirements.commands == [
+        InstallFromRequirementsCommand(
+            requirements_file="config/ritebook.toml",
+            force=True,
+            registry_path="/tmp/indexes.json",
+            lockfile_path="/tmp/ritebook.lock",
+        ),
+    ]
+    assert stdout.getvalue() == "Installed 2 skill(s) from config/ritebook.toml\n"
+    assert stderr.getvalue() == ""
+
+
+def test_install_translates_application_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["install", "--file", "config/ritebook.toml"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=FailingInstallFromRequirements(
+            UnknownInstallIndexError("platform-skills"),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == "ritebook: error: unknown index: platform-skills\n"
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

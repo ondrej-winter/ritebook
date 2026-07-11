@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, TextIO
 
 from ritebook.adapters.inbound.cli.commands import (
     run_add_index,
+    run_install,
+    run_install_skill,
     run_lint_skills,
     run_list_indexes,
     run_list_skills,
@@ -16,6 +18,8 @@ from ritebook.adapters.inbound.cli.commands import (
 )
 from ritebook.adapters.inbound.cli.parser import (
     ADD_INDEX_COMMAND,
+    INSTALL_COMMAND,
+    INSTALL_SKILL_COMMAND,
     LINT_SKILLS_COMMAND,
     LIST_INDEXES_COMMAND,
     LIST_SKILLS_COMMAND,
@@ -35,6 +39,10 @@ if TYPE_CHECKING:
     )
     from ritebook.features.linter.application.ports import LintSkillsPort
     from ritebook.features.publisher.application.ports import PublishIndexPort
+    from ritebook.features.skill_installation.application.ports import (
+        InstallFromRequirementsPort,
+        InstallSkillPort,
+    )
 
 
 def run(  # noqa: PLR0911, PLR0913
@@ -46,6 +54,8 @@ def run(  # noqa: PLR0911, PLR0913
     list_indexes: ListIndexesPort,
     list_skills: ListSkillsPort,
     update_index: UpdateIndexPort,
+    install_skill: InstallSkillPort,
+    install_from_requirements: InstallFromRequirementsPort,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -104,6 +114,22 @@ def run(  # noqa: PLR0911, PLR0913
         return run_update_index(
             args,
             update_index=update_index,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == INSTALL_SKILL_COMMAND:
+        return run_install_skill(
+            args,
+            install_skill=install_skill,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == INSTALL_COMMAND:
+        return run_install(
+            args,
+            install_from_requirements=install_from_requirements,
             stdout=stdout,
             stderr=stderr,
         )

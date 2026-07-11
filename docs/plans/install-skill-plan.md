@@ -441,28 +441,32 @@ installation state and repo-local `ritebook.lock` with schema version `1`.
 
 #### Task 9: Add CLI parser and command handlers
 
+**Status:** Complete. Added `install-skill` and `install` parser entries,
+handler mapping, success/error rendering, and CLI unit coverage with injected
+application-port fakes.
+
 **Description:** Extend the shared CLI adapter with `install-skill` and
 `install` commands, mapping args into application DTOs and rendering concise
 success/error output.
 
 **Acceptance criteria:**
 
-- [ ] `install-skill` requires positional qualified skill reference and
+- [x] `install-skill` requires positional qualified skill reference and
       `--target`.
-- [ ] `install-skill` supports `--force`, `--registry-path`, and
+- [x] `install-skill` supports `--force`, `--registry-path`, and
       `--installation-registry-path`.
-- [ ] `install` supports `--file` defaulting to `ritebook.toml`, `--force`,
+- [x] `install` supports `--file` defaulting to `ritebook.toml`, `--force`,
       `--registry-path`, and `--lockfile`.
-- [ ] Success output matches spec shape.
-- [ ] Application/adapter errors render as `ritebook: error: ...`.
-- [ ] Parser and handler tests verify new options without requiring real
+- [x] Success output matches spec shape.
+- [x] Application/adapter errors render as `ritebook: error: ...`.
+- [x] Parser and handler tests verify new options without requiring real
       filesystem, Git, TOML, or JSON adapters.
 
 **Verification:**
 
-- [ ] CLI unit tests cover arg mapping, required target, force flags, defaults,
+- [x] CLI unit tests cover arg mapping, required target, force flags, defaults,
       overrides, success output, and error rendering.
-- [ ] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
+- [x] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
 
 **Dependencies:** Tasks 1-4
 
@@ -477,24 +481,28 @@ success/error output.
 
 #### Task 10: Wire composition root
 
+**Status:** Complete. Wired installation use cases and existing outbound
+adapters in `src/ritebook/cli.py`, including a composition-root catalog mapper
+from index-registry adapters into installation-owned DTOs.
+
 **Description:** Instantiate installation use cases and outbound adapters in
 `src/ritebook/cli.py`, reusing existing index registry and cached index reader
 instances where appropriate.
 
 **Acceptance criteria:**
 
-- [ ] `main()` wires `InstallSkill` and `InstallFromRequirements` with the
+- [x] `main()` wires `InstallSkill` and `InstallFromRequirements` with the
       filesystem registry, JSON index reader, source repository adapter,
       filesystem installer, JSON installation registry, TOML reader, JSON
       lockfile writer, and injected UTC clock.
-- [ ] Existing commands remain wired unchanged.
-- [ ] No application layer imports outbound adapters.
+- [x] Existing commands remain wired unchanged.
+- [x] No application layer imports outbound adapters.
 
 **Verification:**
 
-- [ ] Run CLI tests and a targeted import/smoke command if practical.
-- [ ] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
-- [ ] After wiring, run a local help smoke such as
+- [x] Run CLI tests and a targeted import/smoke command if practical.
+- [x] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
+- [x] After wiring, run a local help smoke such as
       `uv run ritebook --help` and, if supported by the parser,
       `uv run ritebook install-skill --help`.
 
@@ -509,9 +517,9 @@ instances where appropriate.
 
 ### Checkpoint: CLI flow wired
 
-- [ ] CLI adapter tests pass.
-- [ ] `ritebook --help` includes the new commands.
-- [ ] Composition root remains the only place wiring concrete adapters.
+- [x] CLI adapter tests pass.
+- [x] `ritebook --help` includes the new commands.
+- [x] Composition root remains the only place wiring concrete adapters.
 
 ### Phase 5: Documentation and final validation
 

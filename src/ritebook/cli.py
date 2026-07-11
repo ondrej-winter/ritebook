@@ -37,6 +37,21 @@ from ritebook.features.publisher.adapters.outbound.filesystem import (
 )
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.application.use_cases import PublishIndex
+from ritebook.features.skill_installation.adapters.outbound import (
+    FilesystemSkillInstallerAdapter,
+    JsonInstallationRegistryAdapter,
+    JsonLockfileAdapter,
+    SourceRepositoryAdapter,
+    TomlRequirementsReader,
+)
+from ritebook.features.skill_installation.application.dtos import (
+    InstallableSkill,
+    RegisteredSkillIndex,
+)
+from ritebook.features.skill_installation.application.use_cases import (
+    InstallFromRequirements,
+    InstallSkill,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -74,6 +89,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         cache=cache,
         clock=lambda: datetime.now(UTC),
     )
+    installation_catalog = _InstallationCatalogAdapter(
+        registry=registry,
+        index_reader=index_reader,
+    )
+    source_repository = SourceRepositoryAdapter()
+    skill_installer = FilesystemSkillInstallerAdapter()
+    install_skill = InstallSkill(
+        catalog=installation_catalog,
+        source_resolver=source_repository,
+        installer=skill_installer,
+        manifest=JsonInstallationRegistryAdapter(),
+        clock=lambda: datetime.now(UTC),
+    )
+    install_from_requirements = InstallFromRequirements(
+        requirements_reader=TomlRequirementsReader(),
+        catalog=installation_catalog,
+        source_resolver=source_repository,
+        installer=skill_installer,
+        manifest=JsonLockfileAdapter(),
+        clock=lambda: datetime.now(UTC),
+    )
     return run(
         argv,
         linter=linter,
@@ -82,4 +118,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         list_indexes=list_indexes,
         list_skills=list_skills,
         update_index=update_index,
+        install_skill=install_skill,
+        install_from_requirements=install_from_requirements,
     )
+
+
+class _InstallationCatalogAdapter:
+    """Map index-registry adapters into installation-owned catalog DTOs."""
+
+    def __init__(
+        self,
+        *,
+        registry: FilesystemIndexRegistry,
+        index_reader: JsonIndexReader,
+    ) -> None:
+        self._registry = registry
+        self._index_reader = index_reader
+
+    def get_index(
+        self,
+        name: str,
+        registry_path: str | None,
+    ) -> RegisteredSkillIndex | None:
+        """Return installation-owned registered index metadata."""
+        entry = self._registry.get(name, registry_path)
+        if entry is None:
+            return None
+        return RegisteredSkillIndex(
+            name=entry.name,
+            source=entry.source,
+            source_type=entry.source_type.value,
+            source_cache_path=entry.source_cache_path,
+            cached_index_path=entry.cached_index_path,
+            index_schema_version=entry.source_schema_version,
+        )
+
+    def read_skills(self, cached_index_path: str) -> tuple[InstallableSkill, ...]:
+        """Return installation-owned skill metadata from a cached index."""
+        return tuple(
+            InstallableSkill(
+                name=skill.name,
+                path=skill.path,
+                skill_file=skill.skill_file,
+            )
+            for skill in self._index_reader.read_skills(cached_index_path)
+        )

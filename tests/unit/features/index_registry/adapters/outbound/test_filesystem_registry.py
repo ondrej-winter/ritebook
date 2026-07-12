@@ -53,8 +53,13 @@ def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None
     registry.upsert(entry(name="alpha-skills", skill_count=1), str(path))
     registry.upsert(entry(name="zeta-skills", skill_count=2), str(path))
 
-    assert registry.get("alpha-skills", str(path)).skill_count == 1  # type: ignore[union-attr]
-    assert registry.get("zeta-skills", str(path)).skill_count == 2  # type: ignore[union-attr]
+    alpha_entry = registry.get("alpha-skills", str(path))
+    zeta_entry = registry.get("zeta-skills", str(path))
+
+    assert alpha_entry is not None
+    assert zeta_entry is not None
+    assert alpha_entry.skill_count == 1
+    assert zeta_entry.skill_count == 2
 
 
 def entry(*, name: str = "company-skills", skill_count: int = 1) -> RegisteredIndex:

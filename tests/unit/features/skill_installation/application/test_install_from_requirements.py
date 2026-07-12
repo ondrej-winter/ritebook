@@ -3,7 +3,9 @@ from datetime import UTC, datetime
 import pytest
 
 from ritebook.features.skill_installation.application.dtos import (
+    InstallableSkill,
     InstallFromRequirementsCommand,
+    ResolvedSkillSource,
     SkillRequirement,
     SkillRequirements,
 )
@@ -393,10 +395,17 @@ def test_install_from_requirements_sorts_lockfile_entries() -> None:
 
 
 class _FailOnSecondInstall(FakeSkillInstaller):
-    def install(self, **kwargs: object) -> None:
-        super().install(**kwargs)  # type: ignore[arg-type]
+    def install(
+        self,
+        *,
+        source: ResolvedSkillSource,
+        skill: InstallableSkill,
+        target: str,
+        force: bool,
+    ) -> None:
+        super().install(source=source, skill=skill, target=target, force=force)
         if len(self.install_calls) == 2:
-            raise ExistingInstallTargetError(str(kwargs["target"]))
+            raise ExistingInstallTargetError(target)
 
 
 def _use_case(

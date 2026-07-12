@@ -185,6 +185,23 @@ pattern should be explicit before more slices depend on each other.
 
 **Priority:** Suggested
 
+**Status:** Complete.
+
+**Completed notes:** The CLI command handlers now live in a `commands/` package
+grouped by feature family:
+
+```text
+src/ritebook/adapters/inbound/cli/commands/
+├── __init__.py
+├── index_registry.py
+├── installation.py
+├── linter.py
+└── publisher.py
+```
+
+The package `__init__.py` preserves the existing handler exports used by
+`adapter.py`, so the split is structural and behavior-preserving.
+
 **Problem:** `src/ritebook/adapters/inbound/cli/commands.py` has grown to cover
 multiple feature areas. It remains readable, but it is now a natural split point.
 
@@ -202,9 +219,9 @@ multiple feature areas. It remains readable, but it is now a natural split point
 
 **Acceptance criteria:**
 
-- [ ] CLI command handlers are grouped by feature family.
-- [ ] Existing CLI tests pass without behavior changes.
-- [ ] The adapter package remains easy to navigate as new commands are added.
+- [x] CLI command handlers are grouped by feature family.
+- [x] Existing CLI tests pass without behavior changes.
+- [x] The adapter package remains easy to navigate as new commands are added.
 
 **Verification:**
 

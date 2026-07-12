@@ -1,4 +1,4 @@
-"""Command handlers for the Ritebook CLI adapter."""
+"""Index registry command handlers for the Ritebook CLI adapter."""
 
 from __future__ import annotations
 
@@ -13,22 +13,6 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexCommand,
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
-from ritebook.features.linter.application.dtos import LintSkillsCommand
-from ritebook.features.linter.application.errors import LinterError
-from ritebook.features.publisher.application.dtos import (
-    PublishIndexCommand,
-    PublishIndexValidationError,
-)
-from ritebook.features.publisher.application.errors import (
-    PublisherError,
-)
-from ritebook.features.skill_installation.application.dtos import (
-    InstallFromRequirementsCommand,
-    InstallSkillCommand,
-)
-from ritebook.features.skill_installation.application.errors import (
-    SkillInstallationError,
-)
 
 if TYPE_CHECKING:
     import argparse
@@ -39,71 +23,6 @@ if TYPE_CHECKING:
         ListSkillsPort,
         UpdateIndexPort,
     )
-    from ritebook.features.linter.application.ports import LintSkillsPort
-    from ritebook.features.publisher.application.ports import PublishIndexPort
-    from ritebook.features.skill_installation.application.ports import (
-        InstallFromRequirementsPort,
-        InstallSkillPort,
-    )
-
-
-def run_lint_skills(
-    args: argparse.Namespace,
-    *,
-    linter: LintSkillsPort,
-    stdout: TextIO,
-    stderr: TextIO,
-) -> int:
-    """Run the lint-skills command against the injected application port."""
-    command = LintSkillsCommand(
-        skills_root=args.skills_root,
-    )
-    try:
-        result = linter.execute(command)
-    except (LinterError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
-        return 1
-
-    if not result.succeeded:
-        for issue in result.issues:
-            print(issue.format(), file=stderr)
-        return 1
-
-    print(
-        f"Validated {result.validated_skill_count} skill(s)",
-        file=stdout,
-    )
-    return 0
-
-
-def run_publish_index(
-    args: argparse.Namespace,
-    *,
-    publisher: PublishIndexPort,
-    stdout: TextIO,
-    stderr: TextIO,
-) -> int:
-    """Run the publish-index command against the injected application port."""
-    command = PublishIndexCommand(
-        index_name=args.index_name,
-        skills_root=args.skills_root,
-    )
-    try:
-        result = publisher.execute(command)
-    except PublishIndexValidationError as err:
-        for issue in err.issues:
-            print(issue.format(), file=stderr)
-        return 1
-    except (PublisherError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
-        return 1
-
-    print(
-        "Published skill index with "
-        f"{result.discovered_skill_count} skill(s) to {result.output_path}",
-        file=stdout,
-    )
-    return 0
 
 
 def run_add_index(
@@ -221,56 +140,6 @@ def run_list_skills(
         return 0
     print(
         _render_skill_tree(result, show_description=command.show_description),
-        file=stdout,
-    )
-    return 0
-
-
-def run_install_skill(
-    args: argparse.Namespace,
-    *,
-    install_skill: InstallSkillPort,
-    stdout: TextIO,
-    stderr: TextIO,
-) -> int:
-    """Run install-skill against the injected application port."""
-    command = InstallSkillCommand(
-        skill_reference=args.skill_reference,
-        target=args.target,
-        force=args.force,
-        registry_path=args.registry_path,
-        installation_registry_path=args.installation_registry_path,
-    )
-    try:
-        result = install_skill.execute(command)
-    except (SkillInstallationError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
-        return 1
-    print(f"Installed {result.requirement} to {result.target}", file=stdout)
-    return 0
-
-
-def run_install(
-    args: argparse.Namespace,
-    *,
-    install_from_requirements: InstallFromRequirementsPort,
-    stdout: TextIO,
-    stderr: TextIO,
-) -> int:
-    """Run install against the injected requirements-install application port."""
-    command = InstallFromRequirementsCommand(
-        requirements_file=args.requirements_file,
-        force=args.force,
-        registry_path=args.registry_path,
-        lockfile_path=args.lockfile,
-    )
-    try:
-        result = install_from_requirements.execute(command)
-    except (SkillInstallationError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
-        return 1
-    print(
-        f"Installed {result.installed_count} skill(s) from {result.requirements_file}",
         file=stdout,
     )
     return 0

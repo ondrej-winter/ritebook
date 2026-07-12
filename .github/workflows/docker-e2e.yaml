@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build Docker E2E image
         run: docker build -f Dockerfile.e2e -t ritebook-e2e .

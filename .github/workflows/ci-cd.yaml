@@ -44,7 +44,7 @@ jobs:
         run: uv run ruff check .
 
       - name: Type check
-        run: uv run mypy .
+        run: uv run ty check src/ritebook
 
       - name: Test
         run: uv run pytest -m "not e2e"

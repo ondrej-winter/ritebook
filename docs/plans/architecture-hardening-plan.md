@@ -149,6 +149,19 @@ uv run pytest tests/unit/features/publisher tests/unit/features/linter -q
 
 **Priority:** Suggested
 
+**Status:** Complete.
+
+**Boundary decision:** `skill_installation` owns the bridge from registered
+indexes to installation catalogs as an outbound adapter. That bridge may depend
+on published `index_registry.application.ports` contracts and their
+port-approved DTOs, then must map into installation-owned DTOs before calling
+installation use cases. It must not import `index_registry` adapters, use cases,
+or private internals directly.
+
+**Completed notes:** The chosen pattern is visible in the
+`index_registry_catalog` outbound adapter package and documented here as the
+allowed cross-slice path for installation catalog reads.
+
 **Problem:** Skill installation depends on registered cached indexes. The current
 mapping avoids sharing DTOs directly, but the intended cross-slice collaboration
 pattern should be explicit before more slices depend on each other.
@@ -164,9 +177,9 @@ pattern should be explicit before more slices depend on each other.
 
 **Acceptance criteria:**
 
-- [ ] The boundary decision is visible in code structure or documentation.
-- [ ] Future cross-slice imports have a clear allowed path.
-- [ ] No feature slice imports another slice's private internals ad hoc.
+- [x] The boundary decision is visible in code structure or documentation.
+- [x] Future cross-slice imports have a clear allowed path.
+- [x] No feature slice imports another slice's private internals ad hoc.
 
 ### Task 4: Split the growing CLI command module
 

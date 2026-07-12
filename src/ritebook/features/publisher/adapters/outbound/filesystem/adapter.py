@@ -5,10 +5,12 @@ from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import (
     DiscoveredSkillFile,
+    FilesystemSkillDiscoveryError,
     FrontmatterParseError,
     discover_skill_files,
     parse_yaml_frontmatter,
 )
+from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.domain import SkillEntry
 
 
@@ -17,10 +19,12 @@ class FilesystemSkillDiscovery:
 
     def discover_skills(self, skills_root: str) -> tuple[SkillEntry, ...]:
         """Discover non-hidden skill directories below the explicit skills root."""
-        entries = [
-            _skill_entry(discovered)
-            for discovered in discover_skill_files(Path(skills_root))
-        ]
+        try:
+            discovered_files = discover_skill_files(Path(skills_root))
+        except FilesystemSkillDiscoveryError as err:
+            raise PublishIndexDiscoveryError(str(err)) from err
+
+        entries = [_skill_entry(discovered) for discovered in discovered_files]
         return tuple(sorted(entries, key=lambda entry: entry.path))
 
 

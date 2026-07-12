@@ -2,13 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from ritebook.adapters.outbound.filesystem import (
-    SkillsRootNotDirectoryError,
-    SkillsRootNotFoundError,
-)
 from ritebook.features.linter.adapters.outbound.filesystem import (
     FilesystemSkillHeaderDiscovery,
 )
+from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
 
 
 def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> None:
@@ -123,16 +120,18 @@ def test_discover_headers_returns_non_mapping_frontmatter_for_application_valida
 def test_discover_headers_rejects_missing_root(tmp_path: Path) -> None:
     missing_root = tmp_path / "missing"
 
-    with pytest.raises(SkillsRootNotFoundError, match="does not exist"):
+    with pytest.raises(LintSkillsDiscoveryError, match="does not exist") as err:
         FilesystemSkillHeaderDiscovery().discover_headers(str(missing_root))
+    assert err.value.__cause__ is not None
 
 
 def test_discover_headers_rejects_non_directory_root(tmp_path: Path) -> None:
     file_root = tmp_path / "not-a-directory"
     file_root.write_text("not a directory", encoding="utf-8")
 
-    with pytest.raises(SkillsRootNotDirectoryError, match="not a directory"):
+    with pytest.raises(LintSkillsDiscoveryError, match="not a directory") as err:
         FilesystemSkillHeaderDiscovery().discover_headers(str(file_root))
+    assert err.value.__cause__ is not None
 
 
 def write_skill(path: Path, content: str) -> None:

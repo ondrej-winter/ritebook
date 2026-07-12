@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import (
+    FilesystemSkillDiscoveryError,
     discover_skill_files,
 )
 from ritebook.features.linter.adapters.outbound.filesystem.frontmatter import (
@@ -13,6 +14,7 @@ from ritebook.features.linter.application.dtos import (
     SkillHeaderDiscoveryResult,
     SkillValidationIssue,
 )
+from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
 
 
 class FilesystemSkillHeaderDiscovery:
@@ -22,7 +24,12 @@ class FilesystemSkillHeaderDiscovery:
         """Discover non-hidden skill headers below the explicit skills root."""
         headers: list[ParsedSkillHeader] = []
         issues: list[SkillValidationIssue] = []
-        for discovered in discover_skill_files(Path(skills_root)):
+        try:
+            discovered_files = discover_skill_files(Path(skills_root))
+        except FilesystemSkillDiscoveryError as err:
+            raise LintSkillsDiscoveryError(str(err)) from err
+
+        for discovered in discovered_files:
             parsed = parse_skill_header(
                 discovered.path,
                 relative_skill_file=discovered.relative_skill_file,

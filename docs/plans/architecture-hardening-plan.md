@@ -48,6 +48,21 @@ important boundaries more explicit before more CLI features are added.
 
 **Priority:** Required
 
+**Status:** Complete.
+
+**Completed notes:** The catalog bridge now lives in the
+`skill_installation` outbound adapter package:
+
+```text
+src/ritebook/features/skill_installation/adapters/outbound/index_registry_catalog/
+├── __init__.py
+└── adapter.py
+```
+
+`src/ritebook/cli.py` wires `IndexRegistrySkillCatalogAdapter` but no longer
+contains catalog DTO mapping logic. Focused adapter tests cover successful index
+mapping, missing indexes, and cached skill mapping.
+
 **Problem:** `src/ritebook/cli.py` currently contains `_InstallationCatalogAdapter`,
 which maps index-registry data into skill-installation DTOs. The mapping itself
 is good boundary hygiene, but the implementation is adapter logic living in the
@@ -75,11 +90,11 @@ src/ritebook/features/skill_installation/adapters/outbound/index_registry_catalo
 
 **Acceptance criteria:**
 
-- [ ] `src/ritebook/cli.py` no longer contains catalog mapping logic.
-- [ ] The cross-slice bridge is owned by `skill_installation` as an outbound
+- [x] `src/ritebook/cli.py` no longer contains catalog mapping logic.
+- [x] The cross-slice bridge is owned by `skill_installation` as an outbound
       adapter.
-- [ ] Unit tests cover successful mapping and missing-index behavior.
-- [ ] Existing CLI behavior is unchanged.
+- [x] Unit tests cover successful mapping and missing-index behavior.
+- [x] Existing CLI behavior is unchanged.
 
 **Verification:**
 
@@ -91,6 +106,14 @@ uv run pytest tests/unit/adapters/inbound/cli -q
 ### Task 2: Clean CLI error boundaries
 
 **Priority:** Required
+
+**Status:** Complete.
+
+**Completed notes:** CLI command handlers now catch linter and publisher
+application-level error families instead of concrete filesystem or JSON adapter
+exceptions. Filesystem discovery and JSON writer adapters translate concrete I/O
+failures into application-owned errors while preserving the original exception as
+the cause.
 
 **Problem:** CLI command handlers catch some concrete outbound adapter exceptions,
 including filesystem discovery and JSON index writing errors. The CLI is an
@@ -110,10 +133,10 @@ about specific outbound adapter implementations.
 
 **Acceptance criteria:**
 
-- [ ] CLI command handlers do not depend on concrete outbound adapter exception
+- [x] CLI command handlers do not depend on concrete outbound adapter exception
       classes where an application-level error is appropriate.
-- [ ] User-facing error messages remain clear and safe.
-- [ ] Error tests cover the translated paths.
+- [x] User-facing error messages remain clear and safe.
+- [x] Error tests cover the translated paths.
 
 **Verification:**
 

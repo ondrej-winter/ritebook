@@ -7,12 +7,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from ritebook.features.publisher.application.errors import PublishIndexWriteError
+
 if TYPE_CHECKING:
     from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
-
-
-class JsonIndexWriteError(Exception):
-    """Raised when the JSON index writer cannot write the output file."""
 
 
 class JsonIndexWriter:
@@ -27,7 +25,7 @@ class JsonIndexWriter:
             )
         except OSError as err:
             msg = f"Unable to write JSON skill index: {output_path}"
-            raise JsonIndexWriteError(msg) from err
+            raise PublishIndexWriteError(msg) from err
 
 
 def _catalog_to_json(catalog: SkillCatalog) -> dict[str, Any]:

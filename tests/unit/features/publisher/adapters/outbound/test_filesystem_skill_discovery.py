@@ -4,9 +4,8 @@ import pytest
 
 from ritebook.features.publisher.adapters.outbound.filesystem import (
     FilesystemSkillDiscovery,
-    SkillsRootNotDirectoryError,
-    SkillsRootNotFoundError,
 )
+from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 
 
 def test_discover_skills_finds_nested_skill_directories(tmp_path: Path) -> None:
@@ -98,16 +97,18 @@ def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
 def test_discover_skills_rejects_missing_root(tmp_path: Path) -> None:
     missing_root = tmp_path / "missing"
 
-    with pytest.raises(SkillsRootNotFoundError, match="does not exist"):
+    with pytest.raises(PublishIndexDiscoveryError, match="does not exist") as err:
         FilesystemSkillDiscovery().discover_skills(str(missing_root))
+    assert err.value.__cause__ is not None
 
 
 def test_discover_skills_rejects_non_directory_root(tmp_path: Path) -> None:
     file_root = tmp_path / "not-a-directory"
     file_root.write_text("not a directory", encoding="utf-8")
 
-    with pytest.raises(SkillsRootNotDirectoryError, match="not a directory"):
+    with pytest.raises(PublishIndexDiscoveryError, match="not a directory") as err:
         FilesystemSkillDiscovery().discover_skills(str(file_root))
+    assert err.value.__cause__ is not None
 
 
 def write_skill(path: Path, content: str) -> None:

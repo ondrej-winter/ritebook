@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, TextIO
 
-from ritebook.adapters.outbound.filesystem import (
-    FilesystemSkillDiscoveryError,
-)
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     ListedIndexSkills,
@@ -17,12 +14,13 @@ from ritebook.features.index_registry.application.dtos import (
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
 from ritebook.features.linter.application.dtos import LintSkillsCommand
-from ritebook.features.publisher.adapters.outbound.json_index import (
-    JsonIndexWriteError,
-)
+from ritebook.features.linter.application.errors import LinterError
 from ritebook.features.publisher.application.dtos import (
     PublishIndexCommand,
     PublishIndexValidationError,
+)
+from ritebook.features.publisher.application.errors import (
+    PublisherError,
 )
 from ritebook.features.skill_installation.application.dtos import (
     InstallFromRequirementsCommand,
@@ -62,7 +60,7 @@ def run_lint_skills(
     )
     try:
         result = linter.execute(command)
-    except (FilesystemSkillDiscoveryError, ValueError) as err:
+    except (LinterError, ValueError) as err:
         print(f"ritebook: error: {err}", file=stderr)
         return 1
 
@@ -96,7 +94,7 @@ def run_publish_index(
         for issue in err.issues:
             print(issue.format(), file=stderr)
         return 1
-    except (FilesystemSkillDiscoveryError, JsonIndexWriteError, ValueError) as err:
+    except (PublisherError, ValueError) as err:
         print(f"ritebook: error: {err}", file=stderr)
         return 1
 

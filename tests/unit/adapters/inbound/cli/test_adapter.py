@@ -4,9 +4,6 @@ from io import StringIO
 from typing import TextIO
 
 from ritebook.adapters.inbound.cli import run as run_cli
-from ritebook.adapters.outbound.filesystem import (
-    SkillsRootNotFoundError,
-)
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
@@ -29,12 +26,14 @@ from ritebook.features.linter.application.dtos import (
     LintSkillsResult,
     SkillValidationIssue,
 )
+from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
 from ritebook.features.publisher.application.dtos import (
     PublishIndexCommand,
     PublishIndexResult,
     PublishIndexValidationError,
     SkillPrecheckIssue,
 )
+from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.skill_installation.application.dtos import (
     InstallationManifestEntry,
     InstallFromRequirementsCommand,
@@ -459,7 +458,7 @@ def test_publish_index_translates_invalid_root_errors() -> None:
             "company-skills",
         ],
         linter=FakeLinter(),
-        publisher=FailingPublisher(SkillsRootNotFoundError("Skills root missing")),
+        publisher=FailingPublisher(PublishIndexDiscoveryError("Skills root missing")),
         stdout=StringIO(),
         stderr=stderr,
     )
@@ -1113,7 +1112,7 @@ def test_lint_skills_translates_invalid_root_errors() -> None:
 
     exit_code = run(
         ["lint-skills", "--skills-root", "missing"],
-        linter=FailingLinter(SkillsRootNotFoundError("Skills root missing")),
+        linter=FailingLinter(LintSkillsDiscoveryError("Skills root missing")),
         publisher=FakePublisher(),
         stdout=StringIO(),
         stderr=stderr,

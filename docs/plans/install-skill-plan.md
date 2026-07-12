@@ -561,24 +561,33 @@ registry, force behavior, and path overrides.
 
 #### Task 12: Add focused integration-style workflow coverage
 
+**Status:** Complete. Extended the Docker-backed E2E suite with direct
+`install-skill`, requirements-file `install`, copied directory verification,
+generated direct-install state, generated lockfile state, explicit temporary
+registry/cache paths, and invalid requirements no-lockfile behavior.
+
 **Description:** Add a focused workflow test using temporary local Git/index
 fixtures and explicit registry/cache/lock paths, preferably in the existing E2E
 suite if it can remain deterministic and local-only.
 
 **Acceptance criteria:**
 
-- [ ] End-to-end CLI flow can register a local index, install one direct skill,
+- [x] End-to-end CLI flow can register a local index, install one direct skill,
       install from `ritebook.toml`, and verify copied directory contents plus
       generated state files.
-- [ ] Test uses explicit temporary paths and does not touch real `~/.config` or
+- [x] Test uses explicit temporary paths and does not touch real `~/.config` or
       `~/.cache`.
-- [ ] Test does not require network access.
+- [x] Test does not require network access.
 
 **Verification:**
 
-- [ ] Run: `uv run pytest tests/e2e -q` if E2E coverage is added.
+- [x] Run: `uv run pytest tests/e2e -q` if E2E coverage is added.
 - [ ] Otherwise, add focused unit-level workflow tests and document why E2E was
       deferred.
+
+E2E coverage was added and validated as part of `uv run pytest` and the Docker
+E2E runner. The fallback unit-level option is not applicable because E2E coverage
+exists.
 
 **Dependencies:** Tasks 5-10
 
@@ -590,16 +599,19 @@ suite if it can remain deterministic and local-only.
 
 #### Task 13: Run final quality gate
 
+**Status:** Complete. Current-tree audit validation passed locally and in the
+Docker E2E runner.
+
 **Description:** Run formatting, linting, type checking, tests, and build as
 required by the spec and repository rules.
 
 **Acceptance criteria:**
 
-- [ ] Formatting applied.
-- [ ] Ruff lint passes.
-- [ ] Ty passes.
-- [ ] Pytest passes.
-- [ ] Package build succeeds.
+- [x] Formatting applied.
+- [x] Ruff lint passes.
+- [x] Ty passes.
+- [x] Pytest passes.
+- [x] Package build succeeds.
 
 **Verification:**
 
@@ -610,6 +622,23 @@ uv run ty check src/ritebook
 uv run pytest
 uv build
 ```
+
+Audit validation run:
+
+```bash
+uv run ruff format --check . && uv run ruff check . && uv run ty check src/ritebook && uv run pytest && uv build
+```
+
+Result: passed; `uv run pytest` collected and passed 278 tests, including 6 E2E
+tests.
+
+Docker E2E validation run:
+
+```bash
+docker build -f Dockerfile.e2e -t ritebook-e2e . && docker run --rm ritebook-e2e
+```
+
+Result: passed; Docker E2E collected and passed 6 tests under Python 3.13.14.
 
 Also run targeted CLI help smoke checks after command wiring exists:
 
@@ -658,9 +687,9 @@ scope:
 
 ## Final Handoff Checklist
 
-- [ ] Every task has acceptance criteria.
-- [ ] Every task has verification steps.
-- [ ] Task dependencies are ordered.
-- [ ] Checkpoints exist between major phases.
-- [ ] Open questions and assumptions are captured.
-- [ ] Validation commands are explicit.
+- [x] Every task has acceptance criteria.
+- [x] Every task has verification steps.
+- [x] Task dependencies are ordered.
+- [x] Checkpoints exist between major phases.
+- [x] Open questions and assumptions are captured.
+- [x] Validation commands are explicit.

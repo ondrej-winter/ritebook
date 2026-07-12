@@ -14,27 +14,31 @@ proves the workflow outside local developer state and outside unit-test fakes.
 
 - Ritebook is a Python 3.13 CLI package managed with `uv`.
 - The package exposes the console script `ritebook = "ritebook.cli:main"`.
-- Current automated tests are unit tests under `tests/unit/`.
+- Current automated tests include unit tests under `tests/unit/` and black-box
+  CLI E2E tests under `tests/e2e/`.
 - The existing test suite covers domain, application, adapter, and CLI behavior
   through direct Python tests and fakes.
-- There is currently no Dockerfile, Docker Compose configuration, or `tests/e2e/`
-  suite.
-- GitHub Actions currently runs formatting, linting, type checking, pytest, and
-  package build steps directly on `ubuntu-latest`.
-- The highest-value workflow to verify end-to-end is the publisher-to-consumer
+- `Dockerfile.e2e` provides a clean-room Docker test runner for E2E pytest.
+- `.github/workflows/docker-e2e.yaml` exposes Docker E2E as a manually triggered
+  workflow rather than a blocking release gate.
+- GitHub Actions runs formatting, linting, type checking, non-E2E pytest, and
+  package build steps directly on `ubuntu-latest` in `.github/workflows/ci-cd.yaml`.
+- The highest-value workflow verified end to end is the publisher-to-consumer
   path across these commands:
   - `lint-skills`
   - `publish-index`
   - `add-index`
   - `list-skills`
   - `update-index`
+  - `install-skill`
+  - `install`
 
 ## Desired behavior
 
-The future implementation should add a containerized e2e test runner that builds
-from the repository and runs black-box CLI tests inside Docker.
+The implementation adds a containerized E2E test runner that builds from the
+repository and runs black-box CLI tests inside Docker.
 
-The first e2e scenario must focus on the publisher-to-consumer workflow:
+The first e2e scenario focuses on the publisher-to-consumer workflow:
 
 1. Create temporary valid skill fixtures.
 2. Run `ritebook lint-skills --skills-root <skills-root>`.
@@ -57,14 +61,14 @@ all unit-level edge cases.
 
 ## Commands and validation
 
-Target local Docker workflow for the future implementation:
+Target local Docker workflow:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
 docker run --rm ritebook-e2e
 ```
 
-The container default command should run the e2e suite, for example:
+The container default command runs the e2e suite:
 
 ```bash
 uv run pytest tests/e2e
@@ -80,16 +84,11 @@ uv run pytest
 uv build
 ```
 
-For this spec-only step, validation is limited to reviewing this document.
-
 ## Project structure
 
-This spec is the only file required for the current step:
+Implemented files:
 
 - Spec: `docs/specs/docker-e2e-integration-testing-spec.md`
-
-Expected future implementation files:
-
 - `Dockerfile.e2e`: dedicated Docker e2e test-runner image.
 - `.dockerignore`: keep Docker build context small and avoid copying local caches
   and generated artifacts.
@@ -98,7 +97,8 @@ Expected future implementation files:
   skills, local Git repositories, registry paths, and cache roots when useful.
 - `tests/e2e/test_cli_workflows.py`: publisher-to-consumer workflow tests.
 - `README.md`: local Docker e2e usage documentation.
-- `.github/workflows/ci-cd.yaml`: optional CI visibility for Docker e2e tests.
+- `.github/workflows/docker-e2e.yaml`: manually triggered CI visibility for Docker
+  e2e tests.
 
 ## Conventions
 
@@ -177,7 +177,7 @@ Never:
 
 ## Success criteria
 
-For the future implementation:
+For the implementation:
 
 - `docker build -f Dockerfile.e2e -t ritebook-e2e .` succeeds.
 - `docker run --rm ritebook-e2e` exits with status `0` when the e2e workflow is
@@ -192,17 +192,8 @@ For the future implementation:
 - CI either exposes the Docker e2e workflow or clearly documents why it remains
   local-only until stabilized.
 
-For this spec-only task:
-
-- This document captures the confirmed intent, scope, boundaries, testing
-  strategy, and success criteria.
-- No Docker, test, README, or CI files are changed yet.
-
 ## Open questions
 
-- Which CI shape should the first implementation choose: non-blocking job,
-  manual workflow, or local-only documentation with a follow-up task?
-- Should the first Docker test image install Ritebook as an editable project for
-  fast iteration, or build and install the wheel to maximize packaging fidelity?
-- Should the e2e command use `uv run ritebook` or the installed `ritebook` console
-  script directly?
+- None blocking for the first implementation. Docker E2E is exposed as a manual
+  workflow and remains outside the default release-blocking quality gate until it
+  proves stable enough to promote.

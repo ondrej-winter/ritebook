@@ -497,6 +497,19 @@ uv run pytest
 uv build
 ```
 
+Current implementation status:
+
+- Direct `install-skill` and requirements-file `install` are implemented in the
+  `features/skill_installation` vertical slice.
+- CLI E2E coverage exercises local-Git-backed registration, direct installation,
+  requirements-file installation, copied directory contents, generated
+  `installations.json`, generated `ritebook.lock`, and invalid requirements that
+  do not write a lockfile.
+- Target path danger checks are enforced at the filesystem installation adapter
+  boundary, after TOML shape and application-level duplicate planning checks.
+- Final audit handoff should include a fresh current-tree run of the full quality
+  gate and Docker E2E command, or explicitly document any skipped validation.
+
 ## Boundaries
 
 Always:

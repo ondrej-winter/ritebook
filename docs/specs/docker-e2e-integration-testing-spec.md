@@ -19,10 +19,12 @@ proves the workflow outside local developer state and outside unit-test fakes.
 - The existing test suite covers domain, application, adapter, and CLI behavior
   through direct Python tests and fakes.
 - `Dockerfile.e2e` provides a clean-room Docker test runner for E2E pytest.
+- `.github/workflows/ci-cd.yaml` runs Docker E2E as a mandatory gate in parallel
+  with the non-E2E quality-check job.
 - `.github/workflows/docker-e2e.yaml` exposes Docker E2E as a manually triggered
-  workflow rather than a blocking release gate.
+  rerun/debug workflow.
 - GitHub Actions runs formatting, linting, type checking, non-E2E pytest, and
-  package build steps directly on `ubuntu-latest` in `.github/workflows/ci-cd.yaml`.
+  package build steps directly on `ubuntu-latest` in a separate mandatory job.
 - The highest-value workflow verified end to end is the publisher-to-consumer
   path across these commands:
   - `lint-skills`
@@ -97,8 +99,10 @@ Implemented files:
   skills, local Git repositories, registry paths, and cache roots when useful.
 - `tests/e2e/test_cli_workflows.py`: publisher-to-consumer workflow tests.
 - `README.md`: local Docker e2e usage documentation.
-- `.github/workflows/docker-e2e.yaml`: manually triggered CI visibility for Docker
-  e2e tests.
+- `.github/workflows/ci-cd.yaml`: mandatory Docker e2e gate in the main CI/CD
+  workflow.
+- `.github/workflows/docker-e2e.yaml`: manually triggered rerun/debug workflow for
+  Docker e2e tests.
 
 ## Conventions
 
@@ -135,18 +139,14 @@ test order.
 
 ## CI stance
 
-The Docker e2e workflow should be possible to run locally and visible in CI.
-However, in the first implementation it should not be a hard release stopper if
-it fails or proves flaky or slow.
+Docker E2E is a mandatory quality gate in the main CI/CD workflow. The Docker E2E
+job runs independently from the standard formatting, linting, type-checking,
+non-E2E pytest, and build job so both jobs can execute in parallel on GitHub
+Actions runners.
 
-Acceptable first CI approaches include:
-
-- a non-blocking or explicitly allowed-to-fail Docker e2e job,
-- a manually triggered workflow,
-- a documented local-only command with a follow-up task to wire CI once stable.
-
-The implementation should choose the simplest reliable approach and document the
-trade-off.
+Releases require both the standard quality-check job and the Docker E2E job to
+pass. The separate manual Docker E2E workflow remains available as an explicit
+rerun/debug entry point for maintainers.
 
 ## Boundaries
 
@@ -163,7 +163,6 @@ Ask first:
 
 - Adding Docker Compose or service containers.
 - Requiring live remote Git repositories or network-dependent test scenarios.
-- Making Docker e2e a blocking CI or release gate.
 - Adding new runtime dependencies only to support e2e tests.
 
 Never:
@@ -189,11 +188,9 @@ For the implementation:
   refresh, and updated listing.
 - The tests use explicit temporary registry and cache paths.
 - README documents the local Docker e2e workflow.
-- CI either exposes the Docker e2e workflow or clearly documents why it remains
-  local-only until stabilized.
+- CI/CD runs Docker e2e as a blocking gate before release and publishing.
 
 ## Open questions
 
-- None blocking for the first implementation. Docker E2E is exposed as a manual
-  workflow and remains outside the default release-blocking quality gate until it
-  proves stable enough to promote.
+- None currently blocking. Docker E2E has been promoted into the default
+  release-blocking quality gate.

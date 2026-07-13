@@ -25,7 +25,7 @@ incremental: preserve current behavior first, then reduce boundary ambiguity.
 
 - Rewriting existing feature slices.
 - Changing public CLI behavior unless required by boundary cleanup.
-- Replacing the current explicit/manual Docker E2E workflow.
+- Reworking Docker E2E scenarios beyond promoting the existing workflow into CI.
 - Introducing new runtime dependencies.
 
 ## Current audit summary
@@ -292,15 +292,16 @@ while the rest of the README documents real CLI workflows.
 - [x] README onboarding text matches the current project state.
 - [x] Documentation remains concise and user-facing.
 
-### Task 7: Revisit Docker E2E promotion later
+### Task 7: Promote Docker E2E into CI/CD quality gate
 
-**Priority:** Follow-up
+**Priority:** Complete
 
-**Current state:** Docker E2E is documented as an explicit workflow rather than a
-default quality gate. That is acceptable during the early stabilization period.
+**Current state:** Docker E2E now runs as a mandatory job in the main CI/CD
+workflow, in parallel with the non-E2E quality-check job.
 
-**Decision point:** After several stable releases, decide whether Docker E2E
-should become a blocking CI job or remain manual/non-blocking.
+**Completed notes:** Patch releases and publishing require both `quality` and
+`docker-e2e` jobs to pass. The manual Docker E2E workflow remains available for
+explicit rerun/debug use.
 
 ## Final validation checklist
 
@@ -313,13 +314,13 @@ uv run ty check src/ritebook
 uv run pytest -m "not e2e"
 ```
 
-If CLI or install behavior changes, also run:
+Run E2E directly when iterating on CLI workflows:
 
 ```bash
 uv run pytest tests/e2e -q
 ```
 
-If clean-room confidence is needed, run:
+Run the clean-room Docker E2E gate before handoff:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .

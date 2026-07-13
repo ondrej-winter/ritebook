@@ -45,14 +45,13 @@ uv run ty check src/ritebook
 uv run pytest -m "not e2e"
 ```
 
-The default local quality gate excludes Docker end-to-end tests while that
-workflow is being introduced. Run E2E tests explicitly:
+Run E2E tests directly when iterating on the black-box CLI workflow:
 
 ```bash
 uv run pytest tests/e2e -q
 ```
 
-Run the same E2E suite in a clean Docker test runner:
+Run the mandatory clean-room Docker E2E gate before handoff:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
@@ -62,9 +61,8 @@ docker run --rm ritebook-e2e
 `Dockerfile.e2e` is a clean-room end-to-end test boundary, not production
 packaging. The Docker runner verifies the publisher-to-consumer CLI workflow
 using local Git repositories, explicit registry files, and explicit cache
-directories without relying on developer-local Ritebook state. For the first
-milestone, Docker E2E remains an explicit workflow rather than part of the
-default quality gate.
+directories without relying on developer-local Ritebook state. CI/CD runs Docker
+E2E as a mandatory quality gate in parallel with the non-E2E quality checks.
 
 Build the package distributions:
 
@@ -314,8 +312,9 @@ are rejected instead of guessing a name.
 ## Publishing
 
 The GitHub Actions workflow in `.github/workflows/ci-cd.yaml` runs formatting,
-linting, type checking, tests, package builds, patch releases, and PyPI
-publishing.
+linting, type checking, non-E2E tests, package builds, Docker E2E, patch
+releases, and PyPI publishing. Docker E2E runs as a separate mandatory job in
+parallel with the main quality-check job, and releases require both jobs to pass.
 
 During the early project lifecycle, releases stay on the `0.1.x` line and every
 non-bot push to `master` increments the patch version. The CI/CD workflow uses

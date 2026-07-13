@@ -1,7 +1,9 @@
 # ritebook
 
-Ritebook is currently a minimal Python package placeholder intended to reserve
-the package name on PyPI while the project is being designed.
+Ritebook is a Python CLI for validating, publishing, registering, browsing, and
+installing Agent Skill indexes. It supports publisher workflows that generate
+reviewable `ritebook-index.json` files and consumer workflows that install skills
+from registered Git-backed indexes.
 
 ## Requirements
 

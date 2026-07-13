@@ -270,6 +270,12 @@ uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_file
 
 **Priority:** Suggested
 
+**Status:** Complete.
+
+**Completed notes:** The README intro now describes Ritebook's current publisher
+and consumer CLI workflows without presenting the project as only a PyPI package
+placeholder.
+
 **Problem:** The README intro still describes Ritebook as a minimal placeholder,
 while the rest of the README documents real CLI workflows.
 
@@ -283,8 +289,8 @@ while the rest of the README documents real CLI workflows.
 
 **Acceptance criteria:**
 
-- [ ] README onboarding text matches the current project state.
-- [ ] Documentation remains concise and user-facing.
+- [x] README onboarding text matches the current project state.
+- [x] Documentation remains concise and user-facing.
 
 ### Task 7: Revisit Docker E2E promotion later
 

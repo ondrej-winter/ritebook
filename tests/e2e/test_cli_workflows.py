@@ -363,6 +363,65 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
     ]
 
 
+def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    skills_root: Path,
+    git_repository: GitRepositoryFactory,
+    registry_path: Path,
+    cache_root: Path,
+) -> None:
+    published_repo = git_repository(tmp_path / "published-index")
+    target = tmp_path / "consumer" / ".claude" / "skills" / "code-review"
+    installation_registry_path = tmp_path / "config" / "installations.json"
+
+    skill_file = skills_root / "skills" / "code-review" / "SKILL.md"
+    skill_file.parent.mkdir(parents=True, exist_ok=True)
+    skill_file.write_text(
+        _valid_skill_content("code-review", "Helps review code changes."),
+        encoding="utf-8",
+    )
+    (skills_root / "skills" / "code-review" / "checklist.md").write_text(
+        "# Nested review checklist\n",
+        encoding="utf-8",
+    )
+    _publish_and_register_index(
+        run_cli=run_cli,
+        published_repo=published_repo,
+        skills_root=skills_root,
+        index_name="company-skills",
+        registry_path=registry_path,
+        cache_root=cache_root,
+    )
+
+    result = run_cli(
+        [
+            "install-skill",
+            "company-skills/code-review",
+            "--target",
+            str(target),
+            "--registry-path",
+            str(registry_path),
+            "--installation-registry-path",
+            str(installation_registry_path),
+        ],
+    )
+
+    result.assert_success()
+    assert result.stdout == f"Installed company-skills/code-review to {target}\n"
+    assert (target / "SKILL.md").is_file()
+    assert (target / "checklist.md").read_text(encoding="utf-8") == (
+        "# Nested review checklist\n"
+    )
+    installation_registry = _read_json(installation_registry_path)
+    assert installation_registry["installations"][0]["skill_path"] == (
+        "skills/code-review"
+    )
+    assert installation_registry["installations"][0]["skill_file"] == (
+        "skills/code-review/SKILL.md"
+    )
+
+
 def test_install_skill_refuses_existing_target_without_force(
     tmp_path: Path,
     run_cli: CliRunner,
@@ -721,6 +780,23 @@ def _copy_skill_directories_to_repository(skills_root: Path, repository: Path) -
 def _read_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as file:
         return cast("dict[str, Any]", json.load(file))
+
+
+def _valid_skill_content(name: str, description: str) -> str:
+    return f"""---
+name: {name}
+description: {description}
+metadata:
+  version: "1.0.0"
+  dependencies:
+    tools:
+      - name: git
+        purpose: Inspect version-control state.
+        required: true
+    skills: []
+---
+# {name}
+"""
 
 
 def _git_head(repository: Path) -> str:

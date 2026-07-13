@@ -233,18 +233,25 @@ uv run pytest tests/unit/adapters/inbound/cli -q
 
 **Priority:** Suggested
 
+**Status:** Complete.
+
+**Completed notes:** Filesystem installer tests now cover existing targets,
+force replacement for directories and files, broad target rejection, unsafe
+source metadata, symlink targets, symlink source paths, symlinks inside source
+directories, and traversal attempts represented by unsafe source metadata.
+
 **Problem:** The current design intentionally keeps concrete filesystem danger
 checks in the filesystem installer adapter. That boundary is acceptable, but the
 adapter tests should prove the important safety cases.
 
 **Coverage to confirm:**
 
-- [ ] Existing target behavior.
-- [ ] `--force` replacement behavior.
-- [ ] Filesystem root rejection.
-- [ ] Unsafe source paths.
-- [ ] Symlink rejection or safe handling.
-- [ ] Traversal attempts.
+- [x] Existing target behavior.
+- [x] `--force` replacement behavior.
+- [x] Filesystem root rejection.
+- [x] Unsafe source paths.
+- [x] Symlink rejection or safe handling.
+- [x] Traversal attempts.
 
 **Implementation steps:**
 

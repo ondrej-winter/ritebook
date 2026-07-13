@@ -81,6 +81,29 @@ def test_filesystem_installer_replaces_only_target_with_force(tmp_path: Path) ->
     assert sibling.read_text(encoding="utf-8") == "keep"
 
 
+def test_filesystem_installer_replaces_existing_file_target_with_force(
+    tmp_path: Path,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target_parent.mkdir()
+    target.write_text("old", encoding="utf-8")
+    sibling = target_parent / "keep.md"
+    sibling.write_text("keep", encoding="utf-8")
+
+    FilesystemSkillInstallerAdapter().install(
+        source=resolved_source(repository),
+        skill=installable_skill(),
+        target=str(target),
+        force=True,
+    )
+
+    assert target.is_dir()
+    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
+    assert sibling.read_text(encoding="utf-8") == "keep"
+
+
 @pytest.mark.parametrize(
     ("skill_path", "skill_file"),
     [
@@ -167,6 +190,42 @@ def test_filesystem_installer_rejects_symlink_source_directory(tmp_path: Path) -
     )
 
     with pytest.raises(UnsafeInstallPathError, match="symlink"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(tmp_path / "target" / "code-review"),
+            force=False,
+        )
+
+
+def test_filesystem_installer_rejects_symlink_skill_file(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    skill_dir = repository / "skills" / "code-review"
+    skill_dir.mkdir(parents=True)
+    actual_skill_file = tmp_path / "outside-SKILL.md"
+    actual_skill_file.write_text("# Outside\n", encoding="utf-8")
+    (skill_dir / "SKILL.md").symlink_to(actual_skill_file)
+
+    with pytest.raises(UnsafeInstallPathError, match="symlink"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(tmp_path / "target" / "code-review"),
+            force=False,
+        )
+
+
+def test_filesystem_installer_rejects_symlink_inside_source_directory(
+    tmp_path: Path,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    outside_asset = tmp_path / "outside-asset.md"
+    outside_asset.write_text("outside", encoding="utf-8")
+    (repository / "skills" / "code-review" / "asset-link.md").symlink_to(
+        outside_asset,
+    )
+
+    with pytest.raises(UnsafeInstallPathError, match="contains symlinks"):
         FilesystemSkillInstallerAdapter().install(
             source=resolved_source(repository),
             skill=installable_skill(),

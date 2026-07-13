@@ -29,29 +29,40 @@ def test_add_index_command_accepts_optional_overrides() -> None:
     assert command.force is True
 
 
-def test_index_registry_dtos_accept_repository_style_index_names() -> None:
-    AddIndexCommand(source="repo", name="ondrej-winter/ritebook-shelf")
-    UpdateIndexCommand(name="ondrej-winter/ritebook-shelf")
-    PublishedIndex(
-        published_name="ondrej-winter/ritebook-shelf",
-        schema_version=1,
-        skill_count=0,
-        cacheable_content="{}",
-    )
-    RegisteredIndex(
-        name="ondrej-winter/ritebook-shelf",
-        published_name="ondrej-winter/ritebook-shelf",
-        source="git@example.com:ondrej-winter/ritebook-shelf.git",
-        source_type=IndexSourceType.GIT_URL,
-        source_cache_path="/tmp/source-cache",
-        cached_index_path="/tmp/cache/indexes/ondrej-winter_ritebook-shelf/ritebook-index.json",
-        source_schema_version=1,
-        skill_count=1,
-        added_at="2026-07-08T18:00:00Z",
-        updated_at="2026-07-08T18:00:00Z",
-    )
-    AddIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
-    UpdateIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
+def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
+    with pytest.raises(ValueError, match="Index name"):
+        AddIndexCommand(source="repo", name="ondrej-winter/ritebook-shelf")
+
+    with pytest.raises(ValueError, match="Index name"):
+        UpdateIndexCommand(name="ondrej-winter/ritebook-shelf")
+
+    with pytest.raises(ValueError, match="Published index name"):
+        PublishedIndex(
+            published_name="ondrej-winter/ritebook-shelf",
+            schema_version=1,
+            skill_count=0,
+            cacheable_content="{}",
+        )
+
+    with pytest.raises(ValueError, match="Index name"):
+        RegisteredIndex(
+            name="ondrej-winter/ritebook-shelf",
+            published_name="company-skills",
+            source="git@example.com:ondrej-winter/ritebook-shelf.git",
+            source_type=IndexSourceType.GIT_URL,
+            source_cache_path="/tmp/source-cache",
+            cached_index_path="/tmp/cache/indexes/company-skills/ritebook-index.json",
+            source_schema_version=1,
+            skill_count=1,
+            added_at="2026-07-08T18:00:00Z",
+            updated_at="2026-07-08T18:00:00Z",
+        )
+
+    with pytest.raises(ValueError, match="Index name"):
+        AddIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
+
+    with pytest.raises(ValueError, match="Index name"):
+        UpdateIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
 
 
 def test_add_index_command_rejects_empty_source_and_invalid_name() -> None:
@@ -66,6 +77,7 @@ def test_add_index_command_rejects_empty_source_and_invalid_name() -> None:
     "name",
     [
         "../repo",
+        "owner/repo",
         "/owner/repo",
         "owner/repo/extra",
         "owner/",
@@ -86,11 +98,11 @@ def test_update_index_command_rejects_invalid_name() -> None:
 
 def test_list_skills_command_accepts_optional_filter_and_registry_path() -> None:
     command = ListSkillsCommand(
-        index_name="ondrej-winter/ritebook-shelf",
+        index_name="ritebook-shelf",
         registry_path="/tmp/indexes.json",
     )
 
-    assert command.index_name == "ondrej-winter/ritebook-shelf"
+    assert command.index_name == "ritebook-shelf"
     assert command.registry_path == "/tmp/indexes.json"
 
 

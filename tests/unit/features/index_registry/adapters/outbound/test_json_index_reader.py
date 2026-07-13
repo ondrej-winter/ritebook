@@ -61,14 +61,13 @@ def test_json_index_reader_reads_empty_cached_skills(tmp_path: Path) -> None:
     assert result == ()
 
 
-def test_json_index_reader_accepts_repository_style_published_name(
+def test_json_index_reader_rejects_slash_separated_published_name(
     tmp_path: Path,
 ) -> None:
     write_index(tmp_path, {"index": {"name": "ondrej-winter/ritebook-shelf"}})
 
-    result = JsonIndexReader().read_index(str(tmp_path))
-
-    assert result.published_name == "ondrej-winter/ritebook-shelf"
+    with pytest.raises(InvalidPublishedIndexError, match="Published index name"):
+        JsonIndexReader().read_index(str(tmp_path))
 
 
 def test_json_index_reader_requires_root_index(tmp_path: Path) -> None:

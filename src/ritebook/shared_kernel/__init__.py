@@ -2,7 +2,6 @@
 
 from ritebook.shared_kernel.identifiers import (
     INDEX_NAME_PATTERN,
-    INDEX_NAME_SEGMENT_REGEX,
     KEBAB_CASE_IDENTIFIER_PATTERN,
     KEBAB_CASE_IDENTIFIER_REGEX,
     is_index_name,
@@ -13,7 +12,6 @@ from ritebook.shared_kernel.identifiers import (
 
 __all__ = [
     "INDEX_NAME_PATTERN",
-    "INDEX_NAME_SEGMENT_REGEX",
     "KEBAB_CASE_IDENTIFIER_PATTERN",
     "KEBAB_CASE_IDENTIFIER_REGEX",
     "is_index_name",

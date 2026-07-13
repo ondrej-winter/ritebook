@@ -90,7 +90,7 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     assert [skill.path for skill in written_catalog.skills] == ["alpha", "zeta"]
 
 
-def test_publish_index_accepts_repository_style_index_name() -> None:
+def test_publish_index_rejects_slash_separated_index_name() -> None:
     writer = FakeIndexWriter()
     use_case = PublishIndex(
         skill_discovery=FakeSkillDiscovery(skills=()),
@@ -99,14 +99,15 @@ def test_publish_index_accepts_repository_style_index_name() -> None:
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
     )
 
-    use_case.execute(
-        PublishIndexCommand(
-            index_name="ondrej-winter/ritebook-shelf",
-            skills_root="skills",
-        ),
-    )
+    with pytest.raises(ValueError, match="Publish index name"):
+        use_case.execute(
+            PublishIndexCommand(
+                index_name="ondrej-winter/ritebook-shelf",
+                skills_root="skills",
+            ),
+        )
 
-    assert writer.written_catalogs[0].index_name == "ondrej-winter/ritebook-shelf"
+    assert writer.written_catalogs == []
 
 
 def test_publish_index_writes_empty_catalog() -> None:

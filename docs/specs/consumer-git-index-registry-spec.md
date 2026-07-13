@@ -151,7 +151,10 @@ Proposed publisher index schema v2 or schema v1 extension:
 Index name requirements:
 
 - Required for newly generated indexes once this feature is implemented.
-- Kebab-case identifier using the same general naming constraints as skill names.
+- Single-segment kebab-case identifier using the same general naming constraints
+  as skill names.
+- Slashes are not allowed because downstream skill installation references use
+  `<index-name>/<skill-name>`.
 - Intended to be stable across updates.
 - Used as the default effective index name during `add-index`.
 - Can be locally overridden during `add-index` to avoid collisions.

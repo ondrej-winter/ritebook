@@ -45,6 +45,8 @@ uv run ritebook install-skill platform-skills/code-review --target .claude/skill
 Requirements:
 
 - The skill reference must be fully qualified as `<index-name>/<skill-name>`.
+- Index names must be single-segment kebab-case identifiers and must not contain
+  `/`, so the separator before `<skill-name>` is unambiguous.
 - `install-skill` accepts only a direct `--target <path>` argument.
 - `install-skill` does not accept target aliases, target kinds, or inferred
   default destinations.

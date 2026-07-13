@@ -32,11 +32,9 @@ def test_skill_reference_parses_index_and_skill_names() -> None:
     assert reference.requirement == "platform-skills/code-review"
 
 
-def test_skill_reference_supports_repository_style_index_names() -> None:
-    reference = SkillReference.parse("ondrej-winter/ritebook-shelf/code-review")
-
-    assert reference.index_name == "ondrej-winter/ritebook-shelf"
-    assert reference.skill_name == "code-review"
+def test_skill_reference_rejects_slash_separated_index_names() -> None:
+    with pytest.raises(ValueError, match="Index name"):
+        SkillReference.parse("ondrej-winter/ritebook-shelf/code-review")
 
 
 def test_install_skill_command_requires_qualified_reference() -> None:

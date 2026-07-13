@@ -6,7 +6,6 @@ from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     IndexSourceType,
     PreparedIndexSource,
-    PublishedIndex,
 )
 from ritebook.features.index_registry.application.errors import DuplicateIndexNameError
 from ritebook.features.index_registry.application.use_cases import AddIndex
@@ -74,31 +73,6 @@ def test_add_index_uses_local_name_override() -> None:
     assert result.name == "platform-skills"
     assert "platform-skills" in registry.entries
     assert cache.write_calls[0][0] == "platform-skills"
-
-
-def test_add_index_uses_repository_style_published_name_by_default() -> None:
-    registry = FakeRegistry()
-    cache = FakeCache()
-    use_case = AddIndex(
-        git_source=FakeGitSource(),
-        index_reader=FakeIndexReader(
-            PublishedIndex(
-                published_name="ondrej-winter/ritebook-shelf",
-                schema_version=1,
-                skill_count=2,
-                cacheable_content='{"schema_version":1}\n',
-            ),
-        ),
-        registry=registry,
-        cache=cache,
-        clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
-    )
-
-    result = use_case.execute(AddIndexCommand(source="repo"))
-
-    assert result.name == "ondrej-winter/ritebook-shelf"
-    assert "ondrej-winter/ritebook-shelf" in registry.entries
-    assert cache.write_calls[0][0] == "ondrej-winter/ritebook-shelf"
 
 
 def test_add_index_registers_local_git_repository_source() -> None:

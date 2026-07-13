@@ -94,4 +94,5 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
     "e2e: black-box end-to-end tests that exercise the real CLI and external process boundaries",
+    "integration: adapter integration tests that exercise real local I/O boundaries",
 ]

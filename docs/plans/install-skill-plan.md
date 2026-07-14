@@ -223,7 +223,7 @@ targets, validate duplicates, plan all installs, copy each skill, and write
 - [x] Run:
       `uv run pytest tests/unit/features/skill_installation/application/test_install_from_requirements.py`.
 
-**Dependencies:** Tasks 1-2
+**Dependencies:** Tasks 1–2
 
 **Files likely touched:**
 
@@ -260,7 +260,7 @@ for requirements nicknames, and `requirements_file` only for lockfiles.
       expectations passed to writer fakes.
 - [x] Run: `uv run pytest tests/unit/features/skill_installation/application`.
 
-**Dependencies:** Tasks 2-3
+**Dependencies:** Tasks 2–3
 
 **Files likely touched:**
 
@@ -341,7 +341,7 @@ target safety.
 - [x] Run:
       `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_filesystem_installer.py`.
 
-**Dependencies:** Tasks 1-2
+**Dependencies:** Tasks 1–2
 
 **Files likely touched:**
 
@@ -399,7 +399,7 @@ installation state and repo-local `ritebook.lock` with schema version `1`.
 **Acceptance criteria:**
 
 - [x] `installations.json` default path is
-      `~/.config/ritebook/installations.json`, overrideable through the CLI and
+      `~/.config/ritebook/installations.json`, overridable through the CLI and
       application command.
 - [x] Direct reinstall of the same skill/target with `--force` replaces that
       entry.
@@ -468,7 +468,7 @@ success/error output.
       overrides, success output, and error rendering.
 - [x] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
 
-**Dependencies:** Tasks 1-4
+**Dependencies:** Tasks 1–4
 
 **Files likely touched:**
 
@@ -506,7 +506,7 @@ instances where appropriate.
       `uv run ritebook --help` and, if supported by the parser,
       `uv run ritebook install-skill --help`.
 
-**Dependencies:** Tasks 5-9
+**Dependencies:** Tasks 5–9
 
 **Files likely touched:**
 
@@ -551,7 +551,7 @@ registry, force behavior, and path overrides.
 - [x] Check README examples against `uv run ritebook --help` and command help
       output after parser wiring exists.
 
-**Dependencies:** Tasks 9-10
+**Dependencies:** Tasks 9–10
 
 **Files likely touched:**
 
@@ -589,7 +589,7 @@ E2E coverage was added and validated as part of `uv run pytest` and the Docker
 E2E runner. The fallback unit-level option is not applicable because E2E coverage
 exists.
 
-**Dependencies:** Tasks 5-10
+**Dependencies:** Tasks 5–10
 
 **Files likely touched:**
 
@@ -683,7 +683,7 @@ scope:
 - Tasks 5 and 7 can proceed in parallel after the core DTOs in Task 1 are stable.
 - Task 8 can proceed in parallel with Task 6 once manifest DTOs are finalized.
 - README updates can start after CLI shape is stable, but final examples should
-  be checked after Tasks 9-10.
+  be checked after Tasks 9–10.
 
 ## Final Handoff Checklist
 

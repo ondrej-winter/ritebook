@@ -22,7 +22,7 @@ proves the workflow outside local developer state and outside unit-test fakes.
 - `.github/workflows/ci-cd.yaml` runs Docker E2E as a mandatory gate in parallel
   with the non-E2E quality-check job.
 - `.github/workflows/docker-e2e.yaml` exposes Docker E2E as a manually triggered
-  rerun/debug workflow.
+  rerun or debug workflow.
 - GitHub Actions runs formatting, linting, type checking, non-E2E pytest, and
   package build steps directly on `ubuntu-latest` in a separate mandatory job.
 - The highest-value workflow verified end to end is the publisher-to-consumer
@@ -40,7 +40,7 @@ proves the workflow outside local developer state and outside unit-test fakes.
 The implementation adds a containerized E2E test runner that builds from the
 repository and runs black-box CLI tests inside Docker.
 
-The first e2e scenario focuses on the publisher-to-consumer workflow:
+The first E2E scenario focuses on the publisher-to-consumer workflow:
 
 1. Create temporary valid skill fixtures.
 2. Run `ritebook lint-skills --skills-root <skills-root>`.
@@ -70,7 +70,7 @@ docker build -f Dockerfile.e2e -t ritebook-e2e .
 docker run --rm ritebook-e2e
 ```
 
-The container default command runs the e2e suite:
+The container's default command runs the E2E suite:
 
 ```bash
 uv run pytest tests/e2e
@@ -91,24 +91,24 @@ uv build
 Implemented files:
 
 - Spec: `docs/specs/docker-e2e-integration-testing-spec.md`
-- `Dockerfile.e2e`: dedicated Docker e2e test-runner image.
+- `Dockerfile.e2e`: dedicated Docker E2E test-runner image.
 - `.dockerignore`: keep Docker build context small and avoid copying local caches
   and generated artifacts.
-- `tests/e2e/`: black-box e2e pytest suite.
+- `tests/e2e/`: black-box E2E pytest suite.
 - `tests/e2e/conftest.py`: shared fixtures for subprocess execution, temporary
   skills, local Git repositories, registry paths, and cache roots when useful.
 - `tests/e2e/test_cli_workflows.py`: publisher-to-consumer workflow tests.
-- `README.md`: local Docker e2e usage documentation.
-- `.github/workflows/ci-cd.yaml`: mandatory Docker e2e gate in the main CI/CD
+- `README.md`: local Docker E2E usage documentation.
+- `.github/workflows/ci-cd.yaml`: mandatory Docker E2E gate in the main CI/CD
   workflow.
-- `.github/workflows/docker-e2e.yaml`: manually triggered rerun/debug workflow for
-  Docker e2e tests.
+- `.github/workflows/docker-e2e.yaml`: manually triggered rerun or debug workflow
+  for Docker E2E tests.
 
 ## Conventions
 
-- Keep e2e tests black-box from the perspective of Ritebook behavior: execute the
+- Keep E2E tests black-box from the perspective of Ritebook behavior: execute the
   real CLI rather than importing application services directly.
-- Use `pytest` for e2e tests to stay aligned with existing tooling.
+- Use `pytest` for E2E tests to stay aligned with existing tooling.
 - Use `uv` for dependency installation and command execution inside the test
   runner.
 - Use temporary paths for all registry and cache files.
@@ -120,7 +120,7 @@ Implemented files:
 
 ## Testing strategy
 
-The Docker e2e suite should optimize for reliability first.
+The Docker E2E suite should optimize for reliability first.
 
 Required first scenario:
 
@@ -133,7 +133,7 @@ Recommended secondary scenario:
 - One invalid skill metadata path that proves validation failure is visible
   through the real CLI with a non-zero exit code and stable diagnostic output.
 
-The e2e tests should not depend on live external services, real remote Git
+The E2E tests should not depend on live external services, real remote Git
 repositories, wall-clock-sensitive assertions, developer home directories, or
 test order.
 
@@ -146,15 +146,15 @@ Actions runners.
 
 Releases require both the standard quality-check job and the Docker E2E job to
 pass. The separate manual Docker E2E workflow remains available as an explicit
-rerun/debug entry point for maintainers.
+rerun or debug entry point for maintainers.
 
 ## Boundaries
 
 Always:
 
 - Use local temporary Git repositories for the first milestone.
-- Pass explicit `--registry-path` and `--cache-root` values in e2e tests.
-- Keep Docker e2e tests isolated from real `~/.config/ritebook` and
+- Pass explicit `--registry-path` and `--cache-root` values in E2E tests.
+- Keep Docker E2E tests isolated from real `~/.config/ritebook` and
   `~/.cache/ritebook` state.
 - Treat Docker as a clean-room test runner, not as product runtime packaging.
 - Prefer deterministic fixtures and fewer assertions over broad fragile checks.
@@ -163,32 +163,32 @@ Ask first:
 
 - Adding Docker Compose or service containers.
 - Requiring live remote Git repositories or network-dependent test scenarios.
-- Adding new runtime dependencies only to support e2e tests.
+- Adding new runtime dependencies only to support E2E tests.
 
 Never:
 
-- Touch real user registry or cache paths in e2e tests.
+- Touch real user registry or cache paths in E2E tests.
 - Depend on private repositories, credentials, or external services.
 - Put business workflow assertions only in shell scripts without pytest-level
   assertions.
-- Replace unit tests with Docker e2e tests.
-- Use Docker e2e to justify broad production code rewrites.
+- Replace unit tests with Docker E2E tests.
+- Use Docker E2E to justify broad production code rewrites.
 
 ## Success criteria
 
 For the implementation:
 
 - `docker build -f Dockerfile.e2e -t ritebook-e2e .` succeeds.
-- `docker run --rm ritebook-e2e` exits with status `0` when the e2e workflow is
+- `docker run --rm ritebook-e2e` exits with status `0` when the E2E workflow is
   healthy.
-- The e2e suite executes the real Ritebook CLI rather than direct application
+- The E2E suite executes the real Ritebook CLI rather than direct application
   imports.
 - The publisher-to-consumer workflow verifies generated index creation,
   local-Git-backed registration, cached skill listing, source update, cache
   refresh, and updated listing.
 - The tests use explicit temporary registry and cache paths.
-- README documents the local Docker e2e workflow.
-- CI/CD runs Docker e2e as a blocking gate before release and publishing.
+- README documents the local Docker E2E workflow.
+- CI/CD runs Docker E2E as a blocking gate before release and publishing.
 
 ## Open questions
 

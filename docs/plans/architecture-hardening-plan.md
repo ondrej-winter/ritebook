@@ -301,7 +301,7 @@ workflow, in parallel with the non-E2E quality-check job.
 
 **Completed notes:** Patch releases and publishing require both `quality` and
 `docker-e2e` jobs to pass. The manual Docker E2E workflow remains available for
-explicit rerun/debug use.
+explicit rerun or debug use.
 
 ## Final validation checklist
 

@@ -227,7 +227,7 @@ Implementation should follow the repository's hexagonal vertical-slice direction
   with YAML frontmatter parsing and JSON index writer adapters.
 - `tests/unit/features/skill_catalog/`: focused unit tests mirroring the source
   structure.
-- `docs/specs/publisher-index-generation.md`: this specification.
+- `docs/specs/publisher-index-generation-spec.md`: this specification.
 
 ## Commands and validation
 

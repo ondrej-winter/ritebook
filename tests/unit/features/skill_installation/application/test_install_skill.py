@@ -28,13 +28,38 @@ def test_skill_reference_parses_index_and_skill_names() -> None:
     reference = SkillReference.parse("platform-skills/code-review")
 
     assert reference.index_name == "platform-skills"
+    assert reference.skill_path == "code-review"
     assert reference.skill_name == "code-review"
     assert reference.requirement == "platform-skills/code-review"
 
 
-def test_skill_reference_rejects_slash_separated_index_names() -> None:
+def test_skill_reference_parses_nested_skill_paths() -> None:
+    reference = SkillReference.parse("platform-skills/browser/runtime-verification")
+
+    assert reference.index_name == "platform-skills"
+    assert reference.skill_path == "browser/runtime-verification"
+    assert reference.skill_name == "runtime-verification"
+    assert reference.requirement == "platform-skills/browser/runtime-verification"
+
+
+def test_skill_reference_rejects_invalid_index_names() -> None:
     with pytest.raises(ValueError, match="Index name"):
-        SkillReference.parse("ondrej-winter/ritebook-shelf/code-review")
+        SkillReference.parse("InvalidIndex/code-review")
+
+
+@pytest.mark.parametrize(
+    "skill_reference",
+    [
+        "platform-skills//code-review",
+        "platform-skills/code-review/",
+        "platform-skills/../code-review",
+        "platform-skills/browser/../code-review",
+        "platform-skills/browser\\code-review",
+    ],
+)
+def test_skill_reference_rejects_unsafe_skill_paths(skill_reference: str) -> None:
+    with pytest.raises(ValueError, match="Skill path"):
+        SkillReference.parse(skill_reference)
 
 
 def test_install_skill_command_requires_qualified_reference() -> None:
@@ -94,6 +119,41 @@ def test_install_skill_installs_selected_skill_and_writes_manifest() -> None:
     assert result.manifest_entry.source_revision == "abc123"
     assert result.manifest_entry.skill_path == "skills/code-review"
     assert result.manifest_entry.skill_file == "skills/code-review/SKILL.md"
+
+
+def test_install_skill_resolves_nested_skill_path() -> None:
+    index = registered_skill_index(name="platform-skills")
+    skill = installable_skill(
+        name="runtime-verification",
+        path="browser/runtime-verification",
+        skill_file="browser/runtime-verification/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (skill,)},
+    )
+    installer = FakeSkillInstaller()
+    use_case = InstallSkill(
+        catalog=catalog,
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=FakeInstallationManifest(),
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    result = use_case.execute(
+        InstallSkillCommand(
+            skill_reference="platform-skills/browser/runtime-verification",
+            target=".claude/skills/runtime-verification",
+        ),
+    )
+
+    assert installer.install_calls[0][1] == skill
+    assert result.manifest_entry.requirement == (
+        "platform-skills/browser/runtime-verification"
+    )
+    assert result.manifest_entry.skill_name == "runtime-verification"
+    assert result.manifest_entry.skill_path == "browser/runtime-verification"
 
 
 def test_install_skill_rejects_malformed_reference_before_lookup() -> None:

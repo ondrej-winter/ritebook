@@ -36,7 +36,7 @@ for reviewable repo-local install state.
 ### Install one skill
 
 A user can install one skill by fully qualified effective index name and skill
-name:
+path:
 
 ```bash
 uv run ritebook install-skill platform-skills/code-review --target .claude/skills/code-review
@@ -44,9 +44,14 @@ uv run ritebook install-skill platform-skills/code-review --target .claude/skill
 
 Requirements:
 
-- The skill reference must be fully qualified as `<index-name>/<skill-name>`.
+- The skill reference must be fully qualified as
+  `<index-name>/<skill-path-or-name>`.
 - Index names must be single-segment kebab-case identifiers and must not contain
-  `/`, so the separator before `<skill-name>` is unambiguous.
+  `/`, so the separator before `<skill-path-or-name>` is unambiguous.
+- The skill selector after the first slash may be a safe relative POSIX path,
+  such as `browser/runtime-verification`, for skills published in subfolders.
+- For backward compatibility and convenience, flat skill names such as
+  `code-review` remain valid selectors when they resolve to one cached skill.
 - `install-skill` accepts only a direct `--target <path>` argument.
 - `install-skill` does not accept target aliases, target kinds, or inferred
   default destinations.
@@ -68,6 +73,13 @@ uv run ritebook install-skill platform-skills/code-review \
   --force
 ```
 
+Example for a skill published under a subfolder:
+
+```bash
+uv run ritebook install-skill platform-skills/browser/runtime-verification \
+  --target .claude/skills/runtime-verification
+```
+
 ### Install from `ritebook.toml`
 
 A repository can declare desired skill installations in a human-authored
@@ -85,6 +97,10 @@ target = "claude"
 
 [[skills]]
 name = "platform-skills/test-driven-development"
+target = "claude"
+
+[[skills]]
+name = "platform-skills/browser/runtime-verification"
 target = "claude"
 
 [[skills]]
@@ -151,7 +167,7 @@ target_path = "../shared-agent-skills/security-review"
 
 Skill entry fields:
 
-- `name`: required fully qualified `<index-name>/<skill-name>` reference.
+- `name`: required fully qualified `<index-name>/<skill-path-or-name>` reference.
 - `target`: optional target nickname from `[targets]`.
 - `target_path`: optional direct target path.
 
@@ -159,7 +175,7 @@ Target resolution rules:
 
 - Each skill entry must define exactly one of `target` or `target_path`.
 - `target` must reference a key in `[targets]`.
-- `target = "nickname"` resolves to `<targets.nickname>/<skill-name>`.
+- `target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
 - `target_path` is used as the exact target path for that skill entry.
 - `[targets]` is optional when all skill entries use `target_path`.
 
@@ -170,7 +186,8 @@ Validation rules:
 - Target nickname names must be simple identifiers using letters, numbers,
   underscores, and hyphens.
 - `[[skills]]` must be an array of tables.
-- Each skill `name` must be fully qualified as `<index-name>/<skill-name>`.
+- Each skill `name` must be fully qualified as
+  `<index-name>/<skill-path-or-name>`.
 - Duplicate skill names are rejected.
 - Duplicate resolved target paths are rejected.
 - Resolved target paths must not be empty, root-like, or otherwise dangerous.
@@ -213,7 +230,7 @@ Lockfile requirements:
 
 - `schema_version` is required and must be `1` for v1.
 - `requirements_file` records the requirements file path used by `install`.
-- `skills` are sorted deterministically by `index_name`, then `skill_name`.
+- `skills` are sorted deterministically by `index_name`, then skill path.
 - `target` stores the resolved target path written from the requirements file.
 - `target_ref` is present only when the requirement used a `[targets]` nickname.
 - `source_revision` is included when the source repository revision can be
@@ -311,14 +328,14 @@ Requirements:
 Initial commands:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-name> --target <path> [--force]
+uv run ritebook install-skill <index-name>/<skill-path-or-name> --target <path> [--force]
 uv run ritebook install [--file ritebook.toml] [--force]
 ```
 
 Potential test/automation path overrides:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-name> \
+uv run ritebook install-skill <index-name>/<skill-path-or-name> \
   --target <path> \
   --registry-path <path-to-indexes.json> \
   --installation-registry-path <path-to-installations.json>
@@ -427,7 +444,7 @@ Cover:
 - Rejects unknown skills.
 - Refuses existing targets without `force`.
 - Allows replacement with `force`.
-- Resolves TOML target nicknames to `<target-base>/<skill-name>`.
+- Resolves TOML target nicknames to `<target-base>/<final-skill-name>`.
 - Resolves TOML `target_path` as an exact target path.
 - Rejects skill entries that define both `target` and `target_path`.
 - Rejects skill entries that define neither `target` nor `target_path`.
@@ -445,7 +462,7 @@ Cover:
 - Rejects wrong root shapes.
 - Rejects malformed `[targets]` values.
 - Rejects unknown fields.
-- Rejects missing or malformed skill names.
+- Rejects missing or malformed skill references.
 - Rejects unknown target nicknames.
 
 ### Filesystem installer tests
@@ -516,10 +533,10 @@ Current implementation status:
 
 Always:
 
-- Support direct `install-skill <index>/<skill> --target <path>`.
+- Support direct `install-skill <index>/<skill-path-or-name> --target <path>`.
 - Support `install` from `ritebook.toml`.
 - Support TOML `[targets]` nicknames for requirements-file installs only.
-- Require fully qualified `<index-name>/<skill-name>` skill references.
+- Require fully qualified `<index-name>/<skill-path-or-name>` skill references.
 - Resolve install sources from locally registered and cached indexes.
 - Copy the whole skill directory.
 - Refuse overwrites unless `--force` is provided.
@@ -551,8 +568,8 @@ Never:
 
 ## Success criteria
 
-- `uv run ritebook install-skill <index>/<skill> --target <path>` installs the
-  selected skill directory into the explicit target path.
+- `uv run ritebook install-skill <index>/<skill-path-or-name> --target <path>`
+  installs the selected skill directory into the explicit target path.
 - `install-skill` refuses existing targets unless `--force` is provided.
 - Direct `install-skill` writes deterministic user installation state under
   Ritebook's config directory.

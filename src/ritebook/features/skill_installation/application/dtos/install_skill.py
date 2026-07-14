@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
 
@@ -13,29 +14,38 @@ TARGET_NICKNAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 @dataclass(frozen=True)
 class SkillReference:
-    """A fully qualified skill reference split into index and skill names."""
+    """A fully qualified skill reference split into index and skill selector."""
 
     requirement: str
     index_name: str
+    skill_path: str
     skill_name: str
 
     def __post_init__(self) -> None:
         """Validate parsed reference components."""
         _require_non_empty(self.requirement, field_name="Skill reference")
         require_index_name(self.index_name, field_name="Index name")
+        _require_skill_path(self.skill_path)
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
 
     @classmethod
     def parse(cls, value: str) -> SkillReference:
-        """Parse a `<index-name>/<skill-name>` reference."""
+        """Parse a `<index-name>/<skill-path-or-name>` reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
             msg = (
-                "Skill reference must be fully qualified as <index-name>/<skill-name>."
+                "Skill reference must be fully qualified as "
+                "<index-name>/<skill-path-or-name>."
             )
             raise ValueError(msg)
-        index_name, skill_name = value.rsplit("/", maxsplit=1)
-        return cls(requirement=value, index_name=index_name, skill_name=skill_name)
+        index_name, skill_path = value.split("/", maxsplit=1)
+        _require_skill_path(skill_path)
+        return cls(
+            requirement=value,
+            index_name=index_name,
+            skill_path=skill_path,
+            skill_name=PurePosixPath(skill_path).name,
+        )
 
 
 @dataclass(frozen=True)
@@ -287,6 +297,23 @@ class InstallFromRequirementsResult:
 def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:
     if value is not None:
         _require_non_empty(value, field_name=field_name)
+
+
+def _require_skill_path(value: str) -> None:
+    _require_non_empty(value, field_name="Skill path")
+    if value.startswith("/") or value.endswith("/") or "//" in value or "\\" in value:
+        msg = "Skill path must be a safe relative POSIX path."
+        raise ValueError(msg)
+    path = PurePosixPath(value)
+    if (
+        path.is_absolute()
+        or not path.parts
+        or any(part in {".", ".."} for part in path.parts)
+    ):
+        msg = "Skill path must be a safe relative POSIX path."
+        raise ValueError(msg)
+    for part in path.parts:
+        require_kebab_case_identifier(part, field_name="Skill path segment")
 
 
 def _require_non_empty(value: str | None, *, field_name: str) -> None:

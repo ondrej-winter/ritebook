@@ -80,7 +80,7 @@ When no `--index-name` is provided:
 - Ritebook reads all registered indexes in deterministic effective-name order.
 - Ritebook reads each cached `ritebook-index.json`.
 - Ritebook lists skills from each cached index under its effective index name.
-- Output is deterministic by effective index name, then skill name.
+- Output is deterministic by effective index name, then skill path.
 - Duplicate skill names across different indexes are allowed.
 
 ### Listing one index
@@ -112,7 +112,7 @@ Use a concise tree intended for human browsing:
 Indexes
 ├── platform-skills
 │   ├── skill-a
-│   └── skill-b
+│   └── browser/skill-b
 └── data-skills
     └── query-helper
 ```
@@ -130,13 +130,14 @@ Tree rules:
 
 - The root label is `Indexes`.
 - First-level children are effective index names.
-- Second-level children are skill names.
+- Second-level children are cached relative skill paths that can be copied after
+  the effective index name into `install-skill`.
 - Skill descriptions are shown only when `--show-description` is provided and a
   cached description is present.
-- Paths and `skill_file` values may be parsed and carried in application
-  DTOs for future workflows, but they are not shown by this command.
+- `skill_file` values may be parsed and carried in application DTOs for install
+  workflows, but they are not shown by this command.
 
-When `--show-description` is provided, descriptions are appended to skill names:
+When `--show-description` is provided, descriptions are appended to skill paths:
 
 ```text
 Indexes
@@ -146,7 +147,7 @@ Indexes
 ```
 
 Older cached indexes without `description` metadata remain readable; entries
-without descriptions continue to render as skill names only.
+without descriptions continue to render as skill paths only.
 
 ## Commands and validation
 
@@ -216,8 +217,8 @@ uv run pytest
 
 Cover:
 
-- Lists skill names from all registered indexes.
-- Sorts output deterministically by effective index name and skill name.
+- Lists skill paths from all registered indexes.
+- Sorts output deterministically by effective index name and skill path.
 - Filters by `--index-name` / effective index name.
 - Returns an empty result when there are no registered indexes.
 - Returns an empty result when cached indexes contain no skills.
@@ -259,7 +260,7 @@ Cover:
 - List from locally cached registered indexes.
 - Group skills under effective index names.
 - Include the `Indexes` root and index nodes in non-empty output.
-- Show skill names only in the default output.
+- Show skill paths only in the default output.
 - Show skill descriptions only when explicitly requested with
   `--show-description`.
 - Keep older cached indexes without descriptions readable.
@@ -291,7 +292,7 @@ Cover:
 ## Success criteria
 
 - `uv run ritebook list-skills` lists a tree of all locally cached registered
-  indexes and their skill names.
+  indexes and their skill paths.
 - `uv run ritebook list-skills --index-name <effective-name>` lists only that
   index's skills while preserving the `Indexes` root and index node.
 - `uv run ritebook list-skills --show-description` appends cached descriptions

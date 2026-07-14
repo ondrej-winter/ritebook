@@ -90,8 +90,9 @@ uv run ritebook publish-index --skills-root <path> --index-name <name>
 The `--skills-root` option is required so the command only scans the intended
 skills directory. The `--index-name` option is required and must be a stable
 single-segment kebab-case identifier such as `company-skills`; slashes are not
-allowed because skill references use `<index-name>/<skill-name>`. The index name
-is written to the generated index metadata as the default consumer registry name.
+allowed because skill references use `<index-name>/<skill-path-or-name>`. The
+index name is written to the generated index metadata as the default consumer
+registry name.
 The `publish-index` command reuses the same validation flow as `lint-skills` and
 refuses to write or overwrite `ritebook-index.json` when any discovered skill is
 invalid. When validation succeeds, Ritebook writes the canonical index file
@@ -161,12 +162,13 @@ Non-empty output is grouped by effective index name in a deterministic tree:
 Indexes
 ├── platform-skills
 │   ├── skill-a
-│   └── skill-b
+│   └── browser/skill-b
 └── data-skills
     └── query-helper
 ```
 
-By default, the tree shows skill names only. With `--show-description`, Ritebook
+By default, the tree shows each skill's cached relative path, which can be copied
+after the index name into `install-skill`. With `--show-description`, Ritebook
 appends descriptions cached from publisher indexes when that metadata is present:
 
 ```text
@@ -195,6 +197,14 @@ Install one fully qualified skill into an explicit target path:
 ```bash
 uv run ritebook install-skill platform-skills/code-review \
   --target .claude/skills/code-review
+```
+
+For skills published below subfolders, use the relative skill path shown by
+`list-skills` after the effective index name:
+
+```bash
+uv run ritebook install-skill platform-skills/browser/runtime-verification \
+  --target .claude/skills/runtime-verification
 ```
 
 Ritebook copies the whole skill directory, creates missing target parent
@@ -262,7 +272,7 @@ uv run ritebook install \
   --lockfile <path-to-ritebook.lock>
 ```
 
-`target = "nickname"` resolves to `<targets.nickname>/<skill-name>`.
+`target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
 `target_path` is used exactly as the target path for that skill entry. Each skill
 entry must use exactly one of `target` or `target_path`.
 

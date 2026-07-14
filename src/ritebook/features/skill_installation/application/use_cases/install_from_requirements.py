@@ -226,7 +226,15 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         skills: tuple[InstallableSkill, ...],
     ) -> InstallableSkill:
         for skill in skills:
-            if skill.name == reference.skill_name:
+            if skill.path == reference.skill_path:
+                return skill
+        matching_name = tuple(
+            skill for skill in skills if skill.name == reference.skill_name
+        )
+        if len(matching_name) == 1:
+            return matching_name[0]
+        for skill in skills:
+            if skill.path == reference.skill_name:
                 return skill
         raise UnknownInstallSkillError(reference.requirement)
 
@@ -254,7 +262,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 plan,
                 key=lambda plan_item: (
                     plan_item.reference.index_name,
-                    plan_item.reference.skill_name,
+                    plan_item.reference.skill_path,
                 ),
             )
         )

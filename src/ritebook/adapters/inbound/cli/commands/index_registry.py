@@ -175,7 +175,7 @@ def _render_skill_lines(
     lines: list[str] = []
     for skill_position, skill in enumerate(index.skills):
         skill_connector = "└──" if skill_position == len(index.skills) - 1 else "├──"
-        label = skill.name
+        label = skill.path
         if show_description and skill.description is not None:
             label = f"{label} — {skill.description}"
         lines.append(f"{prefix}{skill_connector} {label}")

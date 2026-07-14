@@ -121,6 +121,27 @@ def test_list_skills_sorts_skills_by_name_within_each_index() -> None:
     )
 
 
+def test_list_skills_sorts_nested_skills_by_path_within_each_index() -> None:
+    entry = registered_index()
+    nested = _skill(
+        "runtime-verification",
+        path="browser/runtime-verification",
+    )
+    root = _skill("alpha-helper")
+    use_case = ListSkills(
+        registry=FakeRegistry([entry]),
+        cached_index_reader=FakeCachedIndexReader(
+            {
+                entry.cached_index_path: (nested, root),
+            },
+        ),
+    )
+
+    result = use_case.execute(ListSkillsCommand())
+
+    assert result.indexes[0].skills == (nested, root)
+
+
 def test_list_skills_returns_empty_result_for_empty_registry() -> None:
     cached_reader = FakeCachedIndexReader()
     use_case = ListSkills(
@@ -148,9 +169,10 @@ def test_list_skills_preserves_selected_index_group_when_no_skills_exist() -> No
     )
 
 
-def _skill(name: str) -> CachedSkillSummary:
+def _skill(name: str, *, path: str | None = None) -> CachedSkillSummary:
+    skill_path = path or f"skills/{name}"
     return CachedSkillSummary(
         name=name,
-        path=f"skills/{name}",
-        skill_file="SKILL.md",
+        path=skill_path,
+        skill_file=f"{skill_path}/SKILL.md",
     )

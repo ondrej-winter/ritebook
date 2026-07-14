@@ -69,4 +69,4 @@ class ListSkills(ListSkillsPort):
 def _sorted_skills(
     skills: tuple[CachedSkillSummary, ...],
 ) -> tuple[CachedSkillSummary, ...]:
-    return tuple(sorted(skills, key=lambda skill: skill.name))
+    return tuple(sorted(skills, key=lambda skill: skill.path))

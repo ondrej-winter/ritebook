@@ -773,6 +773,38 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
     )
 
 
+def test_list_skills_prints_nested_skill_paths() -> None:
+    stdout = StringIO()
+    result = ListSkillsResult(
+        indexes=(
+            ListedIndexSkills(
+                index_name="platform-skills",
+                skills=(
+                    CachedSkillSummary(
+                        name="runtime-verification",
+                        path="browser/runtime-verification",
+                        skill_file="browser/runtime-verification/SKILL.md",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == (
+        "Indexes\n└── platform-skills\n    └── browser/runtime-verification\n"
+    )
+
+
 def test_list_skills_maps_show_description_to_application_command() -> None:
     list_skills = FakeListSkills()
 

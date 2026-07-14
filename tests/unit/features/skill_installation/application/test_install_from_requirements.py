@@ -83,6 +83,47 @@ def test_install_from_requirements_resolves_target_nickname_and_writes_lockfile(
     assert entry.locked_at == "2026-07-10T21:00:00Z"
 
 
+def test_install_from_requirements_resolves_nested_skill_path() -> None:
+    index = registered_skill_index(name="platform-skills")
+    skill = installable_skill(
+        name="runtime-verification",
+        path="browser/runtime-verification",
+        skill_file="browser/runtime-verification/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (skill,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/browser/runtime-verification",
+                    target="claude",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == [
+        (
+            FakeSkillSourceResolver().source,
+            skill,
+            ".claude/skills/runtime-verification",
+            False,
+        ),
+    ]
+    entry = result.lockfile_entries[0]
+    assert entry.requirement == "platform-skills/browser/runtime-verification"
+    assert entry.skill_name == "runtime-verification"
+    assert entry.skill_path == "browser/runtime-verification"
+
+
 def test_install_from_requirements_uses_target_path_exactly() -> None:
     index = registered_skill_index(name="platform-skills")
     skill = installable_skill(name="code-review")

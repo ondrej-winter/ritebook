@@ -42,6 +42,29 @@ def test_filesystem_installer_copies_directory_recursively_and_creates_parents(
     )
 
 
+def test_filesystem_installer_resolves_skills_below_published_source_root(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "repository"
+    skill_dir = repository / "skills" / "software-development" / "code-review"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
+    target = tmp_path / "target" / "code-review"
+
+    FilesystemSkillInstallerAdapter().install(
+        source=resolved_source(repository),
+        skill=installable_skill(
+            path="software-development/code-review",
+            skill_file="software-development/code-review/SKILL.md",
+            source_root="skills",
+        ),
+        target=str(target),
+        force=False,
+    )
+
+    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
+
+
 def test_filesystem_installer_refuses_existing_target_without_force(
     tmp_path: Path,
 ) -> None:
@@ -255,9 +278,11 @@ def installable_skill(
     *,
     path: str = "skills/code-review",
     skill_file: str = "skills/code-review/SKILL.md",
+    source_root: str = ".",
 ) -> InstallableSkill:
     return InstallableSkill(
         name="code-review",
         path=path,
         skill_file=skill_file,
+        source_root=source_root,
     )

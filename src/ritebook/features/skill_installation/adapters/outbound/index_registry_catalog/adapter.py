@@ -54,6 +54,7 @@ class IndexRegistrySkillCatalogAdapter:
                 name=skill.name,
                 path=skill.path,
                 skill_file=skill.skill_file,
+                source_root=skill.source_root,
             )
             for skill in self._index_reader.read_skills(cached_index_path)
         )

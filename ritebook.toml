@@ -1,0 +1,6 @@
+[targets]
+agents = ".agents/skills"
+
+[[skills]]
+name = "ondrej-winter-ritebook-shelf/software-development"
+target = "agents"

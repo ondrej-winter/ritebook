@@ -50,14 +50,30 @@ def _resolve_source_directory(
     repository_path: Path,
     skill: InstallableSkill,
 ) -> Path:
+    source_root = _safe_relative_posix_path(
+        skill.source_root,
+        field_name="skill source root",
+    )
     skill_path = _safe_relative_posix_path(skill.path, field_name="skill path")
     skill_file = _safe_relative_posix_path(skill.skill_file, field_name="skill file")
     if not _is_relative_to(skill_file, skill_path):
         msg = f"skill file {skill.skill_file} is outside skill path {skill.path}"
         raise UnsafeInstallPathError(msg)
 
-    raw_source_directory = repository_path / Path(*skill_path.parts)
-    raw_source_file = repository_path / Path(*skill_file.parts)
+    raw_source_directory = (
+        repository_path
+        / Path(*source_root.parts)
+        / Path(
+            *skill_path.parts,
+        )
+    )
+    raw_source_file = (
+        repository_path
+        / Path(*source_root.parts)
+        / Path(
+            *skill_file.parts,
+        )
+    )
     if raw_source_directory.is_symlink() or raw_source_file.is_symlink():
         msg = "skill source paths must not be symlinks"
         raise UnsafeInstallPathError(msg)
@@ -85,7 +101,7 @@ def _safe_relative_posix_path(value: str, *, field_name: str) -> PurePosixPath:
         msg = f"{field_name} must use POSIX-style relative paths"
         raise UnsafeInstallPathError(msg)
     path = PurePosixPath(value)
-    if path.is_absolute() or not path.parts or any(part == ".." for part in path.parts):
+    if path.is_absolute() or not value or any(part == ".." for part in path.parts):
         msg = f"{field_name} must be a safe relative path"
         raise UnsafeInstallPathError(msg)
     return path

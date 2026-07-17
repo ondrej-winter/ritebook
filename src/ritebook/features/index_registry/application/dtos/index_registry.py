@@ -244,6 +244,7 @@ class CachedSkillSummary:
     path: str
     skill_file: str
     description: str | None = None
+    source_root: str = "."
 
     def __post_init__(self) -> None:
         """Validate cached skill metadata."""
@@ -251,6 +252,7 @@ class CachedSkillSummary:
         _require_non_empty(self.path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")
         _require_optional_non_empty(self.description, field_name="Skill description")
+        _require_non_empty(self.source_root, field_name="Skill source root")
 
 
 @dataclass(frozen=True)

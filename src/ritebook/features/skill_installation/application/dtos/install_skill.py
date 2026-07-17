@@ -163,12 +163,14 @@ class InstallableSkill:
     name: str
     path: str
     skill_file: str
+    source_root: str = "."
 
     def __post_init__(self) -> None:
         """Validate installable skill metadata."""
         require_kebab_case_identifier(self.name, field_name="Skill name")
         _require_non_empty(self.path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")
+        _require_non_empty(self.source_root, field_name="Skill source root")
 
 
 @dataclass(frozen=True)

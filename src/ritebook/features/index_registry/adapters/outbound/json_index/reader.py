@@ -102,10 +102,17 @@ def _validate_cached_skills_payload(
     if not isinstance(skills, list):
         msg = "ritebook-index.json must contain a skills array"
         raise InvalidPublishedIndexError(msg)
-    return tuple(_validate_skill_entry(skill) for skill in skills)
+    raw_skills_root = payload.get("skills_root", ".")
+    if not isinstance(raw_skills_root, str) or not raw_skills_root:
+        msg = "ritebook-index.json skills_root must be a non-empty string when present"
+        raise InvalidPublishedIndexError(msg)
+    skills_root = _installable_source_root(raw_skills_root)
+    return tuple(
+        _validate_skill_entry(skill, source_root=skills_root) for skill in skills
+    )
 
 
-def _validate_skill_entry(value: object) -> CachedSkillSummary:
+def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSummary:
     if not isinstance(value, dict):
         msg = "index skill entries must be JSON objects"
         raise InvalidPublishedIndexError(msg)
@@ -135,6 +142,7 @@ def _validate_skill_entry(value: object) -> CachedSkillSummary:
         path=path,
         skill_file=skill_file,
         description=description,
+        source_root=source_root,
     )
 
 
@@ -143,3 +151,10 @@ def _validate_relative_posix_path(value: str, *, field_name: str) -> None:
     if value.startswith("/") or "\\" in value or ".." in path.parts:
         msg = f"index skill entry {field_name} must be a safe relative POSIX path"
         raise InvalidPublishedIndexError(msg)
+
+
+def _installable_source_root(value: str) -> str:
+    path = PurePosixPath(value)
+    if path.is_absolute() or "\\" in value or ".." in path.parts:
+        return "."
+    return value

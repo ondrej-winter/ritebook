@@ -77,6 +77,7 @@ def test_index_registry_catalog_maps_cached_skills_to_installation_dtos() -> Non
                 path="skills/code-review",
                 skill_file="skills/code-review/SKILL.md",
                 description="Ignored by installation.",
+                source_root="skills-root",
             ),
             CachedSkillSummary(
                 name="test-writer",
@@ -96,6 +97,7 @@ def test_index_registry_catalog_maps_cached_skills_to_installation_dtos() -> Non
             name="code-review",
             path="skills/code-review",
             skill_file="skills/code-review/SKILL.md",
+            source_root="skills-root",
         ),
         InstallableSkill(
             name="test-writer",

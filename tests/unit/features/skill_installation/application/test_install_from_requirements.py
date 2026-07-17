@@ -124,6 +124,70 @@ def test_install_from_requirements_resolves_nested_skill_path() -> None:
     assert entry.skill_path == "browser/runtime-verification"
 
 
+def test_install_from_requirements_expands_folder_prefix_to_matching_skills() -> None:
+    index = registered_skill_index(name="platform-skills")
+    code_review = installable_skill(
+        name="code-review",
+        path="software-development/code-review",
+        skill_file="software-development/code-review/SKILL.md",
+    )
+    test_driven = installable_skill(
+        name="test-driven-development",
+        path="software-development/test-driven-development",
+        skill_file="software-development/test-driven-development/SKILL.md",
+    )
+    other_skill = installable_skill(
+        name="query-helper",
+        path="data/query-helper",
+        skill_file="data/query-helper/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (test_driven, other_skill, code_review),
+        },
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"agents": ".agents/skills"},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/software-development",
+                    target="agents",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == [
+        (
+            FakeSkillSourceResolver().source,
+            code_review,
+            ".agents/skills/code-review",
+            False,
+        ),
+        (
+            FakeSkillSourceResolver().source,
+            test_driven,
+            ".agents/skills/test-driven-development",
+            False,
+        ),
+    ]
+    assert [entry.requirement for entry in result.lockfile_entries] == [
+        "platform-skills/software-development/code-review",
+        "platform-skills/software-development/test-driven-development",
+    ]
+    assert [entry.target for entry in result.lockfile_entries] == [
+        ".agents/skills/code-review",
+        ".agents/skills/test-driven-development",
+    ]
+    assert result.installed_count == 2
+
+
 def test_install_from_requirements_uses_target_path_exactly() -> None:
     index = registered_skill_index(name="platform-skills")
     skill = installable_skill(name="code-review")

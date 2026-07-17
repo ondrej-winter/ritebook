@@ -131,6 +131,7 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
         raise InvalidPublishedIndexError(str(err)) from err
     _validate_relative_posix_path(path, field_name="path")
     _validate_relative_posix_path(skill_file, field_name="skill_file")
+    _validate_skill_file_inside_path(skill_file=skill_file, path=path)
     description = entry.get("description")
     if description is not None and (
         not isinstance(description, str) or not description
@@ -153,8 +154,17 @@ def _validate_relative_posix_path(value: str, *, field_name: str) -> None:
         raise InvalidPublishedIndexError(msg)
 
 
+def _validate_skill_file_inside_path(*, skill_file: str, path: str) -> None:
+    try:
+        PurePosixPath(skill_file).relative_to(PurePosixPath(path))
+    except ValueError as err:
+        msg = "index skill entry skill_file must be inside path"
+        raise InvalidPublishedIndexError(msg) from err
+
+
 def _installable_source_root(value: str) -> str:
     path = PurePosixPath(value)
     if path.is_absolute() or "\\" in value or ".." in path.parts:
-        return "."
+        msg = "ritebook-index.json skills_root must be a safe relative POSIX path"
+        raise InvalidPublishedIndexError(msg)
     return value

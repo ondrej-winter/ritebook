@@ -83,6 +83,23 @@ def test_json_index_writer_normalizes_generated_at_to_utc(tmp_path: Path) -> Non
     assert payload["generated_at"] == "2026-07-04T18:49:00Z"
 
 
+def test_json_index_writer_serializes_absolute_skills_root_as_repository_root(
+    tmp_path: Path,
+) -> None:
+    output_path = tmp_path / "ritebook-index.json"
+    catalog = SkillCatalog.create(
+        index_name="company-skills",
+        generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+        skills_root=str(tmp_path / "skills"),
+        skills=(),
+    )
+
+    JsonIndexWriter().write_index(catalog, str(output_path))
+
+    payload = read_json(output_path)
+    assert payload["skills_root"] == "."
+
+
 def test_json_index_writer_overwrites_existing_file_when_called(tmp_path: Path) -> None:
     output_path = tmp_path / "ritebook-index.json"
     output_path.write_text("old content", encoding="utf-8")

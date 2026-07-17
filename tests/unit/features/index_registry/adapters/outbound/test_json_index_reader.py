@@ -78,8 +78,13 @@ def test_json_index_reader_exposes_relative_skills_root_for_installation(
     assert result[0].source_root == "skills"
 
 
-def test_json_index_reader_ignores_absolute_skills_root_for_installation(
+@pytest.mark.parametrize(
+    "bad_skills_root",
+    ["/absolute", "../escape", "nested\\skills", ""],
+)
+def test_json_index_reader_rejects_unsafe_skills_root_for_installation(
     tmp_path: Path,
+    bad_skills_root: str,
 ) -> None:
     cached_index_path = tmp_path / "ritebook-index.json"
     cached_index_path.write_text(
@@ -87,7 +92,7 @@ def test_json_index_reader_ignores_absolute_skills_root_for_installation(
             {
                 "schema_version": 1,
                 "index": {"name": "company-skills"},
-                "skills_root": str(tmp_path / "skills"),
+                "skills_root": bad_skills_root,
                 "skills": [
                     {
                         "name": "alpha",
@@ -100,9 +105,8 @@ def test_json_index_reader_ignores_absolute_skills_root_for_installation(
         encoding="utf-8",
     )
 
-    result = JsonIndexReader().read_skills(str(cached_index_path))
-
-    assert result[0].source_root == "."
+    with pytest.raises(InvalidPublishedIndexError, match="skills_root"):
+        JsonIndexReader().read_skills(str(cached_index_path))
 
 
 def test_json_index_reader_reads_empty_cached_skills(tmp_path: Path) -> None:
@@ -286,6 +290,40 @@ def test_json_index_reader_rejects_cached_unsafe_skill_paths(
     )
 
     with pytest.raises(InvalidPublishedIndexError, match="safe relative POSIX path"):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_skill_file_outside_skill_path(
+    tmp_path: Path,
+) -> None:
+    write_index(
+        tmp_path,
+        {
+            "index": {"name": "company-skills"},
+            "skills": [
+                {"name": "alpha", "path": "alpha", "skill_file": "beta/SKILL.md"},
+            ],
+        },
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="inside path"):
+        JsonIndexReader().read_index(str(tmp_path))
+
+
+def test_json_index_reader_rejects_cached_skill_file_outside_skill_path(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        cached_index_path,
+        {
+            "skills": [
+                {"name": "alpha", "path": "alpha", "skill_file": "beta/SKILL.md"},
+            ],
+        },
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="inside path"):
         JsonIndexReader().read_skills(str(cached_index_path))
 
 

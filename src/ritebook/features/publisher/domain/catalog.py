@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, Self
 
-from ritebook.shared_kernel import require_index_name
+from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -29,9 +30,8 @@ class SkillEntry:
         """Validate entry invariants after dataclass initialization."""
         _require_relative_posix_path(self.path, field_name="path")
         _require_relative_posix_path(self.skill_file, field_name="skill_file")
-        if not self.name:
-            msg = "Skill entry name must not be empty."
-            raise ValueError(msg)
+        _require_skill_file_inside_path(skill_file=self.skill_file, path=self.path)
+        require_kebab_case_identifier(self.name, field_name="Skill entry name")
         if self.description == "":
             msg = "Skill entry description must be omitted instead of empty."
             raise ValueError(msg)
@@ -90,9 +90,15 @@ def _require_relative_posix_path(value: str, *, field_name: str) -> None:
     if not value:
         msg = f"Skill entry {field_name} must not be empty."
         raise ValueError(msg)
-    if value.startswith("/"):
-        msg = f"Skill entry {field_name} must be relative to the skills root."
+    path = PurePosixPath(value)
+    if path.is_absolute() or "\\" in value or ".." in path.parts:
+        msg = f"Skill entry {field_name} must be a safe relative POSIX path."
         raise ValueError(msg)
-    if "\\" in value:
-        msg = f"Skill entry {field_name} must use POSIX-style separators."
-        raise ValueError(msg)
+
+
+def _require_skill_file_inside_path(*, skill_file: str, path: str) -> None:
+    try:
+        PurePosixPath(skill_file).relative_to(PurePosixPath(path))
+    except ValueError as err:
+        msg = "Skill entry skill_file must be inside path."
+        raise ValueError(msg) from err

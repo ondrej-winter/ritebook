@@ -29,7 +29,7 @@ def test_skill_entry_allows_omitted_description() -> None:
 
 
 def test_skill_entry_rejects_absolute_paths() -> None:
-    with pytest.raises(ValueError, match="relative"):
+    with pytest.raises(ValueError, match="safe relative POSIX path"):
         SkillEntry(
             name="example-skill",
             path="/example-skill",
@@ -38,11 +38,51 @@ def test_skill_entry_rejects_absolute_paths() -> None:
 
 
 def test_skill_entry_rejects_platform_specific_path_separators() -> None:
-    with pytest.raises(ValueError, match="POSIX-style"):
+    with pytest.raises(ValueError, match="safe relative POSIX path"):
         SkillEntry(
             name="example-skill",
             path="example-skill",
             skill_file="example-skill\\SKILL.md",
+        )
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("path", "../example-skill"),
+        ("skill_file", "../example-skill/SKILL.md"),
+    ],
+)
+def test_skill_entry_rejects_path_traversal_segments(
+    field_name: str,
+    bad_value: str,
+) -> None:
+    values = {
+        "name": "example-skill",
+        "path": "example-skill",
+        "skill_file": "example-skill/SKILL.md",
+    }
+    values[field_name] = bad_value
+
+    with pytest.raises(ValueError, match="safe relative POSIX path"):
+        SkillEntry(**values)
+
+
+def test_skill_entry_rejects_skill_file_outside_skill_path() -> None:
+    with pytest.raises(ValueError, match="inside path"):
+        SkillEntry(
+            name="example-skill",
+            path="example-skill",
+            skill_file="other-skill/SKILL.md",
+        )
+
+
+def test_skill_entry_requires_kebab_case_name() -> None:
+    with pytest.raises(ValueError, match="Skill entry name"):
+        SkillEntry(
+            name="Example Skill",
+            path="example-skill",
+            skill_file="example-skill/SKILL.md",
         )
 
 
@@ -63,6 +103,28 @@ def test_skill_catalog_sorts_entries_by_relative_path() -> None:
                 skill_file="alpha/SKILL.md",
             ),
         ],
+    )
+
+    assert [skill.path for skill in catalog.skills] == ["alpha", "zeta"]
+
+
+def test_skill_catalog_sorts_entries_when_constructed_directly() -> None:
+    catalog = SkillCatalog(
+        index_name="company-skills",
+        generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+        skills_root=".",
+        skills=(
+            SkillEntry(
+                name="zeta",
+                path="zeta",
+                skill_file="zeta/SKILL.md",
+            ),
+            SkillEntry(
+                name="alpha",
+                path="alpha",
+                skill_file="alpha/SKILL.md",
+            ),
+        ),
     )
 
     assert [skill.path for skill in catalog.skills] == ["alpha", "zeta"]

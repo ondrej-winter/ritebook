@@ -1,9 +1,9 @@
-"""Command-line adapter for publisher skill index generation."""
+"""Command-line adapter for Ritebook application use cases."""
 
 from __future__ import annotations
 
 import sys
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from typing import TYPE_CHECKING, TextIO
 
 from ritebook.adapters.inbound.cli.commands import (
@@ -65,7 +65,7 @@ def run(  # noqa: PLR0911, PLR0913
     parser = build_parser()
 
     try:
-        with redirect_stderr(stderr):
+        with redirect_stdout(stdout), redirect_stderr(stderr):
             args = parser.parse_args(argv)
     except SystemExit as err:
         return err.code if isinstance(err.code, int) else 1

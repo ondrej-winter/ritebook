@@ -413,6 +413,43 @@ def test_publish_index_rejects_output_argument_with_argparse_error() -> None:
     assert "unrecognized arguments: --output custom-index.json" in stderr.getvalue()
 
 
+def test_top_level_help_uses_injected_stdout() -> None:
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["--help"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert "usage: ritebook" in stdout.getvalue()
+    assert "publish-index" in stdout.getvalue()
+    assert stderr.getvalue() == ""
+
+
+def test_subcommand_help_uses_injected_stdout() -> None:
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["publish-index", "--help"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert "usage: ritebook publish-index" in stdout.getvalue()
+    assert "--skills-root" in stdout.getvalue()
+    assert "--index-name" in stdout.getvalue()
+    assert stderr.getvalue() == ""
+
+
 def test_publish_index_requires_skills_root_with_argparse_error() -> None:
     stderr = StringIO()
 

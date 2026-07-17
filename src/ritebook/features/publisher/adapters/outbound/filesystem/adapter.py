@@ -25,10 +25,10 @@ class FilesystemSkillDiscovery:
                 Path(skills_root),
                 file_name=SKILL_FILE_NAME,
             )
+            entries = [_skill_entry(discovered) for discovered in discovered_files]
         except FilesystemSkillDiscoveryError as err:
             raise PublishIndexDiscoveryError(str(err)) from err
 
-        entries = [_skill_entry(discovered) for discovered in discovered_files]
         return tuple(sorted(entries, key=lambda entry: entry.path))
 
 

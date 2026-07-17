@@ -81,6 +81,17 @@ def test_discover_skills_uses_none_when_frontmatter_is_invalid(
     assert entries[0].description is None
 
 
+def test_discover_skills_translates_skill_file_read_errors(tmp_path: Path) -> None:
+    skill_file = tmp_path / "invalid-encoding" / "SKILL.md"
+    skill_file.parent.mkdir(parents=True)
+    skill_file.write_bytes(b"---\ndescription: \xff\n---\n")
+
+    with pytest.raises(PublishIndexDiscoveryError, match="Unable to read") as err:
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert err.value.__cause__ is not None
+
+
 def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
     write_skill(tmp_path / "SKILL.md", skill_content(name="root-skill"))
 

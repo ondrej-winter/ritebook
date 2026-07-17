@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -50,7 +51,7 @@ class PublishIndex(PublishIndexPort):
         catalog = SkillCatalog.create(
             index_name=command.index_name,
             generated_at=_utc_timestamp(self._clock()),
-            skills_root=command.skills_root,
+            skills_root=_portable_skills_root(command.skills_root),
             skills=skills,
         )
         self._index_writer.write_index(catalog, CANONICAL_INDEX_FILENAME)
@@ -65,3 +66,10 @@ def _utc_timestamp(value: datetime) -> datetime:
         msg = "Publish index timestamp source must return a timezone-aware value."
         raise ValueError(msg)
     return value.astimezone(UTC)
+
+
+def _portable_skills_root(value: str) -> str:
+    path = PurePosixPath(value)
+    if path.is_absolute():
+        return "."
+    return value

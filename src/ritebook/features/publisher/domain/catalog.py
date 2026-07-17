@@ -76,9 +76,7 @@ class SkillCatalog:
             msg = "Catalog generation timestamp must be timezone-aware."
             raise ValueError(msg)
         require_index_name(self.index_name, field_name="Catalog index name")
-        if not self.skills_root:
-            msg = "Catalog skills root must not be empty."
-            raise ValueError(msg)
+        _require_relative_posix_path(self.skills_root, field_name="skills_root")
         object.__setattr__(
             self,
             "skills",
@@ -88,11 +86,11 @@ class SkillCatalog:
 
 def _require_relative_posix_path(value: str, *, field_name: str) -> None:
     if not value:
-        msg = f"Skill entry {field_name} must not be empty."
+        msg = f"{field_name} must not be empty."
         raise ValueError(msg)
     path = PurePosixPath(value)
     if path.is_absolute() or "\\" in value or ".." in path.parts:
-        msg = f"Skill entry {field_name} must be a safe relative POSIX path."
+        msg = f"{field_name} must be a safe relative POSIX path."
         raise ValueError(msg)
 
 

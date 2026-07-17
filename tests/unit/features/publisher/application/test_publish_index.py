@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -126,6 +127,28 @@ def test_publish_index_writes_empty_catalog() -> None:
 
     assert result.discovered_skill_count == 0
     assert writer.written_catalogs[0].skills == ()
+
+
+def test_publish_index_stores_absolute_skills_root_as_portable_catalog_root(
+    tmp_path: Path,
+) -> None:
+    absolute_skills_root = str(tmp_path / "skills")
+    writer = FakeIndexWriter()
+    use_case = PublishIndex(
+        skill_discovery=FakeSkillDiscovery(skills=()),
+        precheck=FakePrecheck(),
+        index_writer=writer,
+        clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+    )
+
+    use_case.execute(
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=absolute_skills_root,
+        ),
+    )
+
+    assert writer.written_catalogs[0].skills_root == "."
 
 
 def test_publish_index_normalizes_generated_at_to_utc() -> None:

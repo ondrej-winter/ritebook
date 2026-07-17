@@ -147,6 +147,22 @@ def test_skill_catalog_exposes_schema_version_generated_at_and_root() -> None:
     assert catalog.skills == ()
 
 
+@pytest.mark.parametrize(
+    "bad_skills_root",
+    ["", "/absolute", "../skills", "nested\\skills"],
+)
+def test_skill_catalog_requires_safe_relative_posix_skills_root(
+    bad_skills_root: str,
+) -> None:
+    with pytest.raises(ValueError, match="skills_root"):
+        SkillCatalog.create(
+            index_name="company-skills",
+            generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+            skills_root=bad_skills_root,
+            skills=(),
+        )
+
+
 def test_skill_catalog_rejects_slash_separated_index_name() -> None:
     with pytest.raises(ValueError, match="Catalog index name"):
         SkillCatalog.create(

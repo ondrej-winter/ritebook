@@ -6,16 +6,6 @@ import sys
 from contextlib import redirect_stderr, redirect_stdout
 from typing import TYPE_CHECKING, TextIO
 
-from ritebook.adapters.inbound.cli.commands import (
-    run_add_index,
-    run_install,
-    run_install_skill,
-    run_lint_skills,
-    run_list_indexes,
-    run_list_skills,
-    run_publish_index,
-    run_update_index,
-)
 from ritebook.adapters.inbound.cli.parser import (
     ADD_INDEX_COMMAND,
     INSTALL_COMMAND,
@@ -26,6 +16,18 @@ from ritebook.adapters.inbound.cli.parser import (
     PUBLISH_INDEX_COMMAND,
     UPDATE_INDEX_COMMAND,
     build_parser,
+)
+from ritebook.features.index_registry.adapters.inbound.cli import (
+    run_add_index,
+    run_list_indexes,
+    run_list_skills,
+    run_update_index,
+)
+from ritebook.features.linter.adapters.inbound.cli import run_lint_skills
+from ritebook.features.publisher.adapters.inbound.cli import run_publish_index
+from ritebook.features.skill_installation.adapters.inbound.cli import (
+    run_install,
+    run_install_skill,
 )
 
 if TYPE_CHECKING:

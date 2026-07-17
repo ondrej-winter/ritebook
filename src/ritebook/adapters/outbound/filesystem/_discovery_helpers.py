@@ -46,7 +46,7 @@ def collect_skill_files(
         raise FilesystemSkillDiscoveryError(msg) from err
 
     for child in children:
-        if child.name.startswith(".") or not child.is_dir():
+        if child.name.startswith(".") or child.is_symlink() or not child.is_dir():
             continue
         discovered.extend(
             collect_skill_files(

@@ -36,6 +36,31 @@ def test_discover_skill_files_skips_hidden_directories(tmp_path: Path) -> None:
     assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
 
 
+def test_discover_skill_files_skips_symlinked_directories(tmp_path: Path) -> None:
+    outside_root = tmp_path / "outside-root"
+    skills_root = tmp_path / "skills"
+    write_skill(outside_root / "external" / "SKILL.md", "# External\n")
+    write_skill(skills_root / "visible" / "SKILL.md", "# Visible\n")
+    (skills_root / "linked").symlink_to(outside_root, target_is_directory=True)
+
+    discovered = discover_skill_files(skills_root)
+
+    assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
+
+
+def test_discover_skill_files_skips_symlink_cycles(tmp_path: Path) -> None:
+    skills_root = tmp_path / "skills"
+    write_skill(skills_root / "visible" / "SKILL.md", "# Visible\n")
+    (skills_root / "visible" / "cycle").symlink_to(
+        skills_root,
+        target_is_directory=True,
+    )
+
+    discovered = discover_skill_files(skills_root)
+
+    assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
+
+
 def test_discover_skill_files_supports_root_skill_directory(tmp_path: Path) -> None:
     write_skill(tmp_path / "SKILL.md", "# Root\n")
 

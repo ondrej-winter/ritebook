@@ -6,19 +6,20 @@ from ritebook.adapters.outbound.filesystem import (
     SkillFileReadError,
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
-    discover_skill_files,
+    discover_named_files,
     read_skill_file_text,
 )
+from ritebook.shared_kernel import SKILL_FILE_NAME
 
 
 def test_discover_skill_files_returns_sorted_filesystem_facts(tmp_path: Path) -> None:
     write_skill(tmp_path / "zeta" / "SKILL.md", "# Zeta\n")
     write_skill(tmp_path / "group" / "alpha" / "SKILL.md", "# Alpha\n")
 
-    discovered = discover_skill_files(tmp_path)
+    discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
 
     assert [
-        (skill.expected_name, skill.relative_skill_dir, skill.relative_skill_file)
+        (skill.directory_name, skill.relative_dir, skill.relative_file)
         for skill in discovered
     ] == [
         ("alpha", "group/alpha", "group/alpha/SKILL.md"),
@@ -31,9 +32,9 @@ def test_discover_skill_files_skips_hidden_directories(tmp_path: Path) -> None:
     write_skill(tmp_path / ".hidden" / "SKILL.md", "# Hidden\n")
     write_skill(tmp_path / "visible" / ".nested-hidden" / "SKILL.md", "# Hidden\n")
 
-    discovered = discover_skill_files(tmp_path)
+    discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
 
-    assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
+    assert [skill.relative_dir for skill in discovered] == ["visible"]
 
 
 def test_discover_skill_files_skips_symlinked_directories(tmp_path: Path) -> None:
@@ -43,9 +44,9 @@ def test_discover_skill_files_skips_symlinked_directories(tmp_path: Path) -> Non
     write_skill(skills_root / "visible" / "SKILL.md", "# Visible\n")
     (skills_root / "linked").symlink_to(outside_root, target_is_directory=True)
 
-    discovered = discover_skill_files(skills_root)
+    discovered = discover_named_files(skills_root, file_name=SKILL_FILE_NAME)
 
-    assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
+    assert [skill.relative_dir for skill in discovered] == ["visible"]
 
 
 def test_discover_skill_files_skips_symlink_cycles(tmp_path: Path) -> None:
@@ -56,25 +57,25 @@ def test_discover_skill_files_skips_symlink_cycles(tmp_path: Path) -> None:
         target_is_directory=True,
     )
 
-    discovered = discover_skill_files(skills_root)
+    discovered = discover_named_files(skills_root, file_name=SKILL_FILE_NAME)
 
-    assert [skill.relative_skill_dir for skill in discovered] == ["visible"]
+    assert [skill.relative_dir for skill in discovered] == ["visible"]
 
 
 def test_discover_skill_files_supports_root_skill_directory(tmp_path: Path) -> None:
     write_skill(tmp_path / "SKILL.md", "# Root\n")
 
-    discovered = discover_skill_files(tmp_path)
+    discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
 
     assert [
-        (skill.expected_name, skill.relative_skill_dir, skill.relative_skill_file)
+        (skill.directory_name, skill.relative_dir, skill.relative_file)
         for skill in discovered
     ] == [(tmp_path.name, ".", "SKILL.md")]
 
 
 def test_discover_skill_files_rejects_missing_root(tmp_path: Path) -> None:
     with pytest.raises(SkillsRootNotFoundError, match="does not exist"):
-        discover_skill_files(tmp_path / "missing")
+        discover_named_files(tmp_path / "missing", file_name=SKILL_FILE_NAME)
 
 
 def test_discover_skill_files_rejects_non_directory_root(tmp_path: Path) -> None:
@@ -82,7 +83,7 @@ def test_discover_skill_files_rejects_non_directory_root(tmp_path: Path) -> None
     file_root.write_text("not a directory", encoding="utf-8")
 
     with pytest.raises(SkillsRootNotDirectoryError, match="not a directory"):
-        discover_skill_files(file_root)
+        discover_named_files(file_root, file_name=SKILL_FILE_NAME)
 
 
 def test_read_skill_file_text_reads_utf8_content(tmp_path: Path) -> None:

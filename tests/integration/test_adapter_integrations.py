@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ritebook.adapters.outbound.filesystem import discover_skill_files
+from ritebook.adapters.outbound.filesystem import discover_named_files
 from ritebook.features.index_registry.adapters.outbound.filesystem_registry import (
     FilesystemIndexRegistry,
 )
@@ -46,6 +46,7 @@ from ritebook.features.skill_installation.application.dtos import (
     RegisteredSkillIndex,
     ResolvedSkillSource,
 )
+from ritebook.shared_kernel import SKILL_FILE_NAME
 
 if TYPE_CHECKING:
     from ritebook.features.linter.application.dtos import LintSkillsCommand
@@ -62,11 +63,11 @@ def test_filesystem_discovery_adapters_read_real_skill_files(
     hidden_skill.parent.mkdir(parents=True)
     hidden_skill.write_text("# Hidden\n", encoding="utf-8")
 
-    discovered_files = discover_skill_files(skills_root)
+    discovered_files = discover_named_files(skills_root, file_name=SKILL_FILE_NAME)
     publisher_entries = FilesystemSkillDiscovery().discover_skills(str(skills_root))
     linter_result = FilesystemSkillHeaderDiscovery().discover_headers(str(skills_root))
 
-    assert [file.relative_skill_file for file in discovered_files] == [
+    assert [file.relative_file for file in discovered_files] == [
         "alpha/SKILL.md",
         "zeta/SKILL.md",
     ]

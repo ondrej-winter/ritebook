@@ -23,21 +23,21 @@ def validate_root(root: Path) -> None:
         raise FilesystemSkillDiscoveryError(msg) from err
 
 
-def skill_files(root: Path, *, skill_file_name: str) -> tuple[Path, ...]:
-    """Return non-hidden skill files discovered recursively below ``root``."""
-    return collect_skill_files(root, skill_file_name=skill_file_name)
+def named_files(root: Path, *, file_name: str) -> tuple[Path, ...]:
+    """Return non-hidden named files discovered recursively below ``root``."""
+    return collect_named_files(root, file_name=file_name)
 
 
-def collect_skill_files(
+def collect_named_files(
     directory: Path,
     *,
-    skill_file_name: str,
+    file_name: str,
 ) -> tuple[Path, ...]:
-    """Return matching skill files from ``directory`` and visible descendants."""
+    """Return matching named files from ``directory`` and visible descendants."""
     discovered: list[Path] = []
-    skill_file = directory / skill_file_name
-    if skill_file.is_file():
-        discovered.append(skill_file)
+    named_file = directory / file_name
+    if named_file.is_file():
+        discovered.append(named_file)
 
     try:
         children = sorted(directory.iterdir(), key=lambda path: path.name)
@@ -49,21 +49,21 @@ def collect_skill_files(
         if child.name.startswith(".") or child.is_symlink() or not child.is_dir():
             continue
         discovered.extend(
-            collect_skill_files(
+            collect_named_files(
                 child,
-                skill_file_name=skill_file_name,
+                file_name=file_name,
             ),
         )
     return tuple(discovered)
 
 
-def relative_skill_dir(*, root: Path, skill_file: Path) -> str:
-    """Format the discovered skill directory relative to ``root``."""
-    relative_dir = skill_file.parent.relative_to(root)
+def relative_file_dir(*, root: Path, discovered_file: Path) -> str:
+    """Format the discovered file directory relative to ``root``."""
+    relative_dir = discovered_file.parent.relative_to(root)
     return "." if relative_dir == Path() else relative_dir.as_posix()
 
 
-def relative_skill_file(*, root: Path, skill_file: Path, skill_file_name: str) -> str:
-    """Format the discovered skill file path relative to ``root``."""
-    path = relative_skill_dir(root=root, skill_file=skill_file)
-    return skill_file_name if path == "." else f"{path}/{skill_file_name}"
+def relative_file_path(*, root: Path, discovered_file: Path, file_name: str) -> str:
+    """Format the discovered file path relative to ``root``."""
+    path = relative_file_dir(root=root, discovered_file=discovered_file)
+    return file_name if path == "." else f"{path}/{file_name}"

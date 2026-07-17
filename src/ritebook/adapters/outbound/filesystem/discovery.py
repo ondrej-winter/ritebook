@@ -1,49 +1,49 @@
-"""Shared filesystem mechanics for discovering skill files."""
+"""Shared filesystem mechanics for discovering named files."""
 
 from dataclasses import dataclass
 from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import _discovery_helpers
-from ritebook.adapters.outbound.filesystem.exceptions import (
-    SkillFileReadError,
-)
-
-SKILL_FILE_NAME = "SKILL.md"
+from ritebook.adapters.outbound.filesystem.exceptions import SkillFileReadError
 
 
 @dataclass(frozen=True)
-class DiscoveredSkillFile:
-    """Filesystem facts for a discovered ``SKILL.md`` file."""
+class DiscoveredNamedFile:
+    """Filesystem facts for a discovered named file."""
 
     path: Path
-    relative_skill_dir: str
-    relative_skill_file: str
+    relative_dir: str
+    relative_file: str
 
     @property
-    def expected_name(self) -> str:
-        """Return the skill name implied by the containing directory."""
+    def directory_name(self) -> str:
+        """Return the name implied by the containing directory."""
         return self.path.parent.name
 
 
-def discover_skill_files(skills_root: Path) -> tuple[DiscoveredSkillFile, ...]:
-    """Discover non-hidden ``SKILL.md`` files below an explicit skills root."""
-    _discovery_helpers.validate_root(skills_root)
+def discover_named_files(
+    root: Path,
+    *,
+    file_name: str,
+) -> tuple[DiscoveredNamedFile, ...]:
+    """Discover non-hidden files with ``file_name`` below an explicit root."""
+    _discovery_helpers.validate_root(root)
     return tuple(
-        DiscoveredSkillFile(
-            path=skill_file,
-            relative_skill_dir=_discovery_helpers.relative_skill_dir(
-                root=skills_root,
-                skill_file=skill_file,
+        DiscoveredNamedFile(
+            path=discovered_file,
+            relative_dir=_discovery_helpers.relative_file_dir(
+                root=root,
+                discovered_file=discovered_file,
             ),
-            relative_skill_file=_discovery_helpers.relative_skill_file(
-                root=skills_root,
-                skill_file=skill_file,
-                skill_file_name=SKILL_FILE_NAME,
+            relative_file=_discovery_helpers.relative_file_path(
+                root=root,
+                discovered_file=discovered_file,
+                file_name=file_name,
             ),
         )
-        for skill_file in _discovery_helpers.skill_files(
-            skills_root,
-            skill_file_name=SKILL_FILE_NAME,
+        for discovered_file in _discovery_helpers.named_files(
+            root,
+            file_name=file_name,
         )
     )
 

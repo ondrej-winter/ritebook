@@ -4,14 +4,15 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import (
-    DiscoveredSkillFile,
+    DiscoveredNamedFile,
     FilesystemSkillDiscoveryError,
     FrontmatterParseError,
-    discover_skill_files,
+    discover_named_files,
     parse_yaml_frontmatter,
 )
 from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.domain import SkillEntry
+from ritebook.shared_kernel import SKILL_FILE_NAME
 
 
 class FilesystemSkillDiscovery:
@@ -20,7 +21,10 @@ class FilesystemSkillDiscovery:
     def discover_skills(self, skills_root: str) -> tuple[SkillEntry, ...]:
         """Discover non-hidden skill directories below the explicit skills root."""
         try:
-            discovered_files = discover_skill_files(Path(skills_root))
+            discovered_files = discover_named_files(
+                Path(skills_root),
+                file_name=SKILL_FILE_NAME,
+            )
         except FilesystemSkillDiscoveryError as err:
             raise PublishIndexDiscoveryError(str(err)) from err
 
@@ -28,12 +32,12 @@ class FilesystemSkillDiscovery:
         return tuple(sorted(entries, key=lambda entry: entry.path))
 
 
-def _skill_entry(discovered: DiscoveredSkillFile) -> SkillEntry:
+def _skill_entry(discovered: DiscoveredNamedFile) -> SkillEntry:
     skill_dir = discovered.path.parent
     return SkillEntry(
         name=skill_dir.name,
-        path=discovered.relative_skill_dir,
-        skill_file=discovered.relative_skill_file,
+        path=discovered.relative_dir,
+        skill_file=discovered.relative_file,
         description=_extract_header_text(discovered.path, field_name="description"),
     )
 

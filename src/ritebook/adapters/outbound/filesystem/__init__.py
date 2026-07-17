@@ -1,9 +1,8 @@
 """Shared filesystem adapter utilities."""
 
 from ritebook.adapters.outbound.filesystem.discovery import (
-    SKILL_FILE_NAME,
-    DiscoveredSkillFile,
-    discover_skill_files,
+    DiscoveredNamedFile,
+    discover_named_files,
     read_skill_file_text,
 )
 from ritebook.adapters.outbound.filesystem.exceptions import (
@@ -18,14 +17,13 @@ from ritebook.adapters.outbound.filesystem.frontmatter import (
 )
 
 __all__ = [
-    "SKILL_FILE_NAME",
-    "DiscoveredSkillFile",
+    "DiscoveredNamedFile",
     "FilesystemSkillDiscoveryError",
     "FrontmatterParseError",
     "SkillFileReadError",
     "SkillsRootNotDirectoryError",
     "SkillsRootNotFoundError",
-    "discover_skill_files",
+    "discover_named_files",
     "parse_yaml_frontmatter",
     "read_skill_file_text",
 ]

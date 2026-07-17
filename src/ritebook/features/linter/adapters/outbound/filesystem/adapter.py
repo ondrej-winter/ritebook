@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import (
     FilesystemSkillDiscoveryError,
-    discover_skill_files,
+    discover_named_files,
 )
 from ritebook.features.linter.adapters.outbound.filesystem.frontmatter import (
     parse_skill_header,
@@ -15,6 +15,7 @@ from ritebook.features.linter.application.dtos import (
     SkillValidationIssue,
 )
 from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
+from ritebook.shared_kernel import SKILL_FILE_NAME
 
 
 class FilesystemSkillHeaderDiscovery:
@@ -25,15 +26,18 @@ class FilesystemSkillHeaderDiscovery:
         headers: list[ParsedSkillHeader] = []
         issues: list[SkillValidationIssue] = []
         try:
-            discovered_files = discover_skill_files(Path(skills_root))
+            discovered_files = discover_named_files(
+                Path(skills_root),
+                file_name=SKILL_FILE_NAME,
+            )
         except FilesystemSkillDiscoveryError as err:
             raise LintSkillsDiscoveryError(str(err)) from err
 
         for discovered in discovered_files:
             parsed = parse_skill_header(
                 discovered.path,
-                relative_skill_file=discovered.relative_skill_file,
-                expected_name=discovered.expected_name,
+                relative_skill_file=discovered.relative_file,
+                expected_name=discovered.directory_name,
             )
             if isinstance(parsed, SkillValidationIssue):
                 issues.append(parsed)

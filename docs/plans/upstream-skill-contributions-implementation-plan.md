@@ -360,22 +360,32 @@ DTOs, lockfile-entry DTOs, comparison/workspace DTOs, errors, and ports.
 
 **Acceptance criteria:**
 
-- [ ] Command validates fully qualified skill references and optional path
+- [x] Command validates fully qualified skill references and optional path
       overrides.
-- [ ] Lockfile-entry DTO requires the provenance needed by the MVP.
-- [ ] Result DTO distinguishes no-op and prepared contribution outcomes.
-- [ ] Errors have concise user-facing messages.
-- [ ] Ports are small `Protocol`s under
+- [x] Lockfile-entry DTO requires the provenance needed by the MVP.
+- [x] Result DTO distinguishes no-op and prepared contribution outcomes.
+- [x] Errors have concise user-facing messages.
+- [x] Ports are small `Protocol`s under
       `features/skill_contribution/application/ports/`.
-- [ ] Package `__init__.py` files remain lightweight and expose intentional APIs
+- [x] Package `__init__.py` files remain lightweight and expose intentional APIs
       only.
 
 **Verification:**
 
-- [ ] Add focused DTO validation tests in
+- [x] Add focused DTO validation tests in
       `tests/unit/features/skill_contribution/application/test_publish_skill_change.py`.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/application/test_publish_skill_change.py`.
+
+**Status:** Completed on 2026-07-18.
+
+**Validation evidence:**
+
+- `uv run ruff format src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ruff check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution/application/test_publish_skill_change.py`
+  - Result: 31 passed.
 
 **Dependencies:** None
 

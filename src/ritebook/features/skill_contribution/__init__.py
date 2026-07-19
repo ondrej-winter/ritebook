@@ -1,0 +1,1 @@
+"""Skill contribution feature slice."""

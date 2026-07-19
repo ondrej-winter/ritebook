@@ -37,6 +37,29 @@ from ritebook.features.publisher.adapters.outbound.filesystem import (
 )
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.application.use_cases import PublishIndex
+from ritebook.features.skill_contribution.adapters.outbound import (
+    contribution_checkout,
+)
+from ritebook.features.skill_contribution.adapters.outbound.git_workspace import (
+    GitSkillChangeDetectorAdapter,
+    GitWorkspaceAdapter,
+)
+from ritebook.features.skill_contribution.adapters.outbound.index_regeneration import (
+    PublisherIndexRegeneratorAdapter,
+)
+from ritebook.features.skill_contribution.adapters.outbound.json_lockfile import (
+    JsonContributionLockfileReader,
+)
+from ritebook.features.skill_contribution.adapters.outbound.skill_directory import (
+    FilesystemSkillDirectoryAdapter,
+)
+from ritebook.features.skill_contribution.adapters.outbound.validation import (
+    LinterSkillValidatorAdapter,
+)
+from ritebook.features.skill_contribution.application.use_cases import (
+    PublishSkillChange,
+    PublishSkillChangeDependencies,
+)
 from ritebook.features.skill_installation.adapters.outbound import (
     FilesystemSkillInstallerAdapter,
     IndexRegistrySkillCatalogAdapter,
@@ -107,6 +130,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         manifest=JsonLockfileAdapter(),
         clock=lambda: datetime.now(UTC),
     )
+    contribution_skill_directory = FilesystemSkillDirectoryAdapter()
+    publish_skill_change = PublishSkillChange(
+        PublishSkillChangeDependencies(
+            lockfile=JsonContributionLockfileReader(),
+            source_workspace=GitWorkspaceAdapter(),
+            change_detector=GitSkillChangeDetectorAdapter(
+                local_change_detector=contribution_skill_directory,
+            ),
+            checkout=contribution_checkout.ContributionCheckoutAdapter(
+                clock=lambda: datetime.now(UTC),
+            ),
+            skill_directory=contribution_skill_directory,
+            validator=LinterSkillValidatorAdapter(linter=linter),
+            index_regenerator=PublisherIndexRegeneratorAdapter(publisher=publisher),
+        ),
+    )
     return run(
         argv,
         linter=linter,
@@ -117,4 +156,5 @@ def main(argv: Sequence[str] | None = None) -> int:
         update_index=update_index,
         install_skill=install_skill,
         install_from_requirements=install_from_requirements,
+        publish_skill_change=publish_skill_change,
     )

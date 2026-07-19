@@ -919,22 +919,63 @@ adapter-side composition.
 
 **Acceptance criteria:**
 
-- [ ] `main()` wires `PublishSkillChange` with lockfile reader, Git checkout,
+- [x] `main()` wires `PublishSkillChange` with lockfile reader, Git checkout,
       workspace/change detection, skill directory, validation, regeneration, and
       injected UTC clock.
-- [ ] Existing command wiring remains unchanged.
-- [ ] No application layer imports outbound adapters.
-- [ ] CLI help includes the new command.
+- [x] Existing command wiring remains unchanged.
+- [x] No application layer imports outbound adapters.
+- [x] CLI help includes the new command.
 
 **Verification:**
 
-- [ ] Run CLI adapter tests.
-- [ ] Run help smoke checks:
+- [x] Run CLI adapter tests.
+- [x] Run help smoke checks:
 
 ```bash
 uv run ritebook --help
 uv run ritebook publish-skill-change --help
 ```
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- TDD red check: `uv run pytest tests/unit/test_cli.py -q`
+  - Result: 1 failed because `main()` did not pass `publish_skill_change` to the
+    shared CLI boundary.
+- `uv run pytest tests/unit/test_cli.py tests/unit/adapters/inbound/cli/test_adapter.py -q`
+  - Result: 41 passed.
+- `uv run ruff format src/ritebook/cli.py tests/unit/test_cli.py`
+  - Result: both touched Python files formatted; the configured non-failing
+    `COM812` formatter compatibility warning was emitted.
+- `uv run ruff check src/ritebook/cli.py tests/unit/test_cli.py`
+- `uv run ty check src/ritebook`
+- `uv run ritebook --help`
+  - Result: help lists `publish-skill-change`.
+- `uv run ritebook publish-skill-change --help`
+  - Result: help lists `skill_reference`, `--lockfile`, and
+    `--contribution-root`.
+- Application-boundary import scan:
+  `rg 'ritebook\.features\.skill_contribution\.adapters' src/ritebook/features/skill_contribution/application`
+  - Result: no outbound-adapter imports found.
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+- `uv run pytest -q`
+  - Result: 443 passed and 2 unrelated publisher tests failed.
+
+**Notes:**
+
+- The composition root reuses the existing linter and publisher use cases via
+  contribution-owned adapters. One filesystem skill-directory adapter serves
+  both local comparison and copy-back, while the Git change detector wraps it
+  with upstream-change inspection.
+- The contribution checkout receives an injected UTC clock for deterministic
+  branch-name behavior at the adapter boundary.
+- The two full-suite failures are the pre-existing publisher failures documented
+  under Tasks 5, 7, 8, and 9: an absolute `skills_root` fixture rejected by
+  `SkillCatalog` and a root-skill discovery test whose pytest temporary
+  directory is not kebab-case. They are outside Task 10 and were not changed in
+  this slice.
 
 **Dependencies:** Tasks 3–9
 
@@ -947,9 +988,9 @@ uv run ritebook publish-skill-change --help
 
 ### Checkpoint: CLI flow wired
 
-- [ ] CLI adapter tests pass.
-- [ ] `ritebook --help` includes `publish-skill-change`.
-- [ ] Composition root remains the only concrete wiring location.
+- [x] CLI adapter tests pass.
+- [x] `ritebook --help` includes `publish-skill-change`.
+- [x] Composition root remains the only concrete wiring location.
 
 ### Phase 7: Workflow coverage, documentation, and final validation
 

@@ -558,37 +558,69 @@ injectable runner for tests.
 
 **Acceptance criteria:**
 
-- [ ] Uses deterministic Ritebook-owned checkout paths under contribution root.
-- [ ] Clones Git URL sources into contribution root when missing.
-- [ ] For local Git repo sources, creates a separate Ritebook-owned clone or
+- [x] Uses deterministic Ritebook-owned checkout paths under contribution root.
+- [x] Clones Git URL sources into contribution root when missing.
+- [x] For local Git repo sources, creates a separate Ritebook-owned clone or
       equivalent isolated checkout without mutating the user working tree.
-- [ ] Does not use managed index cache clones as writable contribution workspaces.
-- [ ] Fetches origin when origin exists.
-- [ ] Selects current upstream base for MVP.
-- [ ] Resets/cleans only Ritebook-owned checkouts before branch preparation.
-- [ ] Creates safe branch names.
-- [ ] Handles missing or unusable `origin` by returning metadata that lets the CLI
+- [x] Does not use managed index cache clones as writable contribution workspaces.
+- [x] Fetches origin when origin exists.
+- [x] Selects current upstream base for MVP.
+- [x] Resets/cleans only Ritebook-owned checkouts before branch preparation.
+- [x] Creates safe branch names.
+- [x] Handles missing or unusable `origin` by returning metadata that lets the CLI
       print manual next-step guidance rather than a broken push command.
-- [ ] Stages only the changed skill directory and `ritebook-index.json`.
-- [ ] Creates commit only after validation and index regeneration have succeeded.
-- [ ] Reports missing Git commit identity or commit failure clearly without
+- [x] Stages only the changed skill directory and `ritebook-index.json`.
+- [x] Creates commit only after validation and index regeneration have succeeded.
+- [x] Reports missing Git commit identity or commit failure clearly without
       leaking raw stderr; the prepared checkout remains inspectable.
-- [ ] Reports Git failures without leaking credentials or raw command stderr that
+- [x] Reports Git failures without leaking credentials or raw command stderr that
       may contain secrets.
-- [ ] Runs Git non-interactively with argument lists, not shell strings.
-- [ ] Default contribution-root resolution is testable without writing to real
+- [x] Runs Git non-interactively with argument lists, not shell strings.
+- [x] Default contribution-root resolution is testable without writing to real
       developer cache directories.
 
 **Verification:**
 
-- [ ] Unit tests with fake runners verify Git command sequencing and failure
+- [x] Unit tests with fake runners verify Git command sequencing and failure
       behavior.
-- [ ] Temporary local-repository tests verify no mutation of user-owned local
+- [x] Temporary local-repository tests verify no mutation of user-owned local
       source working tree.
-- [ ] Tests cover missing/unusable `origin`, commit identity failure, and default
+- [x] Tests cover missing/unusable `origin`, commit identity failure, and default
       contribution-root resolution without touching real user cache state.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_contribution_checkout.py tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_contribution_checkout.py tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py -q`
+  - Result: 13 passed.
+- `uv run ruff check src/ritebook/features/skill_contribution/adapters/outbound/contribution_checkout src/ritebook/features/skill_contribution/adapters/outbound/git_workspace tests/unit/features/skill_contribution/adapters/outbound/test_contribution_checkout.py tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution -q`
+  - Result: 95 passed.
+- `uv run ruff format .`
+  - Result: 220 files left unchanged; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check .`
+- `uv run ty check src/ritebook`
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+- `uv run pytest`
+  - Result: 426 passed and 2 unrelated publisher tests failed.
+  - Existing failures: the publisher integration test passes an absolute
+    `skills_root` rejected by `SkillCatalog`, and the root-skill discovery test
+    derives a non-kebab-case skill name from pytest's temporary directory.
+
+**Notes:**
+
+- Task 6 remains deferred: this task prepares the current-base workspace but does
+  not yet inspect the selected skill path between the locked and current base
+  revisions.
+- The full-suite publisher failures are outside the Task 5 files and do not affect
+  the focused contribution checks; they were not changed to keep this slice
+  scoped.
 
 **Dependencies:** Tasks 1–2
 
@@ -632,11 +664,12 @@ locked `source_revision` and the selected current upstream base.
 
 ### Checkpoint: Git and filesystem adapters complete
 
-- [ ] Lockfile, filesystem, and Git adapter tests pass. Lockfile and filesystem
-      adapter tests currently pass; Git adapter tests are pending Tasks 5–6.
+- [ ] Lockfile, filesystem, and Git adapter tests pass. Lockfile, filesystem, and
+      Task 5 Git adapter tests currently pass; Task 6 tests remain pending.
 - [x] No tests require network access or developer global state for completed
-      lockfile and filesystem adapter coverage.
-- [ ] Git adapters do not leak raw credential-bearing output.
+      lockfile, filesystem, and Task 5 Git adapter coverage.
+- [ ] Git adapters do not leak raw credential-bearing output. Task 5 sanitization
+      coverage passes; Task 6 remains pending.
 
 ### Phase 5: Validation and index regeneration adapters
 

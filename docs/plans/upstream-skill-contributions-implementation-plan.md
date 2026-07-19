@@ -707,18 +707,56 @@ checkout before commit creation.
 
 **Acceptance criteria:**
 
-- [ ] Runs validation after copy-back and before index regeneration.
-- [ ] Maps to `LintSkillsCommand(skills_root=<checkout root>)` for the MVP so
+- [x] Runs validation after copy-back and before index regeneration.
+- [x] Maps to `LintSkillsCommand(skills_root=<checkout root>)` for the MVP so
       validation scope matches index regeneration scope.
-- [ ] Converts validation issues into `SkillContributionValidationError`.
-- [ ] Does not shell out to `ritebook`.
-- [ ] Does not print raw skill contents.
+- [x] Converts validation issues into `SkillContributionValidationError`.
+- [x] Does not shell out to `ritebook`.
+- [x] Does not print raw skill contents.
 
 **Verification:**
 
-- [ ] Unit tests cover validation success and failure.
-- [ ] Run:
+- [x] Unit tests cover validation success and failure.
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_validation_adapter.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- TDD red check:
+  `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_validation_adapter.py`
+  - Result: collection failed because the validation adapter package did not yet
+    exist.
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_validation_adapter.py`
+  - Result: 3 passed.
+- `uv run pytest tests/unit/features/skill_contribution -q`
+  - Result: 102 passed.
+- `uv run pytest tests/unit/features/linter -q`
+  - Result: 47 passed.
+- `uv run ruff format .`
+  - Result: 223 files left unchanged; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check .`
+- `uv run ty check src/ritebook`
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+- `uv run pytest`
+  - Result: 433 passed and 2 unrelated publisher tests failed.
+
+**Notes:**
+
+- The adapter delegates directly to the linter application port with the
+  contribution checkout root. It does not invoke the CLI or a subprocess.
+- Validation issue details and linter exception details are not copied into the
+  contribution error, preventing raw skill paths, contents, or private discovery
+  details from reaching the user-facing error.
+- Copy, validation, index regeneration, and commit ordering remain owned and
+  covered by the contribution application use-case tests.
+- The two full-suite failures are the pre-existing publisher failures documented
+  under Task 5: an absolute `skills_root` fixture rejected by `SkillCatalog` and
+  a root-skill discovery test whose pytest temporary directory is not kebab-case.
+  They are outside Task 7 and were not changed in this slice.
 
 **Dependencies:** Task 1
 

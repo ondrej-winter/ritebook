@@ -11,11 +11,15 @@ from pathlib import Path
 from ritebook.features.skill_contribution.application.dtos import (
     ContributionLockfileEntry,
     ContributionWorkspace,
+    SkillChangeComparison,
+    SkillChangeStatus,
 )
 from ritebook.features.skill_contribution.application.errors import (
     ContributionGitError,
+    IncompleteContributionProvenanceError,
 )
 from ritebook.features.skill_contribution.application.ports import (
+    SkillChangeDetectorPort,
     SkillSourceWorkspacePort,
 )
 
@@ -25,6 +29,53 @@ LOCAL_GIT_REPO_SOURCE_TYPE = "local_git_repo"
 WORKSPACE_MARKER_NAME = "ritebook-contribution-workspace"
 GitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 ContributionRootResolver = Callable[[], Path]
+
+
+class GitSkillChangeDetectorAdapter(SkillChangeDetectorPort):
+    """Detect upstream changes before comparing installed skill content."""
+
+    def __init__(
+        self,
+        local_change_detector: SkillChangeDetectorPort,
+        runner: GitRunner | None = None,
+    ) -> None:
+        """Initialize Git inspection and installed-content comparison boundaries."""
+        self._local_change_detector = local_change_detector
+        self._runner = runner or _run_git
+
+    def compare(
+        self,
+        entry: ContributionLockfileEntry,
+        workspace: ContributionWorkspace,
+    ) -> SkillChangeComparison:
+        """Detect selected-path upstream changes, then compare installed content."""
+        if not entry.source_revision:
+            raise IncompleteContributionProvenanceError(
+                entry.requirement,
+                "source_revision",
+            )
+        result = self._runner(
+            _git(
+                Path(workspace.checkout_path).expanduser(),
+                "diff",
+                "--quiet",
+                entry.source_revision,
+                workspace.current_base_revision,
+                "--",
+                entry.skill_path,
+            ),
+        )
+        if result.returncode == 1:
+            return SkillChangeComparison(
+                status=SkillChangeStatus.UPSTREAM_CHANGED,
+                installed_path=entry.target,
+                source_skill_path=entry.skill_path,
+                changed_file_count=1,
+            )
+        if result.returncode != 0:
+            msg = "git upstream skill-path inspection failed"
+            raise ContributionGitError(msg)
+        return self._local_change_detector.compare(entry, workspace)
 
 
 class GitWorkspaceAdapter(SkillSourceWorkspacePort):

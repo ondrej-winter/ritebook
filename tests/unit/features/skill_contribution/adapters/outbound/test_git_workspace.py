@@ -1,12 +1,15 @@
 import hashlib
 import subprocess
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from shutil import which
+from typing import cast
 
 import pytest
 
 from ritebook.features.skill_contribution.adapters.outbound.git_workspace import (
+    GitSkillChangeDetectorAdapter,
     GitWorkspaceAdapter,
 )
 from ritebook.features.skill_contribution.adapters.outbound.git_workspace import (
@@ -14,9 +17,13 @@ from ritebook.features.skill_contribution.adapters.outbound.git_workspace import
 )
 from ritebook.features.skill_contribution.application.dtos import (
     ContributionLockfileEntry,
+    ContributionWorkspace,
+    SkillChangeComparison,
+    SkillChangeStatus,
 )
 from ritebook.features.skill_contribution.application.errors import (
     ContributionGitError,
+    IncompleteContributionProvenanceError,
 )
 
 
@@ -35,6 +42,165 @@ class RecordingRunner:
             Path(recorded[-1], ".git").mkdir(parents=True, exist_ok=True)
         returncode, stdout, stderr = self.responses.get(tuple(recorded), (0, "", ""))
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
+
+
+class RecordingLocalChangeDetector:
+    def __init__(self, comparison: SkillChangeComparison) -> None:
+        self.comparison = comparison
+        self.calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
+
+    def compare(
+        self,
+        entry: ContributionLockfileEntry,
+        workspace: ContributionWorkspace,
+    ) -> SkillChangeComparison:
+        self.calls.append((entry, workspace))
+        return self.comparison
+
+
+def test_git_change_detector_delegates_when_selected_upstream_path_is_unchanged() -> (
+    None
+):
+    entry = contribution_entry()
+    workspace = contribution_workspace()
+    diff_command = git(
+        Path(workspace.checkout_path),
+        "diff",
+        "--quiet",
+        entry.source_revision,
+        workspace.current_base_revision,
+        "--",
+        entry.skill_path,
+    )
+    runner = RecordingRunner({diff_command: (0, "", "")})
+    local_comparison = SkillChangeComparison(
+        status=SkillChangeStatus.CHANGED,
+        installed_path=entry.target,
+        source_skill_path=entry.skill_path,
+        changed_file_count=2,
+    )
+    local_detector = RecordingLocalChangeDetector(local_comparison)
+
+    comparison = GitSkillChangeDetectorAdapter(
+        local_change_detector=local_detector,
+        runner=runner,
+    ).compare(entry, workspace)
+
+    assert comparison == local_comparison
+    assert local_detector.calls == [(entry, workspace)]
+    assert runner.commands == [list(diff_command)]
+
+
+def test_git_change_detector_reports_changed_selected_upstream_path() -> None:
+    entry = contribution_entry(skill_path="skills/code-review")
+    workspace = contribution_workspace()
+    diff_command = git(
+        Path(workspace.checkout_path),
+        "diff",
+        "--quiet",
+        entry.source_revision,
+        workspace.current_base_revision,
+        "--",
+        entry.skill_path,
+    )
+    runner = RecordingRunner({diff_command: (1, "", "")})
+    local_detector = RecordingLocalChangeDetector(
+        SkillChangeComparison(
+            status=SkillChangeStatus.NO_CHANGES,
+            installed_path=entry.target,
+            source_skill_path=entry.skill_path,
+        ),
+    )
+
+    comparison = GitSkillChangeDetectorAdapter(
+        local_change_detector=local_detector,
+        runner=runner,
+    ).compare(entry, workspace)
+
+    assert comparison == SkillChangeComparison(
+        status=SkillChangeStatus.UPSTREAM_CHANGED,
+        installed_path=entry.target,
+        source_skill_path=entry.skill_path,
+        changed_file_count=1,
+    )
+    assert local_detector.calls == []
+    assert runner.commands == [list(diff_command)]
+
+
+def test_git_change_detector_rejects_missing_locked_revision() -> None:
+    entry = contribution_entry()
+    incomplete_entry = cast(
+        "ContributionLockfileEntry",
+        IncompleteContributionEntry(
+            requirement=entry.requirement,
+            target=entry.target,
+            source_revision="",
+            skill_path=entry.skill_path,
+        ),
+    )
+    runner = RecordingRunner()
+    local_detector = RecordingLocalChangeDetector(
+        SkillChangeComparison(
+            status=SkillChangeStatus.NO_CHANGES,
+            installed_path=entry.target,
+            source_skill_path=entry.skill_path,
+        ),
+    )
+
+    with pytest.raises(
+        IncompleteContributionProvenanceError,
+        match="source_revision",
+    ):
+        GitSkillChangeDetectorAdapter(
+            local_change_detector=local_detector,
+            runner=runner,
+        ).compare(incomplete_entry, contribution_workspace())
+
+    assert runner.commands == []
+    assert local_detector.calls == []
+
+
+def test_git_change_detector_sanitizes_git_failure_output() -> None:
+    entry = contribution_entry()
+    workspace = contribution_workspace()
+    diff_command = git(
+        Path(workspace.checkout_path),
+        "diff",
+        "--quiet",
+        entry.source_revision,
+        workspace.current_base_revision,
+        "--",
+        entry.skill_path,
+    )
+    runner = RecordingRunner(
+        {diff_command: (128, "", "fatal: https://secret@example.com failed")},
+    )
+    local_detector = RecordingLocalChangeDetector(
+        SkillChangeComparison(
+            status=SkillChangeStatus.NO_CHANGES,
+            installed_path=entry.target,
+            source_skill_path=entry.skill_path,
+        ),
+    )
+
+    with pytest.raises(ContributionGitError) as exc_info:
+        GitSkillChangeDetectorAdapter(
+            local_change_detector=local_detector,
+            runner=runner,
+        ).compare(entry, workspace)
+
+    assert str(exc_info.value) == "git upstream skill-path inspection failed"
+    assert "secret" not in str(exc_info.value)
+    assert "example.com" not in str(exc_info.value)
+    assert local_detector.calls == []
+
+
+@dataclass(frozen=True)
+class IncompleteContributionEntry:
+    requirement: str
+    target: str
+    source_revision: str
+    skill_path: str
 
 
 def test_git_workspace_clones_git_url_to_deterministic_owned_path(
@@ -307,6 +473,16 @@ def contribution_entry(
         skill_path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",
         index_schema_version=1,
+    )
+
+
+def contribution_workspace() -> ContributionWorkspace:
+    return ContributionWorkspace(
+        checkout_path="/tmp/ritebook/contributions/source/platform-skills-code-review",
+        source_skill_path="skills/code-review",
+        current_base_revision="def456",
+        locked_revision="abc123",
+        has_usable_origin=True,
     )
 
 

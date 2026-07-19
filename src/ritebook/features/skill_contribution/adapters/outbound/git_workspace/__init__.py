@@ -1,5 +1,5 @@
 """Git workspace adapter for isolated skill contribution checkouts."""
 
-from .adapter import GitWorkspaceAdapter
+from .adapter import GitSkillChangeDetectorAdapter, GitWorkspaceAdapter
 
-__all__ = ["GitWorkspaceAdapter"]
+__all__ = ["GitSkillChangeDetectorAdapter", "GitWorkspaceAdapter"]

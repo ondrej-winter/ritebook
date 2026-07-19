@@ -640,18 +640,46 @@ locked `source_revision` and the selected current upstream base.
 
 **Acceptance criteria:**
 
-- [ ] Uses Git inspection inside the isolated checkout.
-- [ ] Compares only the selected source `skill_path` for upstream-change checks.
-- [ ] Hard-fails the MVP when upstream changed since `source_revision`.
-- [ ] Error message gives remediation guidance without dumping contents.
-- [ ] Missing locked revision is treated as incomplete provenance.
+- [x] Uses Git inspection inside the isolated checkout.
+- [x] Compares only the selected source `skill_path` for upstream-change checks.
+- [x] Hard-fails the MVP when upstream changed since `source_revision`.
+- [x] Error message gives remediation guidance without dumping contents.
+- [x] Missing locked revision is treated as incomplete provenance.
 
 **Verification:**
 
-- [ ] Unit tests cover unchanged upstream, changed upstream, missing revision,
+- [x] Unit tests cover unchanged upstream, changed upstream, missing revision,
       and Git failure.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- TDD red check:
+  `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py -q`
+  - Result: collection failed because `GitSkillChangeDetectorAdapter` did not yet
+    exist.
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py -q`
+  - Result: 12 passed.
+- `uv run ruff format src/ritebook/features/skill_contribution/adapters/outbound/git_workspace/adapter.py src/ritebook/features/skill_contribution/adapters/outbound/git_workspace/__init__.py tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py`
+  - Result: 3 files left unchanged; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check src/ritebook/features/skill_contribution/adapters/outbound/git_workspace/adapter.py src/ritebook/features/skill_contribution/adapters/outbound/git_workspace/__init__.py tests/unit/features/skill_contribution/adapters/outbound/test_git_workspace.py`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution -q`
+  - Result: 99 passed.
+- `git --no-pager diff --check`
+
+**Notes:**
+
+- Upstream inspection uses path-scoped `git diff --quiet` between the locked
+  revision and prepared current base. Exit code `1` maps to `UPSTREAM_CHANGED`;
+  other nonzero results raise a sanitized `ContributionGitError`.
+- The application use case retains ownership of converting `UPSTREAM_CHANGED`
+  into `UpstreamSkillChangedError` with remediation guidance before any branch,
+  copy, validation, regeneration, or commit work.
 
 **Dependencies:** Task 5
 
@@ -664,12 +692,10 @@ locked `source_revision` and the selected current upstream base.
 
 ### Checkpoint: Git and filesystem adapters complete
 
-- [ ] Lockfile, filesystem, and Git adapter tests pass. Lockfile, filesystem, and
-      Task 5 Git adapter tests currently pass; Task 6 tests remain pending.
+- [x] Lockfile, filesystem, and Git adapter tests pass.
 - [x] No tests require network access or developer global state for completed
-      lockfile, filesystem, and Task 5 Git adapter coverage.
-- [ ] Git adapters do not leak raw credential-bearing output. Task 5 sanitization
-      coverage passes; Task 6 remains pending.
+      lockfile, filesystem, and Git adapter coverage.
+- [x] Git adapters do not leak raw credential-bearing output.
 
 ### Phase 5: Validation and index regeneration adapters
 

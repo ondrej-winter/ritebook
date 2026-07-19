@@ -1002,21 +1002,72 @@ temporary paths.
 
 **Acceptance criteria:**
 
-- [ ] Workflow registers/installs or otherwise prepares a lockfile-backed local
+- [x] Workflow registers/installs or otherwise prepares a lockfile-backed local
       skill fixture.
-- [ ] A changed installed skill produces a contribution checkout branch and
+- [x] A changed installed skill produces a contribution checkout branch and
       commit.
-- [ ] No-change workflow reports no-op.
-- [ ] Upstream-changed workflow fails clearly.
-- [ ] Tests use explicit temporary registry/cache/lock/contribution paths.
-- [ ] Tests do not require network access.
-- [ ] Tests do not write to real home, config, or cache directories.
+- [x] No-change workflow reports no-op.
+- [x] Upstream-changed workflow fails clearly.
+- [x] Tests use explicit temporary registry/cache/lock/contribution paths.
+- [x] Tests do not require network access.
+- [x] Tests do not write to real home, config, or cache directories.
 
 **Verification:**
 
-- [ ] Run focused workflow tests, likely under `tests/e2e/` or a local-only
+- [x] Run focused workflow tests, likely under `tests/e2e/` or a local-only
       integration-style unit test.
-- [ ] Run: `uv run pytest tests/e2e -q` if E2E coverage is added.
+- [x] Run: `uv run pytest tests/e2e -q` if E2E coverage is added.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- Initial focused check:
+  `uv run pytest tests/e2e/test_skill_contribution_workflow.py -q`
+  - Result: 3 failed while establishing the black-box fixture because the command
+    was not run from the lockfile target's repository and the checkout helper
+    selected the wrong directory level. Both test-fixture issues were corrected.
+- Follow-up focused check:
+  `uv run pytest tests/e2e/test_skill_contribution_workflow.py -q`
+  - Result: 2 passed and the changed-skill workflow failed because index
+    regeneration wrote `ritebook-index.json` in the caller's working directory
+    instead of the isolated contribution checkout.
+- Regression and workflow check:
+  `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py tests/e2e/test_skill_contribution_workflow.py -q`
+  - Result: 6 passed after making the index-regeneration adapter run the existing
+    synchronous publisher boundary from the contribution checkout and restore the
+    caller's working directory.
+- `uv run pytest tests/e2e -q`
+  - Result: 15 passed.
+- `uv run pytest tests/unit/features/skill_contribution -q`
+  - Result: 105 passed.
+- `uv run ruff format src/ritebook/features/skill_contribution/adapters/outbound/index_regeneration/adapter.py tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py tests/e2e/conftest.py tests/e2e/test_skill_contribution_workflow.py`
+  - Result: all four touched Python files formatted; the configured non-failing
+    `COM812` formatter compatibility warning was emitted.
+- `uv run ruff check .`
+- `uv run ty check src/ritebook`
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+- `uv run pytest -m 'not e2e' -q`
+  - Result: 431 passed, 15 deselected, and the same 2 unrelated publisher tests
+    documented under Tasks 5, 7, 8, 9, and 10 failed.
+
+**Notes:**
+
+- The workflow tests use the real CLI to publish and register a temporary local
+  Git-backed index, install the skill from `ritebook.toml` into a repo-local
+  target, and write an explicit temporary lockfile before publishing a change.
+- Success coverage verifies the isolated checkout, generated branch, commit,
+  copied skill, regenerated index content, manual no-origin guidance, and an
+  unchanged user-owned source repository. No-op and upstream-changed coverage
+  verify that no contribution branch or commit is created.
+- The E2E CLI runner now isolates `HOME`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME`
+  under `tmp_path` and injects a deterministic test-only Git identity, so tests do
+  not rely on or write to developer-global state.
+- The two non-E2E failures remain outside Task 11: an absolute `skills_root`
+  fixture rejected by `SkillCatalog` and a root-skill discovery test whose pytest
+  temporary directory is not kebab-case. No Task 11 criterion is deferred or
+  partially completed.
 
 **Dependencies:** Tasks 3–10
 

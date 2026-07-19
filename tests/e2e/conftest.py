@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -89,8 +90,26 @@ def cache_root(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def run_cli() -> CliRunner:
+def run_cli(tmp_path: Path) -> CliRunner:
     """Return a helper that invokes the real Ritebook CLI through uv."""
+    home = tmp_path / "home"
+    config_home = tmp_path / "config-home"
+    cache_home = tmp_path / "cache-home"
+    home.mkdir()
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "GIT_CONFIG_COUNT": "2",
+            "GIT_CONFIG_KEY_0": "user.name",
+            "GIT_CONFIG_KEY_1": "user.email",
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_VALUE_0": "Ritebook E2E",
+            "GIT_CONFIG_VALUE_1": "ritebook-e2e@example.invalid",
+            "HOME": str(home),
+            "XDG_CACHE_HOME": str(cache_home),
+            "XDG_CONFIG_HOME": str(config_home),
+        },
+    )
 
     def run(arguments: Sequence[str], *, cwd: Path | None = None) -> CliResult:
         command = ("uv", "run", "--project", str(PROJECT_ROOT), "ritebook", *arguments)
@@ -99,6 +118,7 @@ def run_cli() -> CliRunner:
             check=False,
             capture_output=True,
             cwd=cwd,
+            env=environment,
             text=True,
         )
         return CliResult(
@@ -189,14 +209,17 @@ metadata:
 """
 
 
-def run_git(repository: Path, *arguments: str) -> None:
+def run_git(
+    repository: Path,
+    *arguments: str,
+) -> subprocess.CompletedProcess[str]:
     """Run a Git command inside a temporary repository."""
     git = which("git")
     if git is None:
         message = "git executable is required for E2E tests"
         raise RuntimeError(message)
 
-    subprocess.run(  # noqa: S603 - E2E tests intentionally drive local Git.
+    return subprocess.run(  # noqa: S603 - E2E tests intentionally drive local Git.
         (git, "-C", str(repository), *arguments),
         check=True,
         capture_output=True,

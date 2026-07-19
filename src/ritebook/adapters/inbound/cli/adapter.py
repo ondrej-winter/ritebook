@@ -14,6 +14,7 @@ from ritebook.adapters.inbound.cli.parser import (
     LIST_INDEXES_COMMAND,
     LIST_SKILLS_COMMAND,
     PUBLISH_INDEX_COMMAND,
+    PUBLISH_SKILL_CHANGE_COMMAND,
     UPDATE_INDEX_COMMAND,
     build_parser,
 )
@@ -25,6 +26,9 @@ from ritebook.features.index_registry.adapters.inbound.cli import (
 )
 from ritebook.features.linter.adapters.inbound.cli import run_lint_skills
 from ritebook.features.publisher.adapters.inbound.cli import run_publish_index
+from ritebook.features.skill_contribution.adapters.inbound.cli import (
+    run_publish_skill_change,
+)
 from ritebook.features.skill_installation.adapters.inbound.cli import (
     run_install,
     run_install_skill,
@@ -41,13 +45,16 @@ if TYPE_CHECKING:
     )
     from ritebook.features.linter.application.ports import LintSkillsPort
     from ritebook.features.publisher.application.ports import PublishIndexPort
+    from ritebook.features.skill_contribution.application.ports import (
+        PublishSkillChangePort,
+    )
     from ritebook.features.skill_installation.application.ports import (
         InstallFromRequirementsPort,
         InstallSkillPort,
     )
 
 
-def run(  # noqa: PLR0911, PLR0913
+def run(  # noqa: C901, PLR0911, PLR0913
     argv: Sequence[str] | None,
     *,
     linter: LintSkillsPort,
@@ -58,6 +65,7 @@ def run(  # noqa: PLR0911, PLR0913
     update_index: UpdateIndexPort,
     install_skill: InstallSkillPort,
     install_from_requirements: InstallFromRequirementsPort,
+    publish_skill_change: PublishSkillChangePort | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -132,6 +140,20 @@ def run(  # noqa: PLR0911, PLR0913
         return run_install(
             args,
             install_from_requirements=install_from_requirements,
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+    if args.command == PUBLISH_SKILL_CHANGE_COMMAND:
+        if publish_skill_change is None:
+            print(
+                "ritebook: error: publish-skill-change is not configured",
+                file=stderr,
+            )
+            return 1
+        return run_publish_skill_change(
+            args,
+            publish_skill_change=publish_skill_change,
             stdout=stdout,
             stderr=stderr,
         )

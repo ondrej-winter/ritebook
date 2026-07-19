@@ -12,6 +12,7 @@ LIST_SKILLS_COMMAND = "list-skills"
 UPDATE_INDEX_COMMAND = "update-index"
 INSTALL_SKILL_COMMAND = "install-skill"
 INSTALL_COMMAND = "install"
+PUBLISH_SKILL_CHANGE_COMMAND = "publish-skill-change"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -139,5 +140,22 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument(
         "--lockfile",
         help="Path to generated ritebook.lock state.",
+    )
+
+    publish_skill_change = subparsers.add_parser(
+        PUBLISH_SKILL_CHANGE_COMMAND,
+        help="Prepare one installed skill change for upstream review.",
+    )
+    publish_skill_change.add_argument(
+        "skill_reference",
+        help="Fully qualified skill reference as <index-name>/<skill-path-or-name>.",
+    )
+    publish_skill_change.add_argument(
+        "--lockfile",
+        help="Path to ritebook.lock. Defaults to ritebook.lock.",
+    )
+    publish_skill_change.add_argument(
+        "--contribution-root",
+        help="Root for Ritebook-owned isolated contribution checkouts.",
     )
     return parser

@@ -849,23 +849,56 @@ it to a contribution-slice inbound CLI command handler.
 
 **Acceptance criteria:**
 
-- [ ] Parser accepts positional `skill_reference`.
-- [ ] Parser accepts `--lockfile`.
-- [ ] Parser accepts `--contribution-root`.
-- [ ] CLI handler maps args into `PublishSkillChangeCommand`.
-- [ ] No-op output is concise and deterministic.
-- [ ] Success output includes skill reference, branch, commit, checkout, and next
+- [x] Parser accepts positional `skill_reference`.
+- [x] Parser accepts `--lockfile`.
+- [x] Parser accepts `--contribution-root`.
+- [x] CLI handler maps args into `PublishSkillChangeCommand`.
+- [x] No-op output is concise and deterministic.
+- [x] Success output includes skill reference, branch, commit, checkout, and next
       step.
-- [ ] Success output prints `git push origin <branch>` only when a usable `origin`
+- [x] Success output prints `git push origin <branch>` only when a usable `origin`
       exists; otherwise it prints manual push/review guidance.
-- [ ] Application/adapter errors render as `ritebook: error: ...`.
-- [ ] Existing commands continue to route correctly.
+- [x] Application/adapter errors render as `ritebook: error: ...`.
+- [x] Existing commands continue to route correctly.
 
 **Verification:**
 
-- [ ] CLI unit tests cover arg mapping, success, no-op, overrides, and error
+- [x] CLI unit tests cover arg mapping, success, no-op, overrides, and error
       rendering.
-- [ ] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
+- [x] Run: `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- TDD red check:
+  `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py -q`
+  - Result: 40 failed because the shared CLI `run()` boundary did not yet accept
+    the `publish_skill_change` port.
+- `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py -q`
+  - Result: 40 passed.
+- `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py tests/unit/features/skill_contribution -q`
+  - Result: 145 passed.
+- `uv run ruff format --check .`
+  - Result: 229 files already formatted; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check .`
+- `uv run ty check src/ritebook`
+- `uv run pytest -q`
+  - Result: 442 passed and 2 unrelated publisher tests failed.
+
+**Notes:**
+
+- The contribution-slice CLI handler owns command mapping and rendering. The
+  shared CLI adapter only parses and dispatches to the injected application
+  port.
+- `src/ritebook/cli.py` intentionally remains unchanged; concrete composition is
+  Task 10.
+- The full-suite failures are the pre-existing publisher failures documented
+  under Tasks 5, 7, and 8: an absolute `skills_root` fixture rejected by
+  `SkillCatalog` and a root-skill discovery test whose pytest temporary
+  directory is not kebab-case. They are outside Task 9 and were not changed in
+  this slice.
 
 **Dependencies:** Tasks 1–2
 

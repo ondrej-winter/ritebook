@@ -34,6 +34,15 @@ from ritebook.features.publisher.application.dtos import (
     SkillPrecheckIssue,
 )
 from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
+from ritebook.features.skill_contribution.application.dtos import (
+    PreparedContribution,
+    PublishSkillChangeCommand,
+    PublishSkillChangeResult,
+    SkillChangeStatus,
+)
+from ritebook.features.skill_contribution.application.errors import (
+    ContributionLockfileEntryNotFoundError,
+)
 from ritebook.features.skill_installation.application.dtos import (
     InstallationManifestEntry,
     InstallFromRequirementsCommand,
@@ -64,6 +73,9 @@ def run(
     install_from_requirements: (
         FakeInstallFromRequirements | FailingInstallFromRequirements | None
     ) = None,
+    publish_skill_change: (
+        FakePublishSkillChange | FailingPublishSkillChange | None
+    ) = None,
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
     return run_cli(
@@ -77,6 +89,7 @@ def run(
         install_skill=install_skill or FakeInstallSkill(),
         install_from_requirements=install_from_requirements
         or FakeInstallFromRequirements(),
+        publish_skill_change=publish_skill_change or FakePublishSkillChange(),
         stdout=stdout,
         stderr=stderr,
     )
@@ -108,6 +121,23 @@ class FakeLinter:
         self.commands: list[LintSkillsCommand] = []
 
     def execute(self, command: LintSkillsCommand) -> LintSkillsResult:
+        """Record the command and return the configured result."""
+        self.commands.append(command)
+        return self.result
+
+
+class FakePublishSkillChange:
+    """Test double for the publish-skill-change inbound application port."""
+
+    def __init__(self, result: PublishSkillChangeResult | None = None) -> None:
+        """Store the result to return and commands received by the CLI."""
+        self.result = result or PublishSkillChangeResult(
+            skill_reference="platform-skills/code-review",
+            status=SkillChangeStatus.NO_CHANGES,
+        )
+        self.commands: list[PublishSkillChangeCommand] = []
+
+    def execute(self, command: PublishSkillChangeCommand) -> PublishSkillChangeResult:
         """Record the command and return the configured result."""
         self.commands.append(command)
         return self.result
@@ -340,6 +370,180 @@ class FailingInstallFromRequirements:
     ) -> InstallFromRequirementsResult:
         """Raise the configured error for runtime error handling tests."""
         raise self.error
+
+
+class FailingPublishSkillChange:
+    """Test double that raises a configured contribution runtime error."""
+
+    def __init__(self, error: Exception) -> None:
+        """Store the error raised when the CLI invokes the port."""
+        self.error = error
+
+    def execute(
+        self,
+        _command: PublishSkillChangeCommand,
+    ) -> PublishSkillChangeResult:
+        """Raise the configured error for runtime error handling tests."""
+        raise self.error
+
+
+def test_publish_skill_change_maps_default_arguments_and_prints_no_op() -> None:
+    publish_skill_change = FakePublishSkillChange()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["publish-skill-change", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=publish_skill_change,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert publish_skill_change.commands == [
+        PublishSkillChangeCommand(skill_reference="platform-skills/code-review"),
+    ]
+    assert stdout.getvalue() == (
+        "No local changes to publish for platform-skills/code-review\n"
+    )
+    assert stderr.getvalue() == ""
+
+
+def test_publish_skill_change_maps_path_overrides() -> None:
+    publish_skill_change = FakePublishSkillChange()
+
+    exit_code = run(
+        [
+            "publish-skill-change",
+            "platform-skills/code-review",
+            "--lockfile",
+            "/tmp/repo/ritebook.lock",
+            "--contribution-root",
+            "/tmp/ritebook/contributions",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=publish_skill_change,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert publish_skill_change.commands == [
+        PublishSkillChangeCommand(
+            skill_reference="platform-skills/code-review",
+            lockfile_path="/tmp/repo/ritebook.lock",
+            contribution_root="/tmp/ritebook/contributions",
+        ),
+    ]
+
+
+def test_publish_skill_change_prints_prepared_contribution_with_push_step() -> None:
+    result = PublishSkillChangeResult(
+        skill_reference="platform-skills/code-review",
+        status=SkillChangeStatus.CHANGED,
+        prepared_contribution=PreparedContribution(
+            skill_reference="platform-skills/code-review",
+            checkout_path="/tmp/ritebook/contributions/platform-skills-code-review",
+            branch_name="ritebook/code-review-20260718201534",
+            commit_hash="abc1234",
+            push_command="git push origin ritebook/code-review-20260718201534",
+        ),
+    )
+    stdout = StringIO()
+
+    exit_code = run(
+        ["publish-skill-change", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=FakePublishSkillChange(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == (
+        "Prepared contribution for platform-skills/code-review\n"
+        "Branch: ritebook/code-review-20260718201534\n"
+        "Commit: abc1234\n"
+        "Checkout: /tmp/ritebook/contributions/platform-skills-code-review\n"
+        "Next: cd /tmp/ritebook/contributions/platform-skills-code-review && "
+        "git push origin ritebook/code-review-20260718201534\n"
+    )
+
+
+def test_publish_skill_change_prints_manual_guidance_without_origin() -> None:
+    result = PublishSkillChangeResult(
+        skill_reference="platform-skills/code-review",
+        status=SkillChangeStatus.CHANGED,
+        prepared_contribution=PreparedContribution(
+            skill_reference="platform-skills/code-review",
+            checkout_path="/tmp/ritebook/contributions/platform-skills-code-review",
+            branch_name="ritebook/code-review-20260718201534",
+            commit_hash="abc1234",
+        ),
+    )
+    stdout = StringIO()
+
+    exit_code = run(
+        ["publish-skill-change", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=FakePublishSkillChange(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == (
+        "Prepared contribution for platform-skills/code-review\n"
+        "Branch: ritebook/code-review-20260718201534\n"
+        "Commit: abc1234\n"
+        "Checkout: /tmp/ritebook/contributions/platform-skills-code-review\n"
+        "Next: inspect the checkout and push or share the branch manually; "
+        "no usable origin remote is configured.\n"
+    )
+    assert "git push origin" not in stdout.getvalue()
+
+
+def test_publish_skill_change_translates_application_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["publish-skill-change", "platform-skills/missing"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=FailingPublishSkillChange(
+            ContributionLockfileEntryNotFoundError(
+                "no lockfile entry found for platform-skills/missing",
+            ),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: no lockfile entry found for platform-skills/missing\n"
+    )
+
+
+def test_publish_skill_change_requires_skill_reference_with_argparse_error() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["publish-skill-change"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "usage: ritebook publish-skill-change" in stderr.getvalue()
+    assert "the following arguments are required: skill_reference" in stderr.getvalue()
 
 
 def test_publish_index_maps_arguments_to_application_command() -> None:

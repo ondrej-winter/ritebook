@@ -510,22 +510,34 @@ deterministically and copy installed content back into the isolated checkout.
 
 **Acceptance criteria:**
 
-- [ ] Validates installed target exists and is a directory.
-- [ ] Validates source `skill_path` and `skill_file` are safe relative POSIX
+- [x] Validates installed target exists and is a directory.
+- [x] Validates source `skill_path` and `skill_file` are safe relative POSIX
       paths.
-- [ ] Validates checkout source paths stay inside the isolated checkout.
-- [ ] Rejects missing source skill directory or `SKILL.md`.
-- [ ] Rejects symlink patterns that could escape intended roots.
-- [ ] Directory comparison is deterministic and does not print raw contents.
-- [ ] Copy-back removes/replaces only the selected source skill directory inside
+- [x] Validates checkout source paths stay inside the isolated checkout.
+- [x] Rejects missing source skill directory or `SKILL.md`.
+- [x] Rejects symlink patterns that could escape intended roots.
+- [x] Directory comparison is deterministic and does not print raw contents.
+- [x] Copy-back removes/replaces only the selected source skill directory inside
       the checkout.
 
 **Verification:**
 
-- [ ] Unit tests cover identical directories, changed directories, missing
+- [x] Unit tests cover identical directories, changed directories, missing
       target, unsafe source paths, traversal, symlinks, and copy-back behavior.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_skill_directory_adapter.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_skill_directory_adapter.py`
+  - Result: 15 passed.
+- `uv run ruff format src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ruff check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution`
+  - Result: 82 passed.
 
 **Dependencies:** Task 1
 
@@ -620,8 +632,10 @@ locked `source_revision` and the selected current upstream base.
 
 ### Checkpoint: Git and filesystem adapters complete
 
-- [ ] Lockfile, filesystem, and Git adapter tests pass.
-- [ ] No tests require network access or developer global state.
+- [ ] Lockfile, filesystem, and Git adapter tests pass. Lockfile and filesystem
+      adapter tests currently pass; Git adapter tests are pending Tasks 5–6.
+- [x] No tests require network access or developer global state for completed
+      lockfile and filesystem adapter coverage.
 - [ ] Git adapters do not leak raw credential-bearing output.
 
 ### Phase 5: Validation and index regeneration adapters

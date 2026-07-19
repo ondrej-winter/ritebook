@@ -98,7 +98,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     catalog = SkillCatalog.create(
         index_name="company-skills",
         generated_at=datetime(2026, 7, 13, 18, 0, tzinfo=UTC),
-        skills_root=str(skills_root),
+        skills_root=".",
         skills=entries,
     )
     JsonIndexWriter().write_index(catalog, str(index_path))

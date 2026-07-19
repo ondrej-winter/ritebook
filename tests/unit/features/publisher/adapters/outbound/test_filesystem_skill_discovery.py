@@ -93,15 +93,16 @@ def test_discover_skills_translates_skill_file_read_errors(tmp_path: Path) -> No
 
 
 def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
-    write_skill(tmp_path / "SKILL.md", skill_content(name="root-skill"))
+    skill_root = tmp_path / "root-skill"
+    write_skill(skill_root / "SKILL.md", skill_content(name="root-skill"))
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+    entries = FilesystemSkillDiscovery().discover_skills(str(skill_root))
 
     assert [
         (entry.name, entry.path, entry.skill_file, entry.description)
         for entry in entries
     ] == [
-        (tmp_path.name, ".", "SKILL.md", "Example skill"),
+        ("root-skill", ".", "SKILL.md", "Example skill"),
     ]
 
 

@@ -447,9 +447,9 @@ without real Git, filesystem, JSON, validation, or index writing.
 
 ### Checkpoint: Application behavior complete
 
-- [ ] Application tests pass.
-- [ ] Use case has no Git, JSON, filesystem, or CLI formatting details.
-- [ ] Validation/regeneration/commit ordering is guarded by tests.
+- [x] Application tests pass.
+- [x] Use case has no Git, JSON, filesystem, or CLI formatting details.
+- [x] Validation/regeneration/commit ordering is guarded by tests.
 
 ### Phase 2: Lockfile reader and selector resolution
 
@@ -1146,11 +1146,11 @@ handoff.
 
 **Acceptance criteria:**
 
-- [ ] Formatting applied.
-- [ ] Ruff lint passes.
-- [ ] Ty passes.
-- [ ] Pytest passes.
-- [ ] Package build succeeds.
+- [x] Formatting applied.
+- [x] Ruff lint passes.
+- [x] Ty passes.
+- [x] Pytest passes.
+- [x] Package build succeeds.
 
 **Verification:**
 
@@ -1166,9 +1166,54 @@ This repository currently uses `ty` as the configured type checker in
 `pyproject.toml`; do not substitute an unconfigured type checker in the final
 handoff gate.
 
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- Initial full-suite baseline: `uv run pytest -q`
+  - Result: 446 passed and 2 publisher tests failed because stale test fixtures
+    bypassed established publisher boundary behavior.
+  - The root-skill discovery fixture used pytest's generated, non-kebab-case
+    temporary directory name as a domain skill name.
+  - The publisher/index-registry integration fixture constructed `SkillCatalog`
+    directly with an absolute `skills_root` instead of the portable relative root
+    produced by the publisher application use case.
+- Focused regression check:
+  `uv run pytest tests/unit/features/publisher/adapters/outbound/test_filesystem_skill_discovery.py::test_discover_skills_supports_root_skill_directory tests/integration/test_adapter_integrations.py::test_publisher_json_index_and_index_registry_adapters_share_cacheable_index -q`
+  - Result: 2 passed after aligning both fixtures with existing domain and
+    application contracts; no production behavior changed.
+- `uv run ruff format .`
+  - Result: 231 files left unchanged; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check .`
+  - Result: all checks passed.
+- `uv run ty check src/ritebook`
+  - Result: all checks passed.
+- `uv run pytest`
+  - Result: 448 passed.
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+
+**Notes:**
+
+- The two publisher failures previously documented as unrelated under Tasks 5,
+  7, 8, 9, 10, and 11 were stale tests rather than production defects. Task 13
+  corrects only their fixture setup so the full configured gate can validate the
+  completed contribution workflow.
+- The root-skill test now uses an explicit `root-skill` directory, preserving the
+  intended root-level `SKILL.md` scenario while satisfying the domain's canonical
+  skill-name invariant.
+- The integration test now stores `skills_root="."`, matching the portable
+  catalog representation already produced for absolute discovery paths by
+  `PublishIndex`.
+
 **Dependencies:** All implementation and docs tasks
 
-**Files likely touched:** None beyond formatting updates
+**Files touched:**
+
+- `tests/unit/features/publisher/adapters/outbound/test_filesystem_skill_discovery.py`
+- `tests/integration/test_adapter_integrations.py`
+- `docs/plans/upstream-skill-contributions-implementation-plan.md`
 
 **Estimated scope:** Small
 
@@ -1255,10 +1300,10 @@ remain intentionally deferred:
 
 ## Final Handoff Checklist
 
-- [ ] Every task has acceptance criteria.
-- [ ] Every task has verification steps.
-- [ ] Task dependencies are ordered.
-- [ ] Checkpoints exist between major phases.
-- [ ] Resolved MVP decisions are documented.
-- [ ] Open questions and assumptions are captured.
-- [ ] Validation commands are explicit.
+- [x] Every task has acceptance criteria.
+- [x] Every task has verification steps.
+- [x] Task dependencies are ordered.
+- [x] Checkpoints exist between major phases.
+- [x] Resolved MVP decisions are documented.
+- [x] Open questions and assumptions are captured.
+- [x] Validation commands are explicit.

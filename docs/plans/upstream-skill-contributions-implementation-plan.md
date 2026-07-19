@@ -775,20 +775,61 @@ checkout before commit creation.
 
 **Acceptance criteria:**
 
-- [ ] Runs after validation and before commit creation.
-- [ ] Uses checkout root as `skills_root`.
-- [ ] Uses lockfile `index_name` for the MVP publisher index name assumption.
-- [ ] Maps to `PublishIndexCommand(index_name=<lockfile index_name>,
+- [x] Runs after validation and before commit creation.
+- [x] Uses checkout root as `skills_root`.
+- [x] Uses lockfile `index_name` for the MVP publisher index name assumption.
+- [x] Maps to `PublishIndexCommand(index_name=<lockfile index_name>,
       skills_root=<checkout root>)`.
-- [ ] Converts publisher failures into `ContributionIndexRegenerationError` or
+- [x] Converts publisher failures into `ContributionIndexRegenerationError` or
       validation errors as appropriate.
-- [ ] Does not shell out to `ritebook`.
+- [x] Does not shell out to `ritebook`.
 
 **Verification:**
 
-- [ ] Unit tests cover regeneration success and failure.
-- [ ] Run:
+- [x] Unit tests cover regeneration success and failure.
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- TDD red check:
+  `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py -q`
+  - Result: collection failed because the planned index-regeneration adapter
+    package did not yet exist.
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py -q`
+  - Result: 3 passed.
+- `uv run pytest tests/unit/features/skill_contribution -q`
+  - Result: 105 passed.
+- `uv run ruff format --check .`
+  - Result: 226 files already formatted; the configured non-failing `COM812`
+    formatter compatibility warning was emitted.
+- `uv run ruff check .`
+- `uv run ty check src/ritebook`
+- `uv build`
+  - Result: source distribution and wheel built successfully.
+- `uv run pytest`
+  - Result: 436 passed and 2 unrelated publisher tests failed.
+
+**Notes:**
+
+- The adapter delegates directly to `PublishIndexPort` with
+  `PublishIndexCommand(index_name=entry.index_name,
+  skills_root=workspace.checkout_path)`; it does not invoke the CLI or a
+  subprocess.
+- Publisher precheck failures map to a sanitized
+  `SkillContributionValidationError`. Other publisher application failures map
+  to a sanitized `ContributionIndexRegenerationError`; neither error exposes
+  issue details, skill contents, index contents, or private output paths.
+- Validation, regeneration, and commit ordering remains owned and covered by
+  the contribution application use-case tests included in the 105-test
+  contribution suite.
+- The two full-suite failures are the pre-existing publisher failures documented
+  under Tasks 5 and 7: an absolute `skills_root` fixture rejected by
+  `SkillCatalog` and a root-skill discovery test whose pytest temporary
+  directory is not kebab-case. They are outside Task 8 and were not changed in
+  this slice.
 
 **Dependencies:** Task 7
 

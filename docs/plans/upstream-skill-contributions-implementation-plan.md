@@ -460,25 +460,37 @@ validates schema and resolves publishable entries.
 
 **Acceptance criteria:**
 
-- [ ] Default path is `ritebook.lock`; `--lockfile` overrides it.
-- [ ] Invalid JSON fails clearly.
-- [ ] Missing lockfile fails clearly.
-- [ ] Unsupported `schema_version` fails clearly.
-- [ ] Missing or malformed `skills` fails clearly.
-- [ ] Missing required publishable fields fails clearly.
-- [ ] Resolution supports exact `requirement`, exact `skill_path`, and unique
+- [x] Default path is `ritebook.lock`; `--lockfile` overrides it.
+- [x] Invalid JSON fails clearly.
+- [x] Missing lockfile fails clearly.
+- [x] Unsupported `schema_version` fails clearly.
+- [x] Missing or malformed `skills` fails clearly.
+- [x] Missing required publishable fields fails clearly.
+- [x] Resolution supports exact `requirement`, exact `skill_path`, and unique
       flat `skill_name` selectors under the requested `index_name`.
-- [ ] Resolution does not perform install-style prefix expansion or batch
+- [x] Resolution does not perform install-style prefix expansion or batch
       matching.
-- [ ] Ambiguous flat selectors fail clearly.
-- [ ] The reader does not mutate files or inspect target/source repositories.
+- [x] Ambiguous flat selectors fail clearly.
+- [x] The reader does not mutate files or inspect target/source repositories.
 
 **Verification:**
 
-- [ ] Unit tests cover schema, invalid JSON, missing fields, exact/path/flat
+- [x] Unit tests cover schema, invalid JSON, missing fields, exact/path/flat
       selectors, no match, and ambiguity.
-- [ ] Run:
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_json_lockfile_reader.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_json_lockfile_reader.py`
+  - Result: 24 passed.
+- `uv run ruff format src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ruff check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution`
+  - Result: 67 passed.
 
 **Dependencies:** Task 1
 

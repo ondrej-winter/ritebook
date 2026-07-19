@@ -34,6 +34,23 @@ from ritebook.features.skill_contribution.application.ports import (
     SkillSourceWorkspacePort,
     SkillValidatorPort,
 )
+from ritebook.features.skill_contribution.application.use_cases import (
+    PublishSkillChange,
+    PublishSkillChangeDependencies,
+)
+
+from .fakes import (
+    FakeContributionCheckout,
+    FakeContributionLockfile,
+    FakeIndexRegenerator,
+    FakeSkillChangeDetector,
+    FakeSkillDirectory,
+    FakeSkillSourceWorkspace,
+    FakeSkillValidator,
+    changed_comparison,
+    no_change_comparison,
+    upstream_changed_comparison,
+)
 
 
 def test_contribution_skill_reference_parses_flat_selector() -> None:
@@ -203,6 +220,8 @@ def test_user_facing_errors_share_base_type() -> None:
     for error_type in error_types:
         if error_type is UpstreamSkillChangedError:
             error = error_type()
+        elif error_type is IncompleteContributionProvenanceError:
+            error = error_type("platform-skills/code-review", "source_revision")
         else:
             error = error_type("safe user-facing message")
         assert isinstance(error, SkillContributionError)
@@ -224,6 +243,237 @@ def test_port_protocols_are_importable() -> None:
     assert SkillValidatorPort is not None
     assert IndexRegeneratorPort is not None
     assert ContributionCheckoutPort is not None
+
+
+def test_publish_skill_change_rejects_malformed_reference_before_lookup() -> None:
+    lockfile = FakeContributionLockfile()
+    use_case = publish_skill_change(lockfile=lockfile)
+
+    with pytest.raises(InvalidContributionSkillReferenceError, match="fully qualified"):
+        use_case.execute(_invalid_publish_command("code-review"))
+
+    assert lockfile.resolve_calls == []
+
+
+def test_publish_skill_change_resolves_lockfile_entry() -> None:
+    lockfile = FakeContributionLockfile()
+    use_case = publish_skill_change(lockfile=lockfile)
+
+    use_case.execute(
+        PublishSkillChangeCommand(
+            skill_reference="platform-skills/code-review",
+            lockfile_path="custom.lock",
+        ),
+    )
+
+    [(reference, lockfile_path)] = lockfile.resolve_calls
+    assert reference.requirement == "platform-skills/code-review"
+    assert reference.index_name == "platform-skills"
+    assert reference.skill_selector == "code-review"
+    assert lockfile_path == "custom.lock"
+
+
+def test_publish_skill_change_surfaces_missing_lockfile_entry_before_checkout() -> None:
+    failure = ContributionLockfileEntryNotFoundError(
+        "no lockfile entry found for platform-skills/code-review",
+    )
+    lockfile = FakeContributionLockfile(failure=failure)
+    source_workspace = FakeSkillSourceWorkspace()
+    use_case = publish_skill_change(
+        lockfile=lockfile,
+        source_workspace=source_workspace,
+    )
+
+    with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
+        use_case.execute(publish_command())
+
+    assert source_workspace.prepare_calls == []
+
+
+def test_publish_skill_change_surfaces_ambiguous_selector_before_checkout() -> None:
+    lockfile = FakeContributionLockfile(
+        failure=AmbiguousContributionSkillReferenceError(
+            "ambiguous skill reference platform-skills/code-review",
+        ),
+    )
+    source_workspace = FakeSkillSourceWorkspace()
+    use_case = publish_skill_change(
+        lockfile=lockfile,
+        source_workspace=source_workspace,
+    )
+
+    with pytest.raises(AmbiguousContributionSkillReferenceError, match="ambiguous"):
+        use_case.execute(publish_command())
+
+    assert source_workspace.prepare_calls == []
+
+
+def test_publish_skill_change_rejects_incomplete_provenance_before_checkout() -> None:
+    entry = incomplete_entry(source_revision="")
+    lockfile = FakeContributionLockfile(entry=entry)
+    source_workspace = FakeSkillSourceWorkspace()
+    use_case = publish_skill_change(
+        lockfile=lockfile,
+        source_workspace=source_workspace,
+    )
+
+    with pytest.raises(IncompleteContributionProvenanceError, match="source_revision"):
+        use_case.execute(publish_command())
+
+    assert source_workspace.prepare_calls == []
+
+
+def test_publish_skill_change_surfaces_missing_installed_target_before_branch() -> None:
+    failure = MissingInstalledSkillTargetError(
+        "installed skill target .agents/skills/code-review does not exist",
+    )
+    change_detector = FakeSkillChangeDetector(failure=failure)
+    checkout = FakeContributionCheckout()
+    use_case = publish_skill_change(
+        change_detector=change_detector,
+        checkout=checkout,
+    )
+
+    with pytest.raises(MissingInstalledSkillTargetError, match="does not exist"):
+        use_case.execute(publish_command())
+
+    assert checkout.prepare_branch_calls == []
+    assert checkout.commit_changes_calls == []
+
+
+def test_publish_skill_change_fails_for_upstream_changes_before_copy() -> None:
+    change_detector = FakeSkillChangeDetector(comparison=upstream_changed_comparison())
+    checkout = FakeContributionCheckout()
+    skill_directory = FakeSkillDirectory()
+    validator = FakeSkillValidator()
+    index_regenerator = FakeIndexRegenerator()
+    use_case = publish_skill_change(
+        change_detector=change_detector,
+        checkout=checkout,
+        skill_directory=skill_directory,
+        validator=validator,
+        index_regenerator=index_regenerator,
+    )
+
+    with pytest.raises(UpstreamSkillChangedError, match="upstream changed"):
+        use_case.execute(publish_command())
+
+    assert checkout.prepare_branch_calls == []
+    assert skill_directory.copy_calls == []
+    assert validator.validate_calls == []
+    assert index_regenerator.regenerate_calls == []
+    assert checkout.commit_changes_calls == []
+
+
+def test_publish_skill_change_returns_noop_without_branch_or_commit() -> None:
+    change_detector = FakeSkillChangeDetector(comparison=no_change_comparison())
+    checkout = FakeContributionCheckout()
+    skill_directory = FakeSkillDirectory()
+    validator = FakeSkillValidator()
+    index_regenerator = FakeIndexRegenerator()
+    use_case = publish_skill_change(
+        change_detector=change_detector,
+        checkout=checkout,
+        skill_directory=skill_directory,
+        validator=validator,
+        index_regenerator=index_regenerator,
+    )
+
+    result = use_case.execute(publish_command())
+
+    assert result.skill_reference == "platform-skills/code-review"
+    assert result.status is SkillChangeStatus.NO_CHANGES
+    assert result.prepared_contribution is None
+    assert checkout.prepare_branch_calls == []
+    assert skill_directory.copy_calls == []
+    assert validator.validate_calls == []
+    assert index_regenerator.regenerate_calls == []
+    assert checkout.commit_changes_calls == []
+
+
+def test_publish_skill_change_runs_changed_workflow_in_order() -> None:
+    events: list[str] = []
+    checkout = FakeContributionCheckout(events=events)
+    use_case = publish_skill_change(
+        source_workspace=FakeSkillSourceWorkspace(events=events),
+        change_detector=FakeSkillChangeDetector(events=events),
+        checkout=checkout,
+        skill_directory=FakeSkillDirectory(events=events),
+        validator=FakeSkillValidator(events=events),
+        index_regenerator=FakeIndexRegenerator(events=events),
+    )
+
+    result = use_case.execute(
+        PublishSkillChangeCommand(
+            skill_reference="platform-skills/code-review",
+            contribution_root=".ritebook/contributions",
+        ),
+    )
+
+    assert events == [
+        "prepare_workspace",
+        "compare",
+        "prepare_branch",
+        "copy_installed_skill",
+        "validate",
+        "regenerate_index",
+        "commit_changes",
+    ]
+    assert result.status is SkillChangeStatus.CHANGED
+    assert result.prepared_contribution == checkout.prepared
+    assert result.prepared_contribution.checkout_path == checkout.prepared.checkout_path
+    assert result.prepared_contribution.branch_name == checkout.prepared.branch_name
+    assert result.prepared_contribution.commit_hash == checkout.prepared.commit_hash
+    assert result.prepared_contribution.push_command == checkout.prepared.push_command
+
+
+def test_publish_skill_change_validation_failure_prevents_regeneration_and_commit() -> (
+    None
+):
+    failure = SkillContributionValidationError(
+        "skill validation failed; contribution commit was not created",
+    )
+    index_regenerator = FakeIndexRegenerator()
+    checkout = FakeContributionCheckout()
+    use_case = publish_skill_change(
+        checkout=checkout,
+        validator=FakeSkillValidator(failure=failure),
+        index_regenerator=index_regenerator,
+    )
+
+    with pytest.raises(SkillContributionValidationError, match="validation failed"):
+        use_case.execute(publish_command())
+
+    assert index_regenerator.regenerate_calls == []
+    assert checkout.commit_changes_calls == []
+
+
+def test_publish_skill_change_index_failure_prevents_commit() -> None:
+    failure = ContributionIndexRegenerationError(
+        "failed to regenerate ritebook-index.json",
+    )
+    checkout = FakeContributionCheckout()
+    use_case = publish_skill_change(
+        checkout=checkout,
+        index_regenerator=FakeIndexRegenerator(failure=failure),
+    )
+
+    with pytest.raises(ContributionIndexRegenerationError, match="regenerate"):
+        use_case.execute(publish_command())
+
+    assert checkout.commit_changes_calls == []
+
+
+def test_publish_skill_change_returns_prepared_contribution_metadata() -> None:
+    prepared = prepared_contribution()
+    use_case = publish_skill_change(
+        checkout=FakeContributionCheckout(prepared=prepared),
+    )
+
+    result = use_case.execute(publish_command())
+
+    assert result.status is SkillChangeStatus.CHANGED
+    assert result.prepared_contribution == prepared
 
 
 def contribution_lockfile_entry() -> ContributionLockfileEntry:
@@ -263,3 +513,49 @@ def _entry_kwargs() -> dict[str, object]:
         "skill_file": "skills/code-review/SKILL.md",
         "index_schema_version": 1,
     }
+
+
+def publish_command() -> PublishSkillChangeCommand:
+    return PublishSkillChangeCommand(skill_reference="platform-skills/code-review")
+
+
+def publish_skill_change(
+    *,
+    lockfile: FakeContributionLockfile | None = None,
+    source_workspace: FakeSkillSourceWorkspace | None = None,
+    change_detector: FakeSkillChangeDetector | None = None,
+    checkout: FakeContributionCheckout | None = None,
+    skill_directory: FakeSkillDirectory | None = None,
+    validator: FakeSkillValidator | None = None,
+    index_regenerator: FakeIndexRegenerator | None = None,
+) -> PublishSkillChange:
+    return PublishSkillChange(
+        PublishSkillChangeDependencies(
+            lockfile=lockfile or FakeContributionLockfile(),
+            source_workspace=source_workspace or FakeSkillSourceWorkspace(),
+            change_detector=change_detector
+            or FakeSkillChangeDetector(
+                comparison=changed_comparison(),
+            ),
+            checkout=checkout or FakeContributionCheckout(),
+            skill_directory=skill_directory or FakeSkillDirectory(),
+            validator=validator or FakeSkillValidator(),
+            index_regenerator=index_regenerator or FakeIndexRegenerator(),
+        ),
+    )
+
+
+def _invalid_publish_command(skill_reference: str) -> PublishSkillChangeCommand:
+    command = object.__new__(PublishSkillChangeCommand)
+    object.__setattr__(command, "skill_reference", skill_reference)
+    object.__setattr__(command, "lockfile_path", None)
+    object.__setattr__(command, "contribution_root", None)
+    return command
+
+
+def incomplete_entry(**overrides: object) -> ContributionLockfileEntry:
+    entry = object.__new__(ContributionLockfileEntry)
+    values = _entry_kwargs() | overrides
+    for field_name, value in values.items():
+        object.__setattr__(entry, field_name, value)
+    return entry

@@ -24,6 +24,12 @@ class AmbiguousContributionSkillReferenceError(SkillContributionError):
 class IncompleteContributionProvenanceError(SkillContributionError):
     """Raised when a lockfile entry lacks required contribution provenance."""
 
+    def __init__(self, skill_reference: str, field_name: str) -> None:
+        """Build a missing-provenance error for CLI rendering."""
+        super().__init__(
+            f"lockfile entry for {skill_reference} is missing {field_name}",
+        )
+
 
 class MissingInstalledSkillTargetError(SkillContributionError):
     """Raised when the installed skill target is missing or unusable."""

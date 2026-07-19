@@ -405,24 +405,34 @@ without real Git, filesystem, JSON, validation, or index writing.
 
 **Acceptance criteria:**
 
-- [ ] Missing/malformed skill references are rejected.
-- [ ] Missing lockfile entries are rejected.
-- [ ] Ambiguous selectors are rejected.
-- [ ] Missing required provenance is rejected before checkout preparation.
-- [ ] Missing installed target is surfaced through the correct error path.
-- [ ] Upstream-changed comparisons fail before copy/validation/commit.
-- [ ] No-op comparison returns success without branch/copy/validate/commit.
-- [ ] Changed comparison runs branch, copy, validation, regeneration, and commit
+- [x] Missing/malformed skill references are rejected.
+- [x] Missing lockfile entries are rejected.
+- [x] Ambiguous selectors are rejected.
+- [x] Missing required provenance is rejected before checkout preparation.
+- [x] Missing installed target is surfaced through the correct error path.
+- [x] Upstream-changed comparisons fail before copy/validation/commit.
+- [x] No-op comparison returns success without branch/copy/validate/commit.
+- [x] Changed comparison runs branch, copy, validation, regeneration, and commit
       in order.
-- [ ] Validation failure prevents index regeneration and commit.
-- [ ] Index regeneration failure prevents commit.
-- [ ] Result includes checkout path, branch name, commit hash, and next step.
+- [x] Validation failure prevents index regeneration and commit.
+- [x] Index regeneration failure prevents commit.
+- [x] Result includes checkout path, branch name, commit hash, and next step.
 
 **Verification:**
 
-- [ ] Application tests cover all acceptance criteria with fakes.
-- [ ] Run:
+- [x] Application tests cover all acceptance criteria with fakes.
+- [x] Run:
       `uv run pytest tests/unit/features/skill_contribution/application/test_publish_skill_change.py`.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- `uv run ruff format src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ruff check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run ty check src/ritebook/features/skill_contribution tests/unit/features/skill_contribution`
+- `uv run pytest tests/unit/features/skill_contribution/application/test_publish_skill_change.py`
+  - Result: 43 passed.
 
 **Dependencies:** Task 1
 

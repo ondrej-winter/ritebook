@@ -281,6 +281,58 @@ state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository us
 `ritebook.toml` so repo-local skill installation state is reviewable and
 repeatable.
 
+## Contributing installed skill changes upstream
+
+After editing a repo-local skill installed from `ritebook.toml`, prepare one
+reviewable upstream contribution from its `ritebook.lock` provenance:
+
+```bash
+uv run ritebook publish-skill-change platform-skills/code-review
+```
+
+The reference must be `<index-name>/<skill-path-or-name>` and must resolve to
+exactly one entry in `ritebook.lock`. By default, Ritebook reads `ritebook.lock`
+from the current working directory and creates or reuses an isolated,
+Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
+automation can override both paths:
+
+```bash
+uv run ritebook publish-skill-change platform-skills/code-review \
+  --lockfile <path-to-ritebook.lock> \
+  --contribution-root <checkout-root>
+```
+
+Ritebook compares the installed skill with the current upstream skill. If the
+skill is unchanged, the command succeeds without creating a branch or commit:
+
+```text
+No local changes to publish for platform-skills/code-review
+```
+
+When local changes exist, Ritebook copies only that skill into the isolated
+checkout, validates it, regenerates `ritebook-index.json`, and creates a local
+branch and commit. Branches use
+`ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` in UTC. For a local source
+without a usable `origin`, output resembles:
+
+```text
+Prepared contribution for platform-skills/code-review
+Branch: ritebook/code-review-20260718201534
+Commit: 0123456789abcdef0123456789abcdef01234567
+Checkout: /path/to/contributions/0123456789abcdef/platform-skills-code-review-01234567
+Next: inspect the checkout and push or share the branch manually; no usable origin remote is configured.
+```
+
+When a usable `origin` exists, the final line instead provides a `cd` and
+`git push origin <branch>` command. Ritebook does not run that command, push any
+branch, or open a merge request or pull request. Inspect the checkout and commit
+before following the suggested next step.
+
+If the selected upstream skill path changed after the lockfile's
+`source_revision`, Ritebook stops instead of attempting to merge or overwrite the
+upstream change. Refresh/reinstall the skill and reconcile the changes manually
+before retrying.
+
 By default, Ritebook stores registry metadata and cached index contents under:
 
 ```text

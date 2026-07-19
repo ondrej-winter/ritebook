@@ -1085,19 +1085,49 @@ workflow tests confirm the exact output.
 
 **Acceptance criteria:**
 
-- [ ] README documents `publish-skill-change` usage.
-- [ ] README explains the command prepares a local branch/commit only and does
+- [x] README documents `publish-skill-change` usage.
+- [x] README explains the command prepares a local branch/commit only and does
       not push or open an MR/PR.
-- [ ] README documents default lockfile behavior and contribution-root override.
-- [ ] README includes concise no-op and success examples.
-- [ ] Spec or plan records checkout strategy, branch naming, and upstream-change
+- [x] README documents default lockfile behavior and contribution-root override.
+- [x] README includes concise no-op and success examples.
+- [x] Spec or plan records checkout strategy, branch naming, and upstream-change
       hard-fail behavior.
-- [ ] README examples match parser options and observed CLI output, including
+- [x] README examples match parser options and observed CLI output, including
       no-origin/manual next-step output when relevant.
 
 **Verification:**
 
-- [ ] Review docs against parser options and CLI output.
+- [x] Review docs against parser options and CLI output.
+
+**Status:** Completed on 2026-07-19.
+
+**Validation evidence:**
+
+- `uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py -q`
+  - Result: 40 passed; existing focused tests verify command argument mapping and
+    exact no-op, prepared, push, and manual next-step output.
+- `uv run pytest tests/e2e/test_skill_contribution_workflow.py -q`
+  - Result: 3 passed; observed local-only workflow output matches the README
+    examples and no-origin guidance.
+- `uv run ritebook --help`
+  - Result: help lists `publish-skill-change`.
+- `uv run ritebook publish-skill-change --help`
+  - Result: help lists `skill_reference`, `--lockfile`, and
+    `--contribution-root`, including the default lockfile description.
+- `git --no-pager diff --check -- README.md docs/specs/upstream-skill-contributions-spec.md`
+  - Result: no whitespace errors.
+
+**Notes:**
+
+- The README now documents the default `ritebook.lock` and
+  `~/.cache/ritebook/contributions` paths, both overrides, no-op and prepared
+  output, and the local-only safety boundary.
+- The spec now records reusable deterministic owned clones, UTC timestamped
+  `ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` branches, and hard failure
+  when the selected upstream skill path changed since `source_revision`.
+- No Python or test files changed because this task documents behavior already
+  covered by focused CLI and E2E tests. Task 13 remains responsible for the full
+  configured quality gate; no Task 12 criterion is deferred or partial.
 
 **Dependencies:** Tasks 9–11
 

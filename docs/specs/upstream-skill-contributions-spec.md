@@ -149,10 +149,13 @@ Requirements:
 - Leave the prepared checkout in place after success so the developer can inspect,
   push, amend, or discard it manually.
 
-The initial implementation may choose either fresh contribution clones, reusable
-per-source contribution clones, or managed worktrees. The chosen approach must be
-documented before implementation if it materially affects cleanup, caching, or
-concurrency behavior.
+The MVP uses reusable deterministic contribution clones under the Ritebook-owned
+contribution root. Each checkout path combines a source digest with the effective
+index name, skill-path slug, and requirement digest. Ritebook marks owned clones,
+rejects unmarked directories at a reusable checkout path, and resets/cleans only
+those marked clones before preparing another contribution. The default root is
+`~/.cache/ritebook/contributions`; `--contribution-root` overrides it for tests
+and automation.
 
 ### Upstream comparison behavior
 
@@ -166,7 +169,7 @@ Requirements:
 - If the installed skill differs and upstream did not change since the locked
   revision for that skill path, prepare the contribution normally.
 - If upstream changed since the locked revision, report the condition clearly.
-- The MVP may fail instead of attempting automatic conflict resolution.
+- The MVP fails instead of attempting automatic conflict resolution.
 - The error should include enough guidance for the developer to update/reinstall
   the skill or manually reconcile the upstream change without dumping raw skill
   contents.
@@ -177,9 +180,9 @@ Ritebook creates a normal Git commit in the isolated contribution checkout.
 
 Requirements:
 
-- The generated branch name must be deterministic enough to understand and safe as
-  a Git branch segment.
-- The branch name should include a Ritebook prefix and the skill name or path.
+- The generated branch name uses
+  `ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` with a UTC timestamp.
+- Nested skill paths replace `/` with `-` in the branch slug.
 - The generated commit message must be clear and imperative.
 - The commit should include the changed skill directory and regenerated
   `ritebook-index.json` when validation succeeds.

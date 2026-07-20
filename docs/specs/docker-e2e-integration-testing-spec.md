@@ -2,13 +2,13 @@
 
 ## Objective
 
-Introduce Docker-based end-to-end integration testing for Ritebook so maintainers
+Provide Docker-based end-to-end integration testing for Ritebook so maintainers
 can catch real workflow regressions across the CLI, Git operations, registry and
 cache files, and generated publisher indexes.
 
-The first implementation milestone should provide a reliable clean-room test
-runner rather than broad infrastructure. Docker is the execution boundary that
-proves the workflow outside local developer state and outside unit-test fakes.
+The implementation provides a reliable clean-room test runner rather than broad
+infrastructure. Docker is the execution boundary that proves the workflow
+outside local developer state and outside unit-test fakes.
 
 ## Current context
 
@@ -37,10 +37,10 @@ proves the workflow outside local developer state and outside unit-test fakes.
 
 ## Desired behavior
 
-The implementation adds a containerized E2E test runner that builds from the
+The implementation includes a containerized E2E test runner that builds from the
 repository and runs black-box CLI tests inside Docker.
 
-The first E2E scenario focuses on the publisher-to-consumer workflow:
+The primary E2E scenario focuses on the publisher-to-consumer workflow:
 
 1. Create temporary valid skill fixtures.
 2. Run `ritebook lint-skills --skills-root <skills-root>`.
@@ -57,9 +57,10 @@ The first E2E scenario focuses on the publisher-to-consumer workflow:
 9. Run `ritebook list-skills --registry-path <path> --show-description` again
    and verify the output reflects the updated cached index.
 
-The tests should prefer stable, high-signal assertions over exhaustive coverage.
-The first milestone should prove the workflow works as a system, not duplicate
-all unit-level edge cases.
+Additional E2E scenarios cover direct and requirements-file installation and the
+upstream skill-contribution workflow. The tests prefer stable, high-signal
+assertions over exhaustive coverage and do not duplicate all unit-level edge
+cases.
 
 ## Commands and validation
 
@@ -120,15 +121,15 @@ Implemented files:
 
 ## Testing strategy
 
-The Docker E2E suite should optimize for reliability first.
+The Docker E2E suite optimizes for reliability first.
 
-Required first scenario:
+Primary scenario:
 
 - A publisher-to-consumer happy path that exercises real CLI commands, real local
   Git commits, generated `ritebook-index.json`, explicit registry path, explicit
   cache root, and cached skill listing before and after an update.
 
-Recommended secondary scenario:
+Secondary validation scenario:
 
 - One invalid skill metadata path that proves validation failure is visible
   through the real CLI with a non-zero exit code and stable diagnostic output.

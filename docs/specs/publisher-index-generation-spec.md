@@ -2,23 +2,21 @@
 
 ## Objective
 
-Ritebook will provide a publisher-side workflow for corporate skill maintainers
+Ritebook provides a publisher-side workflow for corporate skill maintainers
 to generate a deterministic index of approved internal agent skills from a
 private repository. The index gives maintainers a reviewable catalog artifact
-that can later support consumer-side listing, syncing, and installation without
-requiring full repository syncs or ad hoc shell scripts.
+that supports consumer-side listing and installation without ad hoc shell
+scripts.
 
-The first user is a skill maintainer or curator inside a company. The first
-business outcome is controlled internal skill curation; faster developer
-installation is a later adoption benefit, not the first milestone.
+The primary user is a skill maintainer or curator inside a company. The workflow
+supports controlled internal skill curation and downstream developer
+installation.
 
 ## Current context
 
-- Ritebook is currently a minimal Python package placeholder.
-- Future business capabilities should be implemented as vertical feature slices
-  under `src/ritebook/features/` with domain, application, ports, and adapters
-  separated according to hexagonal architecture principles.
-- The source idea is documented in `docs/ideas/internal-skill-distribution.md`.
+- Publisher and linter capabilities are implemented as separate vertical feature
+  slices under `src/ritebook/features/`, with domain, application, ports, and
+  adapters separated according to hexagonal architecture principles.
 - Python 3.13, `uv`, `ruff`, `ty`, and `pytest` are the project tooling
   baseline.
 - For discovery, any directory containing `SKILL.md` is considered a candidate
@@ -27,7 +25,7 @@ installation is a later adoption benefit, not the first milestone.
 
 ## Desired behavior
 
-Ritebook should generate or update a JSON index file for a maintainer-controlled
+Ritebook generates or updates a JSON index file for a maintainer-controlled
 skills repository.
 
 ### Publisher workflow
@@ -151,11 +149,14 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 
 ## Index schema v1
 
-Schema v1 should stay small and describe discovered skill package boundaries.
+Schema v1 stays small and describes discovered skill package boundaries.
 
 ```json
 {
   "schema_version": 1,
+  "index": {
+    "name": "company-skills"
+  },
   "generated_at": "2026-07-04T18:49:00Z",
   "skills_root": ".",
   "skills": [
@@ -172,6 +173,7 @@ Schema v1 should stay small and describe discovered skill package boundaries.
 ### Field requirements
 
 - `schema_version`: integer schema version. MVP value is `1`.
+- `index.name`: required stable kebab-case publisher index name.
 - `generated_at`: timezone-aware UTC timestamp in ISO 8601 format. The timestamp
   source should be injectable or controllable in tests.
 - `skills_root`: path that was scanned, represented in the output in a stable
@@ -186,16 +188,17 @@ Schema v1 should stay small and describe discovered skill package boundaries.
 
 ## CLI and workflow requirements
 
-The first CLI shape should be simple and explicit:
+The CLI is simple and explicit:
 
 ```bash
-uv run ritebook publish-index --skills-root <path>
+uv run ritebook publish-index --skills-root <path> --index-name <name>
 uv run ritebook lint-skills --skills-root <path>
 ```
 
 Requirements:
 
-- Require an explicit `--skills-root` for the first implementation.
+- Require an explicit `--skills-root`.
+- Require an explicit stable kebab-case `--index-name` for `publish-index`.
 - Support one skills root per command invocation; multiple roots are out of scope
   for the MVP.
 - Always write the canonical `ritebook-index.json`; no output argument is needed.
@@ -214,25 +217,25 @@ Requirements:
 
 ## Project structure
 
-Implementation should follow the repository's hexagonal vertical-slice direction.
+The implementation follows the repository's hexagonal vertical-slice direction.
 
-- `src/ritebook/features/skill_catalog/domain/`: pure catalog concepts such as
-  skill entries and catalog invariants.
-- `src/ritebook/features/skill_catalog/application/`: publisher use case,
-  lint use case, inbound ports, outbound filesystem/catalog writer ports, and
+- `src/ritebook/features/publisher/domain/`: pure catalog concepts and invariants.
+- `src/ritebook/features/publisher/application/`: publisher use case, ports, and
   DTOs.
-- `src/ritebook/features/skill_catalog/adapters/inbound/`: CLI adapter that maps
-  command-line arguments to application DTOs.
-- `src/ritebook/features/skill_catalog/adapters/outbound/`: filesystem scanner
-  with YAML frontmatter parsing and JSON index writer adapters.
-- `tests/unit/features/skill_catalog/`: focused unit tests mirroring the source
-  structure.
+- `src/ritebook/features/publisher/adapters/`: publisher CLI command, filesystem
+  discovery, and JSON index writer adapters.
+- `src/ritebook/features/linter/application/`: shared skill-header validation use
+  cases and ports.
+- `src/ritebook/features/linter/adapters/`: linter CLI, filesystem/frontmatter,
+  and publisher-precheck adapters.
+- `tests/unit/features/publisher/` and `tests/unit/features/linter/`: focused tests
+  mirroring source ownership.
 - `docs/specs/publisher-index-generation-spec.md`: this specification.
 
 ## Commands and validation
 
-During implementation, use focused checks first, then the full local quality
-gate before handoff.
+When changing this workflow, use focused checks first, then the full local
+quality gate before handoff.
 
 - Format: `uv run ruff format .`
 - Lint: `uv run ruff check .`
@@ -311,7 +314,5 @@ network access.
 
 ## Open questions
 
-- Should future consumer sync support Git URLs, raw HTTP index URLs, local paths,
-  or all three?
-- When consumer installation is added, should existing target skills be refused
-  by default unless `--force` is provided?
+- None for the publisher workflow. Consumer registry and installation behavior
+  are specified separately.

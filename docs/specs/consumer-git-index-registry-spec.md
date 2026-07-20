@@ -2,25 +2,26 @@
 
 ## Objective
 
-Ritebook will provide the first consumer-facing index registry workflow for end
+Ritebook provides a consumer-facing index registry workflow for end
 users who consume curated internal Agent Skills from company-maintained Git
 repositories.
 
 The workflow lets a user add a Git-backed Ritebook skill index, cache the current
 root `ritebook-index.json` locally, list registered indexes, and update one or
-all cached copies later from their remembered Git sources. This establishes the
-consumer-side catalog foundation for future `list-skills` and `install-skill`
-workflows without implementing skill listing or installation yet.
+all cached copies later from their remembered Git sources. The registry is the
+consumer-side catalog foundation used by the implemented `list-skills`,
+`install-skill`, and requirements-file `install` workflows.
 
 ## Current context
 
 - Ritebook already supports publisher-side skill index generation through
   `publish-index`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
-- Publisher schema v1 includes skill entries with `name`, `description`, `path`,
-  and `skill_file`.
-- The next product primitive is not skill installation yet. It is registering and
-  refreshing curated indexes that future consumer commands can use.
+- Publisher schema v1 includes index metadata and skill entries with `name`,
+  `description`, `path`, and `skill_file`.
+- The registry supports `add-index`, `list-indexes`, `list-skills`, and
+  `update-index`. The `skill_installation` slice consumes registered cached
+  indexes for `install-skill` and `install`.
 - Internal skill distribution should primarily support Git repositories because
   company skills are expected to live in private Git repositories.
 - The project follows hexagonal architecture with vertical feature slices under
@@ -122,12 +123,12 @@ Requirements:
   indexes, reports failed effective names to stderr, and returns a non-zero exit
   code after the batch completes.
 
-## Publisher index metadata update
+## Publisher index metadata
 
-The publisher-generated `ritebook-index.json` should include metadata that names
+The publisher-generated `ritebook-index.json` includes metadata that names
 the index. This name becomes the default consumer registry name.
 
-Proposed publisher index schema v2 or schema v1 extension:
+Publisher index schema v1:
 
 ```json
 {
@@ -150,7 +151,7 @@ Proposed publisher index schema v2 or schema v1 extension:
 
 Index name requirements:
 
-- Required for newly generated indexes once this feature is implemented.
+- Required for generated indexes.
 - Single-segment kebab-case identifier using the same general naming constraints
   as skill names.
 - Slashes are not allowed because downstream skill installation references use
@@ -161,7 +162,7 @@ Index name requirements:
 
 ## Local registry and cache
 
-Ritebook should maintain a local consumer registry and cached index contents.
+Ritebook maintains a local consumer registry and cached index contents.
 
 Recommended default location:
 
@@ -217,9 +218,8 @@ For local repository sources:
 
 - Duplicate skill names are allowed across different indexes.
 - The effective index name is the namespace boundary.
-- Future installation behavior may install or reference skills as
-  `<index-name>/<skill-name>`, but installation is out of scope for this
-  milestone.
+- Installation references skills as `<index-name>/<skill-path-or-name>` in the
+  separate `skill_installation` slice.
 - Duplicate effective index names are not allowed unless the user explicitly
   replaces the existing registration.
 - Local `--name` override exists primarily to resolve same-name index collisions.
@@ -244,7 +244,7 @@ For local repository sources:
 
 ## CLI and workflow requirements
 
-Initial commands:
+Registry commands:
 
 ```bash
 uv run ritebook add-index --source <git-url-or-local-git-repo> [--name <effective-name>] [--force]
@@ -296,7 +296,7 @@ Failed to update 1 index(es): platform-skills
 
 ## Project structure
 
-Implementation should add a new vertical feature slice:
+The implementation uses the `index_registry` vertical feature slice:
 
 ```text
 src/ritebook/features/index_registry/
@@ -305,7 +305,9 @@ src/ritebook/features/index_registry/
 │   │   └── index_registry.py
 │   ├── ports/
 │   │   ├── add_index.py
+│   │   ├── cached_index_reader.py
 │   │   ├── list_indexes.py
+│   │   ├── list_skills.py
 │   │   ├── update_index.py
 │   │   ├── git_source.py
 │   │   ├── index_cache.py
@@ -314,29 +316,33 @@ src/ritebook/features/index_registry/
 │   └── use_cases/
 │       ├── add_index.py
 │       ├── list_indexes.py
+│       ├── list_skills.py
 │       └── update_index.py
 └── adapters/
+    ├── inbound/cli/
+    │   └── commands.py
     └── outbound/
+        ├── filesystem_registry/
+        │   └── adapter.py
         ├── git/
         │   └── adapter.py
-        ├── json_index/
-        │   └── reader.py
-        └── filesystem_registry/
-            └── adapter.py
+        ├── index_cache/
+        │   └── adapter.py
+        └── json_index/
+            └── reader.py
 ```
 
-Update shared CLI adapter and composition root:
+CLI integration and composition root:
 
 - `src/ritebook/adapters/inbound/cli/parser.py`
-- `src/ritebook/adapters/inbound/cli/commands.py`
+- `src/ritebook/features/index_registry/adapters/inbound/cli/commands.py`
 - `src/ritebook/adapters/inbound/cli/adapter.py`
 - `src/ritebook/cli.py`
 
-Update publisher index output:
+Publisher index metadata is implemented in:
 
 - `src/ritebook/features/publisher/domain/catalog.py`
 - `src/ritebook/features/publisher/adapters/outbound/json_index/writer.py`
-- related publisher DTOs/tests as needed
 
 Tests should mirror source ownership:
 
@@ -424,7 +430,7 @@ tests/unit/features/index_registry/
 
 ## Commands and validation
 
-During implementation, use focused tests first, then the full quality gate:
+When changing this workflow, use focused tests first, then the full quality gate:
 
 ```bash
 uv run ruff format .
@@ -436,9 +442,9 @@ uv build
 
 ## Boundaries
 
-Always:
+Registry responsibilities:
 
-- Support `add-index` and `update-index` only for this milestone.
+- Support `add-index` and `update-index` for index registration and refresh.
 - Support `list-indexes` for registered index metadata only.
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
@@ -449,10 +455,10 @@ Always:
 - Preserve the previous cached index when `update-index` fails validation.
 - Continue after per-index failures during `update-index --all`.
 
-Ask first:
+Extensions outside this registry specification:
 
-- Adding `list-skills`.
-- Adding `install-skill`.
+- Skill browsing is specified in `list-skills-spec.md`.
+- Skill installation is specified in `install-skill-spec.md`.
 - Adding remote non-Git HTTP indexes.
 - Adding trust signatures, approvals, lockfiles, or policy enforcement.
 - Changing install path conventions.
@@ -483,11 +489,10 @@ Never:
 - `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
   `uv run pytest`, and `uv build` pass before handoff.
 
-## Out of scope
+## Out of scope for the registry slice
 
-- Listing skills.
-- Installing skills.
-- Deciding final installation namespace/path behavior.
+- Skill browsing behavior owned by the `list-skills` use case.
+- Skill installation behavior owned by the `skill_installation` slice.
 - Non-Git HTTP index sources.
 - Signed indexes, trust policy, approvals, and enterprise governance.
 - Multiple index files per repository.

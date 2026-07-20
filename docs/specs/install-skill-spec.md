@@ -2,7 +2,7 @@
 
 ## Objective
 
-Ritebook will add consumer-facing skill installation workflows for users who have
+Ritebook provides consumer-facing skill installation workflows for users who have
 already registered one or more Git-backed skill indexes with `add-index`.
 
 The workflow lets a user install a selected cached skill into an explicit target
@@ -365,7 +365,7 @@ ritebook: error: skill entries must define exactly one of target or target_path
 
 ## Project structure
 
-Implementation should add a new vertical feature slice:
+The implementation uses the `skill_installation` vertical feature slice:
 
 ```text
 src/ritebook/features/skill_installation/
@@ -377,6 +377,7 @@ src/ritebook/features/skill_installation/
 │   │   ├── install_from_requirements.py
 │   │   ├── installation_manifest.py
 │   │   ├── requirements_reader.py
+│   │   ├── skill_catalog.py
 │   │   ├── skill_source.py
 │   │   └── skill_installer.py
 │   └── use_cases/
@@ -385,6 +386,8 @@ src/ritebook/features/skill_installation/
 └── adapters/
     └── outbound/
         ├── filesystem_installer/
+        │   └── adapter.py
+        ├── index_registry_catalog/
         │   └── adapter.py
         ├── json_installation_registry/
         │   └── adapter.py
@@ -396,10 +399,10 @@ src/ritebook/features/skill_installation/
             └── reader.py
 ```
 
-Update shared CLI adapter and composition root:
+CLI integration and composition root:
 
 - `src/ritebook/adapters/inbound/cli/parser.py`
-- `src/ritebook/adapters/inbound/cli/commands.py`
+- `src/ritebook/features/skill_installation/adapters/inbound/cli/commands.py`
 - `src/ritebook/adapters/inbound/cli/adapter.py`
 - `src/ritebook/cli.py`
 
@@ -503,7 +506,7 @@ Cover:
 
 ## Commands and validation
 
-During implementation, use focused tests first, then the full quality gate:
+When changing this workflow, use focused tests first, then the full quality gate:
 
 ```bash
 uv run pytest tests/unit/features/skill_installation/application

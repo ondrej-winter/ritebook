@@ -2,7 +2,7 @@
 
 ## Objective
 
-Ritebook will provide a safe contribution workflow for developers who improve
+Ritebook provides a safe contribution workflow for developers who improve
 repo-local installed skills and want to propose those changes back to the
 original curated skill repository.
 
@@ -25,8 +25,7 @@ index cache clones, or user-owned local source repositories.
   installs.
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
-- The source idea is documented in
-  `docs/ideas/upstream-skill-contributions.md`.
+- The workflow is implemented in the `skill_contribution` feature slice.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -217,7 +216,7 @@ spec and the installation lockfile spec before changing lockfile behavior.
 
 ## Project structure
 
-Implementation should add a new vertical feature slice:
+The implementation uses the `skill_contribution` vertical feature slice:
 
 ```text
 src/ritebook/features/skill_contribution/
@@ -229,6 +228,7 @@ src/ritebook/features/skill_contribution/
 │   │   ├── contribution_checkout.py
 │   │   ├── contribution_lockfile.py
 │   │   ├── skill_change_detector.py
+│   │   ├── skill_directory.py
 │   │   ├── skill_source_workspace.py
 │   │   ├── skill_validator.py
 │   │   └── index_regenerator.py
@@ -240,17 +240,20 @@ src/ritebook/features/skill_contribution/
         │   └── adapter.py
         ├── git_workspace/
         │   └── adapter.py
+        ├── index_regeneration/
+        │   └── adapter.py
         ├── json_lockfile/
         │   └── reader.py
         ├── skill_directory/
-        │   └── copier.py
+        │   └── adapter.py
         └── validation/
             └── adapter.py
 ```
 
-Update shared CLI adapter and composition root:
+CLI integration and composition root:
 
 - `src/ritebook/adapters/inbound/cli/parser.py`
+- `src/ritebook/features/skill_contribution/adapters/inbound/cli/commands.py`
 - `src/ritebook/adapters/inbound/cli/adapter.py`
 - `src/ritebook/cli.py`
 
@@ -351,7 +354,7 @@ the default suite.
 
 ## Commands and validation
 
-During implementation, use focused tests first, then the full quality gate:
+When changing this workflow, use focused tests first, then the full quality gate:
 
 ```bash
 uv run pytest tests/unit/features/skill_contribution/application
@@ -436,11 +439,6 @@ Never:
 
 ## Open questions
 
-- Should the isolated contribution checkout be a fresh clone for every change, a
-  reusable clone per source, or a Git worktree attached to a managed clone?
-- What exact generated branch naming convention should be used?
-- Should upstream changes since the locked revision be a hard failure in the MVP,
-  or a warning when Git can apply the local copy cleanly?
 - What validation evidence should Ritebook include in a future MR body?
 - Should `publish-skill-change` eventually support `--base <branch-or-ref>` for
   teams that do not want to target the source repository's default branch?

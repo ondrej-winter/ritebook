@@ -2,7 +2,7 @@
 
 ## Objective
 
-Ritebook will add a consumer-facing `list-skills` workflow for users who have
+Ritebook provides a consumer-facing `list-skills` workflow for users who have
 already registered one or more Git-backed skill indexes with `add-index`.
 
 The command helps a Ritebook consumer browse locally cached skill indexes from
@@ -25,9 +25,9 @@ remain valid.
   - `list-indexes` lists registered index metadata.
 - Registry entries already store each index's local effective name and
   `cached_index_path`.
-- `docs/specs/consumer-git-index-registry.md` explicitly left `list-skills` out
-  of scope for the first registry milestone, so this spec defines the next
-  consumer browsing milestone.
+- `consumer-git-index-registry-spec.md` defines the registry foundation consumed
+  by this browsing workflow.
+- `list-skills` is implemented in the existing `index_registry` feature slice.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -177,15 +177,14 @@ uv run pytest
 - `src/ritebook/features/index_registry/application/ports/list_skills.py`:
   inbound application port for listing skills.
 - `src/ritebook/features/index_registry/application/ports/cached_index_reader.py`:
-  outbound port for reading skill entries from cached index files, if a distinct
-  port is added.
+  outbound port for reading skill entries from cached index files.
 - `src/ritebook/features/index_registry/application/use_cases/list_skills.py`:
   application service that coordinates registry lookup and cached index reading.
 - `src/ritebook/features/index_registry/adapters/outbound/json_index/reader.py`:
   JSON/filesystem cached index parsing.
 - `src/ritebook/adapters/inbound/cli/parser.py`: `list-skills` arguments.
-- `src/ritebook/adapters/inbound/cli/commands.py`: CLI command handler and tree
-  rendering.
+- `src/ritebook/features/index_registry/adapters/inbound/cli/commands.py`: CLI
+  command handler and tree rendering.
 - `src/ritebook/adapters/inbound/cli/adapter.py`: CLI dispatch and injected port.
 - `src/ritebook/cli.py`: composition-root wiring.
 - `tests/unit/features/index_registry/application/test_list_skills.py`:
@@ -272,7 +271,7 @@ Cover:
 
 ### Ask first
 
-- Adding `install-skill`.
+- Coupling installation side effects to `list-skills`.
 - Adding live Git refresh behavior to `list-skills`.
 - Adding path, description, or other metadata to default output.
 - Adding JSON, CSV, table, or other script-oriented output modes.

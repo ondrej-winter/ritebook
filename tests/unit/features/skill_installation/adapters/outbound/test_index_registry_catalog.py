@@ -83,6 +83,7 @@ def test_index_registry_catalog_maps_cached_skills_to_installation_dtos() -> Non
                 name="test-writer",
                 path="skills/test-writer",
                 skill_file="skills/test-writer/SKILL.md",
+                description="Ignored by installation.",
             ),
         ),
     )

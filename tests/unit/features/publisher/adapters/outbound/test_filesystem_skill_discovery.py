@@ -44,18 +44,17 @@ def test_discover_skills_skips_hidden_directories(tmp_path: Path) -> None:
     assert [entry.path for entry in entries] == ["visible"]
 
 
-def test_discover_skills_uses_none_when_description_is_missing(tmp_path: Path) -> None:
+def test_discover_skills_rejects_missing_description(tmp_path: Path) -> None:
     write_skill(
         tmp_path / "undocumented" / "SKILL.md",
         "---\nname: undocumented\n---\n# Not the source of truth\n",
     )
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+    with pytest.raises(PublishIndexDiscoveryError, match="required description"):
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
-    assert entries[0].description is None
 
-
-def test_discover_skills_uses_none_when_description_is_not_text(
+def test_discover_skills_rejects_description_that_is_not_text(
     tmp_path: Path,
 ) -> None:
     write_skill(
@@ -63,12 +62,11 @@ def test_discover_skills_uses_none_when_description_is_not_text(
         "---\nname: invalid-description\ndescription: 123\n---\n",
     )
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+    with pytest.raises(PublishIndexDiscoveryError, match="required description"):
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
-    assert entries[0].description is None
 
-
-def test_discover_skills_uses_none_when_frontmatter_is_invalid(
+def test_discover_skills_rejects_invalid_frontmatter(
     tmp_path: Path,
 ) -> None:
     write_skill(
@@ -76,9 +74,8 @@ def test_discover_skills_uses_none_when_frontmatter_is_invalid(
         "---\nname: [unterminated\n---\n# Not the source of truth\n",
     )
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(tmp_path))
-
-    assert entries[0].description is None
+    with pytest.raises(PublishIndexDiscoveryError, match="required description"):
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
 
 
 def test_discover_skills_translates_skill_file_read_errors(tmp_path: Path) -> None:

@@ -117,7 +117,7 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
         msg = "index skill entries must be JSON objects"
         raise InvalidPublishedIndexError(msg)
     entry = cast("dict[str, object]", value)
-    for field_name in ("name", "path", "skill_file"):
+    for field_name in ("name", "path", "skill_file", "description"):
         field_value = entry.get(field_name)
         if not isinstance(field_value, str) or not field_value:
             msg = f"index skill entries must include non-empty {field_name}"
@@ -125,6 +125,7 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
     name = cast("str", entry["name"])
     path = cast("str", entry["path"])
     skill_file = cast("str", entry["skill_file"])
+    description = cast("str", entry["description"])
     try:
         require_kebab_case_identifier(name, field_name="Skill name")
     except ValueError as err:
@@ -132,12 +133,6 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
     _validate_relative_posix_path(path, field_name="path")
     _validate_relative_posix_path(skill_file, field_name="skill_file")
     _validate_skill_file_inside_path(skill_file=skill_file, path=path)
-    description = entry.get("description")
-    if description is not None and (
-        not isinstance(description, str) or not description
-    ):
-        msg = "index skill entry description must be a non-empty string when present"
-        raise InvalidPublishedIndexError(msg)
     return CachedSkillSummary(
         name=name,
         path=path,

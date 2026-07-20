@@ -61,8 +61,18 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     generated_at = datetime(2026, 7, 4, 18, 49, tzinfo=UTC)
     discovery = FakeSkillDiscovery(
         skills=(
-            SkillEntry(name="zeta", path="zeta", skill_file="zeta/SKILL.md"),
-            SkillEntry(name="alpha", path="alpha", skill_file="alpha/SKILL.md"),
+            SkillEntry(
+                name="zeta",
+                path="zeta",
+                skill_file="zeta/SKILL.md",
+                description="Zeta skill.",
+            ),
+            SkillEntry(
+                name="alpha",
+                path="alpha",
+                skill_file="alpha/SKILL.md",
+                description="Alpha skill.",
+            ),
         ),
     )
     writer = FakeIndexWriter()
@@ -201,7 +211,14 @@ def test_publish_index_command_rejects_empty_values() -> None:
 
 def test_publish_index_refuses_to_write_when_validation_fails() -> None:
     discovery = FakeSkillDiscovery(
-        skills=(SkillEntry(name="alpha", path="alpha", skill_file="alpha/SKILL.md"),),
+        skills=(
+            SkillEntry(
+                name="alpha",
+                path="alpha",
+                skill_file="alpha/SKILL.md",
+                description="Alpha skill.",
+            ),
+        ),
     )
     writer = FakeIndexWriter()
     precheck = FakePrecheck(

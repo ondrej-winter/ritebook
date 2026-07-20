@@ -24,7 +24,7 @@ class SkillEntry:
     path: str
     name: str
     skill_file: str
-    description: str | None = None
+    description: str
 
     def __post_init__(self) -> None:
         """Validate entry invariants after dataclass initialization."""
@@ -32,8 +32,8 @@ class SkillEntry:
         _require_relative_posix_path(self.skill_file, field_name="skill_file")
         _require_skill_file_inside_path(skill_file=self.skill_file, path=self.path)
         require_kebab_case_identifier(self.name, field_name="Skill entry name")
-        if self.description == "":
-            msg = "Skill entry description must be omitted instead of empty."
+        if not self.description:
+            msg = "Skill entry description must not be empty."
             raise ValueError(msg)
 
 

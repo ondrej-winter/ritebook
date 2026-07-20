@@ -187,8 +187,8 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `skills[].name`: stable skill identifier derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
-- `skills[].description`: optional human-readable description derived from the
-  validated skill header `description` field when available.
+- `skills[].description`: required non-empty human-readable description copied
+  from the validated skill header `description` field.
 
 ## CLI and workflow requirements
 
@@ -266,7 +266,7 @@ The MVP should be covered primarily with fast, deterministic unit tests.
 - Filesystem adapter tests use temporary directories to verify recursive
   `SKILL.md` discovery, relative path handling, frontmatter parsing, and
   path-scoped validation failures.
-- JSON writer tests verify schema version, deterministic output, optional
+- JSON writer tests verify schema version, deterministic output, required
   description behavior, two-space indentation, and valid JSON.
 - CLI adapter tests verify argument mapping, clear errors for missing root paths,
   `lint-skills` success/failure behavior, `publish-index` show-stopper behavior,

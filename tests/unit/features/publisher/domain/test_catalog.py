@@ -18,14 +18,14 @@ def test_skill_entry_represents_discovered_skill() -> None:
     assert entry.skill_file == "nested/example-skill/SKILL.md"
 
 
-def test_skill_entry_allows_omitted_description() -> None:
-    entry = SkillEntry(
-        name="untitled-skill",
-        path="untitled-skill",
-        skill_file="untitled-skill/SKILL.md",
-    )
-
-    assert entry.description is None
+def test_skill_entry_rejects_empty_description() -> None:
+    with pytest.raises(ValueError, match="description must not be empty"):
+        SkillEntry(
+            name="untitled-skill",
+            path="untitled-skill",
+            skill_file="untitled-skill/SKILL.md",
+            description="",
+        )
 
 
 def test_skill_entry_rejects_absolute_paths() -> None:
@@ -34,6 +34,7 @@ def test_skill_entry_rejects_absolute_paths() -> None:
             name="example-skill",
             path="/example-skill",
             skill_file="example-skill/SKILL.md",
+            description="Example skill.",
         )
 
 
@@ -43,6 +44,7 @@ def test_skill_entry_rejects_platform_specific_path_separators() -> None:
             name="example-skill",
             path="example-skill",
             skill_file="example-skill\\SKILL.md",
+            description="Example skill.",
         )
 
 
@@ -61,6 +63,7 @@ def test_skill_entry_rejects_path_traversal_segments(
         "name": "example-skill",
         "path": "example-skill",
         "skill_file": "example-skill/SKILL.md",
+        "description": "Example skill.",
     }
     values[field_name] = bad_value
 
@@ -74,6 +77,7 @@ def test_skill_entry_rejects_skill_file_outside_skill_path() -> None:
             name="example-skill",
             path="example-skill",
             skill_file="other-skill/SKILL.md",
+            description="Example skill.",
         )
 
 
@@ -83,6 +87,7 @@ def test_skill_entry_requires_kebab_case_name() -> None:
             name="Example Skill",
             path="example-skill",
             skill_file="example-skill/SKILL.md",
+            description="Example skill.",
         )
 
 
@@ -96,11 +101,13 @@ def test_skill_catalog_sorts_entries_by_relative_path() -> None:
                 name="zeta",
                 path="zeta",
                 skill_file="zeta/SKILL.md",
+                description="Zeta skill.",
             ),
             SkillEntry(
                 name="alpha",
                 path="alpha",
                 skill_file="alpha/SKILL.md",
+                description="Alpha skill.",
             ),
         ],
     )
@@ -118,11 +125,13 @@ def test_skill_catalog_sorts_entries_when_constructed_directly() -> None:
                 name="zeta",
                 path="zeta",
                 skill_file="zeta/SKILL.md",
+                description="Zeta skill.",
             ),
             SkillEntry(
                 name="alpha",
                 path="alpha",
                 skill_file="alpha/SKILL.md",
+                description="Alpha skill.",
             ),
         ),
     )

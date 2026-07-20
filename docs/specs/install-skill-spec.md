@@ -18,7 +18,7 @@ for reviewable repo-local install state.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
 - Publisher schema v1 includes index metadata and skill entries with required
-  `name`, `path`, and `skill_file`, plus optional `description`.
+  `name`, `path`, `skill_file`, and non-empty `description`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
   - `add-index` registers a Git URL or local Git repository source.

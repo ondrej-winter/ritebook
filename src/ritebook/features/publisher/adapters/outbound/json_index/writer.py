@@ -39,14 +39,12 @@ def _catalog_to_json(catalog: SkillCatalog) -> dict[str, Any]:
 
 
 def _entry_to_json(entry: SkillEntry) -> dict[str, str]:
-    payload = {
+    return {
         "name": entry.name,
         "path": entry.path,
         "skill_file": entry.skill_file,
+        "description": entry.description,
     }
-    if entry.description is not None:
-        payload["description"] = entry.description
-    return payload
 
 
 def _generated_at(value: datetime) -> str:

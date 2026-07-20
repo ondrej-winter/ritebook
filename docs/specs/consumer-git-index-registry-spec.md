@@ -18,7 +18,7 @@ consumer-side catalog foundation used by the implemented `list-skills`,
   `publish-index`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
 - Publisher schema v1 includes index metadata and skill entries with required
-  `name`, `path`, and `skill_file`, plus optional `description`.
+  `name`, `path`, `skill_file`, and non-empty `description`.
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.

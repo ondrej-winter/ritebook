@@ -239,7 +239,12 @@ target = "claude"
   "schema_version": 1,
   "index": {"name": "company-skills"},
   "skills": [
-    {"name": "code-review", "path": "code-review", "skill_file": "code-review/SKILL.md"}
+    {
+      "name": "code-review",
+      "path": "code-review",
+      "skill_file": "code-review/SKILL.md",
+      "description": "Helps review code changes."
+    }
   ]
 }
 """.lstrip(),

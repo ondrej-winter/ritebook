@@ -175,4 +175,5 @@ def _skill(name: str, *, path: str | None = None) -> CachedSkillSummary:
         name=name,
         path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",
+        description=f"Helps with {name} workflows.",
     )

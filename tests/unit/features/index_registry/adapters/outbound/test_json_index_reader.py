@@ -38,6 +38,7 @@ def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> 
                     "name": "beta",
                     "path": "nested/beta",
                     "skill_file": "nested/beta/SKILL.md",
+                    "description": "Beta helps with planning.",
                 },
             ],
         },
@@ -66,6 +67,7 @@ def test_json_index_reader_exposes_relative_skills_root_for_installation(
                         "name": "alpha",
                         "path": "software-development/alpha",
                         "skill_file": "software-development/alpha/SKILL.md",
+                        "description": "Alpha helps with planning.",
                     },
                 ],
             },
@@ -98,6 +100,7 @@ def test_json_index_reader_rejects_unsafe_skills_root_for_installation(
                         "name": "alpha",
                         "path": "alpha",
                         "skill_file": "alpha/SKILL.md",
+                        "description": "Alpha helps with planning.",
                     },
                 ],
             },
@@ -227,7 +230,7 @@ def test_json_index_reader_rejects_cached_malformed_skills(tmp_path: Path) -> No
         ("name", "Not Kebab", "Skill name"),
         ("path", "", "non-empty path"),
         ("skill_file", "", "non-empty skill_file"),
-        ("description", "", "description must be a non-empty string"),
+        ("description", "", "non-empty description"),
     ],
 )
 def test_json_index_reader_rejects_cached_malformed_skill_entries(
@@ -237,11 +240,31 @@ def test_json_index_reader_rejects_cached_malformed_skill_entries(
     message: str,
 ) -> None:
     cached_index_path = tmp_path / "ritebook-index.json"
-    skill = {"name": "alpha", "path": "alpha", "skill_file": "alpha/SKILL.md"}
+    skill = {
+        "name": "alpha",
+        "path": "alpha",
+        "skill_file": "alpha/SKILL.md",
+        "description": "Alpha helps with planning.",
+    }
     skill[field_name] = bad_value
     write_index_file(cached_index_path, {"skills": [skill]})
 
     with pytest.raises(InvalidPublishedIndexError, match=message):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_rejects_cached_skill_without_description(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    skill = {
+        "name": "alpha",
+        "path": "alpha",
+        "skill_file": "alpha/SKILL.md",
+    }
+    write_index_file(cached_index_path, {"skills": [skill]})
+
+    with pytest.raises(InvalidPublishedIndexError, match="non-empty description"):
         JsonIndexReader().read_skills(str(cached_index_path))
 
 
@@ -265,7 +288,12 @@ def test_json_index_reader_rejects_unsafe_skill_paths(
         {
             "index": {"name": "company-skills"},
             "skills": [
-                {"name": "alpha", "path": bad_path, "skill_file": "alpha/SKILL.md"},
+                {
+                    "name": "alpha",
+                    "path": bad_path,
+                    "skill_file": "alpha/SKILL.md",
+                    "description": "Alpha helps with planning.",
+                },
             ],
         },
     )
@@ -284,7 +312,12 @@ def test_json_index_reader_rejects_cached_unsafe_skill_paths(
         cached_index_path,
         {
             "skills": [
-                {"name": "alpha", "path": bad_path, "skill_file": "alpha/SKILL.md"},
+                {
+                    "name": "alpha",
+                    "path": bad_path,
+                    "skill_file": "alpha/SKILL.md",
+                    "description": "Alpha helps with planning.",
+                },
             ],
         },
     )
@@ -301,7 +334,12 @@ def test_json_index_reader_rejects_skill_file_outside_skill_path(
         {
             "index": {"name": "company-skills"},
             "skills": [
-                {"name": "alpha", "path": "alpha", "skill_file": "beta/SKILL.md"},
+                {
+                    "name": "alpha",
+                    "path": "alpha",
+                    "skill_file": "beta/SKILL.md",
+                    "description": "Alpha helps with planning.",
+                },
             ],
         },
     )
@@ -318,7 +356,12 @@ def test_json_index_reader_rejects_cached_skill_file_outside_skill_path(
         cached_index_path,
         {
             "skills": [
-                {"name": "alpha", "path": "alpha", "skill_file": "beta/SKILL.md"},
+                {
+                    "name": "alpha",
+                    "path": "alpha",
+                    "skill_file": "beta/SKILL.md",
+                    "description": "Alpha helps with planning.",
+                },
             ],
         },
     )
@@ -347,6 +390,11 @@ def default_index_payload() -> dict[str, object]:
         "generated_at": "2026-07-08T18:00:00Z",
         "skills_root": ".",
         "skills": [
-            {"name": "alpha", "path": "alpha", "skill_file": "alpha/SKILL.md"},
+            {
+                "name": "alpha",
+                "path": "alpha",
+                "skill_file": "alpha/SKILL.md",
+                "description": "Alpha helps with planning.",
+            },
         ],
     }

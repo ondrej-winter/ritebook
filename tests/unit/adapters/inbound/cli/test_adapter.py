@@ -210,6 +210,7 @@ class FakeListSkills:
                             name="skill-a",
                             path="skill-a",
                             skill_file="skill-a/SKILL.md",
+                            description="Helps with skill A workflows.",
                         ),
                     ),
                 ),
@@ -973,11 +974,13 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
                         name="skill-a",
                         path="skill-a",
                         skill_file="skill-a/SKILL.md",
+                        description="Helps with skill A workflows.",
                     ),
                     CachedSkillSummary(
                         name="skill-b",
                         path="skill-b",
                         skill_file="skill-b/SKILL.md",
+                        description="Helps with skill B workflows.",
                     ),
                 ),
             ),
@@ -988,6 +991,7 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
                         name="query-helper",
                         path="query-helper",
                         skill_file="query-helper/SKILL.md",
+                        description="Helps with query workflows.",
                     ),
                 ),
             ),
@@ -1025,6 +1029,7 @@ def test_list_skills_prints_nested_skill_paths() -> None:
                         name="runtime-verification",
                         path="browser/runtime-verification",
                         skill_file="browser/runtime-verification/SKILL.md",
+                        description="Helps verify browser behavior.",
                     ),
                 ),
             ),
@@ -1079,6 +1084,7 @@ def test_list_skills_prints_descriptions_when_requested() -> None:
                         name="skill-b",
                         path="skill-b",
                         skill_file="skill-b/SKILL.md",
+                        description="Helps with beta workflows.",
                     ),
                 ),
             ),
@@ -1099,7 +1105,7 @@ def test_list_skills_prints_descriptions_when_requested() -> None:
         "Indexes\n"
         "└── platform-skills\n"
         "    ├── skill-a — Helps with alpha workflows.\n"
-        "    └── skill-b\n"
+        "    └── skill-b — Helps with beta workflows.\n"
     )
 
 

@@ -132,14 +132,32 @@ def test_list_skills_result_groups_validated_cached_skill_summaries() -> None:
     ("kwargs", "message"),
     [
         (
-            {"name": "", "path": "skills/a", "skill_file": "skills/a/SKILL.md"},
+            {
+                "name": "",
+                "path": "skills/a",
+                "skill_file": "skills/a/SKILL.md",
+                "description": "Skill A.",
+            },
             "Skill name",
         ),
         (
-            {"name": "skill-a", "path": "", "skill_file": "skills/a/SKILL.md"},
+            {
+                "name": "skill-a",
+                "path": "",
+                "skill_file": "skills/a/SKILL.md",
+                "description": "Skill A.",
+            },
             "Skill path",
         ),
-        ({"name": "skill-a", "path": "skills/a", "skill_file": ""}, "Skill file"),
+        (
+            {
+                "name": "skill-a",
+                "path": "skills/a",
+                "skill_file": "",
+                "description": "Skill A.",
+            },
+            "Skill file",
+        ),
         (
             {
                 "name": "skill-a",

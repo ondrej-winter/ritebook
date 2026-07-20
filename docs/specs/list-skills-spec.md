@@ -17,7 +17,7 @@ remain valid.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
 - Publisher schema v1 includes index metadata and skill entries with required
-  `name`, `path`, and `skill_file`, plus optional `description`.
+  `name`, `path`, `skill_file`, and non-empty `description`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
   - `add-index` registers a Git URL or local Git repository source.
@@ -54,7 +54,7 @@ uv run ritebook list-skills --registry-path /tmp/indexes.json
 uv run ritebook list-skills --index-name platform-skills --registry-path /tmp/indexes.json
 ```
 
-A user can opt in to descriptions when cached index metadata includes them:
+A user can opt in to displaying descriptions:
 
 ```bash
 uv run ritebook list-skills --show-description
@@ -132,8 +132,7 @@ Tree rules:
 - First-level children are effective index names.
 - Second-level children are cached relative skill paths that can be copied after
   the effective index name into `install-skill`.
-- Skill descriptions are shown only when `--show-description` is provided and a
-  cached description is present.
+- Skill descriptions are shown only when `--show-description` is provided.
 - `skill_file` values may be parsed and carried in application DTOs for install
   workflows, but they are not shown by this command.
 
@@ -143,11 +142,10 @@ When `--show-description` is provided, descriptions are appended to skill paths:
 Indexes
 └── platform-skills
     ├── skill-a — Helps with platform workflows.
-    └── skill-b
+    └── skill-b — Helps with another platform workflow.
 ```
 
-Schema v1 cached indexes without `description` metadata remain readable; entries
-without descriptions render as skill paths only.
+Schema v1 cached indexes without non-empty `description` metadata are invalid.
 
 ## Commands and validation
 
@@ -232,7 +230,7 @@ Cover:
 Cover:
 
 - Reads valid schema v1 cached indexes and returns skill entries.
-- Reads optional descriptions for opt-in display.
+- Reads required descriptions for opt-in display.
 - Rejects invalid JSON.
 - Rejects missing or unsupported `schema_version`.
 - Rejects missing or malformed `skills`.
@@ -250,7 +248,7 @@ Cover:
 - `list-skills --show-description` maps the description display flag correctly.
 - Non-empty output is deterministic and tree-shaped.
 - Filtered output still includes the `Indexes` root and index node.
-- Description output appends descriptions only when requested and present.
+- Description output appends descriptions only when requested.
 - Empty output prints `No skills found`.
 - Application and adapter errors are rendered as concise
   `ritebook: error: ...` messages.
@@ -265,7 +263,7 @@ Cover:
 - Show skill paths only in the default output.
 - Show skill descriptions only when explicitly requested with
   `--show-description`.
-- Keep older cached indexes without descriptions readable.
+- Reject cached schema v1 indexes without non-empty descriptions.
 - Allow duplicate skill names across different effective indexes.
 - Keep output deterministic.
 - Keep Git and network behavior out of `list-skills`.
@@ -298,7 +296,7 @@ Cover:
 - `uv run ritebook list-skills --index-name <effective-name>` lists only that
   index's skills while preserving the `Indexes` root and index node.
 - `uv run ritebook list-skills --show-description` appends cached descriptions
-  when present without changing default output.
+  without changing default output.
 - Unknown index names fail with a clear user-facing error.
 - Empty registries or empty cached indexes print `No skills found`.
 - Output is deterministic and grouped by effective index name.

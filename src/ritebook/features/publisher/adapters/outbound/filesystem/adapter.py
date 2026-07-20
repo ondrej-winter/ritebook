@@ -42,18 +42,22 @@ def _skill_entry(discovered: DiscoveredNamedFile) -> SkillEntry:
     )
 
 
-def _extract_header_text(skill_file: Path, *, field_name: str) -> str | None:
+def _extract_header_text(skill_file: Path, *, field_name: str) -> str:
     frontmatter = parse_yaml_frontmatter(skill_file)
     if isinstance(frontmatter, FrontmatterParseError):
-        return None
+        msg = f"Unable to read required {field_name} from {skill_file}."
+        raise PublishIndexDiscoveryError(msg)
     if not isinstance(frontmatter, Mapping):
-        return None
+        msg = f"Unable to read required {field_name} from {skill_file}."
+        raise PublishIndexDiscoveryError(msg)
 
     value = frontmatter.get(field_name)
     if not isinstance(value, str):
-        return None
+        msg = f"Unable to read required {field_name} from {skill_file}."
+        raise PublishIndexDiscoveryError(msg)
 
     text = value.strip()
     if text:
         return text
-    return None
+    msg = f"Unable to read required {field_name} from {skill_file}."
+    raise PublishIndexDiscoveryError(msg)

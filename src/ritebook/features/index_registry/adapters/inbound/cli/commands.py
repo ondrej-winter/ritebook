@@ -35,7 +35,7 @@ def run_add_index(
     """Run add-index against the injected application port."""
     command = AddIndexCommand(
         source=args.source,
-        name=args.name,
+        alias=args.alias,
         force=args.force,
         registry_path=args.registry_path,
         cache_root=args.cache_root,

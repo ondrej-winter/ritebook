@@ -20,7 +20,7 @@ class AddIndexCommand:
     """Command for registering a Git-backed published index."""
 
     source: str
-    name: str | None = None
+    alias: str | None = None
     force: bool = False
     registry_path: str | None = None
     cache_root: str | None = None
@@ -28,8 +28,8 @@ class AddIndexCommand:
     def __post_init__(self) -> None:
         """Validate command shape after initialization."""
         _require_non_empty(self.source, field_name="Index source")
-        if self.name is not None:
-            require_index_name(self.name, field_name="Index name")
+        if self.alias is not None:
+            require_index_name(self.alias, field_name="Index alias")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
 
@@ -129,7 +129,7 @@ class PublishedIndex:
 
 @dataclass(frozen=True)
 class RegisteredIndex:
-    """Registry metadata for one effective index name."""
+    """Registry metadata for one local index alias."""
 
     name: str
     published_name: str
@@ -257,7 +257,7 @@ class CachedSkillSummary:
 
 @dataclass(frozen=True)
 class ListedIndexSkills:
-    """Cached skills grouped under one effective index name."""
+    """Cached skills grouped under one local index alias."""
 
     index_name: str
     skills: tuple[CachedSkillSummary, ...]

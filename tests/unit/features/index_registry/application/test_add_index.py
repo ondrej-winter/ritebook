@@ -55,7 +55,7 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     assert registry.upsert_calls[0][1] == "/tmp/indexes.json"
 
 
-def test_add_index_uses_local_name_override() -> None:
+def test_add_index_uses_local_alias_without_changing_published_name() -> None:
     registry = FakeRegistry()
     cache = FakeCache()
     use_case = AddIndex(
@@ -67,11 +67,11 @@ def test_add_index_uses_local_name_override() -> None:
     )
 
     result = use_case.execute(
-        AddIndexCommand(source="repo", name="platform-skills"),
+        AddIndexCommand(source="repo", alias="platform-skills"),
     )
 
     assert result.name == "platform-skills"
-    assert "platform-skills" in registry.entries
+    assert registry.entries["platform-skills"].published_name == "company-skills"
     assert cache.write_calls[0][0] == "platform-skills"
 
 

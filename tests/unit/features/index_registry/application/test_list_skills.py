@@ -142,6 +142,22 @@ def test_list_skills_sorts_nested_skills_by_path_within_each_index() -> None:
     assert result.indexes[0].skills == (nested, root)
 
 
+def test_list_skills_preserves_duplicate_names_at_distinct_paths() -> None:
+    entry = registered_index()
+    backend = _skill("code-review", path="backend/code-review")
+    frontend = _skill("code-review", path="frontend/code-review")
+    use_case = ListSkills(
+        registry=FakeRegistry([entry]),
+        cached_index_reader=FakeCachedIndexReader(
+            {entry.cached_index_path: (frontend, backend)},
+        ),
+    )
+
+    result = use_case.execute(ListSkillsCommand())
+
+    assert result.indexes[0].skills == (backend, frontend)
+
+
 def test_list_skills_returns_empty_result_for_empty_registry() -> None:
     cached_reader = FakeCachedIndexReader()
     use_case = ListSkills(

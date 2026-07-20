@@ -50,23 +50,20 @@ class AddIndex(AddIndexPort):
             command.cache_root,
         )
         published_index = self._index_reader.read_index(prepared_source.repository_path)
-        effective_name = command.name or published_index.published_name
+        local_alias = command.alias or published_index.published_name
 
-        if (
-            self._registry.get(effective_name, command.registry_path)
-            and not command.force
-        ):
-            raise DuplicateIndexNameError(effective_name)
+        if self._registry.get(local_alias, command.registry_path) and not command.force:
+            raise DuplicateIndexNameError(local_alias)
 
         cached_index_path = self._cache.write_index(
-            name=effective_name,
+            name=local_alias,
             content=published_index.cacheable_content,
             cache_root=command.cache_root,
         )
         timestamp = _utc_timestamp(self._clock())
         self._registry.upsert(
             RegisteredIndex(
-                name=effective_name,
+                name=local_alias,
                 published_name=published_index.published_name,
                 source=prepared_source.source,
                 source_type=prepared_source.source_type,
@@ -80,7 +77,7 @@ class AddIndex(AddIndexPort):
             command.registry_path,
         )
         return AddIndexResult(
-            name=effective_name,
+            name=local_alias,
             skill_count=published_index.skill_count,
         )
 

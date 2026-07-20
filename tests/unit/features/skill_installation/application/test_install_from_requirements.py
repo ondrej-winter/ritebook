@@ -355,6 +355,37 @@ def test_install_from_requirements_fails_unknown_skill_before_copy() -> None:
     assert installer.install_calls == []
 
 
+def test_install_from_requirements_does_not_resolve_nested_skill_by_name() -> None:
+    index = registered_skill_index(name="platform-skills")
+    nested = installable_skill(
+        name="code-review",
+        path="software-development/code-review",
+        skill_file="software-development/code-review/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (nested,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    with pytest.raises(
+        UnknownInstallSkillError,
+        match="platform-skills/code-review",
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
 def test_install_from_requirements_passes_force_to_all_installs() -> None:
     index = registered_skill_index(name="platform-skills")
     catalog = FakeSkillCatalog(
@@ -469,13 +500,13 @@ def test_install_from_requirements_sorts_lockfile_entries() -> None:
     )
     platform_skill = installable_skill(
         name="zeta-skill",
-        path="skills/zeta-skill",
-        skill_file="skills/zeta-skill/SKILL.md",
+        path="zeta-skill",
+        skill_file="zeta-skill/SKILL.md",
     )
     company_skill = installable_skill(
         name="alpha-skill",
-        path="skills/alpha-skill",
-        skill_file="skills/alpha-skill/SKILL.md",
+        path="alpha-skill",
+        skill_file="alpha-skill/SKILL.md",
     )
     catalog = FakeSkillCatalog(
         indexes=[platform, company],

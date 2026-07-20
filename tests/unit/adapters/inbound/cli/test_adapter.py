@@ -749,7 +749,7 @@ def test_add_index_maps_arguments_to_application_command() -> None:
             "add-index",
             "--source",
             "git@example.com:company/skills.git",
-            "--name",
+            "--alias",
             "platform-skills",
             "--force",
             "--registry-path",
@@ -768,7 +768,7 @@ def test_add_index_maps_arguments_to_application_command() -> None:
     assert add_index.commands == [
         AddIndexCommand(
             source="git@example.com:company/skills.git",
-            name="platform-skills",
+            alias="platform-skills",
             force=True,
             registry_path="/tmp/indexes.json",
             cache_root="/tmp/cache",
@@ -776,6 +776,21 @@ def test_add_index_maps_arguments_to_application_command() -> None:
     ]
     assert stdout.getvalue() == "Added index platform-skills with 12 skill(s)\n"
     assert stderr.getvalue() == ""
+
+
+def test_add_index_rejects_removed_name_override() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["add-index", "--source", "repo", "--name", "platform-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "unrecognized arguments: --name platform-skills" in stderr.getvalue()
 
 
 def test_add_index_translates_duplicate_name_errors() -> None:

@@ -25,7 +25,7 @@ for reviewable repo-local install state.
   - `update-index` refreshes cached index contents.
   - `list-indexes` lists registered index metadata.
   - `list-skills` lists skills from locally cached registered indexes.
-- Registry entries already store each index's local effective name, remembered
+- Registry entries already store each index's local alias, remembered
   source, source type, source cache path for Git URL sources, and cached index
   path.
 - The project follows hexagonal architecture with vertical feature slices under
@@ -35,8 +35,7 @@ for reviewable repo-local install state.
 
 ### Install one skill
 
-A user can install one skill by fully qualified effective index name and skill
-path:
+A user can install one skill by fully qualified local index alias and skill path:
 
 ```bash
 uv run ritebook install-skill platform-skills/code-review --target .claude/skills/code-review
@@ -45,13 +44,16 @@ uv run ritebook install-skill platform-skills/code-review --target .claude/skill
 Requirements:
 
 - The skill reference must be fully qualified as
-  `<index-name>/<skill-path-or-name>`.
-- Index names must be single-segment kebab-case identifiers and must not contain
-  `/`, so the separator before `<skill-path-or-name>` is unambiguous.
-- The skill selector after the first slash may be a safe relative POSIX path,
+  `<index-alias>/<skill-path>`.
+- Index aliases must be single-segment kebab-case identifiers and must not contain
+  `/`, so the separator before `<skill-path>` is unambiguous.
+- The skill selector after the first slash is a safe relative POSIX path,
   such as `browser/runtime-verification`, for skills published in subfolders.
-- For backward compatibility and convenience, flat skill names such as
-  `code-review` remain valid selectors when they resolve to one cached skill.
+- Ritebook resolves only exact cached relative paths and never falls back to
+  `skills[].name`. A root skill path such as `code-review` remains valid when that
+  exact path exists.
+- Duplicate skill names may coexist within one index when their relative paths
+  differ; each is selected by its full path.
 - `install-skill` requires a direct `--target <path>` and also accepts `--force`,
   `--registry-path`, and `--installation-registry-path`.
 - `install-skill` does not accept target aliases, target kinds, or inferred
@@ -168,7 +170,8 @@ target_path = "../shared-agent-skills/security-review"
 
 Skill entry fields:
 
-- `name`: required fully qualified `<index-name>/<skill-path-or-name>` reference.
+- `name`: required fully qualified `<index-name>/<skill-path>` reference or, for
+  `install`, a folder selector that matches descendant skill paths.
 - `target`: optional target nickname from `[targets]`.
 - `target_path`: optional direct target path.
 
@@ -188,7 +191,11 @@ Validation rules:
   underscores, and hyphens.
 - `[[skills]]` must be an array of tables.
 - Each skill `name` must be fully qualified as
-  `<index-name>/<skill-path-or-name>`.
+  `<index-name>/<skill-path>`.
+- Requirements-file `install` first resolves an exact skill path. When no exact
+  skill exists, a selector may intentionally expand all descendants below that
+  folder prefix in deterministic path order.
+- Neither exact nor folder-prefix resolution falls back to `skills[].name`.
 - Repeated `[[skills]]` entries with the same fully qualified `name` are rejected.
 - Duplicate resolved target paths are rejected.
 - Resolved target paths must not be empty, root-like, or otherwise dangerous.
@@ -329,14 +336,14 @@ Requirements:
 Initial commands:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-path-or-name> --target <path> [--force]
+uv run ritebook install-skill <index-name>/<skill-path> --target <path> [--force]
 uv run ritebook install [--file ritebook.toml] [--force]
 ```
 
 Potential test/automation path overrides:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-path-or-name> \
+uv run ritebook install-skill <index-name>/<skill-path> \
   --target <path> \
   --registry-path <path-to-indexes.json> \
   --installation-registry-path <path-to-installations.json>
@@ -442,7 +449,10 @@ tests/unit/features/skill_installation/
 
 Cover:
 
-- Installs one fully qualified skill to an explicit target path.
+- Installs one fully qualified exact skill path to an explicit target path.
+- Resolves duplicate names by full relative path and rejects name-only shorthand
+  for nested skills.
+- Expands requirements-file folder selectors without using skill-name fallback.
 - Rejects bare or malformed skill references.
 - Rejects unknown indexes.
 - Rejects unknown skills.
@@ -536,10 +546,12 @@ Current implementation status:
 
 Always:
 
-- Support direct `install-skill <index>/<skill-path-or-name> --target <path>`.
+- Support direct `install-skill <index>/<skill-path> --target <path>`.
 - Support `install` from `ritebook.toml`.
 - Support TOML `[targets]` nicknames for requirements-file installs only.
-- Require fully qualified `<index-name>/<skill-path-or-name>` skill references.
+- Require fully qualified `<index-name>/<skill-path>` skill references.
+- Resolve direct installs only by exact relative skill path.
+- Preserve requirements-file folder-prefix expansion without name-only fallback.
 - Resolve install sources from locally registered and cached indexes.
 - Copy the whole skill directory.
 - Refuse overwrites unless `--force` is provided.
@@ -563,7 +575,8 @@ Never:
 - Mutate source repositories during installation.
 - Install from live remotes without cached registered indexes.
 - Overwrite user files silently.
-- Treat duplicate skill names across different indexes as an error.
+- Treat duplicate skill names across different indexes or at distinct paths in one
+  index as an error.
 - Print secrets, Git credentials, raw index contents, raw skill file contents, or
   copied file contents.
 - Write repo lockfiles containing machine-specific absolute paths for repo-local
@@ -571,7 +584,7 @@ Never:
 
 ## Success criteria
 
-- `uv run ritebook install-skill <index>/<skill-path-or-name> --target <path>`
+- `uv run ritebook install-skill <index>/<skill-path> --target <path>`
   installs the selected skill directory into the explicit target path.
 - `install-skill` refuses existing targets unless `--force` is provided.
 - Direct `install-skill` writes deterministic user installation state under

@@ -11,7 +11,6 @@ from ritebook.features.skill_contribution.application.dtos import (
     ContributionSkillReference,
 )
 from ritebook.features.skill_contribution.application.errors import (
-    AmbiguousContributionSkillReferenceError,
     ContributionLockfileEntryNotFoundError,
     ContributionLockfileReadError,
 )
@@ -47,18 +46,6 @@ class JsonContributionLockfileReader(ContributionLockfilePort):
         for entry in candidates:
             if entry.skill_path == reference.skill_selector:
                 return entry
-
-        matching_names = tuple(
-            entry for entry in candidates if entry.skill_name == reference.skill_name
-        )
-        if len(matching_names) == 1:
-            return matching_names[0]
-        if len(matching_names) > 1:
-            msg = (
-                f"skill reference {reference.requirement} is ambiguous; "
-                "use an exact skill path from ritebook.lock"
-            )
-            raise AmbiguousContributionSkillReferenceError(msg)
 
         msg = f"no lockfile entry found for {reference.requirement}"
         raise ContributionLockfileEntryNotFoundError(msg)

@@ -90,7 +90,7 @@ uv run ritebook publish-index --skills-root <path> --index-name <name>
 The `--skills-root` option is required so the command only scans the intended
 skills directory. The `--index-name` option is required and must be a stable
 single-segment kebab-case identifier such as `company-skills`; slashes are not
-allowed because skill references use `<index-name>/<skill-path-or-name>`. The
+allowed because skill references use `<index-name>/<skill-path>`. The
 index name is written to the generated index metadata as the default consumer
 registry name.
 The `publish-index` command reuses the same validation flow as `lint-skills` and
@@ -118,14 +118,22 @@ Register an already-cloned local Git repository without Ritebook mutating it:
 uv run ritebook add-index --source ./internal-skills
 ```
 
-Override the local effective index name or replace an existing registration:
+Assign a local alias to resolve a published-name collision, or replace an
+existing registration with the same alias:
 
 ```bash
 uv run ritebook add-index \
   --source git@github.com:company/internal-skills.git \
-  --name platform-skills \
+  --alias platform-skills \
   --force
 ```
+
+Each index has a publisher-owned name in `ritebook-index.json` and a local alias
+in the consumer registry. The alias defaults to the published name. `--alias`
+changes only the local namespace used for cache paths, updates, listing, and
+skill references; it does not rewrite publisher metadata. If a project shares
+alias-based references in `ritebook.toml` or `ritebook.lock`, collaborators and
+CI must register the source with the same alias.
 
 Refresh a registered index from its remembered Git source:
 
@@ -139,7 +147,7 @@ List skills from all locally cached registered indexes:
 uv run ritebook list-skills
 ```
 
-List skills from one effective index name:
+List skills from one local index alias:
 
 ```bash
 uv run ritebook list-skills --index-name platform-skills
@@ -156,7 +164,7 @@ selected registry entry's cached `ritebook-index.json` file only. It does not
 clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
 files.
 
-Non-empty output is grouped by effective index name in a deterministic tree:
+Non-empty output is grouped by local alias in a deterministic tree:
 
 ```text
 Indexes
@@ -168,7 +176,7 @@ Indexes
 ```
 
 By default, the tree shows each skill's cached relative path, which can be copied
-after the index name into `install-skill`. With `--show-description`, Ritebook
+after the local alias into `install-skill`. With `--show-description`, Ritebook
 appends descriptions cached from publisher indexes when that metadata is present:
 
 ```text
@@ -176,6 +184,10 @@ Indexes
 └── platform-skills
     └── skill-a — Helps with platform workflows.
 ```
+
+Relative paths identify skills within an index. Duplicate skill names are valid at
+different paths, such as `backend/code-review` and `frontend/code-review`; Ritebook
+does not fall back from a path to the final skill name.
 
 When no registered cached skills are available, Ritebook prints:
 
@@ -200,12 +212,16 @@ uv run ritebook install-skill platform-skills/code-review \
 ```
 
 For skills published below subfolders, use the relative skill path shown by
-`list-skills` after the effective index name:
+`list-skills` after the local alias:
 
 ```bash
 uv run ritebook install-skill platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
+
+`install-skill` resolves that path exactly. A shorthand such as
+`platform-skills/runtime-verification` does not select
+`platform-skills/browser/runtime-verification`.
 
 Ritebook copies the whole skill directory, creates missing target parent
 directories, and refuses to overwrite an existing target unless `--force` is
@@ -276,6 +292,11 @@ uv run ritebook install \
 `target_path` is used exactly as the target path for that skill entry. Each skill
 entry must use exactly one of `target` or `target_path`.
 
+In `ritebook.toml`, a `name` may also select a folder prefix. For example,
+`platform-skills/browser` installs all indexed skills below `browser/` in
+deterministic path order. Folder expansion still follows paths and never searches
+by `skills[].name`.
+
 After a successful requirements install, Ritebook writes deterministic generated
 state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
 `ritebook.toml` so repo-local skill installation state is reviewable and
@@ -290,9 +311,9 @@ reviewable upstream contribution from its `ritebook.lock` provenance:
 uv run ritebook publish-skill-change platform-skills/code-review
 ```
 
-The reference must be `<index-name>/<skill-path-or-name>` and must resolve to
-exactly one entry in `ritebook.lock`. By default, Ritebook reads `ritebook.lock`
-from the current working directory and creates or reuses an isolated,
+The reference must be `<index-name>/<skill-path>` and resolves by exact indexed
+path without falling back to `skill_name`. By default, Ritebook reads
+`ritebook.lock` from the current working directory and creates or reuses an isolated,
 Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
 automation can override both paths:
 
@@ -337,12 +358,12 @@ By default, Ritebook stores registry metadata and cached index contents under:
 
 ```text
 ~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<effective-index-name>/ritebook-index.json
+~/.cache/ritebook/indexes/<local-alias>/ritebook-index.json
 ~/.cache/ritebook/git/<source-cache-id>/
 ```
 
-Effective index names are single path-safe kebab-case segments, so cached index
-contents are stored directly under that name.
+Local aliases are single path-safe kebab-case segments, so cached index contents
+are stored directly under the alias.
 
 Tests and automation can override these locations:
 
@@ -353,7 +374,7 @@ uv run ritebook add-index \
   --cache-root <cache-directory>
 
 uv run ritebook update-index \
-  --name <effective-index-name> \
+  --name <local-alias> \
   --registry-path <path-to-indexes.json> \
   --cache-root <cache-directory>
 
@@ -361,7 +382,7 @@ uv run ritebook list-skills \
   --registry-path <path-to-indexes.json>
 
 uv run ritebook list-skills \
-  --index-name <effective-index-name> \
+  --index-name <local-alias> \
   --registry-path <path-to-indexes.json>
 ```
 

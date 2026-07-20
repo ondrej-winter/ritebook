@@ -109,7 +109,7 @@ def test_update_index_fails_for_unknown_name() -> None:
         use_case.execute(UpdateIndexCommand(name="missing-index"))
 
 
-def test_update_index_keeps_effective_name_when_published_name_changes() -> None:
+def test_update_index_keeps_local_alias_when_published_name_changes() -> None:
     registry = FakeRegistry([registered_index(name="local-name")])
     use_case = UpdateIndex(
         git_source=FakeGitSource(),

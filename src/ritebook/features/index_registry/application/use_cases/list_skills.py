@@ -35,7 +35,7 @@ class ListSkills(ListSkillsPort):
         self._cached_index_reader = cached_index_reader
 
     def execute(self, command: ListSkillsCommand) -> ListSkillsResult:
-        """Return cached skills grouped by effective index name."""
+        """Return cached skills grouped by local index alias."""
         entries = self._selected_entries(command)
         return ListSkillsResult(
             indexes=tuple(self._listed_index(entry) for entry in entries),

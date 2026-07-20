@@ -50,11 +50,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Register a Git-backed skill index.",
     )
     add_index.add_argument("--source", required=True, help="Git URL or local Git repo.")
-    add_index.add_argument("--name", help="Local effective index name override.")
+    add_index.add_argument(
+        "--alias",
+        help="Local index namespace; defaults to the published index name.",
+    )
     add_index.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing index with the same effective name.",
+        help="Replace an existing index with the same local alias.",
     )
     add_index.add_argument("--registry-path", help="Path to indexes.json registry.")
     add_index.add_argument(
@@ -72,7 +75,7 @@ def build_parser() -> argparse.ArgumentParser:
         LIST_SKILLS_COMMAND,
         help="List skills from registered cached indexes.",
     )
-    list_skills.add_argument("--index-name", help="Effective index name to list.")
+    list_skills.add_argument("--index-name", help="Local index alias to list.")
     list_skills.add_argument("--registry-path", help="Path to indexes.json registry.")
     list_skills.add_argument(
         "--show-description",
@@ -85,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Refresh a registered skill index.",
     )
     update_target = update_index.add_mutually_exclusive_group(required=True)
-    update_target.add_argument("--name", help="Effective index name.")
+    update_target.add_argument("--name", help="Local index alias.")
     update_target.add_argument(
         "--all",
         action="store_true",
@@ -103,7 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     install_skill.add_argument(
         "skill_reference",
-        help="Fully qualified skill reference as <index-name>/<skill-name>.",
+        help="Fully qualified skill reference as <index-name>/<skill-path>.",
     )
     install_skill.add_argument(
         "--target",
@@ -148,7 +151,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish_skill_change.add_argument(
         "skill_reference",
-        help="Fully qualified skill reference as <index-name>/<skill-path-or-name>.",
+        help="Fully qualified skill reference as <index-name>/<skill-path>.",
     )
     publish_skill_change.add_argument(
         "--lockfile",

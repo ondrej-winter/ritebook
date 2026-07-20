@@ -43,33 +43,48 @@ uv run ritebook add-index --source git@github.com:company/internal-skills.git
 uv run ritebook add-index --source ./internal-skills
 ```
 
-Optional local name override:
+Optional local alias:
 
 ```bash
 uv run ritebook add-index \
   --source git@github.com:company/internal-skills.git \
-  --name platform-skills
+  --alias platform-skills
 ```
+
+Ritebook distinguishes two index identifiers:
+
+- The **published name** is the canonical publisher-owned `index.name` metadata in
+  `ritebook-index.json`. Ritebook validates and preserves this value.
+- The **local alias** is the consumer-owned namespace for one registry entry. It
+  defaults to the published name and can be set with `--alias` when published
+  names collide or a different local namespace is useful.
+
+The local alias is used for registry lookups, cache paths, update selection,
+skill listing, and `<alias>/<skill-path>` installation references. Setting
+an alias does not rewrite the published name or cached index contents. Projects
+that share alias-based references in `ritebook.toml` or `ritebook.lock` must ensure
+that collaborators and CI register the source under the same alias.
 
 Requirements:
 
 - `ritebook-index.json` must be located at the repository root.
 - Ritebook must read and validate root `ritebook-index.json` before registering
   the index.
-- The published index must include index metadata with a default index name.
-- If `--name` is not provided, Ritebook uses the index name from
-  `ritebook-index.json`.
-- If `--name` is provided, Ritebook uses it as the local effective index name.
-- Ritebook caches the current index contents locally under the effective index
+- The published index must include index metadata with a canonical published
   name.
+- If `--alias` is not provided, the local alias defaults to the published name
+  from `ritebook-index.json`.
+- If `--alias` is provided, Ritebook uses it as the local registry namespace
+  without changing the published name.
+- Ritebook caches the current index contents locally under the local alias.
 - Ritebook remembers enough source information to update the cached index later.
-- If an effective index name is already registered, Ritebook refuses to
+- If a local alias is already registered, Ritebook refuses to
   overwrite it unless an explicit replacement flag is provided.
 
 Recommended duplicate replacement flag:
 
 ```bash
-uv run ritebook add-index --source <git-source> --name <name> --force
+uv run ritebook add-index --source <git-source> --alias <alias> --force
 ```
 
 ### List indexes
@@ -85,9 +100,9 @@ uv run ritebook list-indexes
 Requirements:
 
 - Ritebook reads the same local registry used by `add-index` and `update-index`.
-- Output is deterministic and sorted by effective index name.
+- Output is deterministic and sorted by local alias.
 - Empty registries produce concise output: `No indexes registered`.
-- Non-empty output includes the effective index name, skill count, source type,
+- Non-empty output includes the local alias, skill count, source type,
   updated timestamp, and remembered source.
 
 ### Update index
@@ -103,7 +118,9 @@ uv run ritebook update-index --all
 
 Requirements:
 
-- Ritebook looks up the registered index by effective index name.
+- Ritebook looks up the registered index by local alias. The existing
+  `update-index --name` option selects that alias; it does not refer to the
+  publisher-owned name.
 - For a Git URL source, Ritebook fetches, pulls, or reclones as needed in its
   managed cache.
 - For a local Git repository source, Ritebook reads the repository at the
@@ -112,21 +129,21 @@ Requirements:
   source.
 - Ritebook validates the index before replacing the locally cached copy.
 - If validation fails, Ritebook keeps the previous cached copy intact.
-- If the index name inside the refreshed `ritebook-index.json` changes, Ritebook
-  keeps the local effective name unless the user explicitly re-adds or renames
-  the index in a later workflow.
-- `update-index` requires exactly one target mode: `--name <effective-name>` or
+- If the published name inside the refreshed `ritebook-index.json` changes,
+  Ritebook keeps the local alias and records the refreshed published name.
+- `update-index` requires exactly one target mode: `--name <local-alias>` or
   `--all`.
 - `update-index --all` refreshes all registered indexes in deterministic
-  effective-name order.
+  local-alias order.
 - If one index fails during `--all`, Ritebook continues updating the remaining
-  indexes, reports failed effective names to stderr, and returns a non-zero exit
+  indexes, reports failed local aliases to stderr, and returns a non-zero exit
   code after the batch completes.
 
 ## Publisher index metadata
 
-The publisher-generated `ritebook-index.json` includes metadata that names
-the index. This name becomes the default consumer registry name.
+The publisher-generated `ritebook-index.json` includes metadata that canonically
+names the published index. This name becomes the default local alias but remains
+distinct from any consumer-selected alias.
 
 Publisher index schema v1:
 
@@ -155,10 +172,10 @@ Index name requirements:
 - Single-segment kebab-case identifier using the same general naming constraints
   as skill names.
 - Slashes are not allowed because downstream skill installation references use
-  `<index-name>/<skill-name>`.
+  `<index-name>/<skill-path>`.
 - Intended to be stable across updates.
-- Used as the default effective index name during `add-index`.
-- Can be locally overridden during `add-index` to avoid collisions.
+- Used as the default local alias during `add-index`.
+- Preserved separately when `--alias` selects a different local namespace.
 
 ## Local registry and cache
 
@@ -168,7 +185,7 @@ Recommended default location:
 
 ```text
 ~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<effective-index-name>/ritebook-index.json
+~/.cache/ritebook/indexes/<local-alias>/ritebook-index.json
 ~/.cache/ritebook/git/<source-cache-id>/
 ```
 
@@ -176,6 +193,9 @@ Tests and automation should be able to override these paths with explicit CLI
 options or injected settings so unit tests do not mutate real user state.
 
 Example registry schema:
+
+The existing registry `name` field stores the local alias; `published_name`
+stores publisher-owned metadata.
 
 ```json
 {
@@ -217,12 +237,16 @@ For local repository sources:
 ## Duplicate behavior
 
 - Duplicate skill names are allowed across different indexes.
-- The effective index name is the namespace boundary.
-- Installation references skills as `<index-name>/<skill-path-or-name>` in the
+- Duplicate skill names are also allowed within one index when their relative
+  skill paths differ, such as `backend/code-review` and `frontend/code-review`.
+- A skill's relative `path` is its identity and resolution key within an index;
+  `skills[].name` is metadata and is not a fallback selector.
+- The local alias plus relative skill path is the namespace boundary.
+- Installation references skills as `<alias>/<skill-path>` in the
   separate `skill_installation` slice.
-- Duplicate effective index names are not allowed unless the user explicitly
+- Duplicate local aliases are not allowed unless the user explicitly
   replaces the existing registration.
-- Local `--name` override exists primarily to resolve same-name index collisions.
+- Local `--alias` exists primarily to resolve published-name collisions.
 
 ## Git source behavior
 
@@ -247,8 +271,8 @@ For local repository sources:
 Registry commands:
 
 ```bash
-uv run ritebook add-index --source <git-url-or-local-git-repo> [--name <effective-name>] [--force]
-uv run ritebook update-index --name <effective-name>
+uv run ritebook add-index --source <git-url-or-local-git-repo> [--alias <local-alias>] [--force]
+uv run ritebook update-index --name <local-alias>
 uv run ritebook update-index --all
 uv run ritebook list-indexes
 ```
@@ -384,10 +408,10 @@ tests/unit/features/index_registry/
 
 - Adds a Git URL source and caches validated index contents.
 - Adds a local Git repository source and caches validated index contents.
-- Uses published index name by default.
-- Allows local name override.
-- Refuses duplicate effective names without `force`.
-- Replaces duplicate effective names with `force`.
+- Uses the published name as the default local alias.
+- Allows a local alias without changing the published name.
+- Refuses duplicate local aliases without `force`.
+- Replaces duplicate local aliases with `force`.
 
 ### Update index application tests
 
@@ -395,15 +419,15 @@ tests/unit/features/index_registry/
 - Refreshes a registered local Git repository source.
 - Updates cached index contents and metadata when validation succeeds.
 - Preserves existing cached index when refreshed source validation fails.
-- Fails clearly for unknown index names.
+- Fails clearly for unknown local aliases.
 - Requires either `--name` or `--all`, but not both.
 - Refreshes all registered indexes when requested.
 - Continues after per-index failures during all-index updates and reports failed
-  effective names.
+  local aliases.
 
 ### List indexes application tests
 
-- Lists registered index summaries in deterministic effective-name order.
+- Lists registered index summaries in deterministic local-alias order.
 - Returns an empty result for an empty registry.
 
 ### Adapter tests
@@ -426,7 +450,7 @@ tests/unit/features/index_registry/
 - `list-indexes` maps CLI args into application command DTOs.
 - `list-indexes` prints deterministic non-empty output and a concise empty
   registry message.
-- Success output includes effective index name and skill count.
+- Success output includes local alias and skill count.
 - Error output is concise and user-facing.
 
 ## Commands and validation
@@ -450,9 +474,10 @@ Registry responsibilities:
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
 - Cache the current index contents locally.
-- Use publisher index metadata as the default index name.
-- Allow local name override to avoid effective-name collisions.
-- Namespace duplicate skill names by effective index name.
+- Use publisher index metadata as the default local alias.
+- Allow `--alias` to resolve published-name collisions without rewriting
+  publisher metadata.
+- Namespace skills by local alias and relative skill path.
 - Preserve the previous cached index when `update-index` fails validation.
 - Continue after per-index failures during `update-index --all`.
 
@@ -470,7 +495,8 @@ Never:
 - Mutate user-owned local repositories during add/update.
 - Print secrets, Git credentials, raw index contents, or raw skill file contents
   in errors.
-- Treat duplicate skill names across different indexes as an error.
+- Treat duplicate skill names across different indexes or at distinct paths in one
+  index as an error.
 
 ## Success criteria
 
@@ -481,10 +507,11 @@ Never:
   index.
 - A user can update a registered index and refresh the cached index contents.
 - Failed updates do not destroy the previous cached index.
-- The effective index name defaults from published index metadata and can be
-  locally overridden.
-- Duplicate skill names across different effective index names are allowed.
-- Duplicate effective index names are refused unless explicitly replaced.
+- The local alias defaults from published index metadata and can be set with
+  `--alias` without changing the published name.
+- Duplicate skill names across different local aliases and at distinct paths within
+  one index are allowed.
+- Duplicate local aliases are refused unless explicitly replaced.
 - Relevant unit tests cover application behavior, JSON validation, registry/cache
   persistence, Git source handling, and CLI argument mapping.
 - `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,

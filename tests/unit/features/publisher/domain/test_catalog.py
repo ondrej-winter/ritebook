@@ -115,6 +115,33 @@ def test_skill_catalog_sorts_entries_by_relative_path() -> None:
     assert [skill.path for skill in catalog.skills] == ["alpha", "zeta"]
 
 
+def test_skill_catalog_allows_duplicate_names_at_distinct_paths() -> None:
+    catalog = SkillCatalog.create(
+        index_name="company-skills",
+        generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+        skills_root=".",
+        skills=[
+            SkillEntry(
+                name="code-review",
+                path="frontend/code-review",
+                skill_file="frontend/code-review/SKILL.md",
+                description="Frontend code review.",
+            ),
+            SkillEntry(
+                name="code-review",
+                path="backend/code-review",
+                skill_file="backend/code-review/SKILL.md",
+                description="Backend code review.",
+            ),
+        ],
+    )
+
+    assert [skill.path for skill in catalog.skills] == [
+        "backend/code-review",
+        "frontend/code-review",
+    ]
+
+
 def test_skill_catalog_sorts_entries_when_constructed_directly() -> None:
     catalog = SkillCatalog(
         index_name="company-skills",

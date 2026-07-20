@@ -46,8 +46,7 @@ to the upstream default branch.
 Requirements:
 
 - The skill reference must be fully qualified as
-  `<index-name>/<skill-path-or-name>` using the same selector semantics as
-  installation.
+  `<index-name>/<skill-path>` and must match an exact lockfile skill path.
 - The command only supports skills installed from `ritebook.toml` and recorded in
   `ritebook.lock` for the MVP.
 - Ritebook reads `ritebook.lock` from the current working directory by default.
@@ -80,13 +79,13 @@ Requirements:
 Initial command:
 
 ```bash
-uv run ritebook publish-skill-change <index-name>/<skill-path-or-name>
+uv run ritebook publish-skill-change <index-name>/<skill-path>
 ```
 
 Path overrides:
 
 ```bash
-uv run ritebook publish-skill-change <index-name>/<skill-path-or-name> \
+uv run ritebook publish-skill-change <index-name>/<skill-path> \
   --lockfile <path-to-ritebook.lock> \
   --contribution-root <path-to-ritebook-owned-contribution-checkouts>
 ```
@@ -312,8 +311,8 @@ Cover:
 - Rejects invalid JSON.
 - Rejects unsupported lockfile schema versions.
 - Rejects missing required fields for contribution publishing.
-- Resolves flat and path-based skill selectors consistently with installation.
-- Rejects ambiguous selectors.
+- Resolves only exact lockfile skill paths and does not fall back to `skill_name`.
+- Allows duplicate skill names at distinct lockfile paths.
 
 ### Contribution checkout and Git adapter tests
 
@@ -376,6 +375,7 @@ Always:
 
 - Support one skill contribution per command.
 - Require `ritebook.lock` provenance for the MVP.
+- Resolve contribution references by exact lockfile skill path.
 - Prepare contributions in a Ritebook-owned isolated checkout.
 - Fetch or inspect the current upstream base before preparing a contribution.
 - Validate the changed skill before committing.
@@ -406,7 +406,7 @@ Never:
 
 ## Success criteria
 
-- `uv run ritebook publish-skill-change <index-name>/<skill-path-or-name>` reads
+- `uv run ritebook publish-skill-change <index-name>/<skill-path>` reads
   `ritebook.lock` and resolves one installed repo-local skill.
 - The command fails clearly when the lockfile, selected entry, installed target,
   or required provenance is missing.

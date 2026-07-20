@@ -10,10 +10,10 @@ DEFAULT_CACHE_ROOT = "~/.cache/ritebook"
 
 
 class FilesystemIndexCache:
-    """Write cached ritebook-index.json contents under the effective index name."""
+    """Write cached ritebook-index.json contents under the local index alias."""
 
     def cached_index_path(self, *, name: str, cache_root: str | None) -> str:
-        """Return the cache path for an effective index name."""
+        """Return the cache path for a local index alias."""
         return str(
             _cache_root(cache_root) / "indexes" / name / "ritebook-index.json",
         )

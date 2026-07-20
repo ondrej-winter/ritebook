@@ -126,13 +126,14 @@ def registered_skill_index(
 def installable_skill(
     *,
     name: str = "code-review",
-    path: str = "skills/code-review",
-    skill_file: str = "skills/code-review/SKILL.md",
-    source_root: str = ".",
+    path: str | None = None,
+    skill_file: str | None = None,
+    source_root: str = "skills",
 ) -> InstallableSkill:
+    skill_path = path or name
     return InstallableSkill(
         name=name,
-        path=path,
-        skill_file=skill_file,
+        path=skill_path,
+        skill_file=skill_file or f"{skill_path}/SKILL.md",
         source_root=source_root,
     )

@@ -11,7 +11,6 @@ from ritebook.features.skill_contribution.application.dtos import (
     SkillChangeStatus,
 )
 from ritebook.features.skill_contribution.application.errors import (
-    AmbiguousContributionSkillReferenceError,
     ContributionGitError,
     ContributionIndexRegenerationError,
     ContributionLockfileEntryNotFoundError,
@@ -207,7 +206,6 @@ def test_user_facing_errors_share_base_type() -> None:
         InvalidContributionSkillReferenceError,
         ContributionLockfileReadError,
         ContributionLockfileEntryNotFoundError,
-        AmbiguousContributionSkillReferenceError,
         IncompleteContributionProvenanceError,
         MissingInstalledSkillTargetError,
         UpstreamSkillChangedError,
@@ -285,24 +283,6 @@ def test_publish_skill_change_surfaces_missing_lockfile_entry_before_checkout() 
     )
 
     with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
-        use_case.execute(publish_command())
-
-    assert source_workspace.prepare_calls == []
-
-
-def test_publish_skill_change_surfaces_ambiguous_selector_before_checkout() -> None:
-    lockfile = FakeContributionLockfile(
-        failure=AmbiguousContributionSkillReferenceError(
-            "ambiguous skill reference platform-skills/code-review",
-        ),
-    )
-    source_workspace = FakeSkillSourceWorkspace()
-    use_case = publish_skill_change(
-        lockfile=lockfile,
-        source_workspace=source_workspace,
-    )
-
-    with pytest.raises(AmbiguousContributionSkillReferenceError, match="ambiguous"):
         use_case.execute(publish_command())
 
     assert source_workspace.prepare_calls == []

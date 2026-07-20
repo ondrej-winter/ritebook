@@ -17,10 +17,6 @@ class ContributionLockfileEntryNotFoundError(SkillContributionError):
     """Raised when no publishable lockfile entry matches a reference."""
 
 
-class AmbiguousContributionSkillReferenceError(SkillContributionError):
-    """Raised when a contribution selector matches multiple lockfile entries."""
-
-
 class IncompleteContributionProvenanceError(SkillContributionError):
     """Raised when a lockfile entry lacks required contribution provenance."""
 

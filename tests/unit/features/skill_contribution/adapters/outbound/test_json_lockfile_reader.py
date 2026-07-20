@@ -10,7 +10,6 @@ from ritebook.features.skill_contribution.application.dtos import (
     ContributionSkillReference,
 )
 from ritebook.features.skill_contribution.application.errors import (
-    AmbiguousContributionSkillReferenceError,
     ContributionLockfileEntryNotFoundError,
     ContributionLockfileReadError,
 )
@@ -66,7 +65,9 @@ def test_json_lockfile_reader_resolves_exact_skill_path(tmp_path: Path) -> None:
     assert result.skill_path == "software-development/code-review"
 
 
-def test_json_lockfile_reader_resolves_unique_flat_skill_name(tmp_path: Path) -> None:
+def test_json_lockfile_reader_does_not_resolve_nested_skill_by_name(
+    tmp_path: Path,
+) -> None:
     lockfile_path = write_lockfile(
         tmp_path,
         skills=[
@@ -83,12 +84,11 @@ def test_json_lockfile_reader_resolves_unique_flat_skill_name(tmp_path: Path) ->
         ],
     )
 
-    result = JsonContributionLockfileReader().resolve_entry(
-        ContributionSkillReference.parse("platform-skills/code-review"),
-        str(lockfile_path),
-    )
-
-    assert result.skill_path == "software-development/code-review"
+    with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
 
 
 def test_json_lockfile_reader_filters_by_index_name(tmp_path: Path) -> None:
@@ -127,7 +127,7 @@ def test_json_lockfile_reader_does_not_expand_path_prefixes(tmp_path: Path) -> N
         )
 
 
-def test_json_lockfile_reader_rejects_ambiguous_flat_skill_name(
+def test_json_lockfile_reader_requires_exact_path_for_duplicate_names(
     tmp_path: Path,
 ) -> None:
     lockfile_path = write_lockfile(
@@ -144,7 +144,7 @@ def test_json_lockfile_reader_rejects_ambiguous_flat_skill_name(
         ],
     )
 
-    with pytest.raises(AmbiguousContributionSkillReferenceError, match="ambiguous"):
+    with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
         JsonContributionLockfileReader().resolve_entry(
             ContributionSkillReference.parse("platform-skills/code-review"),
             str(lockfile_path),

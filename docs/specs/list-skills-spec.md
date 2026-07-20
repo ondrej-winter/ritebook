@@ -6,9 +6,9 @@ Ritebook provides a consumer-facing `list-skills` workflow for users who have
 already registered one or more Git-backed skill indexes with `add-index`.
 
 The command helps a Ritebook consumer browse locally cached skill indexes from
-the terminal and pick a skill by name. It should be deterministic, offline-first,
-and grouped by effective index name so duplicate skill names across indexes
-remain valid.
+the terminal and pick a skill by relative path. It should be deterministic,
+offline-first, and grouped by local index alias so duplicate skill names across
+indexes and at distinct paths within one index remain valid.
 
 ## Current context
 
@@ -23,7 +23,7 @@ remain valid.
   - `add-index` registers a Git URL or local Git repository source.
   - `update-index` refreshes cached index contents.
   - `list-indexes` lists registered index metadata.
-- Registry entries already store each index's local effective name and
+- Registry entries already store each index's local alias and
   `cached_index_path`.
 - `consumer-git-index-registry-spec.md` defines the registry foundation consumed
   by this browsing workflow.
@@ -41,7 +41,7 @@ A user can list skills from all registered cached indexes:
 uv run ritebook list-skills
 ```
 
-A user can list skills from one effective index name:
+A user can list skills from one local index alias:
 
 ```bash
 uv run ritebook list-skills --index-name platform-skills
@@ -77,17 +77,18 @@ If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
 
 When no `--index-name` is provided:
 
-- Ritebook reads all registered indexes in deterministic effective-name order.
+- Ritebook reads all registered indexes in deterministic local-alias order.
 - Ritebook reads each cached `ritebook-index.json`.
-- Ritebook lists skills from each cached index under its effective index name.
-- Output is deterministic by effective index name, then skill path.
-- Duplicate skill names across different indexes are allowed.
+- Ritebook lists skills from each cached index under its local alias.
+- Output is deterministic by local alias, then skill path.
+- Duplicate skill names across different indexes and at distinct paths within one
+  index are allowed.
 
 ### Listing one index
 
-When `--index-name <effective-name>` is provided:
+When `--index-name <local-alias>` is provided:
 
-- Ritebook looks up the registered index by effective name.
+- Ritebook looks up the registered index by local alias.
 - If the index is unknown, Ritebook fails with a clear user-facing error.
 - Ritebook reads only that index's cached index file.
 - Output keeps the same tree shape as all-index output, including the `Indexes`
@@ -129,9 +130,10 @@ Indexes
 Tree rules:
 
 - The root label is `Indexes`.
-- First-level children are effective index names.
+- First-level children are local aliases.
 - Second-level children are cached relative skill paths that can be copied after
-  the effective index name into `install-skill`.
+  the local alias into `install-skill`.
+- Relative skill paths, not `skills[].name`, identify entries within an index.
 - Skill descriptions are shown only when `--show-description` is provided.
 - `skill_file` values may be parsed and carried in application DTOs for install
   workflows, but they are not shown by this command.
@@ -218,11 +220,12 @@ docker run --rm ritebook-e2e
 Cover:
 
 - Lists skill paths from all registered indexes.
-- Sorts output deterministically by effective index name and skill path.
-- Filters by `--index-name` / effective index name.
+- Sorts output deterministically by local alias and skill path.
+- Preserves duplicate names at distinct relative paths within one index.
+- Filters by `--index-name` / local alias.
 - Returns an empty result when there are no registered indexes.
 - Returns an empty result when cached indexes contain no skills.
-- Fails clearly for an unknown effective index name.
+- Fails clearly for an unknown local alias.
 - Does not require or call any Git source port.
 
 ### JSON cached-index reader tests
@@ -258,13 +261,14 @@ Cover:
 ### Always
 
 - List from locally cached registered indexes.
-- Group skills under effective index names.
+- Group skills under local aliases.
 - Include the `Indexes` root and index nodes in non-empty output.
 - Show skill paths only in the default output.
 - Show skill descriptions only when explicitly requested with
   `--show-description`.
 - Reject cached schema v1 indexes without non-empty descriptions.
-- Allow duplicate skill names across different effective indexes.
+- Allow duplicate skill names across different local aliases and at distinct paths
+  within one index.
 - Keep output deterministic.
 - Keep Git and network behavior out of `list-skills`.
 - Keep implementation inside the existing `index_registry` feature slice unless a
@@ -286,20 +290,21 @@ Cover:
 - Mutate registered indexes during `list-skills`.
 - Mutate cached index files during `list-skills`.
 - Read raw `SKILL.md` contents for listing.
-- Treat duplicate skill names across different indexes as an error.
+- Treat duplicate skill names across different indexes or at distinct paths in one
+  index as an error.
 - Print secrets, credentials, raw index contents, or raw skill file contents.
 
 ## Success criteria
 
 - `uv run ritebook list-skills` lists a tree of all locally cached registered
   indexes and their skill paths.
-- `uv run ritebook list-skills --index-name <effective-name>` lists only that
+- `uv run ritebook list-skills --index-name <local-alias>` lists only that
   index's skills while preserving the `Indexes` root and index node.
 - `uv run ritebook list-skills --show-description` appends cached descriptions
   without changing default output.
 - Unknown index names fail with a clear user-facing error.
 - Empty registries or empty cached indexes print `No skills found`.
-- Output is deterministic and grouped by effective index name.
+- Output is deterministic and grouped by local alias.
 - No Git or network operations happen during skill listing.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new command.

@@ -52,6 +52,39 @@ def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> 
     assert result[0].description == "Alpha helps with planning."
 
 
+def test_json_index_reader_preserves_duplicate_names_at_distinct_paths(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        cached_index_path,
+        {
+            "skills": [
+                {
+                    "name": "code-review",
+                    "path": "backend/code-review",
+                    "skill_file": "backend/code-review/SKILL.md",
+                    "description": "Backend code review.",
+                },
+                {
+                    "name": "code-review",
+                    "path": "frontend/code-review",
+                    "skill_file": "frontend/code-review/SKILL.md",
+                    "description": "Frontend code review.",
+                },
+            ],
+        },
+    )
+
+    result = JsonIndexReader().read_skills(str(cached_index_path))
+
+    assert [skill.name for skill in result] == ["code-review", "code-review"]
+    assert [skill.path for skill in result] == [
+        "backend/code-review",
+        "frontend/code-review",
+    ]
+
+
 def test_json_index_reader_exposes_relative_skills_root_for_installation(
     tmp_path: Path,
 ) -> None:

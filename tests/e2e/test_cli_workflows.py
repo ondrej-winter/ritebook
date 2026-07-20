@@ -186,7 +186,7 @@ def test_registry_browsing_supports_index_listing_and_filtered_skill_listing(
     assert list_skills.stderr == ""
 
 
-def test_add_index_name_override_force_replace_and_update_all_happy_path(
+def test_add_index_alias_force_replace_and_update_all_happy_path(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -206,7 +206,7 @@ def test_add_index_name_override_force_replace_and_update_all_happy_path(
         index_name="company-skills",
         registry_path=registry_path,
         cache_root=cache_root,
-        effective_name="platform-skills",
+        alias="platform-skills",
     )
 
     write_valid_skill("query-helper", "Helps query data.")
@@ -229,7 +229,7 @@ def test_add_index_name_override_force_replace_and_update_all_happy_path(
             "add-index",
             "--source",
             str(data_repo.path),
-            "--name",
+            "--alias",
             "platform-skills",
             "--force",
             "--registry-path",
@@ -397,7 +397,7 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
     result = run_cli(
         [
             "install-skill",
-            "company-skills/code-review",
+            "company-skills/skills/code-review",
             "--target",
             str(target),
             "--registry-path",
@@ -408,12 +408,15 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
     )
 
     result.assert_success()
-    assert result.stdout == f"Installed company-skills/code-review to {target}\n"
+    assert result.stdout == f"Installed company-skills/skills/code-review to {target}\n"
     assert (target / "SKILL.md").is_file()
     assert (target / "checklist.md").read_text(encoding="utf-8") == (
         "# Nested review checklist\n"
     )
     installation_registry = _read_json(installation_registry_path)
+    assert installation_registry["installations"][0]["requirement"] == (
+        "company-skills/skills/code-review"
+    )
     assert installation_registry["installations"][0]["skill_path"] == (
         "skills/code-review"
     )
@@ -732,7 +735,7 @@ def _publish_and_register_index(
     index_name: str,
     registry_path: Path,
     cache_root: Path,
-    effective_name: str | None = None,
+    alias: str | None = None,
 ) -> None:
     publish_result = run_cli(
         [
@@ -753,8 +756,8 @@ def _publish_and_register_index(
         "--source",
         str(published_repo.path),
     ]
-    if effective_name is not None:
-        add_arguments.extend(["--name", effective_name])
+    if alias is not None:
+        add_arguments.extend(["--alias", alias])
     add_arguments.extend(
         [
             "--registry-path",

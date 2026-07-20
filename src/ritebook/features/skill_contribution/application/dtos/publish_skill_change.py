@@ -38,12 +38,11 @@ class ContributionSkillReference:
 
     @classmethod
     def parse(cls, value: str) -> ContributionSkillReference:
-        """Parse a `<index-name>/<skill-path-or-name>` contribution reference."""
+        """Parse a `<index-name>/<skill-path>` contribution reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
             msg = (
-                "Skill reference must be fully qualified as "
-                "<index-name>/<skill-path-or-name>."
+                "Skill reference must be fully qualified as <index-name>/<skill-path>."
             )
             raise ValueError(msg)
         index_name, skill_selector = value.split("/", maxsplit=1)

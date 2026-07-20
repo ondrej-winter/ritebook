@@ -19,19 +19,19 @@ from ritebook.features.index_registry.application.dtos import (
 def test_add_index_command_accepts_optional_overrides() -> None:
     command = AddIndexCommand(
         source="git@example.com:company/skills.git",
-        name="company-skills",
+        alias="company-skills",
         force=True,
         registry_path="/tmp/indexes.json",
         cache_root="/tmp/cache",
     )
 
-    assert command.name == "company-skills"
+    assert command.alias == "company-skills"
     assert command.force is True
 
 
 def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
-    with pytest.raises(ValueError, match="Index name"):
-        AddIndexCommand(source="repo", name="ondrej-winter/ritebook-shelf")
+    with pytest.raises(ValueError, match="Index alias"):
+        AddIndexCommand(source="repo", alias="ondrej-winter/ritebook-shelf")
 
     with pytest.raises(ValueError, match="Index name"):
         UpdateIndexCommand(name="ondrej-winter/ritebook-shelf")
@@ -65,16 +65,16 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
         UpdateIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
 
 
-def test_add_index_command_rejects_empty_source_and_invalid_name() -> None:
+def test_add_index_command_rejects_empty_source_and_invalid_alias() -> None:
     with pytest.raises(ValueError, match="Index source"):
         AddIndexCommand(source="")
 
-    with pytest.raises(ValueError, match="Index name"):
-        AddIndexCommand(source="repo", name="Company Skills")
+    with pytest.raises(ValueError, match="Index alias"):
+        AddIndexCommand(source="repo", alias="Company Skills")
 
 
 @pytest.mark.parametrize(
-    "name",
+    "alias",
     [
         "../repo",
         "owner/repo",
@@ -86,9 +86,9 @@ def test_add_index_command_rejects_empty_source_and_invalid_name() -> None:
         "owner/repo_name",
     ],
 )
-def test_add_index_command_rejects_unsafe_repository_style_names(name: str) -> None:
-    with pytest.raises(ValueError, match="Index name"):
-        AddIndexCommand(source="repo", name=name)
+def test_add_index_command_rejects_unsafe_repository_style_aliases(alias: str) -> None:
+    with pytest.raises(ValueError, match="Index alias"):
+        AddIndexCommand(source="repo", alias=alias)
 
 
 def test_update_index_command_rejects_invalid_name() -> None:

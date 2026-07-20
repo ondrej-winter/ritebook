@@ -231,7 +231,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
     ) -> str:
         if resolved_requirement.uses_target_path and (
             skill.path == resolved_requirement.reference.skill_path
-            or skill.name == resolved_requirement.reference.skill_name
         ):
             return resolved_requirement.target_base
         return str(PurePath(resolved_requirement.target_base, skill.name))
@@ -243,14 +242,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
     ) -> tuple[InstallableSkill, ...]:
         for skill in skills:
             if skill.path == reference.skill_path:
-                return (skill,)
-        matching_name = tuple(
-            skill for skill in skills if skill.name == reference.skill_name
-        )
-        if len(matching_name) == 1:
-            return matching_name
-        for skill in skills:
-            if skill.path == reference.skill_name:
                 return (skill,)
         matching_prefix = tuple(
             sorted(
@@ -320,10 +311,7 @@ def _reference_for_skill(
     resolved_requirement: _ResolvedRequirement,
     skill: InstallableSkill,
 ) -> SkillReference:
-    if (
-        skill.path == resolved_requirement.reference.skill_path
-        or skill.name == resolved_requirement.reference.skill_name
-    ):
+    if skill.path == resolved_requirement.reference.skill_path:
         return resolved_requirement.reference
     return SkillReference.parse(
         f"{resolved_requirement.reference.index_name}/{skill.path}",

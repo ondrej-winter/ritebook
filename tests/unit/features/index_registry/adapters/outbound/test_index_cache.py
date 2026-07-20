@@ -5,7 +5,7 @@ from ritebook.features.index_registry.adapters.outbound.index_cache import (
 )
 
 
-def test_index_cache_writes_current_index_under_effective_name(tmp_path: Path) -> None:
+def test_index_cache_writes_current_index_under_local_alias(tmp_path: Path) -> None:
     cache = FilesystemIndexCache()
 
     path = cache.write_index(

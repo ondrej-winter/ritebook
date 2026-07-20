@@ -184,11 +184,13 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `skills_root`: stable representation of the scanned root. Relative inputs are
   serialized as supplied; absolute inputs are serialized as `.`.
 - `skills`: array of discovered skill entries sorted deterministically.
-- `skills[].name`: stable skill identifier derived from the skill directory name.
+- `skills[].name`: skill metadata derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
 - `skills[].description`: required non-empty human-readable description copied
   from the validated skill header `description` field.
+- `skills[].path` is the unique identity and downstream resolution key within an
+  index. Multiple entries may have the same `skills[].name` when their paths differ.
 
 ## CLI and workflow requirements
 
@@ -254,8 +256,8 @@ Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
 
 The MVP should be covered primarily with fast, deterministic unit tests.
 
-- Domain tests verify catalog entry creation, deterministic ordering, and basic
-  invariants.
+- Domain tests verify catalog entry creation, deterministic path ordering,
+  duplicate names at distinct paths, and basic invariants.
 - Domain/application tests verify the skill-header validation contract, including
   valid metadata, missing frontmatter, malformed YAML, invalid names, name/path
   mismatches, missing required metadata, and invalid dependency list types.
@@ -283,6 +285,7 @@ network access.
   application use case.
 - Always validate skill headers before publishing an index.
 - Always keep output deterministic enough for pull request review.
+- Always allow duplicate skill names at distinct relative paths in one index.
 - Always pretty-print generated JSON with two-space indentation.
 - Mandatory `SKILL.md` header validation is in scope for this milestone and must
   be shared by `lint-skills` and `publish-index`.

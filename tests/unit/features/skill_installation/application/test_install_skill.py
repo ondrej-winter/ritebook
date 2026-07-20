@@ -160,6 +160,74 @@ def test_install_skill_records_repository_relative_nested_skill_path() -> None:
     )
 
 
+def test_install_skill_resolves_duplicate_names_by_exact_path() -> None:
+    index = registered_skill_index(name="platform-skills")
+    backend = installable_skill(
+        name="code-review",
+        path="backend/code-review",
+        skill_file="backend/code-review/SKILL.md",
+    )
+    frontend = installable_skill(
+        name="code-review",
+        path="frontend/code-review",
+        skill_file="frontend/code-review/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (backend, frontend)},
+    )
+    installer = FakeSkillInstaller()
+    use_case = InstallSkill(
+        catalog=catalog,
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=FakeInstallationManifest(),
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    use_case.execute(
+        InstallSkillCommand(
+            skill_reference="platform-skills/frontend/code-review",
+            target=".claude/skills/code-review",
+        ),
+    )
+
+    assert installer.install_calls[0][1] == frontend
+
+
+def test_install_skill_does_not_resolve_nested_skill_by_name() -> None:
+    index = registered_skill_index(name="platform-skills")
+    nested = installable_skill(
+        name="code-review",
+        path="software-development/code-review",
+        skill_file="software-development/code-review/SKILL.md",
+    )
+    installer = FakeSkillInstaller()
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (nested,)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=FakeInstallationManifest(),
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(
+        UnknownInstallSkillError,
+        match="platform-skills/code-review",
+    ):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="platform-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert installer.install_calls == []
+
+
 def test_install_skill_rejects_malformed_reference_before_lookup() -> None:
     catalog = FakeSkillCatalog()
     source_resolver = FakeSkillSourceResolver()

@@ -26,6 +26,8 @@ from ritebook.features.skill_installation.application.ports import (
     InstallFromRequirementsPort,
 )
 
+from ._provenance import repository_relative_source_path
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -286,8 +288,14 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 source_type=item.source.source_type,
                 source_revision=item.source.source_revision,
                 index_schema_version=item.index.index_schema_version,
-                skill_path=item.skill.path,
-                skill_file=item.skill.skill_file,
+                skill_path=repository_relative_source_path(
+                    item.skill.source_root,
+                    item.skill.path,
+                ),
+                skill_file=repository_relative_source_path(
+                    item.skill.source_root,
+                    item.skill.skill_file,
+                ),
                 target_ref=item.target_ref,
                 locked_at=locked_at,
             )

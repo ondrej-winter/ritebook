@@ -18,6 +18,8 @@ from ritebook.features.skill_installation.application.errors import (
 )
 from ritebook.features.skill_installation.application.ports import InstallSkillPort
 
+from ._provenance import repository_relative_source_path
+
 if TYPE_CHECKING:
     from collections.abc import Callable
 
@@ -80,8 +82,14 @@ class InstallSkill(InstallSkillPort):
             source_type=source.source_type,
             source_revision=source.source_revision,
             index_schema_version=index.index_schema_version,
-            skill_path=skill.path,
-            skill_file=skill.skill_file,
+            skill_path=repository_relative_source_path(
+                skill.source_root,
+                skill.path,
+            ),
+            skill_file=repository_relative_source_path(
+                skill.source_root,
+                skill.skill_file,
+            ),
             installed_at=_utc_timestamp(self._clock()),
         )
         self._manifest.write_installation(

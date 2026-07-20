@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -39,7 +40,7 @@ class FakePublisher:
         )
 
 
-def test_index_regeneration_adapter_publishes_checkout_root_with_lockfile_name(
+def test_index_regeneration_adapter_preserves_published_skills_root(
     tmp_path: Path,
 ) -> None:
     publisher = FakePublisher()
@@ -53,7 +54,7 @@ def test_index_regeneration_adapter_publishes_checkout_root_with_lockfile_name(
     assert publisher.commands == [
         PublishIndexCommand(
             index_name="platform-skills",
-            skills_root=str(checkout),
+            skills_root="skills",
         ),
     ]
     assert publisher.working_directories == [checkout]
@@ -130,6 +131,10 @@ def contribution_entry() -> ContributionLockfileEntry:
 def contribution_workspace(tmp_path: Path) -> ContributionWorkspace:
     checkout = tmp_path / "contributions" / "platform-skills-code-review"
     checkout.mkdir(parents=True)
+    (checkout / "ritebook-index.json").write_text(
+        json.dumps({"skills_root": "skills"}),
+        encoding="utf-8",
+    )
     return ContributionWorkspace(
         checkout_path=str(checkout),
         source_skill_path="skills/code-review",

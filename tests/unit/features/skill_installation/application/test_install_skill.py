@@ -121,12 +121,13 @@ def test_install_skill_installs_selected_skill_and_writes_manifest() -> None:
     assert result.manifest_entry.skill_file == "skills/code-review/SKILL.md"
 
 
-def test_install_skill_resolves_nested_skill_path() -> None:
+def test_install_skill_records_repository_relative_nested_skill_path() -> None:
     index = registered_skill_index(name="platform-skills")
     skill = installable_skill(
         name="runtime-verification",
         path="browser/runtime-verification",
         skill_file="browser/runtime-verification/SKILL.md",
+        source_root="skills",
     )
     catalog = FakeSkillCatalog(
         indexes=[index],
@@ -153,7 +154,10 @@ def test_install_skill_resolves_nested_skill_path() -> None:
         "platform-skills/browser/runtime-verification"
     )
     assert result.manifest_entry.skill_name == "runtime-verification"
-    assert result.manifest_entry.skill_path == "browser/runtime-verification"
+    assert result.manifest_entry.skill_path == "skills/browser/runtime-verification"
+    assert result.manifest_entry.skill_file == (
+        "skills/browser/runtime-verification/SKILL.md"
+    )
 
 
 def test_install_skill_rejects_malformed_reference_before_lookup() -> None:

@@ -128,5 +128,11 @@ def installable_skill(
     name: str = "code-review",
     path: str = "skills/code-review",
     skill_file: str = "skills/code-review/SKILL.md",
+    source_root: str = ".",
 ) -> InstallableSkill:
-    return InstallableSkill(name=name, path=path, skill_file=skill_file)
+    return InstallableSkill(
+        name=name,
+        path=path,
+        skill_file=skill_file,
+        source_root=source_root,
+    )

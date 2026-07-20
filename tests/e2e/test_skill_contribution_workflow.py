@@ -9,6 +9,10 @@ from typing import TYPE_CHECKING, Any, cast
 
 from tests.e2e.conftest import run_git
 
+CATALOG_SKILL_PATH = Path("software-development/code-review")
+SKILL_REFERENCE = "company-skills/software-development/code-review"
+SOURCE_SKILL_PATH = Path("skills") / CATALOG_SKILL_PATH
+
 if TYPE_CHECKING:
     from tests.e2e.conftest import (
         CliResult,
@@ -33,7 +37,6 @@ class InstalledContributionSkill:
 def test_publish_skill_change_creates_isolated_branch_and_commit(
     tmp_path: Path,
     run_cli: CliRunner,
-    skills_root: Path,
     write_valid_skill: SkillWriter,
     git_repository: GitRepositoryFactory,
     registry_path: Path,
@@ -42,7 +45,6 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     installed = _install_contribution_skill(
         tmp_path=tmp_path,
         run_cli=run_cli,
-        skills_root=skills_root,
         write_valid_skill=write_valid_skill,
         git_repository=git_repository,
         registry_path=registry_path,
@@ -59,8 +61,11 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     result.assert_success()
     assert result.stderr == ""
     output = _prepared_output(result)
-    assert output.skill_reference == "company-skills/code-review"
-    assert re.fullmatch(r"ritebook/code-review-\d{14}", output.branch_name)
+    assert output.skill_reference == SKILL_REFERENCE
+    assert re.fullmatch(
+        r"ritebook/skills-software-development-code-review-\d{14}",
+        output.branch_name,
+    )
     assert re.fullmatch(r"[0-9a-f]{40}", output.commit_hash)
     assert output.checkout.is_relative_to(installed.contribution_root)
     assert output.checkout != installed.source_repository.path
@@ -75,10 +80,16 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     assert _git_output(output.checkout, "show", "-s", "--format=%s", "HEAD") == (
         "Update code-review skill from Ritebook contribution"
     )
-    assert (output.checkout / "code-review" / "SKILL.md").read_text(
+    assert (output.checkout / SOURCE_SKILL_PATH / "SKILL.md").read_text(
         encoding="utf-8",
     ) == skill_file.read_text(encoding="utf-8")
     generated_index = _read_json(output.checkout / "ritebook-index.json")
+    assert generated_index["skills_root"] == "skills"
+    assert generated_index["skills"][0]["path"] == CATALOG_SKILL_PATH.as_posix()
+    assert (
+        generated_index["skills"][0]["skill_file"]
+        == (CATALOG_SKILL_PATH / "SKILL.md").as_posix()
+    )
     assert generated_index["skills"][0]["description"] == (
         "Helps review code changes carefully."
     )
@@ -88,7 +99,6 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
 def test_publish_skill_change_reports_no_local_changes(
     tmp_path: Path,
     run_cli: CliRunner,
-    skills_root: Path,
     write_valid_skill: SkillWriter,
     git_repository: GitRepositoryFactory,
     registry_path: Path,
@@ -97,7 +107,6 @@ def test_publish_skill_change_reports_no_local_changes(
     installed = _install_contribution_skill(
         tmp_path=tmp_path,
         run_cli=run_cli,
-        skills_root=skills_root,
         write_valid_skill=write_valid_skill,
         git_repository=git_repository,
         registry_path=registry_path,
@@ -107,9 +116,7 @@ def test_publish_skill_change_reports_no_local_changes(
     result = _publish_skill_change(run_cli, installed)
 
     result.assert_success()
-    assert result.stdout == (
-        "No local changes to publish for company-skills/code-review\n"
-    )
+    assert result.stdout == (f"No local changes to publish for {SKILL_REFERENCE}\n")
     assert result.stderr == ""
     checkout = _single_contribution_checkout(installed.contribution_root)
     assert _git_output(checkout, "branch", "--list", "ritebook/*") == ""
@@ -124,7 +131,6 @@ def test_publish_skill_change_reports_no_local_changes(
 def test_publish_skill_change_fails_when_upstream_skill_changed(
     tmp_path: Path,
     run_cli: CliRunner,
-    skills_root: Path,
     write_valid_skill: SkillWriter,
     git_repository: GitRepositoryFactory,
     registry_path: Path,
@@ -133,14 +139,13 @@ def test_publish_skill_change_fails_when_upstream_skill_changed(
     installed = _install_contribution_skill(
         tmp_path=tmp_path,
         run_cli=run_cli,
-        skills_root=skills_root,
         write_valid_skill=write_valid_skill,
         git_repository=git_repository,
         registry_path=registry_path,
         cache_root=cache_root,
     )
     _replace_description(
-        installed.source_repository.path / "code-review" / "SKILL.md",
+        installed.source_repository.path / SOURCE_SKILL_PATH / "SKILL.md",
         replacement="Helps review upstream code changes.",
     )
     installed.source_repository.commit_all("Update skill upstream")
@@ -178,30 +183,33 @@ def _install_contribution_skill(
     *,
     tmp_path: Path,
     run_cli: CliRunner,
-    skills_root: Path,
     write_valid_skill: SkillWriter,
     git_repository: GitRepositoryFactory,
     registry_path: Path,
     cache_root: Path,
 ) -> InstalledContributionSkill:
     source_repository = git_repository(tmp_path / "published-index")
-    write_valid_skill("code-review", "Helps review code changes.")
+    fixture_skill_file = write_valid_skill(
+        "code-review",
+        "Helps review code changes.",
+    )
+    source_skills_root = source_repository.path / "skills"
+    shutil.copytree(
+        fixture_skill_file.parent,
+        source_skills_root / CATALOG_SKILL_PATH,
+    )
 
     publish_result = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            "skills",
             "--index-name",
             "company-skills",
         ],
         cwd=source_repository.path,
     )
     publish_result.assert_success()
-    shutil.copytree(
-        skills_root / "code-review",
-        source_repository.path / "code-review",
-    )
     source_repository.commit_all("Publish skill index")
 
     add_result = run_cli(
@@ -228,7 +236,7 @@ def _install_contribution_skill(
 agents = ".agents/skills"
 
 [[skills]]
-name = "company-skills/code-review"
+name = "company-skills/software-development/code-review"
 target = "agents"
 """.lstrip(),
         encoding="utf-8",
@@ -262,7 +270,7 @@ def _publish_skill_change(
     return run_cli(
         [
             "publish-skill-change",
-            "company-skills/code-review",
+            SKILL_REFERENCE,
             "--lockfile",
             str(installed.lockfile),
             "--contribution-root",

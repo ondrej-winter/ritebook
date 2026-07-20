@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import os
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from ritebook.features.publisher.application.dtos import (
@@ -41,12 +42,14 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
         workspace: ContributionWorkspace,
     ) -> None:
         """Publish ritebook-index.json in the isolated contribution checkout."""
+        checkout_path = Path(workspace.checkout_path)
+        skills_root = _published_skills_root(checkout_path, entry.skill_path)
         command = PublishIndexCommand(
             index_name=entry.index_name,
-            skills_root=workspace.checkout_path,
+            skills_root=skills_root,
         )
         try:
-            with _working_directory(Path(workspace.checkout_path)):
+            with _working_directory(checkout_path):
                 self._publisher.execute(command)
         except PublishIndexValidationError as err:
             message = (
@@ -66,6 +69,40 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
                 "contribution commit was not created"
             )
             raise ContributionIndexRegenerationError(message) from err
+
+
+def _published_skills_root(checkout_path: Path, skill_path: str) -> str:
+    index_path = checkout_path / "ritebook-index.json"
+    try:
+        payload = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as err:
+        raise _index_read_error() from err
+    if not isinstance(payload, dict):
+        raise _index_read_error()
+
+    skills_root = payload.get("skills_root", ".")
+    if not isinstance(skills_root, str) or not skills_root:
+        raise _index_read_error()
+    root_path = PurePosixPath(skills_root)
+    if (
+        root_path.is_absolute()
+        or "\\" in skills_root
+        or any(part == ".." for part in root_path.parts)
+    ):
+        raise _index_read_error()
+    try:
+        PurePosixPath(skill_path).relative_to(root_path)
+    except ValueError as err:
+        raise _index_read_error() from err
+    return skills_root
+
+
+def _index_read_error() -> ContributionIndexRegenerationError:
+    message = (
+        "existing index metadata could not be read safely; "
+        "contribution commit was not created"
+    )
+    return ContributionIndexRegenerationError(message)
 
 
 @contextmanager

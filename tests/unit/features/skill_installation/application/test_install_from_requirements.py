@@ -83,12 +83,15 @@ def test_install_from_requirements_resolves_target_nickname_and_writes_lockfile(
     assert entry.locked_at == "2026-07-10T21:00:00Z"
 
 
-def test_install_from_requirements_resolves_nested_skill_path() -> None:
+def test_install_from_requirements_locks_repository_relative_nested_skill_path() -> (
+    None
+):
     index = registered_skill_index(name="platform-skills")
     skill = installable_skill(
         name="runtime-verification",
         path="browser/runtime-verification",
         skill_file="browser/runtime-verification/SKILL.md",
+        source_root="skills",
     )
     catalog = FakeSkillCatalog(
         indexes=[index],
@@ -121,7 +124,8 @@ def test_install_from_requirements_resolves_nested_skill_path() -> None:
     entry = result.lockfile_entries[0]
     assert entry.requirement == "platform-skills/browser/runtime-verification"
     assert entry.skill_name == "runtime-verification"
-    assert entry.skill_path == "browser/runtime-verification"
+    assert entry.skill_path == "skills/browser/runtime-verification"
+    assert entry.skill_file == "skills/browser/runtime-verification/SKILL.md"
 
 
 def test_install_from_requirements_expands_folder_prefix_to_matching_skills() -> None:

@@ -10,11 +10,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/add-observability",
-      "skill_file": "software-development/add-observability/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/add-observability",
+      "skill_file": "skills/software-development/add-observability/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/api-and-interface-design",
@@ -24,11 +24,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/api-and-interface-design",
-      "skill_file": "software-development/api-and-interface-design/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/api-and-interface-design",
+      "skill_file": "skills/software-development/api-and-interface-design/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/author-agent-skill",
@@ -38,11 +38,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/author-agent-skill",
-      "skill_file": "software-development/author-agent-skill/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/author-agent-skill",
+      "skill_file": "skills/software-development/author-agent-skill/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/browser-runtime-verification",
@@ -52,11 +52,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/browser-runtime-verification",
-      "skill_file": "software-development/browser-runtime-verification/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/browser-runtime-verification",
+      "skill_file": "skills/software-development/browser-runtime-verification/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/ci-cd-and-automation",
@@ -66,11 +66,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/ci-cd-and-automation",
-      "skill_file": "software-development/ci-cd-and-automation/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/ci-cd-and-automation",
+      "skill_file": "skills/software-development/ci-cd-and-automation/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/code-review-and-quality",
@@ -80,11 +80,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/code-review-and-quality",
-      "skill_file": "software-development/code-review-and-quality/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/code-review-and-quality",
+      "skill_file": "skills/software-development/code-review-and-quality/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/code-simplification",
@@ -94,11 +94,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/code-simplification",
-      "skill_file": "software-development/code-simplification/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/code-simplification",
+      "skill_file": "skills/software-development/code-simplification/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/context-engineering",
@@ -108,11 +108,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/context-engineering",
-      "skill_file": "software-development/context-engineering/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/context-engineering",
+      "skill_file": "skills/software-development/context-engineering/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/conventional-commits",
@@ -122,11 +122,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/conventional-commits",
-      "skill_file": "software-development/conventional-commits/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/conventional-commits",
+      "skill_file": "skills/software-development/conventional-commits/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/debugging-and-error-recovery",
@@ -136,11 +136,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/debugging-and-error-recovery",
-      "skill_file": "software-development/debugging-and-error-recovery/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/debugging-and-error-recovery",
+      "skill_file": "skills/software-development/debugging-and-error-recovery/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/deprecation-and-migration",
@@ -150,11 +150,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/deprecation-and-migration",
-      "skill_file": "software-development/deprecation-and-migration/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/deprecation-and-migration",
+      "skill_file": "skills/software-development/deprecation-and-migration/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/documentation-and-adrs",
@@ -164,11 +164,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/documentation-and-adrs",
-      "skill_file": "software-development/documentation-and-adrs/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/documentation-and-adrs",
+      "skill_file": "skills/software-development/documentation-and-adrs/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/doubt-driven-development",
@@ -178,11 +178,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/doubt-driven-development",
-      "skill_file": "software-development/doubt-driven-development/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/doubt-driven-development",
+      "skill_file": "skills/software-development/doubt-driven-development/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/frontend-ui-engineering",
@@ -192,11 +192,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/frontend-ui-engineering",
-      "skill_file": "software-development/frontend-ui-engineering/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/frontend-ui-engineering",
+      "skill_file": "skills/software-development/frontend-ui-engineering/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/git-workflow-and-versioning",
@@ -206,11 +206,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/git-workflow-and-versioning",
-      "skill_file": "software-development/git-workflow-and-versioning/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/git-workflow-and-versioning",
+      "skill_file": "skills/software-development/git-workflow-and-versioning/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/hexagonal-vertical-slices",
@@ -220,11 +220,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/hexagonal-vertical-slices",
-      "skill_file": "software-development/hexagonal-vertical-slices/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/hexagonal-vertical-slices",
+      "skill_file": "skills/software-development/hexagonal-vertical-slices/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/idea-refine",
@@ -234,11 +234,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/idea-refine",
-      "skill_file": "software-development/idea-refine/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/idea-refine",
+      "skill_file": "skills/software-development/idea-refine/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/incremental-implementation",
@@ -248,11 +248,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/incremental-implementation",
-      "skill_file": "software-development/incremental-implementation/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/incremental-implementation",
+      "skill_file": "skills/software-development/incremental-implementation/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/interview-me",
@@ -262,11 +262,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/interview-me",
-      "skill_file": "software-development/interview-me/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/interview-me",
+      "skill_file": "skills/software-development/interview-me/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/performance-optimization",
@@ -276,11 +276,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/performance-optimization",
-      "skill_file": "software-development/performance-optimization/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/performance-optimization",
+      "skill_file": "skills/software-development/performance-optimization/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/planning-and-task-breakdown",
@@ -290,11 +290,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/planning-and-task-breakdown",
-      "skill_file": "software-development/planning-and-task-breakdown/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/planning-and-task-breakdown",
+      "skill_file": "skills/software-development/planning-and-task-breakdown/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/review-implementation-plan",
@@ -304,11 +304,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/review-implementation-plan",
-      "skill_file": "software-development/review-implementation-plan/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/review-implementation-plan",
+      "skill_file": "skills/software-development/review-implementation-plan/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/run-local-quality-gate",
@@ -318,11 +318,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/run-local-quality-gate",
-      "skill_file": "software-development/run-local-quality-gate/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/run-local-quality-gate",
+      "skill_file": "skills/software-development/run-local-quality-gate/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/security-and-hardening",
@@ -332,11 +332,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/security-and-hardening",
-      "skill_file": "software-development/security-and-hardening/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/security-and-hardening",
+      "skill_file": "skills/software-development/security-and-hardening/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/shipping-and-launch",
@@ -346,11 +346,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/shipping-and-launch",
-      "skill_file": "software-development/shipping-and-launch/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/shipping-and-launch",
+      "skill_file": "skills/software-development/shipping-and-launch/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/source-driven-development",
@@ -360,11 +360,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/source-driven-development",
-      "skill_file": "software-development/source-driven-development/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/source-driven-development",
+      "skill_file": "skills/software-development/source-driven-development/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/spec-driven-development",
@@ -374,11 +374,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/spec-driven-development",
-      "skill_file": "software-development/spec-driven-development/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/spec-driven-development",
+      "skill_file": "skills/software-development/spec-driven-development/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/test-driven-development",
@@ -388,11 +388,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/test-driven-development",
-      "skill_file": "software-development/test-driven-development/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/test-driven-development",
+      "skill_file": "skills/software-development/test-driven-development/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/update-project-docs",
@@ -402,11 +402,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/update-project-docs",
-      "skill_file": "software-development/update-project-docs/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/update-project-docs",
+      "skill_file": "skills/software-development/update-project-docs/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/using-agent-skills",
@@ -416,11 +416,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/using-agent-skills",
-      "skill_file": "software-development/using-agent-skills/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/using-agent-skills",
+      "skill_file": "skills/software-development/using-agent-skills/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/write-adr",
@@ -430,11 +430,11 @@
       "source": "git@github.com:ondrej-winter/ritebook-shelf.git",
       "source_type": "git_url",
       "index_schema_version": 1,
-      "skill_path": "software-development/write-adr",
-      "skill_file": "software-development/write-adr/SKILL.md",
-      "locked_at": "2026-07-17T17:05:03.206995Z",
+      "skill_path": "skills/software-development/write-adr",
+      "skill_file": "skills/software-development/write-adr/SKILL.md",
+      "locked_at": "2026-07-20T17:50:27.838203Z",
       "target_ref": "agents",
-      "source_revision": "563b8cc3c21f912ae60fdc25d8da717a1c350a61"
+      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
     }
   ]
 }

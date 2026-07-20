@@ -2,7 +2,7 @@
 name: planning-and-task-breakdown
 description: Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to estimate scope, or when parallel work is possible.
 metadata:
-  version: "1.2.1"
+  version: "1.3.0"
   dependencies:
     tools: []
     skills:
@@ -43,6 +43,8 @@ Produce a written implementation plan that includes:
 - dependencies, checkpoints, and sequencing constraints
 - likely files or components touched, using portable placeholders when needed
 - risks, assumptions, and open questions that affect safe implementation
+- explicit instructions to keep the plan current during implementation by
+  updating checkboxes, status, scope changes, and newly discovered work
 
 By default, create the plan at `docs/plans/<kebab-case-name>-plan.md`, where
 `<kebab-case-name>` is a short name derived from the feature, project, or task.
@@ -175,8 +177,11 @@ Write the plan to `docs/plans/<kebab-case-name>-plan.md` by default unless the
 user or repository conventions specify another location.
 
 Treat the plan as a living document during implementation. Update task and
-checkpoint checkboxes, plus brief status notes when useful, as work is completed
-without waiting for the user to ask for progress updates.
+checkpoint checkboxes as work is completed, and keep unfinished or unverified
+items unchecked. Record brief status notes, blockers, deviations, changed
+sequencing, and newly discovered work when they affect the remaining plan. Make
+these updates after each completed task or meaningful plan change without
+waiting for the user to ask for progress updates.
 
 ```markdown
 # Implementation Plan: [Feature/Project Name]
@@ -192,9 +197,18 @@ without waiting for the user to ask for progress updates.
 
 ## Progress Tracking
 
-Update task and checkpoint checkboxes as work is completed. Keep this plan
-current automatically during implementation without requiring the user to prompt
-for status updates.
+Treat this plan as a living document throughout implementation. After each
+completed task or meaningful change:
+
+- check off completed tasks, acceptance criteria, verification items, and
+  checkpoints
+- leave unfinished or unverified items unchecked
+- add newly discovered work and update sequencing when scope or dependencies
+  change
+- note blockers, deviations, and decisions that affect the remaining work
+
+Keep this section and the task list current without waiting for the user to ask
+for progress updates.
 
 ## Task List
 
@@ -284,5 +298,6 @@ Before starting implementation, confirm:
 - [ ] Task dependencies are identified and ordered correctly
 - [ ] No task touches more than ~5 files
 - [ ] Checkpoints exist between major phases
+- [ ] The plan says how and when its checkboxes and status will be updated during implementation
 - [ ] Required reviews or approvals are identified before implementation starts
 - [ ] Open questions and assumptions are captured or marked not applicable

@@ -93,12 +93,16 @@ example for the required shape:
 name: conventional-commits
 description: Write, review, and validate Conventional Commits v1.0.0 messages with correct type, scope, description, body, footer, and breaking-change syntax.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   dependencies:
     tools:
-      - git
+      - name: git
+        purpose: Inspect repository state while drafting or reviewing commits.
+        required: false
     skills:
-      - git-workflow-and-versioning
+      - name: git-workflow-and-versioning
+        purpose: Apply repository-safe Git workflow practices.
+        required: false
 ---
 ```
 
@@ -123,7 +127,8 @@ Validation requirements:
 - `metadata.dependencies` is required and must be a mapping.
 - `metadata.dependencies.tools` is required and must be a list.
 - `metadata.dependencies.skills` is required and must be a list.
-- Dependency list items may be strings for the first validation milestone.
+- Every dependency list item must be a mapping with non-empty string `name` and
+  `purpose` fields plus a boolean `required` field. Plain strings are rejected.
 
 Validation output must identify the skill file path and the violated rule without
 printing full skill file contents. Example:
@@ -176,9 +181,8 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `index.name`: required stable kebab-case publisher index name.
 - `generated_at`: timezone-aware UTC timestamp in ISO 8601 format. The timestamp
   source should be injectable or controllable in tests.
-- `skills_root`: path that was scanned, represented in the output in a stable
-  human-reviewable form based on the single explicit skills root path supplied by
-  the user.
+- `skills_root`: stable representation of the scanned root. Relative inputs are
+  serialized as supplied; absolute inputs are serialized as `.`.
 - `skills`: array of discovered skill entries sorted deterministically.
 - `skills[].name`: stable skill identifier derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.

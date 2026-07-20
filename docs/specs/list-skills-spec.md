@@ -16,8 +16,8 @@ remain valid.
   `publish-index`.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
-- Publisher schema v1 includes index metadata and skill entries with `name`,
-  `description`, `path`, and `skill_file`.
+- Publisher schema v1 includes index metadata and skill entries with required
+  `name`, `path`, and `skill_file`, plus optional `description`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
   - `add-index` registers a Git URL or local Git repository source.
@@ -110,11 +110,11 @@ Use a concise tree intended for human browsing:
 
 ```text
 Indexes
-├── platform-skills
-│   ├── skill-a
-│   └── browser/skill-b
-└── data-skills
-    └── query-helper
+├── data-skills
+│   └── query-helper
+└── platform-skills
+    ├── browser/skill-b
+    └── skill-a
 ```
 
 Filtered output preserves the same shape:
@@ -122,8 +122,8 @@ Filtered output preserves the same shape:
 ```text
 Indexes
 └── platform-skills
-    ├── skill-a
-    └── skill-b
+    ├── browser/skill-b
+    └── skill-a
 ```
 
 Tree rules:
@@ -146,8 +146,8 @@ Indexes
     └── skill-b
 ```
 
-Older cached indexes without `description` metadata remain readable; entries
-without descriptions continue to render as skill paths only.
+Schema v1 cached indexes without `description` metadata remain readable; entries
+without descriptions render as skill paths only.
 
 ## Commands and validation
 
@@ -165,7 +165,10 @@ Full validation before handoff:
 uv run ruff format .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest
+uv run pytest -m "not e2e"
+uv build
+docker build -f Dockerfile.e2e -t ritebook-e2e .
+docker run --rm ritebook-e2e
 ```
 
 ## Project structure
@@ -302,8 +305,8 @@ Cover:
 - No Git or network operations happen during skill listing.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new command.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`, and
-  `uv run pytest` pass before handoff.
+- The configured non-E2E quality gate, package build, and Docker E2E suite pass
+  before handoff.
 
 ## Open questions
 

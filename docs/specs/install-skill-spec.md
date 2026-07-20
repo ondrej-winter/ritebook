@@ -17,8 +17,8 @@ for reviewable repo-local install state.
   `publish-index`.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
-- Publisher schema v1 includes index metadata and skill entries with `name`,
-  `description`, `path`, and `skill_file`.
+- Publisher schema v1 includes index metadata and skill entries with required
+  `name`, `path`, and `skill_file`, plus optional `description`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
   - `add-index` registers a Git URL or local Git repository source.
@@ -52,7 +52,8 @@ Requirements:
   such as `browser/runtime-verification`, for skills published in subfolders.
 - For backward compatibility and convenience, flat skill names such as
   `code-review` remain valid selectors when they resolve to one cached skill.
-- `install-skill` accepts only a direct `--target <path>` argument.
+- `install-skill` requires a direct `--target <path>` and also accepts `--force`,
+  `--registry-path`, and `--installation-registry-path`.
 - `install-skill` does not accept target aliases, target kinds, or inferred
   default destinations.
 - Ritebook reads the existing local consumer registry.
@@ -188,7 +189,7 @@ Validation rules:
 - `[[skills]]` must be an array of tables.
 - Each skill `name` must be fully qualified as
   `<index-name>/<skill-path-or-name>`.
-- Duplicate skill names are rejected.
+- Repeated `[[skills]]` entries with the same fully qualified `name` are rejected.
 - Duplicate resolved target paths are rejected.
 - Resolved target paths must not be empty, root-like, or otherwise dangerous.
 - Unknown fields are rejected in v1 so mistakes fail fast.
@@ -462,7 +463,6 @@ Cover:
 - Reads valid `[targets]` and `[[skills]]` entries.
 - Supports files where every skill uses `target_path` and `[targets]` is absent.
 - Rejects invalid TOML.
-- Rejects wrong root shapes.
 - Rejects malformed `[targets]` values.
 - Rejects unknown fields.
 - Rejects missing or malformed skill references.

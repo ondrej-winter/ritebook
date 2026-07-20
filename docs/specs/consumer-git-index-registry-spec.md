@@ -17,8 +17,8 @@ consumer-side catalog foundation used by the implemented `list-skills`,
 - Ritebook already supports publisher-side skill index generation through
   `publish-index`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
-- Publisher schema v1 includes index metadata and skill entries with `name`,
-  `description`, `path`, and `skill_file`.
+- Publisher schema v1 includes index metadata and skill entries with required
+  `name`, `path`, and `skill_file`, plus optional `description`.
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.
@@ -350,12 +350,13 @@ Tests should mirror source ownership:
 tests/unit/features/index_registry/
 ├── application/
 │   ├── test_add_index.py
-│   ├── test_list_indexes.py
+│   ├── test_list_skills.py
 │   └── test_update_index.py
 └── adapters/outbound/
+    ├── test_filesystem_registry.py
     ├── test_git_source.py
-    ├── test_json_index_reader.py
-    └── test_filesystem_registry.py
+    ├── test_index_cache.py
+    └── test_json_index_reader.py
 ```
 
 ## Conventions

@@ -8,9 +8,10 @@ original curated skill repository.
 
 The first workflow is a platform-neutral Git contribution core exposed through a
 `publish-skill-change` command. It prepares a reviewable branch and local commit
-in a Ritebook-owned isolated checkout, then prints push and merge-request
-instructions. It must not directly mutate canonical source branches, managed
-index cache clones, or user-owned local source repositories.
+in a Ritebook-owned isolated checkout. It prints a suggested `git push` command
+when a usable origin exists, or manual inspection guidance otherwise. It must not
+directly mutate canonical source branches, managed index cache clones, or
+user-owned local source repositories.
 
 ## Current context
 
@@ -72,7 +73,7 @@ Requirements:
 - Ritebook regenerates `ritebook-index.json` before creating a commit.
 - Ritebook creates a local Git commit with a generated message.
 - Ritebook prints the contribution checkout path, branch name, commit hash, and
-  suggested push / merge-request instructions.
+  either suggested push instructions or manual inspection guidance.
 
 ### CLI shape
 
@@ -82,7 +83,7 @@ Initial command:
 uv run ritebook publish-skill-change <index-name>/<skill-path-or-name>
 ```
 
-Potential test/automation path overrides:
+Path overrides:
 
 ```bash
 uv run ritebook publish-skill-change <index-name>/<skill-path-or-name> \
@@ -103,10 +104,10 @@ Success output should be concise, for example:
 
 ```text
 Prepared contribution for platform-skills/code-review
-Branch: ritebook/code-review-20260718
-Commit: abc1234
-Checkout: /Users/me/.cache/ritebook/contributions/platform-skills-code-review
-Next: cd /Users/me/.cache/ritebook/contributions/platform-skills-code-review && git push origin ritebook/code-review-20260718
+Branch: ritebook/code-review-20260718201534
+Commit: 0123456789abcdef0123456789abcdef01234567
+Checkout: /Users/me/.cache/ritebook/contributions/0123456789abcdef/platform-skills-code-review-01234567
+Next: cd /Users/me/.cache/ritebook/contributions/0123456789abcdef/platform-skills-code-review-01234567 && git push origin ritebook/code-review-20260718201534
 ```
 
 No-change output should be concise, for example:
@@ -266,8 +267,10 @@ tests/unit/features/skill_contribution/
 └── adapters/outbound/
     ├── test_contribution_checkout.py
     ├── test_git_workspace.py
+    ├── test_index_regeneration_adapter.py
     ├── test_json_lockfile_reader.py
-    └── test_skill_directory_copier.py
+    ├── test_skill_directory_adapter.py
+    └── test_validation_adapter.py
 ```
 
 ## Conventions
@@ -378,7 +381,7 @@ Always:
 - Validate the changed skill before committing.
 - Regenerate `ritebook-index.json` before committing.
 - Create a reviewable local Git branch and commit.
-- Print clear next steps for pushing and opening a review.
+- Print clear next steps for inspecting and optionally pushing the contribution.
 
 Ask first:
 

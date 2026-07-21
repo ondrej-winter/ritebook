@@ -12,9 +12,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/add-observability",
       "skill_file": "skills/software-development/add-observability/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/api-and-interface-design",
@@ -26,9 +26,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/api-and-interface-design",
       "skill_file": "skills/software-development/api-and-interface-design/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/author-agent-skill",
@@ -40,9 +40,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/author-agent-skill",
       "skill_file": "skills/software-development/author-agent-skill/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/browser-runtime-verification",
@@ -54,9 +54,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/browser-runtime-verification",
       "skill_file": "skills/software-development/browser-runtime-verification/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/ci-cd-and-automation",
@@ -68,9 +68,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/ci-cd-and-automation",
       "skill_file": "skills/software-development/ci-cd-and-automation/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/code-review-and-quality",
@@ -82,9 +82,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/code-review-and-quality",
       "skill_file": "skills/software-development/code-review-and-quality/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/code-simplification",
@@ -96,9 +96,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/code-simplification",
       "skill_file": "skills/software-development/code-simplification/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/context-engineering",
@@ -110,9 +110,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/context-engineering",
       "skill_file": "skills/software-development/context-engineering/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/conventional-commits",
@@ -124,9 +124,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/conventional-commits",
       "skill_file": "skills/software-development/conventional-commits/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/debugging-and-error-recovery",
@@ -138,9 +138,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/debugging-and-error-recovery",
       "skill_file": "skills/software-development/debugging-and-error-recovery/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/deprecation-and-migration",
@@ -152,9 +152,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/deprecation-and-migration",
       "skill_file": "skills/software-development/deprecation-and-migration/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/documentation-and-adrs",
@@ -166,9 +166,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/documentation-and-adrs",
       "skill_file": "skills/software-development/documentation-and-adrs/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/doubt-driven-development",
@@ -180,9 +180,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/doubt-driven-development",
       "skill_file": "skills/software-development/doubt-driven-development/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/frontend-ui-engineering",
@@ -194,9 +194,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/frontend-ui-engineering",
       "skill_file": "skills/software-development/frontend-ui-engineering/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/git-workflow-and-versioning",
@@ -208,9 +208,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/git-workflow-and-versioning",
       "skill_file": "skills/software-development/git-workflow-and-versioning/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/hexagonal-vertical-slices",
@@ -222,9 +222,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/hexagonal-vertical-slices",
       "skill_file": "skills/software-development/hexagonal-vertical-slices/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/idea-refine",
@@ -236,9 +236,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/idea-refine",
       "skill_file": "skills/software-development/idea-refine/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/incremental-implementation",
@@ -250,9 +250,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/incremental-implementation",
       "skill_file": "skills/software-development/incremental-implementation/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/interview-me",
@@ -264,9 +264,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/interview-me",
       "skill_file": "skills/software-development/interview-me/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/performance-optimization",
@@ -278,9 +278,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/performance-optimization",
       "skill_file": "skills/software-development/performance-optimization/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/planning-and-task-breakdown",
@@ -292,9 +292,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/planning-and-task-breakdown",
       "skill_file": "skills/software-development/planning-and-task-breakdown/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/review-implementation-plan",
@@ -306,9 +306,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/review-implementation-plan",
       "skill_file": "skills/software-development/review-implementation-plan/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/run-local-quality-gate",
@@ -320,9 +320,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/run-local-quality-gate",
       "skill_file": "skills/software-development/run-local-quality-gate/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/security-and-hardening",
@@ -334,9 +334,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/security-and-hardening",
       "skill_file": "skills/software-development/security-and-hardening/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/shipping-and-launch",
@@ -348,9 +348,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/shipping-and-launch",
       "skill_file": "skills/software-development/shipping-and-launch/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/source-driven-development",
@@ -362,9 +362,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/source-driven-development",
       "skill_file": "skills/software-development/source-driven-development/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/spec-driven-development",
@@ -376,9 +376,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/spec-driven-development",
       "skill_file": "skills/software-development/spec-driven-development/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/test-driven-development",
@@ -390,9 +390,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/test-driven-development",
       "skill_file": "skills/software-development/test-driven-development/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/update-project-docs",
@@ -404,9 +404,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/update-project-docs",
       "skill_file": "skills/software-development/update-project-docs/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/using-agent-skills",
@@ -418,9 +418,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/using-agent-skills",
       "skill_file": "skills/software-development/using-agent-skills/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/software-development/write-adr",
@@ -432,9 +432,9 @@
       "index_schema_version": 1,
       "skill_path": "skills/software-development/write-adr",
       "skill_file": "skills/software-development/write-adr/SKILL.md",
-      "locked_at": "2026-07-20T17:50:27.838203Z",
+      "locked_at": "2026-07-21T10:51:28.517042Z",
       "target_ref": "agents",
-      "source_revision": "6a929517b2ab70837a2698ae4ca21eb19bf9544a"
+      "source_revision": "c8412aec698e322c625a66ab1190318426bb3be1"
     }
   ]
 }

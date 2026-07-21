@@ -62,41 +62,41 @@ class InstallSkill(InstallSkillPort):
         if index is None:
             raise UnknownInstallIndexError(reference.index_name)
 
-        skill = self._find_skill(
-            reference,
-            self._catalog.read_skills(index.cached_index_path),
-        )
-        source = self._source_resolver.resolve_source(index)
-        self._installer.install(
-            source=source,
-            skill=skill,
-            target=command.target,
-            force=command.force,
-        )
-        entry = InstallationManifestEntry(
-            requirement=reference.requirement,
-            index_name=reference.index_name,
-            skill_name=reference.skill_name,
-            target=command.target,
-            source=source.source,
-            source_type=source.source_type,
-            source_revision=source.source_revision,
-            index_schema_version=index.index_schema_version,
-            skill_path=repository_relative_source_path(
-                skill.source_root,
-                skill.path,
-            ),
-            skill_file=repository_relative_source_path(
-                skill.source_root,
-                skill.skill_file,
-            ),
-            installed_at=_utc_timestamp(self._clock()),
-        )
-        self._manifest.write_installation(
-            entry,
-            command.installation_registry_path,
-            force=command.force,
-        )
+        with self._source_resolver.open_source(index) as source:
+            skill = self._find_skill(
+                reference,
+                self._catalog.read_skills(index.cached_index_path),
+            )
+            self._installer.install(
+                source=source,
+                skill=skill,
+                target=command.target,
+                force=command.force,
+            )
+            entry = InstallationManifestEntry(
+                requirement=reference.requirement,
+                index_name=reference.index_name,
+                skill_name=reference.skill_name,
+                target=command.target,
+                source=source.source,
+                source_type=source.source_type,
+                source_revision=source.source_revision,
+                index_schema_version=index.index_schema_version,
+                skill_path=repository_relative_source_path(
+                    skill.source_root,
+                    skill.path,
+                ),
+                skill_file=repository_relative_source_path(
+                    skill.source_root,
+                    skill.skill_file,
+                ),
+                installed_at=_utc_timestamp(self._clock()),
+            )
+            self._manifest.write_installation(
+                entry,
+                command.installation_registry_path,
+                force=command.force,
+            )
         return InstallSkillResult(
             requirement=reference.requirement,
             target=command.target,

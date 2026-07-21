@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import PurePath
@@ -93,33 +94,35 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         requirements = self._requirements_reader.read_requirements(
             command.requirements_file,
         )
-        plan = self._plan_installations(
-            command,
-            requirements.skills,
-            requirements.targets,
-        )
+        with ExitStack() as source_stack:
+            plan = self._plan_installations(
+                command,
+                requirements.skills,
+                requirements.targets,
+                source_stack,
+            )
 
-        copied_count = 0
-        try:
-            for item in plan:
-                self._installer.install(
-                    source=item.source,
-                    skill=item.skill,
-                    target=item.target,
-                    force=command.force,
-                )
-                copied_count += 1
-        except Exception as err:
-            if copied_count > 0:
-                raise PartialInstallationError from err
-            raise
+            copied_count = 0
+            try:
+                for item in plan:
+                    self._installer.install(
+                        source=item.source,
+                        skill=item.skill,
+                        target=item.target,
+                        force=command.force,
+                    )
+                    copied_count += 1
+            except Exception as err:
+                if copied_count > 0:
+                    raise PartialInstallationError from err
+                raise
 
-        entries = self._lockfile_entries(plan)
-        self._manifest.write_lockfile(
-            entries,
-            command.lockfile_path,
-            requirements_file=command.requirements_file,
-        )
+            entries = self._lockfile_entries(plan)
+            self._manifest.write_lockfile(
+                entries,
+                command.lockfile_path,
+                requirements_file=command.requirements_file,
+            )
         return InstallFromRequirementsResult(
             requirements_file=command.requirements_file,
             installed_count=len(entries),
@@ -131,16 +134,23 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         command: InstallFromRequirementsCommand,
         requirements: tuple[SkillRequirement, ...],
         target_bases: dict[str, str],
+        source_stack: ExitStack,
     ) -> tuple[_InstallPlanItem, ...]:
         resolved_requirements = self._resolve_requirements(
             requirements,
             target_bases,
             command.requirements_file,
         )
+        sources: dict[str, ResolvedSkillSource] = {}
         plan = tuple(
             item
             for resolved_requirement in resolved_requirements
-            for item in self._plan_items(command, resolved_requirement)
+            for item in self._plan_items(
+                command,
+                resolved_requirement,
+                source_stack,
+                sources,
+            )
         )
         self._reject_duplicate_targets(plan)
         return plan
@@ -183,6 +193,8 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self,
         command: InstallFromRequirementsCommand,
         resolved_requirement: _ResolvedRequirement,
+        source_stack: ExitStack,
+        sources: dict[str, ResolvedSkillSource],
     ) -> tuple[_InstallPlanItem, ...]:
         index = self._catalog.get_index(
             resolved_requirement.reference.index_name,
@@ -191,11 +203,16 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         if index is None:
             raise UnknownInstallIndexError(resolved_requirement.reference.index_name)
 
+        source = sources.get(index.name)
+        if source is None:
+            source = source_stack.enter_context(
+                self._source_resolver.open_source(index),
+            )
+            sources[index.name] = source
         skills = self._find_skills(
             resolved_requirement.reference,
             self._catalog.read_skills(index.cached_index_path),
         )
-        source = self._source_resolver.resolve_source(index)
         return tuple(
             _InstallPlanItem(
                 reference=_reference_for_skill(resolved_requirement, skill),

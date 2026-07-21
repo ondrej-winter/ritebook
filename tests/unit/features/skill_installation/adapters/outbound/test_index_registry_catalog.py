@@ -50,6 +50,8 @@ def test_index_registry_catalog_maps_registered_index_to_installation_dto() -> N
         name="platform-skills",
         source="git@example.com:company/skills.git",
         source_type="git_url",
+        source_revision="a" * 40,
+        index_digest=f"sha256:{'b' * 64}",
         source_cache_path="/cache/git/platform-skills",
         cached_index_path="/cache/indexes/platform-skills/ritebook-index.json",
         index_schema_version=1,

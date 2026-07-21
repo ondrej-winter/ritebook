@@ -80,7 +80,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 - [x] Task 1: Decide and record the end-to-end provenance model
 - [x] Task 2: Bind each cached index to validated source identity
-- [ ] Task 3: Install only from the source identity bound to the cached index
+- [x] Task 3: Install only from the source identity bound to the cached index
 - [ ] Task 4: Propagate verified provenance into lockfiles and contributions
 
 ### Phase 2: Destructive filesystem safety
@@ -222,20 +222,20 @@ Never treat a mutable checkout or working tree as the bound source state.
 
 **Acceptance criteria:**
 
-- [ ] Installation fails before trusting metadata or copying unless the cached
+- [x] Installation fails before trusting metadata or copying unless the cached
   index and root index at the bound commit both match the persisted digest.
-- [ ] Managed Git sources install from the bound source state without implicitly
+- [x] Managed Git sources install from the bound source state without implicitly
   advancing it during installation.
-- [ ] Local Git installs read committed objects without using or mutating working
+- [x] Local Git installs read committed objects without using or mutating working
   tree content and fail with recovery guidance when the repository or bound commit
   is unavailable.
 
 **Verification:**
 
-- [ ] Regression tests reproduce stale-cache/new-clone, cached-index mismatch,
+- [x] Regression tests reproduce stale-cache/new-clone, cached-index mismatch,
   bound-commit index mismatch, and unavailable local-source scenarios.
-- [ ] Run `uv run pytest tests/unit/features/skill_installation`.
-- [ ] Run the relevant publisher-to-consumer E2E workflow.
+- [x] Run `uv run pytest tests/unit/features/skill_installation`.
+- [x] Run the relevant publisher-to-consumer E2E workflow.
 
 **Dependencies:** Tasks 1 and 2.
 
@@ -250,7 +250,17 @@ Never treat a mutable checkout or working tree as the bound source state.
 **Estimated scope:** Medium; direct and requirements-file behavior should share one
 source-resolution contract.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-21. Direct and requirements-file installs now
+validate the exact cached index bytes and the root index bytes at the persisted
+full Git revision against the registered digest before reading skill metadata.
+Managed and local sources are materialized from committed objects into temporary
+snapshots without fetch, checkout, or working-tree reads, with actionable failures
+for unavailable repositories, commits, or mismatched indexes. The focused
+installation suite passed with 93 tests; the affected unit and integration suites
+passed with 99 tests; the full non-E2E suite passed with 451 tests and 15 deselected;
+the two relevant publisher-to-consumer install E2E workflows passed; and Ruff and
+`ty` checks passed. Lockfile and installation-state digest propagation remains
+owned by Task 4.
 
 ## Task 4: Propagate Verified Provenance Into Lockfiles and Contributions
 
@@ -298,9 +308,9 @@ if necessary.
 - [x] ADR is accepted and linked from affected specs.
 - [ ] Registry cache, source resolver, generated state, and contribution workflow
   agree on one source identity.
-- [ ] A failed index update cannot lead to installation of different unvalidated
+- [x] A failed index update cannot lead to installation of different unvalidated
   source content.
-- [ ] Focused unit and integration suites pass.
+- [x] Focused unit and integration suites pass.
 
 ---
 

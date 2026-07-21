@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -150,23 +151,27 @@ def test_git_source_and_source_repository_adapters_resolve_real_git_revisions(
     revision = repository.commit_all("Publish index")
 
     prepared_local = GitSourceAdapter().prepare_source(str(repository.path), None)
-    resolved_local = SourceRepositoryAdapter().resolve_source(
-        RegisteredSkillIndex(
-            name="company-skills",
-            source=prepared_local.source,
-            source_type=prepared_local.source_type.value,
-            source_cache_path=prepared_local.source_cache_path,
-            cached_index_path=str(repository.path / "ritebook-index.json"),
-            index_schema_version=1,
+    registered_local = RegisteredSkillIndex(
+        name="company-skills",
+        source=prepared_local.source,
+        source_type=prepared_local.source_type.value,
+        source_revision=prepared_local.source_revision,
+        index_digest=(
+            f"sha256:{hashlib.sha256(prepared_local.index_content).hexdigest()}"
         ),
+        source_cache_path=prepared_local.source_cache_path,
+        cached_index_path=str(repository.path / "ritebook-index.json"),
+        index_schema_version=1,
     )
+    with SourceRepositoryAdapter().open_source(registered_local) as resolved_local:
+        assert resolved_local.source_revision == revision
+        assert Path(resolved_local.repository_path, "ritebook-index.json").is_file()
     prepared_clone = GitSourceAdapter().prepare_source(
         repository.path.as_uri(),
         str(tmp_path / "cache"),
     )
 
     assert prepared_local.source_type is IndexSourceType.LOCAL_GIT_REPO
-    assert resolved_local.source_revision == revision
     assert prepared_clone.source_type is IndexSourceType.GIT_URL
     assert Path(prepared_clone.repository_path, "ritebook-index.json").is_file()
 

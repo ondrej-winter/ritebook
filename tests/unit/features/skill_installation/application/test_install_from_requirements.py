@@ -14,6 +14,7 @@ from ritebook.features.skill_installation.application.errors import (
     DuplicateSkillRequirementError,
     ExistingInstallTargetError,
     PartialInstallationError,
+    SkillSourceResolutionError,
     UndefinedInstallTargetError,
     UnknownInstallIndexError,
     UnknownInstallSkillError,
@@ -248,6 +249,41 @@ def test_install_from_requirements_rejects_undefined_target_before_copy() -> Non
     with pytest.raises(UndefinedInstallTargetError, match="target nickname claude"):
         use_case.execute(InstallFromRequirementsCommand())
 
+    assert installer.install_calls == []
+    assert manifest.lockfile_write_calls == []
+
+
+def test_requirements_install_verifies_source_before_trusting_cached_metadata() -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (installable_skill(),)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = InstallFromRequirements(
+        requirements_reader=reader,
+        catalog=catalog,
+        source_resolver=FakeSkillSourceResolver(
+            failure=SkillSourceResolutionError("bound commit index mismatch"),
+        ),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(SkillSourceResolutionError, match="index mismatch"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert catalog.read_skills_calls == []
     assert installer.install_calls == []
     assert manifest.lockfile_write_calls == []
 

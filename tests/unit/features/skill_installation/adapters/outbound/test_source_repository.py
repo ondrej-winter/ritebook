@@ -1,3 +1,4 @@
+import hashlib
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
@@ -12,146 +13,169 @@ from ritebook.features.skill_installation.application.errors import (
     SkillSourceResolutionError,
 )
 
+REVISION = "a" * 40
+INDEX_CONTENT = b'{"schema_version":1,"skills":[]}'
+INDEX_DIGEST = f"sha256:{hashlib.sha256(INDEX_CONTENT).hexdigest()}"
 
-class RecordingRunner:
-    def __init__(self, *, returncode: int = 0, stdout: str = "abc123\n") -> None:
-        self.returncode = returncode
-        self.stdout = stdout
+
+class GitObjectRunner:
+    def __init__(self, *, committed_index: bytes = INDEX_CONTENT) -> None:
+        self.committed_index = committed_index
+        self.missing_revision = False
         self.commands: list[list[str]] = []
 
-    def __call__(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+    def __call__(self, command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:
         self.commands.append(list(command))
-        return subprocess.CompletedProcess(command, self.returncode, self.stdout, "")
+        if "cat-file" in command:
+            returncode = 1 if self.missing_revision else 0
+            return subprocess.CompletedProcess(command, returncode, b"", b"")
+        return subprocess.CompletedProcess(command, 0, self.committed_index, b"")
+
+
+class SnapshotExporter:
+    def __init__(self) -> None:
+        self.calls: list[tuple[Path, str, Path]] = []
+
+    def __call__(self, repository: Path, revision: str, destination: Path) -> None:
+        self.calls.append((repository, revision, destination))
+        skill = destination / "skills" / "code-review"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("bound content", encoding="utf-8")
 
 
 def registered_skill_index(
+    tmp_path: Path,
     *,
-    name: str = "company-skills",
-    source: str = "git@example.com:company/skills.git",
     source_type: str = "git_url",
-    source_cache_path: str | None = "/cache/git/company-skills",
-    cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
-    index_schema_version: int = 1,
+    source: str = "git@example.com:company/skills.git",
+    source_revision: str = REVISION,
+    index_digest: str = INDEX_DIGEST,
 ) -> RegisteredSkillIndex:
+    repository = tmp_path / "repository"
+    repository.mkdir(exist_ok=True)
+    cached_index = tmp_path / "ritebook-index.json"
+    cached_index.write_bytes(INDEX_CONTENT)
     return RegisteredSkillIndex(
-        name=name,
+        name="company-skills",
         source=source,
         source_type=source_type,
-        source_cache_path=source_cache_path,
-        cached_index_path=cached_index_path,
-        index_schema_version=index_schema_version,
+        source_revision=source_revision,
+        index_digest=index_digest,
+        source_cache_path=str(repository) if source_type == "git_url" else None,
+        cached_index_path=str(cached_index),
+        index_schema_version=1,
     )
 
 
-def test_source_repository_uses_git_url_managed_clone_path(tmp_path: Path) -> None:
-    source_cache_path = tmp_path / "cache" / "git" / "source-id"
-    source_cache_path.mkdir(parents=True)
-    runner = RecordingRunner(stdout="def456\n")
-
-    result = SourceRepositoryAdapter(runner).resolve_source(
-        registered_skill_index(
-            name="platform-skills",
-            source="git@example.com:company/skills.git",
-            source_type="git_url",
-            source_cache_path=str(source_cache_path),
-        ),
-    )
-
-    assert result.repository_path == str(source_cache_path)
-    assert result.source == "git@example.com:company/skills.git"
-    assert result.source_type == "git_url"
-    assert result.source_revision == "def456"
-    assert runner.commands == [
-        ["git", "-C", str(source_cache_path), "rev-parse", "HEAD"],
-    ]
-
-
-def test_source_repository_uses_local_git_source_path(tmp_path: Path) -> None:
-    local_repo = tmp_path / "local-skills"
-    local_repo.mkdir()
-    runner = RecordingRunner(stdout="local-revision\n")
-
-    result = SourceRepositoryAdapter(runner).resolve_source(
-        registered_skill_index(
-            name="company-skills",
-            source=str(local_repo),
-            source_type="local_git_repo",
-            source_cache_path=None,
-        ),
-    )
-
-    assert result.repository_path == str(local_repo)
-    assert result.source == str(local_repo)
-    assert result.source_type == "local_git_repo"
-    assert result.source_revision == "local-revision"
-    assert runner.commands == [
-        ["git", "-C", str(local_repo), "rev-parse", "HEAD"],
-    ]
-
-
-def test_source_repository_rejects_git_url_without_cache_path() -> None:
-    with pytest.raises(SkillSourceResolutionError, match="no source cache path"):
-        SourceRepositoryAdapter(RecordingRunner()).resolve_source(
-            registered_skill_index(
-                source_type="git_url",
-                source_cache_path=None,
-            ),
-        )
-
-
-def test_source_repository_rejects_missing_git_url_cache_path(tmp_path: Path) -> None:
-    missing_path = tmp_path / "missing"
-
-    with pytest.raises(SkillSourceResolutionError, match="cache does not exist"):
-        SourceRepositoryAdapter(RecordingRunner()).resolve_source(
-            registered_skill_index(
-                source_type="git_url",
-                source_cache_path=str(missing_path),
-            ),
-        )
-
-
-def test_source_repository_rejects_missing_local_source_path(tmp_path: Path) -> None:
-    missing_path = tmp_path / "missing"
-
-    with pytest.raises(SkillSourceResolutionError, match="local source repository"):
-        SourceRepositoryAdapter(RecordingRunner()).resolve_source(
-            registered_skill_index(
-                source=str(missing_path),
-                source_type="local_git_repo",
-                source_cache_path=None,
-            ),
-        )
-
-
-def test_source_repository_returns_none_when_revision_cannot_be_read(
+def test_source_repository_materializes_bound_commit_and_cleans_snapshot(
     tmp_path: Path,
 ) -> None:
-    source_cache_path = tmp_path / "cache" / "git" / "source-id"
-    source_cache_path.mkdir(parents=True)
-    runner = RecordingRunner(returncode=1)
+    runner = GitObjectRunner()
+    exporter = SnapshotExporter()
+    index = registered_skill_index(tmp_path)
 
-    result = SourceRepositoryAdapter(runner).resolve_source(
-        registered_skill_index(
-            source_type="git_url",
-            source_cache_path=str(source_cache_path),
+    adapter = SourceRepositoryAdapter(runner, exporter=exporter)
+    with adapter.open_source(index) as source:
+        snapshot = Path(source.repository_path)
+        assert source.source_revision == REVISION
+        assert (snapshot / "skills" / "code-review" / "SKILL.md").read_text() == (
+            "bound content"
+        )
+        assert snapshot.exists()
+
+    assert not snapshot.exists()
+    repository = Path(index.source_cache_path or "")
+    assert runner.commands == [
+        ["git", "-C", str(repository), "cat-file", "-e", f"{REVISION}^{{commit}}"],
+        ["git", "-C", str(repository), "show", f"{REVISION}:ritebook-index.json"],
+    ]
+    assert exporter.calls[0][:2] == (repository, REVISION)
+
+
+def test_source_repository_rejects_cached_index_digest_mismatch_before_git(
+    tmp_path: Path,
+) -> None:
+    runner = GitObjectRunner()
+    index = registered_skill_index(tmp_path)
+    Path(index.cached_index_path).write_bytes(b"tampered cache")
+
+    with (
+        pytest.raises(SkillSourceResolutionError, match="cached index digest mismatch"),
+        SourceRepositoryAdapter(runner).open_source(index),
+    ):
+        pytest.fail("unreachable")
+
+    assert runner.commands == []
+
+
+def test_source_repository_rejects_bound_commit_index_digest_mismatch(
+    tmp_path: Path,
+) -> None:
+    runner = GitObjectRunner(committed_index=b"different committed index")
+    exporter = SnapshotExporter()
+
+    with (
+        pytest.raises(SkillSourceResolutionError, match="bound commit index mismatch"),
+        SourceRepositoryAdapter(runner, exporter=exporter).open_source(
+            registered_skill_index(tmp_path),
         ),
+    ):
+        pytest.fail("unreachable")
+
+    assert exporter.calls == []
+
+
+def test_source_repository_rejects_unavailable_bound_commit_with_guidance(
+    tmp_path: Path,
+) -> None:
+    runner = GitObjectRunner()
+    runner.missing_revision = True
+
+    with (
+        pytest.raises(SkillSourceResolutionError, match="run update-index"),
+        SourceRepositoryAdapter(runner).open_source(
+            registered_skill_index(tmp_path),
+        ),
+    ):
+        pytest.fail("unreachable")
+
+
+def test_source_repository_reads_local_commit_without_mutating_repository(
+    tmp_path: Path,
+) -> None:
+    local_repo = tmp_path / "local"
+    local_repo.mkdir()
+    index = registered_skill_index(
+        tmp_path,
+        source_type="local_git_repo",
+        source=str(local_repo),
+    )
+    runner = GitObjectRunner()
+    exporter = SnapshotExporter()
+
+    adapter = SourceRepositoryAdapter(runner, exporter=exporter)
+    with adapter.open_source(index) as source:
+        assert source.source_revision == REVISION
+
+    assert all(
+        "checkout" not in command and "fetch" not in command
+        for command in runner.commands
+    )
+    assert exporter.calls[0][0] == local_repo
+
+
+def test_source_repository_rejects_missing_local_repository_with_guidance(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "missing"
+    index = registered_skill_index(
+        tmp_path,
+        source_type="local_git_repo",
+        source=str(missing),
     )
 
-    assert result.source_revision is None
-    assert runner.commands == [
-        ["git", "-C", str(source_cache_path), "rev-parse", "HEAD"],
-    ]
-
-
-def test_source_repository_rejects_unsupported_source_type(tmp_path: Path) -> None:
-    repo_path = tmp_path / "repo"
-    repo_path.mkdir()
-    index = object.__new__(type(registered_skill_index()))
-    object.__setattr__(index, "name", "platform-skills")
-    object.__setattr__(index, "source", str(repo_path))
-    object.__setattr__(index, "source_type", "archive")
-    object.__setattr__(index, "source_cache_path", None)
-
-    with pytest.raises(SkillSourceResolutionError, match="unsupported source type"):
-        SourceRepositoryAdapter(RecordingRunner()).resolve_source(index)
+    with (
+        pytest.raises(SkillSourceResolutionError, match=r"restore.*update-index"),
+        SourceRepositoryAdapter(GitObjectRunner()).open_source(index),
+    ):
+        pytest.fail("unreachable")

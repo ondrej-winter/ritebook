@@ -10,6 +10,8 @@ from ritebook.shared_kernel import require_index_name, require_kebab_case_identi
 
 SCHEMA_VERSION = 1
 TARGET_NICKNAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+INDEX_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -136,6 +138,8 @@ class RegisteredSkillIndex:
     name: str
     source: str
     source_type: str
+    source_revision: str
+    index_digest: str
     source_cache_path: str | None
     cached_index_path: str
     index_schema_version: int
@@ -145,6 +149,12 @@ class RegisteredSkillIndex:
         require_index_name(self.name, field_name="Index name")
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.source_type, field_name="Index source type")
+        if not GIT_OBJECT_ID_PATTERN.fullmatch(self.source_revision):
+            msg = "Source revision must be a full lowercase Git object ID."
+            raise ValueError(msg)
+        if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
+            msg = "Index digest must use sha256:<64 lowercase hex>."
+            raise ValueError(msg)
         _require_optional_non_empty(
             self.source_cache_path,
             field_name="Source cache path",

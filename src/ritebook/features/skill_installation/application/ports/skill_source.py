@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
+    from contextlib import AbstractContextManager
+
     from ritebook.features.skill_installation.application.dtos import (
         RegisteredSkillIndex,
         ResolvedSkillSource,
@@ -14,5 +16,8 @@ if TYPE_CHECKING:
 class SkillSourcePort(Protocol):
     """Outbound dependency for source repository resolution."""
 
-    def resolve_source(self, index: RegisteredSkillIndex) -> ResolvedSkillSource:
-        """Resolve source repository metadata for a registered index."""
+    def open_source(
+        self,
+        index: RegisteredSkillIndex,
+    ) -> AbstractContextManager[ResolvedSkillSource]:
+        """Verify and open a temporary snapshot of the registered source commit."""

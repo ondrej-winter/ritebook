@@ -9,6 +9,7 @@ from ritebook.features.skill_installation.application.dtos import (
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
     InvalidSkillReferenceError,
+    SkillSourceResolutionError,
     UnknownInstallIndexError,
     UnknownInstallSkillError,
 )
@@ -116,7 +117,7 @@ def test_install_skill_installs_selected_skill_and_writes_manifest() -> None:
         (result.manifest_entry, "/tmp/installations.json", False),
     ]
     assert result.manifest_entry.installed_at == "2026-07-10T21:00:00Z"
-    assert result.manifest_entry.source_revision == "abc123"
+    assert result.manifest_entry.source_revision == "c" * 40
     assert result.manifest_entry.skill_path == "skills/code-review"
     assert result.manifest_entry.skill_file == "skills/code-review/SKILL.md"
 
@@ -279,7 +280,38 @@ def test_install_skill_fails_for_unknown_index_before_copy() -> None:
     assert manifest.write_calls == []
 
 
-def test_install_skill_fails_for_unknown_skill_before_source_resolution() -> None:
+def test_install_skill_verifies_source_before_trusting_cached_metadata() -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (installable_skill(),)},
+    )
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = InstallSkill(
+        catalog=catalog,
+        source_resolver=FakeSkillSourceResolver(
+            failure=SkillSourceResolutionError("cached index digest mismatch"),
+        ),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(SkillSourceResolutionError, match="digest mismatch"):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="platform-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert catalog.read_skills_calls == []
+    assert installer.install_calls == []
+    assert manifest.write_calls == []
+
+
+def test_install_skill_fails_for_unknown_skill_after_source_verification() -> None:
     index = registered_skill_index()
     catalog = FakeSkillCatalog(
         indexes=[index],
@@ -306,7 +338,7 @@ def test_install_skill_fails_for_unknown_skill_before_source_resolution() -> Non
             ),
         )
 
-    assert source_resolver.resolve_calls == []
+    assert source_resolver.resolve_calls == [index]
     assert installer.install_calls == []
     assert manifest.write_calls == []
 

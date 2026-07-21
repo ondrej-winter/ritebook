@@ -25,6 +25,10 @@ indexes and at distinct paths within one index remain valid.
   - `list-indexes` lists registered index metadata.
 - Registry entries already store each index's local alias and
   `cached_index_path`.
+- [ADR 0001](../adr/0001-source-provenance-and-trust.md) requires each cached
+  index to be bound to a full Git commit and exact-index digest. The current
+  listing implementation does not yet verify that digest; implementation is
+  tracked separately.
 - `consumer-git-index-registry-spec.md` defines the registry foundation consumed
   by this browsing workflow.
 - `list-skills` is implemented in the existing `index_registry` feature slice.
@@ -67,11 +71,15 @@ If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
 
 - `list-skills` reads the existing local consumer registry.
 - `list-skills` reads each selected registry entry's `cached_index_path`.
+- Before trusting cached metadata, `list-skills` verifies the exact cached bytes
+  against the registry entry's required `index_digest`.
 - `list-skills` does not clone, fetch, pull, or otherwise contact Git remotes.
 - `list-skills` does not scan publisher skill directories.
 - `list-skills` does not read raw `SKILL.md` files.
 - If a cached index file is missing, unreadable, or invalid, the command fails
   with a clear user-facing error.
+- A digest mismatch fails as a cache-integrity error. Listing never falls back to
+  a mutable source working tree or repairs provenance implicitly.
 
 ### Listing all skills
 
@@ -220,6 +228,8 @@ docker run --rm ritebook-e2e
 Cover:
 
 - Lists skill paths from all registered indexes.
+- Rejects registry entries without required provenance and cached indexes whose
+  bytes do not match `index_digest`.
 - Sorts output deterministically by local alias and skill path.
 - Preserves duplicate names at distinct relative paths within one index.
 - Filters by `--index-name` / local alias.
@@ -261,6 +271,8 @@ Cover:
 ### Always
 
 - List from locally cached registered indexes.
+- Verify each cached index against the exact-byte digest selected by
+  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
 - Group skills under local aliases.
 - Include the `Indexes` root and index nodes in non-empty output.
 - Show skill paths only in the default output.
@@ -289,6 +301,7 @@ Cover:
 - Read live Git sources during `list-skills`.
 - Mutate registered indexes during `list-skills`.
 - Mutate cached index files during `list-skills`.
+- Infer or repair missing provenance from a live Git source.
 - Read raw `SKILL.md` contents for listing.
 - Treat duplicate skill names across different indexes or at distinct paths in one
   index as an error.
@@ -306,6 +319,7 @@ Cover:
 - Empty registries or empty cached indexes print `No skills found`.
 - Output is deterministic and grouped by local alias.
 - No Git or network operations happen during skill listing.
+- Cached metadata is displayed only after its required index digest is verified.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new command.
 - The configured non-E2E quality gate, package build, and Docker E2E suite pass

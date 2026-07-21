@@ -50,7 +50,9 @@ skill installation, upstream contribution, and Docker E2E validation.
 - Keep external data validation in adapters and orchestration in application use
   cases.
 - Do not silently change public CLI, index, registry, requirements, or lockfile
-  contracts. Version or migrate compatibility-sensitive changes explicitly.
+  contracts. Version or migrate compatibility-sensitive changes explicitly,
+  except where an accepted pre-release decision such as ADR 0001 explicitly
+  requires rejection and regeneration.
 - Keep each implementation task focused. If a task grows beyond one reviewable
   session or about five files, split it before editing.
 - Use `uv` for project commands and the type checker selected in Task 16.
@@ -76,7 +78,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 ### Phase 1: Provenance foundation
 
-- [ ] Task 1: Decide and record the end-to-end provenance model
+- [x] Task 1: Decide and record the end-to-end provenance model
 - [ ] Task 2: Bind each cached index to validated source identity
 - [ ] Task 3: Install only from the source identity bound to the cached index
 - [ ] Task 4: Propagate verified provenance into lockfiles and contributions
@@ -128,20 +130,21 @@ accepted.
 
 **Acceptance criteria:**
 
-- [ ] An ADR defines the selected identity, where it is captured, where it is
+- [x] An ADR defines the selected identity, where it is captured, where it is
   persisted, and how every downstream workflow verifies it.
-- [ ] The ADR defines behavior for refresh failure, detached or rewritten Git
+- [x] The ADR defines behavior for refresh failure, detached or rewritten Git
   history, local repository drift, unavailable revisions, and schema migration.
-- [ ] All affected specs link to the ADR and no longer imply that independently
+- [x] All affected specs link to the ADR and no longer imply that independently
   mutable cached metadata and source bytes are equivalent.
 
 **Verification:**
 
-- [ ] Review the ADR against all six specifications and the current registry,
+- [x] Review the ADR against all six specifications and the current registry,
   installation, and contribution DTOs.
-- [ ] Confirm the decision includes backward compatibility for existing schema-v1
-  registry and lockfile data.
-- [ ] Obtain explicit architecture approval before Task 2.
+- [x] Confirm the decision explicitly rejects compatibility for pre-release
+  schema-v1 registry, installation-registry, and lockfile data and requires users
+  to regenerate local state.
+- [x] Obtain explicit architecture approval before Task 2.
 
 **Dependencies:** None.
 
@@ -155,7 +158,9 @@ accepted.
 
 **Estimated scope:** Medium, documentation only.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-21. ADR 0001 was explicitly approved and
+accepted. All six specifications now link to the commit-plus-index-digest
+contract. Tasks 2 through 4 remain open for implementation and regression tests.
 
 ## Task 2: Bind Each Cached Index to Validated Source Identity
 
@@ -173,13 +178,15 @@ paired with new source content.
   the exact index content that passed validation.
 - [ ] A failed refresh leaves a coherent previous cache/source pair or marks the
   source unusable until recovery; it never presents stale metadata as current.
-- [ ] Existing registry schema-v1 data is migrated, rejected with guidance, or
-  supported through an explicitly documented compatibility path.
+- [ ] Existing pre-release registry schema-v1 data without `source_revision` or
+  `index_digest` is rejected with actionable guidance to regenerate registration;
+  it is not inferred, migrated automatically, or accepted in compatibility mode.
 
 **Verification:**
 
 - [ ] Focused tests cover successful add/update, validation failure after source
-  refresh, unavailable source identity, and legacy registry data.
+  refresh, unavailable source identity, and rejection of legacy registry data
+  with regeneration guidance.
 - [ ] Run `uv run pytest tests/unit/features/index_registry`.
 - [ ] Run `uv run pytest tests/integration -m integration` for affected adapters.
 
@@ -193,8 +200,8 @@ paired with new source content.
 - `src/ritebook/features/index_registry/adapters/outbound/filesystem_registry/adapter.py`
 - `tests/unit/features/index_registry/`
 
-**Estimated scope:** Medium; split schema migration from update orchestration if
-the change exceeds five files.
+**Estimated scope:** Medium; split legacy-state rejection from update orchestration
+if the change exceeds five files.
 
 **Status note:** Pending.
 
@@ -203,22 +210,24 @@ the change exceeds five files.
 **Audit finding:** Critical 1.
 
 **Description:** Update source resolution so direct and requirements-file installs
-copy from the revision, snapshot, or verified content selected in Task 1 and
-persisted in Task 2. Treat mutable local repository working trees as untrusted
-unless they still match the bound identity.
+verify that the cached index and root index at the full Git revision selected in
+Task 1 both match the digest persisted in Task 2, then copy only from that commit.
+Never treat a mutable checkout or working tree as the bound source state.
 
 **Acceptance criteria:**
 
-- [ ] Installation fails safely when current source content cannot be proven to
-  match the cached index identity.
+- [ ] Installation fails before trusting metadata or copying unless the cached
+  index and root index at the bound commit both match the persisted digest.
 - [ ] Managed Git sources install from the bound source state without implicitly
   advancing it during installation.
-- [ ] Local Git source drift is detected and reported without copying unvalidated
-  content or mutating the user-owned repository.
+- [ ] Local Git installs read committed objects without using or mutating working
+  tree content and fail with recovery guidance when the repository or bound commit
+  is unavailable.
 
 **Verification:**
 
-- [ ] Regression tests reproduce stale-cache/new-clone and local-drift scenarios.
+- [ ] Regression tests reproduce stale-cache/new-clone, cached-index mismatch,
+  bound-commit index mismatch, and unavailable local-source scenarios.
 - [ ] Run `uv run pytest tests/unit/features/skill_installation`.
 - [ ] Run the relevant publisher-to-consumer E2E workflow.
 
@@ -243,8 +252,9 @@ source-resolution contract.
 
 **Description:** Ensure generated installation state records the verified identity
 actually used for copying and that contribution preparation consumes the same
-identity. Version the lockfile schema if the approved model cannot be represented
-compatibly in schema v1.
+identity. Update the pre-release schema-v1 lockfile and installation-registry
+contracts in place; reject older local files without provenance and direct users
+to regenerate them.
 
 **Acceptance criteria:**
 
@@ -252,8 +262,9 @@ compatibly in schema v1.
   identity rather than whatever revision happens to be current afterward.
 - [ ] Contribution comparison and branch preparation use that identity as their
   locked base and fail clearly when it is unavailable.
-- [ ] Lockfile schema compatibility and migration behavior are documented and
-  covered by parser/writer tests.
+- [ ] Schema-v1 lockfile and installation-registry readers reject missing
+  provenance with regeneration guidance; parser/writer tests cover rejection and
+  the required fields without automatic migration or compatibility inference.
 
 **Verification:**
 
@@ -278,7 +289,7 @@ if necessary.
 
 ## Checkpoint A: Provenance Contract
 
-- [ ] ADR is accepted and linked from affected specs.
+- [x] ADR is accepted and linked from affected specs.
 - [ ] Registry cache, source resolver, generated state, and contribution workflow
   agree on one source identity.
 - [ ] A failed index update cannot lead to installation of different unvalidated
@@ -999,7 +1010,7 @@ follow-up rather than leaving an unchecked item implied complete.
 
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
-| Provenance decision changes persisted schemas | High | Decide compatibility and migration in Task 1 before code changes; version schemas when required. |
+| Provenance decision changes persisted schemas | High | ADR 0001 intentionally updates pre-release schema v1 in place and requires local registry, installation-registry, and lockfile state to be regenerated. |
 | “Atomic” filesystem behavior differs by platform | High | Define the supported guarantee precisely, use same-filesystem staging, and test failure recovery rather than claiming universal atomicity. |
 | Rollback deletes pre-existing user content | High | Track ownership of staged/backup paths explicitly and test every rollback boundary. |
 | Source redaction makes a source unusable for Git operations | High | Keep operational values ephemeral or in an approved credential mechanism; never use display strings as operational input. |
@@ -1010,10 +1021,13 @@ follow-up rather than leaving an unchecked item implied complete.
 
 ## Open Questions Requiring Decisions
 
-- [ ] Which provenance strategy is authoritative: immutable revision, owned source
-  snapshot, content hashes, or a documented combination?
-- [ ] Must schema-v1 registry and lockfile files be migrated automatically, read in
-  compatibility mode, or rejected with guidance?
+- [x] Which provenance strategy is authoritative: immutable revision, owned source
+  snapshot, content hashes, or a documented combination? **Decision:** full Git
+  commit object ID plus SHA-256 of the exact validated index bytes; see ADR 0001.
+- [x] Must schema-v1 registry and lockfile files be migrated automatically, read in
+  compatibility mode, or rejected with guidance? **Decision:** this pre-release
+  schema v1 is updated in place; incompatible local state is rejected and
+  regenerated without automatic migration.
 - [ ] Should local Git sources be allowed in committed `ritebook.lock` files?
 - [ ] What durability guarantee is required for local state: process-level atomic
   replacement, crash consistency, or explicit best-effort recovery?

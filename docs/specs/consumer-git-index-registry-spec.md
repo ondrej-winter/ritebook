@@ -22,6 +22,11 @@ consumer-side catalog foundation used by the implemented `list-skills`,
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.
+- The current registry schema remembers mutable source locations but does not yet
+  persist a Git revision or exact-index digest.
+- [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the required
+  end-to-end provenance binding; implementation is tracked in the remediation
+  plan's dependent tasks.
 - Internal skill distribution should primarily support Git repositories because
   company skills are expected to live in private Git repositories.
 - The project follows hexagonal architecture with vertical feature slices under
@@ -70,14 +75,20 @@ Requirements:
 - `ritebook-index.json` must be located at the repository root.
 - Ritebook must read and validate root `ritebook-index.json` before registering
   the index.
+- Ritebook must select the source's full Git commit object ID and read the index
+  from that commit, not from mutable working-tree contents.
+- Ritebook must compute `index_digest` as `sha256:<lowercase-hex>` over the exact
+  validated index bytes.
 - The published index must include index metadata with a canonical published
   name.
 - If `--alias` is not provided, the local alias defaults to the published name
   from `ritebook-index.json`.
 - If `--alias` is provided, Ritebook uses it as the local registry namespace
   without changing the published name.
-- Ritebook caches the current index contents locally under the local alias.
-- Ritebook remembers enough source information to update the cached index later.
+- Ritebook caches the exact validated index contents locally under the local
+  alias.
+- Ritebook persists the source locator and type, full `source_revision`, and
+  `index_digest` with the cached-index path.
 - If a local alias is already registered, Ritebook refuses to
   overwrite it unless an explicit replacement flag is provided.
 
@@ -125,10 +136,14 @@ Requirements:
   managed cache.
 - For a local Git repository source, Ritebook reads the repository at the
   remembered local path.
-- Ritebook reads root `ritebook-index.json` after refreshing or reading the
-  source.
-- Ritebook validates the index before replacing the locally cached copy.
-- If validation fails, Ritebook keeps the previous cached copy intact.
+- Ritebook selects the candidate full commit object ID after refreshing or reading
+  the source and reads root `ritebook-index.json` from that commit.
+- Ritebook validates and hashes those exact bytes before replacing the locally
+  cached copy.
+- The cached bytes, `source_revision`, `index_digest`, and registry metadata form
+  one coherent logical state.
+- If refresh, revision lookup, index read, validation, hashing, or persistence
+  fails, Ritebook keeps the previous coherent binding intact.
 - If the published name inside the refreshed `ritebook-index.json` changes,
   Ritebook keeps the local alias and records the refreshed published name.
 - `update-index` requires exactly one target mode: `--name <local-alias>` or
@@ -208,6 +223,8 @@ stores publisher-owned metadata.
       "source_type": "git_url",
       "source_cache_path": "/Users/me/.cache/ritebook/git/<cache-id>",
       "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills/ritebook-index.json",
+      "source_revision": "0123456789abcdef0123456789abcdef01234567",
+      "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "source_schema_version": 1,
       "skill_count": 12,
       "added_at": "2026-07-08T18:20:00Z",
@@ -227,12 +244,25 @@ For local repository sources:
   "source_type": "local_git_repo",
   "source_cache_path": null,
   "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills-local/ritebook-index.json",
+  "source_revision": "0123456789abcdef0123456789abcdef01234567",
+  "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "source_schema_version": 1,
   "skill_count": 12,
   "added_at": "2026-07-08T18:20:00Z",
   "updated_at": "2026-07-08T18:20:00Z"
 }
 ```
+
+Registry schema-v1 provenance requirements follow
+[ADR 0001](../adr/0001-source-provenance-and-trust.md):
+
+- `source_revision` is required and stores the full commit object ID whose root
+  index was validated.
+- `index_digest` is required and binds `cached_index_path` to the exact validated
+  index bytes.
+- Pre-release schema-v1 registry files missing either field are rejected with
+  guidance to regenerate the registration. Ritebook does not infer provenance
+  from the source's current `HEAD` or silently migrate on first use.
 
 ## Duplicate behavior
 
@@ -255,6 +285,14 @@ For local repository sources:
 - Ritebook manages its own cached clone.
 - `add-index` clones the repository into Ritebook's cache area.
 - `update-index` refreshes that managed clone from the remote.
+- Advancing mutable refs in the managed clone does not replace the previous
+  registry/cache binding until the candidate commit and index are validated and
+  persisted coherently.
+- A detached candidate commit is valid. Rewritten refs do not invalidate an
+  existing binding while its commit object remains available.
+- If a bound commit is not available in the managed clone, Ritebook may fetch the
+  remembered source to recover that exact object. If recovery fails, downstream
+  use fails safely rather than substituting a current ref.
 - Authentication is delegated to the user's existing Git setup, such as SSH keys,
   credential helpers, or configured Git access.
 - Ritebook should surface Git failures clearly without exposing secrets.
@@ -263,8 +301,14 @@ For local repository sources:
 
 - Ritebook validates that the path appears to be a Git repository.
 - Ritebook does not own or mutate the local repository.
-- `add-index` and `update-index` read root `ritebook-index.json` from that path.
+- `add-index` and `update-index` reject staged, unstaged, or untracked changes and
+  provide guidance to commit or discard them.
+- Ritebook reads root `ritebook-index.json` from the selected commit object without
+  checking out, resetting, or cleaning the user-owned repository.
 - Whether the local repository is up to date is the user's responsibility.
+- Ritebook does not snapshot local repositories. A missing repository or bound
+  commit fails safely and requires the user to restore it or explicitly refresh
+  the registration from a new clean committed state.
 
 ## CLI and workflow requirements
 
@@ -408,6 +452,8 @@ tests/unit/features/index_registry/
 
 - Adds a Git URL source and caches validated index contents.
 - Adds a local Git repository source and caches validated index contents.
+- Persists the candidate commit and exact-index digest as one binding.
+- Rejects dirty local repositories before caching or registry mutation.
 - Uses the published name as the default local alias.
 - Allows a local alias without changing the published name.
 - Refuses duplicate local aliases without `force`.
@@ -418,7 +464,8 @@ tests/unit/features/index_registry/
 - Refreshes a registered Git URL source.
 - Refreshes a registered local Git repository source.
 - Updates cached index contents and metadata when validation succeeds.
-- Preserves existing cached index when refreshed source validation fails.
+- Preserves the existing coherent cache/revision/digest binding when refresh,
+  validation, or persistence fails.
 - Fails clearly for unknown local aliases.
 - Requires either `--name` or `--all`, but not both.
 - Refreshes all registered indexes when requested.
@@ -438,6 +485,8 @@ tests/unit/features/index_registry/
 - Filesystem registry writes deterministic `indexes.json` and preserves unrelated
   entries.
 - Index cache writes cached `ritebook-index.json` atomically enough for local use.
+- Registry/cache readers reject schema-v1 entries missing required provenance and
+  detect cached-index digest mismatches.
 - Git adapter invokes Git non-interactively and reports clone/fetch failures
   clearly.
 
@@ -474,11 +523,15 @@ Registry responsibilities:
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
 - Cache the current index contents locally.
+- Bind cached index contents to the selected full Git commit and exact-index
+  SHA-256 digest according to
+  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
 - Use publisher index metadata as the default local alias.
 - Allow `--alias` to resolve published-name collisions without rewriting
   publisher metadata.
 - Namespace skills by local alias and relative skill path.
 - Preserve the previous cached index when `update-index` fails validation.
+- Reject dirty local Git repositories before binding an index.
 - Continue after per-index failures during `update-index --all`.
 
 Extensions outside this registry specification:
@@ -493,6 +546,7 @@ Never:
 
 - Assume an index file outside the repository root for this milestone.
 - Mutate user-owned local repositories during add/update.
+- Infer missing provenance from a mutable branch, tag, or working-tree `HEAD`.
 - Print secrets, Git credentials, raw index contents, or raw skill file contents
   in errors.
 - Treat duplicate skill names across different indexes or at distinct paths in one
@@ -505,8 +559,12 @@ Never:
 - A user can add an index from an existing local Git repository.
 - Ritebook caches the current root `ritebook-index.json` locally when adding an
   index.
+- Every cached index is bound to a required full `source_revision` and verified
+  `index_digest`.
 - A user can update a registered index and refresh the cached index contents.
 - Failed updates do not destroy the previous cached index.
+- Dirty local repositories and pre-release schema-v1 entries without provenance
+  fail with actionable regeneration guidance.
 - The local alias defaults from published index metadata and can be set with
   `--alias` without changing the published name.
 - Duplicate skill names across different local aliases and at distinct paths within

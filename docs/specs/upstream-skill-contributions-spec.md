@@ -22,8 +22,12 @@ user-owned local source repositories.
 - `ritebook.toml` can declare desired repo-local installed skills.
 - Generated `ritebook.lock` records installed-skill provenance, including
   `requirement`, `index_name`, `target`, `source`, `source_type`,
-  `source_revision`, `skill_path`, and `skill_file` for requirements-file
-  installs.
+  `source_revision`, `index_digest`, `skill_path`, and `skill_file` for
+  requirements-file installs.
+- The current lockfile revision is captured independently from cached-index
+  validation. [ADR 0001](../adr/0001-source-provenance-and-trust.md) requires one
+  verified binding from registration through contribution; implementation is
+  tracked separately.
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
@@ -56,11 +60,13 @@ Requirements:
   - the source repository,
   - the source type,
   - the locked source revision,
+  - the exact cached-index digest used for installation,
   - the source skill directory path, and
   - the source `SKILL.md` path.
 - Ritebook fails clearly when no matching lockfile entry exists, the target path
   is missing, or the lockfile does not contain enough provenance.
-- Ritebook compares the installed repo-local skill directory with the source skill
+- Ritebook verifies that the locked commit and index binding are available before
+  comparing the installed repo-local skill directory with the source skill
   directory at the selected upstream base.
 - Ritebook exits successfully with a concise no-op message when there are no local
   skill changes to contribute.
@@ -121,6 +127,7 @@ Error output should be clear and user-facing, for example:
 ritebook: error: no lockfile entry found for platform-skills/code-review
 ritebook: error: installed skill target .agents/skills/code-review does not exist
 ritebook: error: lockfile entry for platform-skills/code-review is missing source_revision
+ritebook: error: source revision for platform-skills/code-review is unavailable
 ritebook: error: upstream changed since locked revision; resolve the source changes and retry
 ritebook: error: skill validation failed; contribution commit was not created
 ```
@@ -140,6 +147,8 @@ Requirements:
   tree.
 - Fetch source `origin` before selecting the upstream base when the source has an
   origin remote.
+- Require the full locked `source_revision` to exist in the isolated checkout and
+  verify that root `ritebook-index.json` at that commit matches `index_digest`.
 - Branch from the current upstream base for the MVP.
 - Warn or fail clearly when the current upstream base differs from the locked
   `source_revision` and the source skill changed upstream since installation.
@@ -158,8 +167,10 @@ and automation.
 
 ### Upstream comparison behavior
 
-Ritebook should compare the installed skill against the current source skill at
-the selected upstream base, not only against the locked revision.
+The locked `source_revision` is the verified installed baseline. Ritebook may
+compare and contribute against the current upstream base only after proving the
+selected skill path has not changed between that locked commit and the current
+base.
 
 Requirements:
 
@@ -168,6 +179,9 @@ Requirements:
 - If the installed skill differs and upstream did not change since the locked
   revision for that skill path, prepare the contribution normally.
 - If upstream changed since the locked revision, report the condition clearly.
+- If the locked commit is unavailable or its index bytes do not match
+  `index_digest`, fail before copying installed content or creating a branch
+  commit. Do not substitute a current branch or tag.
 - The MVP fails instead of attempting automatic conflict resolution.
 - The error should include enough guidance for the developer to update/reinstall
   the skill or manually reconcile the upstream change without dumping raw skill
@@ -196,7 +210,9 @@ Update code-review skill from Ritebook contribution
 
 ## Data and provenance requirements
 
-The MVP depends on lockfile provenance from requirements-file installation.
+The MVP depends on the end-to-end provenance contract in
+[ADR 0001](../adr/0001-source-provenance-and-trust.md) and on lockfile provenance
+from requirements-file installation.
 
 Required lockfile fields for each publishable entry:
 
@@ -206,13 +222,18 @@ Required lockfile fields for each publishable entry:
 - `target`: repo-local installed skill target path.
 - `source`: Git URL or local Git repository source.
 - `source_type`: source kind, initially `git_url` or `local_git_repo`.
-- `source_revision`: source revision used for the installation.
+- `source_revision`: required full commit object ID bound during index validation
+  and used for installation.
+- `index_digest`: required SHA-256 digest that both the exact cached index used to
+  resolve the installation and root `ritebook-index.json` at `source_revision`
+  were verified to match.
 - `skill_path`: source skill directory path relative to the source repository.
 - `skill_file`: source `SKILL.md` path relative to the source repository.
 - `index_schema_version`: publisher index schema version used at install time.
 
-If implementation discovers that additional provenance is required, update this
-spec and the installation lockfile spec before changing lockfile behavior.
+Pre-release schema-v1 lockfiles missing `source_revision` or `index_digest` are
+rejected with guidance to refresh registration and reinstall. Ritebook does not
+infer missing provenance from the source's current `HEAD`.
 
 ## Project structure
 
@@ -297,6 +318,8 @@ Cover:
 - Rejects missing or malformed skill references.
 - Rejects missing lockfile entries.
 - Rejects lockfile entries missing required provenance fields.
+- Rejects an unavailable locked commit or index-digest mismatch before preparing
+  a contribution.
 - Reports no-op when installed skill content matches upstream source content.
 - Prepares a contribution branch when local installed content differs.
 - Refuses to create a commit when validation fails.
@@ -323,6 +346,7 @@ Cover:
 - Does not use the managed index cache clone as a writable contribution
   workspace.
 - Fetches source remotes non-interactively where applicable.
+- Resolves the full locked commit and verifies its exact index digest.
 - Creates safe branch names.
 - Creates commits only after validation and index regeneration succeed.
 - Reports Git failures without leaking credentials.
@@ -375,6 +399,7 @@ Always:
 
 - Support one skill contribution per command.
 - Require `ritebook.lock` provenance for the MVP.
+- Treat the verified locked revision and index digest as the installed baseline.
 - Resolve contribution references by exact lockfile skill path.
 - Prepare contributions in a Ritebook-owned isolated checkout.
 - Fetch or inspect the current upstream base before preparing a contribution.
@@ -399,6 +424,8 @@ Never:
 - Directly mutate the source default branch.
 - Mutate the managed index cache clone as a contribution workspace.
 - Mutate user-owned local source repositories by default.
+- Substitute current upstream state when the locked commit or index binding is
+  unavailable.
 - Push branches without an explicit future opt-in.
 - Open MRs or PRs without an explicit future opt-in.
 - Attempt automatic conflict resolution in the MVP.
@@ -417,6 +444,8 @@ Never:
   user-owned source repositories.
 - The command warns or fails clearly when upstream source content changed since
   the locked install revision.
+- The command fails safely when the locked commit is unavailable or its root index
+  does not match the locked digest.
 - The command runs skill validation and refuses to commit invalid skill content.
 - The command regenerates `ritebook-index.json` and creates a local Git commit
   when validation succeeds.

@@ -49,18 +49,26 @@ The primary E2E scenario focuses on the publisher-to-consumer workflow:
    `ritebook-index.json`.
 5. Run `ritebook add-index --source <local-git-repo> --registry-path <path>
    --cache-root <path>`.
-6. Run `ritebook list-skills --registry-path <path> --show-description`.
-7. Modify the source skills, regenerate the publisher index, and commit the
+6. Verify the registry binds the cached index to the source's full commit object
+   ID and the exact index digest required by
+   [ADR 0001](../adr/0001-source-provenance-and-trust.md).
+7. Run `ritebook list-skills --registry-path <path> --show-description`.
+8. Modify the source skills, regenerate the publisher index, and commit the
    repository update.
-8. Run `ritebook update-index --name <name> --registry-path <path>
+9. Run `ritebook update-index --name <name> --registry-path <path>
    --cache-root <path>`.
-9. Run `ritebook list-skills --registry-path <path> --show-description` again
-   and verify the output reflects the updated cached index.
+10. Run `ritebook list-skills --registry-path <path> --show-description` again
+    and verify the output reflects the newly bound commit and cached index.
 
 Additional E2E scenarios cover direct and requirements-file installation and the
 upstream skill-contribution workflow. The tests prefer stable, high-signal
 assertions over exhaustive coverage and do not duplicate all unit-level edge
 cases.
+
+Installation scenarios must prove the full binding: the cached index and root
+`ritebook-index.json` at the selected commit both match the persisted digest, and
+the copied skill bytes come from that commit. A digest mismatch on either side
+must fail before content is copied.
 
 ## Commands and validation
 
@@ -127,7 +135,14 @@ Primary scenario:
 
 - A publisher-to-consumer happy path that exercises real CLI commands, real local
   Git commits, generated `ritebook-index.json`, explicit registry path, explicit
-  cache root, and cached skill listing before and after an update.
+  cache root, verified commit/index bindings, and cached skill listing before and
+  after an update.
+
+Provenance regression scenarios should also prove that uncommitted local source
+changes are rejected and that changing source content after registration cannot
+silently change installed bytes. These assertions become release-gating when the
+dependent registry and installation implementation tasks land; this
+documentation task alone does not claim that they pass today.
 
 Secondary validation scenario:
 
@@ -186,7 +201,7 @@ For the implementation:
   imports.
 - The publisher-to-consumer workflow verifies generated index creation,
   local-Git-backed registration, cached skill listing, source update, cache
-  refresh, and updated listing.
+  refresh, updated listing, and the provenance binding selected by ADR 0001.
 - The tests use explicit temporary registry and cache paths.
 - README documents the local Docker E2E workflow.
 - CI/CD runs Docker E2E as a blocking gate before release and publishing.

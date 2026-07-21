@@ -149,8 +149,13 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
   review.
 - Schema v1 requires every published skill to have a valid `SKILL.md` header, but
   it does not need to include the full parsed header in `ritebook-index.json`.
-- Schema v1 must not include content hashes. Hashing can be added later if
-  consumer caching or tamper detection requires it.
+- Schema v1 does not include publisher-generated per-skill or repository content
+  hashes. After the generated index is committed, consumers compute an
+  `index_digest` over the exact committed index bytes and bind it to that Git
+  commit according to
+  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
+- The consumer-owned digest is registry provenance; it does not change the
+  publisher index schema or authenticate the publisher.
 
 ## Index schema v1
 
@@ -291,7 +296,9 @@ network access.
   be shared by `lint-skills` and `publish-index`.
 - Ask before adding consumer install, sync, or list commands to this milestone.
 - Ask before adding content hashes, signatures, policy enforcement, or trust-chain
-  behavior.
+  behavior to the publisher artifact. The consumer-owned exact-index digest
+  required by [ADR 0001](../adr/0001-source-provenance-and-trust.md) is not a
+  publisher field.
 - Never scan a whole repository implicitly in the first MVP; require an explicit
   skills root.
 - Never accept multiple skills roots in a single MVP command invocation.
@@ -311,6 +318,9 @@ network access.
   documented generation timestamp.
 - The generated index uses schema version `1` and includes the fields documented
   in this spec.
+- The generated index remains compatible with consumer-side binding to its
+  committed Git revision and exact-byte digest without embedding provenance
+  fields in the publisher artifact.
 - Missing or invalid input paths produce clear user-facing errors.
 - Implementation follows the project's vertical-slice hexagonal architecture
   direction.

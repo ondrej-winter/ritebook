@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -13,13 +14,15 @@ from ritebook.features.index_registry.application.errors import (
 
 def test_json_index_reader_reads_valid_root_index(tmp_path: Path) -> None:
     write_index(tmp_path, {"index": {"name": "company-skills"}})
+    content = (tmp_path / "ritebook-index.json").read_bytes()
 
-    result = JsonIndexReader().read_index(str(tmp_path))
+    result = JsonIndexReader().read_index(content)
 
     assert result.published_name == "company-skills"
     assert result.schema_version == 1
     assert result.skill_count == 1
-    assert result.cacheable_content.endswith("\n")
+    assert result.cacheable_content.encode() == content
+    assert result.index_digest == f"sha256:{hashlib.sha256(content).hexdigest()}"
 
 
 def test_json_index_reader_reads_cached_skills_by_exact_path(tmp_path: Path) -> None:
@@ -160,12 +163,7 @@ def test_json_index_reader_rejects_slash_separated_published_name(
     write_index(tmp_path, {"index": {"name": "ondrej-winter/ritebook-shelf"}})
 
     with pytest.raises(InvalidPublishedIndexError, match="Published index name"):
-        JsonIndexReader().read_index(str(tmp_path))
-
-
-def test_json_index_reader_requires_root_index(tmp_path: Path) -> None:
-    with pytest.raises(InvalidPublishedIndexError, match="repository root"):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(committed_index_bytes(tmp_path))
 
 
 def test_json_index_reader_requires_cached_index_file(tmp_path: Path) -> None:
@@ -176,11 +174,9 @@ def test_json_index_reader_requires_cached_index_file(tmp_path: Path) -> None:
         JsonIndexReader().read_skills(str(tmp_path / "missing.json"))
 
 
-def test_json_index_reader_rejects_invalid_json(tmp_path: Path) -> None:
-    (tmp_path / "ritebook-index.json").write_text("not-json", encoding="utf-8")
-
+def test_json_index_reader_rejects_invalid_json() -> None:
     with pytest.raises(InvalidPublishedIndexError, match="not valid JSON"):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(b"not-json")
 
 
 def test_json_index_reader_rejects_cached_invalid_json(tmp_path: Path) -> None:
@@ -203,7 +199,7 @@ def test_json_index_reader_rejects_missing_index_metadata(tmp_path: Path) -> Non
     write_index(tmp_path, {"index": None})
 
     with pytest.raises(InvalidPublishedIndexError, match="index metadata"):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(committed_index_bytes(tmp_path))
 
 
 def test_json_index_reader_read_skills_does_not_require_index_metadata(
@@ -224,7 +220,7 @@ def test_json_index_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
         InvalidPublishedIndexError,
         match="unsupported index schema_version: 2",
     ):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(committed_index_bytes(tmp_path))
 
 
 def test_json_index_reader_rejects_cached_unsupported_schema(tmp_path: Path) -> None:
@@ -332,7 +328,7 @@ def test_json_index_reader_rejects_unsafe_skill_paths(
     )
 
     with pytest.raises(InvalidPublishedIndexError, match="safe relative POSIX path"):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(committed_index_bytes(tmp_path))
 
 
 @pytest.mark.parametrize("bad_path", ["/absolute", "nested\\skill", "../escape"])
@@ -378,7 +374,7 @@ def test_json_index_reader_rejects_skill_file_outside_skill_path(
     )
 
     with pytest.raises(InvalidPublishedIndexError, match="inside path"):
-        JsonIndexReader().read_index(str(tmp_path))
+        JsonIndexReader().read_index(committed_index_bytes(tmp_path))
 
 
 def test_json_index_reader_rejects_cached_skill_file_outside_skill_path(
@@ -405,6 +401,10 @@ def test_json_index_reader_rejects_cached_skill_file_outside_skill_path(
 
 def write_index(tmp_path: Path, overrides: dict[str, object]) -> None:
     write_index_file(tmp_path / "ritebook-index.json", overrides)
+
+
+def committed_index_bytes(tmp_path: Path) -> bytes:
+    return (tmp_path / "ritebook-index.json").read_bytes()
 
 
 def write_index_file(index_path: Path, overrides: dict[str, object]) -> None:

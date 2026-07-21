@@ -89,7 +89,7 @@ class UpdateIndex(UpdateIndexPort):
             source_cache_path=existing.source_cache_path,
             cache_root=command.cache_root,
         )
-        published_index = self._index_reader.read_index(prepared_source.repository_path)
+        published_index = self._index_reader.read_index(prepared_source.index_content)
         cached_index_path = self._cache.write_index(
             name=existing.name,
             content=published_index.cacheable_content,
@@ -101,6 +101,8 @@ class UpdateIndex(UpdateIndexPort):
                 published_name=published_index.published_name,
                 source=prepared_source.source,
                 source_type=prepared_source.source_type,
+                source_revision=prepared_source.source_revision,
+                index_digest=published_index.index_digest,
                 source_cache_path=prepared_source.source_cache_path,
                 cached_index_path=cached_index_path,
                 source_schema_version=published_index.schema_version,

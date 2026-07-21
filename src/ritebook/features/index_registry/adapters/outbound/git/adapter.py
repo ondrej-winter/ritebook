@@ -14,7 +14,7 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.index_registry.application.errors import IndexSourceError
 
 DEFAULT_CACHE_ROOT = "~/.cache/ritebook"
-GitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
+GitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[bytes]]
 
 
 class GitSourceAdapter:
@@ -38,10 +38,13 @@ class GitSourceAdapter:
             self._refresh_clone(clone_path)
         else:
             self._clone_source(source, clone_path)
+        source_revision, index_content = self._capture_candidate(clone_path)
         return PreparedIndexSource(
             source=source,
             source_type=IndexSourceType.GIT_URL,
             repository_path=str(clone_path),
+            source_revision=source_revision,
+            index_content=index_content,
             source_cache_path=str(clone_path),
         )
 
@@ -65,10 +68,13 @@ class GitSourceAdapter:
             self._refresh_clone(clone_path)
         else:
             self._clone_source(source, clone_path)
+        source_revision, index_content = self._capture_candidate(clone_path)
         return PreparedIndexSource(
             source=source,
             source_type=IndexSourceType.GIT_URL,
             repository_path=str(clone_path),
+            source_revision=source_revision,
+            index_content=index_content,
             source_cache_path=str(clone_path),
         )
 
@@ -76,10 +82,29 @@ class GitSourceAdapter:
         if not (source_path / ".git").exists():
             msg = "local index source must be a Git repository"
             raise IndexSourceError(msg)
+        status = self._run(
+            [
+                "git",
+                "-C",
+                str(source_path),
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=all",
+            ],
+        )
+        if status.stdout:
+            msg = (
+                "local index source has uncommitted changes; "
+                "commit or discard them before registration"
+            )
+            raise IndexSourceError(msg)
+        source_revision, index_content = self._capture_candidate(source_path)
         return PreparedIndexSource(
             source=str(source_path),
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path=str(source_path),
+            source_revision=source_revision,
+            index_content=index_content,
         )
 
     def _clone_source(self, source: str, clone_path: Path) -> None:
@@ -90,11 +115,42 @@ class GitSourceAdapter:
         self._run(["git", "-C", str(clone_path), "fetch", "--prune", "--tags"])
         self._run(["git", "-C", str(clone_path), "pull", "--ff-only"])
 
-    def _run(self, command: Sequence[str]) -> None:
+    def _capture_candidate(self, repository_path: Path) -> tuple[str, bytes]:
+        result = self._run(
+            [
+                "git",
+                "-C",
+                str(repository_path),
+                "rev-parse",
+                "--verify",
+                "HEAD^{commit}",
+            ],
+        )
+        try:
+            source_revision = result.stdout.decode("ascii").strip()
+        except UnicodeDecodeError as err:
+            msg = "git source revision is not a valid object ID"
+            raise IndexSourceError(msg) from err
+        index_result = self._run(
+            [
+                "git",
+                "-C",
+                str(repository_path),
+                "show",
+                f"{source_revision}:ritebook-index.json",
+            ],
+        )
+        if not index_result.stdout:
+            msg = "committed ritebook-index.json is empty"
+            raise IndexSourceError(msg)
+        return source_revision, index_result.stdout
+
+    def _run(self, command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:
         result = self._runner(command)
         if result.returncode != 0:
             msg = "git source operation failed"
             raise IndexSourceError(msg)
+        return result
 
 
 def _managed_clone_path(source: str, cache_root: str | None) -> Path:
@@ -102,10 +158,9 @@ def _managed_clone_path(source: str, cache_root: str | None) -> Path:
     return Path(cache_root or DEFAULT_CACHE_ROOT).expanduser() / "git" / digest
 
 
-def _run_git(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
+def _run_git(command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(  # noqa: S603
         command,
         check=False,
         capture_output=True,
-        text=True,
     )

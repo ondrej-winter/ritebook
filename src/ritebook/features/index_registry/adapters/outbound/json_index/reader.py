@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path, PurePosixPath
 from typing import Any, cast
@@ -21,16 +22,16 @@ CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 class JsonIndexReader:
     """Read published index metadata and cached skill summaries from JSON."""
 
-    def read_index(self, repository_path: str) -> PublishedIndex:
-        """Read and validate root ritebook-index.json from a repository path."""
-        content, payload = _read_json_index(
-            Path(repository_path) / CANONICAL_INDEX_FILENAME,
-            missing_message="ritebook-index.json was not found at the repository root",
-            unreadable_message=(
-                "unable to read ritebook-index.json at the repository root"
-            ),
-        )
-        return _validate_payload(payload, content)
+    def read_index(self, content: bytes) -> PublishedIndex:
+        """Validate exact committed root ritebook-index.json bytes."""
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError as err:
+            msg = "ritebook-index.json is not valid UTF-8"
+            raise InvalidPublishedIndexError(msg) from err
+        payload = _parse_json_object(text)
+        digest = f"sha256:{hashlib.sha256(content).hexdigest()}"
+        return _validate_payload(payload, text, digest)
 
     def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
         """Read validated skill summaries from an exact cached index file path."""
@@ -54,6 +55,10 @@ def _read_json_index(
         raise InvalidPublishedIndexError(missing_message) from err
     except OSError as err:
         raise InvalidPublishedIndexError(unreadable_message) from err
+    return content, _parse_json_object(content)
+
+
+def _parse_json_object(content: str) -> dict[str, Any]:
     try:
         payload = json.loads(content)
     except json.JSONDecodeError as err:
@@ -62,10 +67,14 @@ def _read_json_index(
     if not isinstance(payload, dict):
         msg = "ritebook-index.json must contain a JSON object"
         raise InvalidPublishedIndexError(msg)
-    return content, cast("dict[str, Any]", payload)
+    return cast("dict[str, Any]", payload)
 
 
-def _validate_payload(payload: dict[str, Any], content: str) -> PublishedIndex:
+def _validate_payload(
+    payload: dict[str, Any],
+    content: str,
+    index_digest: str,
+) -> PublishedIndex:
     schema_version = payload.get("schema_version")
     if schema_version != 1:
         msg = f"unsupported index schema_version: {schema_version}"
@@ -87,7 +96,8 @@ def _validate_payload(payload: dict[str, Any], content: str) -> PublishedIndex:
         published_name=published_name,
         schema_version=schema_version,
         skill_count=len(skills),
-        cacheable_content=content if content.endswith("\n") else f"{content}\n",
+        cacheable_content=content,
+        index_digest=index_digest,
     )
 
 

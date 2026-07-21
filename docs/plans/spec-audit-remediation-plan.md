@@ -79,7 +79,7 @@ documentation unless the project explicitly accepts and records the existing ris
 ### Phase 1: Provenance foundation
 
 - [x] Task 1: Decide and record the end-to-end provenance model
-- [ ] Task 2: Bind each cached index to validated source identity
+- [x] Task 2: Bind each cached index to validated source identity
 - [ ] Task 3: Install only from the source identity bound to the cached index
 - [ ] Task 4: Propagate verified provenance into lockfiles and contributions
 
@@ -174,21 +174,21 @@ paired with new source content.
 
 **Acceptance criteria:**
 
-- [ ] Added and updated registry entries persist the approved source identity for
+- [x] Added and updated registry entries persist the approved source identity for
   the exact index content that passed validation.
-- [ ] A failed refresh leaves a coherent previous cache/source pair or marks the
+- [x] A failed refresh leaves a coherent previous cache/source pair or marks the
   source unusable until recovery; it never presents stale metadata as current.
-- [ ] Existing pre-release registry schema-v1 data without `source_revision` or
+- [x] Existing pre-release registry schema-v1 data without `source_revision` or
   `index_digest` is rejected with actionable guidance to regenerate registration;
   it is not inferred, migrated automatically, or accepted in compatibility mode.
 
 **Verification:**
 
-- [ ] Focused tests cover successful add/update, validation failure after source
+- [x] Focused tests cover successful add/update, validation failure after source
   refresh, unavailable source identity, and rejection of legacy registry data
   with regeneration guidance.
-- [ ] Run `uv run pytest tests/unit/features/index_registry`.
-- [ ] Run `uv run pytest tests/integration -m integration` for affected adapters.
+- [x] Run `uv run pytest tests/unit/features/index_registry`.
+- [x] Run `uv run pytest tests/integration -m integration` for affected adapters.
 
 **Dependencies:** Task 1.
 
@@ -203,7 +203,13 @@ paired with new source content.
 **Estimated scope:** Medium; split legacy-state rejection from update orchestration
 if the change exceeds five files.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-21. Registry add/update now selects a full Git
+commit, reads and validates the root index from that committed object, hashes the
+exact bytes, and persists `source_revision` plus `index_digest`. Dirty local
+repositories and unavailable revisions are rejected before cache or registry
+writes, legacy registry entries require regeneration, and the focused unit and
+integration suites pass. Full two-artifact commit/recovery semantics remain owned
+by Task 11.
 
 ## Task 3: Install Only From the Source Identity Bound to the Cached Index
 

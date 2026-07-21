@@ -37,6 +37,7 @@ def test_update_index_refreshes_git_url_source() -> None:
                 schema_version=1,
                 skill_count=3,
                 cacheable_content='{"schema_version":1,"skills":[]}\n',
+                index_digest=f"sha256:{'d' * 64}",
             ),
         ),
         registry=registry,
@@ -63,6 +64,8 @@ def test_update_index_refreshes_git_url_source() -> None:
     entry = registry.entries["company-skills"]
     assert entry.added_at == "2026-07-08T18:00:00Z"
     assert entry.updated_at == "2026-07-08T19:00:00Z"
+    assert entry.source_revision == "c" * 40
+    assert entry.index_digest == f"sha256:{'d' * 64}"
 
 
 def test_update_index_refreshes_local_git_repository_source() -> None:
@@ -80,6 +83,8 @@ def test_update_index_refreshes_local_git_repository_source() -> None:
             source="/repos/skills",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/repos/skills",
+            source_revision="c" * 40,
+            index_content=b'{"schema_version":1}\n',
         ),
     )
     use_case = UpdateIndex(
@@ -119,6 +124,7 @@ def test_update_index_keeps_local_alias_when_published_name_changes() -> None:
                 schema_version=1,
                 skill_count=4,
                 cacheable_content='{"schema_version":1}\n',
+                index_digest=f"sha256:{'e' * 64}",
             ),
         ),
         registry=registry,
@@ -188,12 +194,14 @@ def test_update_index_all_continues_after_failure() -> None:
                 schema_version=1,
                 skill_count=11,
                 cacheable_content='{"schema_version":1,"skills":[]}\n',
+                index_digest=f"sha256:{'1' * 64}",
             ),
             "gamma-skills": PublishedIndex(
                 published_name="gamma-skills",
                 schema_version=1,
                 skill_count=13,
                 cacheable_content='{"schema_version":1,"skills":[{}]}\n',
+                index_digest=f"sha256:{'3' * 64}",
             ),
         },
         failures={"beta-skills": InvalidPublishedIndexError("invalid beta index")},

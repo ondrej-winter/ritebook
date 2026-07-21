@@ -84,11 +84,22 @@ def _write_entries(path: Path, entries: dict[str, RegisteredIndex]) -> None:
 
 
 def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:
+    try:
+        source_revision = str(payload["source_revision"])
+        index_digest = str(payload["index_digest"])
+    except KeyError as err:
+        msg = (
+            "index registry entry lacks required source provenance; "
+            "remove and regenerate it with add-index"
+        )
+        raise IndexRegistryPersistenceError(msg) from err
     return RegisteredIndex(
         name=str(payload["name"]),
         published_name=str(payload["published_name"]),
         source=str(payload["source"]),
         source_type=IndexSourceType(str(payload["source_type"])),
+        source_revision=source_revision,
+        index_digest=index_digest,
         source_cache_path=cast("str | None", payload.get("source_cache_path")),
         cached_index_path=str(payload["cached_index_path"]),
         source_schema_version=int(payload["source_schema_version"]),
@@ -104,6 +115,8 @@ def _entry_to_json(entry: RegisteredIndex) -> dict[str, Any]:
         "published_name": entry.published_name,
         "source": entry.source,
         "source_type": entry.source_type.value,
+        "source_revision": entry.source_revision,
+        "index_digest": entry.index_digest,
         "source_cache_path": entry.source_cache_path,
         "cached_index_path": entry.cached_index_path,
         "source_schema_version": entry.source_schema_version,

@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
 from ritebook.shared_kernel import require_index_name
+
+_GIT_OBJECT_ID_PATTERN = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
+_INDEX_DIGEST_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
 
 
 class IndexSourceType(StrEnum):
@@ -87,12 +91,18 @@ class PreparedIndexSource:
     source: str
     source_type: IndexSourceType
     repository_path: str
+    source_revision: str
+    index_content: bytes
     source_cache_path: str | None = None
 
     def __post_init__(self) -> None:
         """Validate prepared source metadata."""
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.repository_path, field_name="Repository path")
+        _require_source_revision(self.source_revision)
+        if not self.index_content:
+            msg = "Committed index content must not be empty."
+            raise ValueError(msg)
         if self.source_type is IndexSourceType.GIT_URL:
             _require_non_empty(
                 self.source_cache_path,
@@ -111,6 +121,7 @@ class PublishedIndex:
     schema_version: int
     skill_count: int
     cacheable_content: str
+    index_digest: str
 
     def __post_init__(self) -> None:
         """Validate published index summary metadata."""
@@ -125,6 +136,7 @@ class PublishedIndex:
             msg = "Published index skill count must not be negative."
             raise ValueError(msg)
         _require_non_empty(self.cacheable_content, field_name="Cacheable index content")
+        _require_index_digest(self.index_digest)
 
 
 @dataclass(frozen=True)
@@ -135,6 +147,8 @@ class RegisteredIndex:
     published_name: str
     source: str
     source_type: IndexSourceType
+    source_revision: str
+    index_digest: str
     source_cache_path: str | None
     cached_index_path: str
     source_schema_version: int
@@ -150,6 +164,8 @@ class RegisteredIndex:
             field_name="Published index name",
         )
         _require_non_empty(self.source, field_name="Index source")
+        _require_source_revision(self.source_revision)
+        _require_index_digest(self.index_digest)
         _require_non_empty(self.cached_index_path, field_name="Cached index path")
         _require_non_empty(self.added_at, field_name="Added timestamp")
         _require_non_empty(self.updated_at, field_name="Updated timestamp")
@@ -282,4 +298,16 @@ def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:
 def _require_non_empty(value: str | None, *, field_name: str) -> None:
     if not value:
         msg = f"{field_name} must not be empty."
+        raise ValueError(msg)
+
+
+def _require_source_revision(value: str) -> None:
+    if not _GIT_OBJECT_ID_PATTERN.fullmatch(value):
+        msg = "Source revision must be a full lowercase Git object ID."
+        raise ValueError(msg)
+
+
+def _require_index_digest(value: str) -> None:
+    if not _INDEX_DIGEST_PATTERN.fullmatch(value):
+        msg = "Index digest must use sha256:<lowercase-hex>."
         raise ValueError(msg)

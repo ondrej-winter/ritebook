@@ -6,6 +6,10 @@ from ritebook.features.index_registry.application.dtos import (
     RegisteredIndex,
 )
 
+SOURCE_REVISION = "a" * 40
+UPDATED_SOURCE_REVISION = "c" * 40
+INDEX_DIGEST = f"sha256:{'b' * 64}"
+
 
 class FakeGitSource:
     def __init__(self, prepared: PreparedIndexSource | None = None) -> None:
@@ -13,6 +17,8 @@ class FakeGitSource:
             source="git@example.com:company/skills.git",
             source_type=IndexSourceType.GIT_URL,
             repository_path="/cache/git/source-id",
+            source_revision=SOURCE_REVISION,
+            index_content=b'{"schema_version":1}\n',
             source_cache_path="/cache/git/source-id",
         )
         self.prepare_calls: list[tuple[str, str | None]] = []
@@ -42,6 +48,8 @@ class FakeGitSource:
                 source=source,
                 source_type=IndexSourceType.GIT_URL,
                 repository_path=f"/cache/git/{index_name}",
+                source_revision=UPDATED_SOURCE_REVISION,
+                index_content=index_name.encode(),
                 source_cache_path=source_cache_path or f"/cache/git/{index_name}",
             )
         return self.prepared
@@ -58,13 +66,14 @@ class FakeIndexReader:
             schema_version=1,
             skill_count=2,
             cacheable_content='{"schema_version":1}\n',
+            index_digest=INDEX_DIGEST,
         )
         self.failures = failures or {}
-        self.read_paths: list[str] = []
+        self.read_contents: list[bytes] = []
 
-    def read_index(self, repository_path: str) -> PublishedIndex:
-        self.read_paths.append(repository_path)
-        index_name = repository_path.rsplit("/", maxsplit=1)[-1]
+    def read_index(self, content: bytes) -> PublishedIndex:
+        self.read_contents.append(content)
+        index_name = content.decode()
         if index_name in self.failures:
             raise self.failures[index_name]
         if isinstance(self.published, dict):
@@ -76,7 +85,7 @@ class FailingIndexReader:
     def __init__(self, error: Exception) -> None:
         self.error = error
 
-    def read_index(self, _repository_path: str) -> PublishedIndex:
+    def read_index(self, _content: bytes) -> PublishedIndex:
         raise self.error
 
 
@@ -132,6 +141,8 @@ def registered_index(
     source: str = "git@example.com:company/skills.git",
     source_type: IndexSourceType = IndexSourceType.GIT_URL,
     source_cache_path: str | None = "/cache/git/source-id",
+    source_revision: str = SOURCE_REVISION,
+    index_digest: str = INDEX_DIGEST,
     cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
     source_schema_version: int = 1,
     skill_count: int = 2,
@@ -143,6 +154,8 @@ def registered_index(
         published_name=published_name,
         source=source,
         source_type=source_type,
+        source_revision=source_revision,
+        index_digest=index_digest,
         source_cache_path=source_cache_path,
         cached_index_path=cached_index_path,
         source_schema_version=source_schema_version,

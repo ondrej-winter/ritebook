@@ -11,5 +11,5 @@ if TYPE_CHECKING:
 class IndexSourceReaderPort(Protocol):
     """Outbound dependency for validating root ritebook-index.json files."""
 
-    def read_index(self, repository_path: str) -> PublishedIndex:
-        """Read and validate the root index from a prepared repository path."""
+    def read_index(self, content: bytes) -> PublishedIndex:
+        """Validate exact committed root index bytes."""

@@ -45,12 +45,14 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     assert git_source.prepare_calls == [
         ("git@example.com:company/skills.git", "/tmp/cache"),
     ]
-    assert reader.read_paths == ["/cache/git/source-id"]
+    assert reader.read_contents == [b'{"schema_version":1}\n']
     assert cache.write_calls == [
         ("company-skills", '{"schema_version":1}\n', "/tmp/cache"),
     ]
     entry = registry.entries["company-skills"]
     assert entry.source_type is IndexSourceType.GIT_URL
+    assert entry.source_revision == "a" * 40
+    assert entry.index_digest == f"sha256:{'b' * 64}"
     assert entry.added_at == "2026-07-08T18:00:00Z"
     assert registry.upsert_calls[0][1] == "/tmp/indexes.json"
 
@@ -81,6 +83,8 @@ def test_add_index_registers_local_git_repository_source() -> None:
             source="/repos/skills",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/repos/skills",
+            source_revision="a" * 40,
+            index_content=b'{"schema_version":1}\n',
         ),
     )
     registry = FakeRegistry()
@@ -96,6 +100,8 @@ def test_add_index_registers_local_git_repository_source() -> None:
 
     entry = registry.entries["company-skills"]
     assert entry.source_type is IndexSourceType.LOCAL_GIT_REPO
+    assert entry.source_revision == "a" * 40
+    assert entry.index_digest == f"sha256:{'b' * 64}"
     assert entry.source_cache_path is None
 
 

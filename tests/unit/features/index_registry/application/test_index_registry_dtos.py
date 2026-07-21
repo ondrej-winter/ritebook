@@ -15,6 +15,9 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexResult,
 )
 
+SOURCE_REVISION = "a" * 40
+INDEX_DIGEST = f"sha256:{'b' * 64}"
+
 
 def test_add_index_command_accepts_optional_overrides() -> None:
     command = AddIndexCommand(
@@ -42,6 +45,7 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             schema_version=1,
             skill_count=0,
             cacheable_content="{}",
+            index_digest=INDEX_DIGEST,
         )
 
     with pytest.raises(ValueError, match="Index name"):
@@ -50,6 +54,8 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             published_name="company-skills",
             source="git@example.com:ondrej-winter/ritebook-shelf.git",
             source_type=IndexSourceType.GIT_URL,
+            source_revision=SOURCE_REVISION,
+            index_digest=INDEX_DIGEST,
             source_cache_path="/tmp/source-cache",
             cached_index_path="/tmp/cache/indexes/company-skills/ritebook-index.json",
             source_schema_version=1,
@@ -188,6 +194,8 @@ def test_prepared_git_url_source_requires_cache_path() -> None:
             source="git@example.com:company/skills.git",
             source_type=IndexSourceType.GIT_URL,
             repository_path="/tmp/repo",
+            source_revision=SOURCE_REVISION,
+            index_content=b"{}",
         )
 
 
@@ -197,6 +205,8 @@ def test_prepared_local_source_rejects_cache_path() -> None:
             source="/tmp/repo",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/tmp/repo",
+            source_revision=SOURCE_REVISION,
+            index_content=b"{}",
             source_cache_path="/tmp/cache",
         )
 
@@ -208,6 +218,7 @@ def test_published_index_rejects_invalid_metadata() -> None:
             schema_version=1,
             skill_count=0,
             cacheable_content="{}",
+            index_digest=INDEX_DIGEST,
         )
 
     with pytest.raises(ValueError, match="unsupported index schema_version"):
@@ -216,6 +227,7 @@ def test_published_index_rejects_invalid_metadata() -> None:
             schema_version=2,
             skill_count=0,
             cacheable_content="{}",
+            index_digest=INDEX_DIGEST,
         )
 
 
@@ -226,10 +238,36 @@ def test_registered_local_index_rejects_source_cache_path() -> None:
             published_name="company-skills",
             source="/tmp/repo",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
+            source_revision=SOURCE_REVISION,
+            index_digest=INDEX_DIGEST,
             source_cache_path="/tmp/cache",
             cached_index_path="/tmp/cache/index.json",
             source_schema_version=1,
             skill_count=1,
             added_at="2026-07-08T18:00:00Z",
             updated_at="2026-07-08T18:00:00Z",
+        )
+
+
+@pytest.mark.parametrize("source_revision", ["", "abc123", "A" * 40])
+def test_prepared_source_rejects_non_full_revision(source_revision: str) -> None:
+    with pytest.raises(ValueError, match="full lowercase Git object ID"):
+        PreparedIndexSource(
+            source="/tmp/repo",
+            source_type=IndexSourceType.LOCAL_GIT_REPO,
+            repository_path="/tmp/repo",
+            source_revision=source_revision,
+            index_content=b"{}",
+        )
+
+
+@pytest.mark.parametrize("index_digest", ["", "sha256:abc", f"sha256:{'A' * 64}"])
+def test_published_index_rejects_invalid_digest(index_digest: str) -> None:
+    with pytest.raises(ValueError, match="sha256:<lowercase-hex>"):
+        PublishedIndex(
+            published_name="company-skills",
+            schema_version=1,
+            skill_count=0,
+            cacheable_content="{}",
+            index_digest=index_digest,
         )

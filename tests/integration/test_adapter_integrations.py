@@ -104,7 +104,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     JsonIndexWriter().write_index(catalog, str(index_path))
 
     index_reader = JsonIndexReader()
-    published = index_reader.read_index(str(index_path.parent))
+    published = index_reader.read_index(index_path.read_bytes())
     cached_path = FilesystemIndexCache().write_index(
         name="company-skills",
         content=published.cacheable_content,
@@ -118,6 +118,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
             source_cache_path=None,
             cached_index_path=cached_path,
             skill_count=published.skill_count,
+            index_digest=published.index_digest,
         ),
         str(registry_path),
     )
@@ -133,6 +134,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
         source_cache_path=None,
         cached_index_path=cached_path,
         skill_count=2,
+        index_digest=published.index_digest,
     )
 
 
@@ -300,12 +302,16 @@ def _registered_index(
     source_cache_path: str | None = "/cache/git/source-id",
     cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
     skill_count: int = 1,
+    source_revision: str = "a" * 40,
+    index_digest: str = f"sha256:{'b' * 64}",
 ) -> RegisteredIndex:
     return RegisteredIndex(
         name="company-skills",
         published_name="company-skills",
         source=source,
         source_type=source_type,
+        source_revision=source_revision,
+        index_digest=index_digest,
         source_cache_path=source_cache_path,
         cached_index_path=cached_index_path,
         source_schema_version=1,

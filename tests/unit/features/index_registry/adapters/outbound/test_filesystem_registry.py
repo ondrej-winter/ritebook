@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import pytest
+
 from ritebook.features.index_registry.adapters.outbound.filesystem_registry import (
     FilesystemIndexRegistry,
 )
@@ -8,6 +10,12 @@ from ritebook.features.index_registry.application.dtos import (
     IndexSourceType,
     RegisteredIndex,
 )
+from ritebook.features.index_registry.application.errors import (
+    IndexRegistryPersistenceError,
+)
+
+SOURCE_REVISION = "a" * 40
+INDEX_DIGEST = f"sha256:{'b' * 64}"
 
 
 def test_filesystem_registry_reads_missing_registry_as_empty(tmp_path: Path) -> None:
@@ -29,6 +37,8 @@ def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> Non
         "zeta-skills",
     ]
     assert registry.get("alpha-skills", str(path)) == entry(name="alpha-skills")
+    assert payload["indexes"][0]["source_revision"] == SOURCE_REVISION
+    assert payload["indexes"][0]["index_digest"] == INDEX_DIGEST
 
 
 def test_filesystem_registry_lists_entries_in_deterministic_order(
@@ -62,12 +72,33 @@ def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None
     assert zeta_entry.skill_count == 2
 
 
+@pytest.mark.parametrize("missing_field", ["source_revision", "index_digest"])
+def test_filesystem_registry_rejects_legacy_entries_without_provenance(
+    tmp_path: Path,
+    missing_field: str,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(entry(), str(path))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    del payload["indexes"][0][missing_field]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        IndexRegistryPersistenceError,
+        match="regenerate it with add-index",
+    ):
+        registry.get("company-skills", str(path))
+
+
 def entry(*, name: str = "company-skills", skill_count: int = 1) -> RegisteredIndex:
     return RegisteredIndex(
         name=name,
         published_name="company-skills",
         source="git@example.com:company/skills.git",
         source_type=IndexSourceType.GIT_URL,
+        source_revision=SOURCE_REVISION,
+        index_digest=INDEX_DIGEST,
         source_cache_path="/cache/git/source-id",
         cached_index_path=f"/cache/indexes/{name}/ritebook-index.json",
         source_schema_version=1,

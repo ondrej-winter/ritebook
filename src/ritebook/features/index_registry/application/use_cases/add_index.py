@@ -49,7 +49,7 @@ class AddIndex(AddIndexPort):
             command.source,
             command.cache_root,
         )
-        published_index = self._index_reader.read_index(prepared_source.repository_path)
+        published_index = self._index_reader.read_index(prepared_source.index_content)
         local_alias = command.alias or published_index.published_name
 
         if self._registry.get(local_alias, command.registry_path) and not command.force:
@@ -67,6 +67,8 @@ class AddIndex(AddIndexPort):
                 published_name=published_index.published_name,
                 source=prepared_source.source,
                 source_type=prepared_source.source_type,
+                source_revision=prepared_source.source_revision,
+                index_digest=published_index.index_digest,
                 source_cache_path=prepared_source.source_cache_path,
                 cached_index_path=cached_index_path,
                 source_schema_version=published_index.schema_version,

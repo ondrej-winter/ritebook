@@ -123,6 +123,8 @@ def registered_index(
         published_name=name,
         source=source,
         source_type=source_type,
+        source_revision="a" * 40,
+        index_digest=f"sha256:{'b' * 64}",
         source_cache_path=source_cache_path,
         cached_index_path=f"/cache/indexes/{name}/ritebook-index.json",
         source_schema_version=1,

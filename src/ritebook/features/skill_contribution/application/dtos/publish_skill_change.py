@@ -10,6 +10,8 @@ from pathlib import PurePosixPath
 from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
 
 SAFE_FILE_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
+GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+INDEX_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
 class SkillChangeStatus(StrEnum):
@@ -84,6 +86,7 @@ class ContributionLockfileEntry:
     source: str
     source_type: str
     source_revision: str
+    index_digest: str
     skill_path: str
     skill_file: str
     index_schema_version: int
@@ -96,7 +99,12 @@ class ContributionLockfileEntry:
         _require_non_empty(self.target, field_name="Installed skill target")
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.source_type, field_name="Index source type")
-        _require_non_empty(self.source_revision, field_name="Source revision")
+        if not GIT_OBJECT_ID_PATTERN.fullmatch(self.source_revision):
+            msg = "Source revision must be a full lowercase Git object ID."
+            raise ValueError(msg)
+        if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
+            msg = "Index digest must use sha256:<64 lowercase hex>."
+            raise ValueError(msg)
         _require_safe_posix_path(self.skill_path, field_name="Skill path")
         _require_safe_file_path(self.skill_file, field_name="Skill file")
         if self.index_schema_version < 1:

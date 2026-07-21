@@ -58,14 +58,13 @@ def test_json_lockfile_preserves_relative_targets_and_optional_target_ref(
     assert data["skills"][0]["target_ref"] == "claude"
 
 
-def test_json_lockfile_omits_optional_fields_when_not_resolved(tmp_path: Path) -> None:
+def test_json_lockfile_omits_optional_target_ref(tmp_path: Path) -> None:
     lockfile_path = tmp_path / "ritebook.lock"
 
     JsonLockfileAdapter().write_lockfile(
         (
             _entry(
                 target_ref=None,
-                source_revision=None,
             ),
         ),
         str(lockfile_path),
@@ -74,7 +73,8 @@ def test_json_lockfile_omits_optional_fields_when_not_resolved(tmp_path: Path) -
 
     data = _read_json(lockfile_path)
     assert "target_ref" not in data["skills"][0]
-    assert "source_revision" not in data["skills"][0]
+    assert data["skills"][0]["source_revision"] == "a" * 40
+    assert data["skills"][0]["index_digest"] == f"sha256:{'b' * 64}"
 
 
 def test_json_lockfile_full_rewrite_removes_stale_entries(tmp_path: Path) -> None:
@@ -106,7 +106,8 @@ def _entry(
     requirement: str = "platform-skills/code-review",
     target: str = ".claude/skills/code-review",
     target_ref: str | None = None,
-    source_revision: str | None = "abc123",
+    source_revision: str = "a" * 40,
+    index_digest: str = f"sha256:{'b' * 64}",
 ) -> LockfileManifestEntry:
     index_name, skill_name = requirement.rsplit("/", maxsplit=1)
     return LockfileManifestEntry(
@@ -117,6 +118,7 @@ def _entry(
         source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision=source_revision,
+        index_digest=index_digest,
         index_schema_version=1,
         skill_path=f"skills/{skill_name}",
         skill_file=f"skills/{skill_name}/SKILL.md",

@@ -81,6 +81,7 @@ class InstallSkill(InstallSkillPort):
                 source=source.source,
                 source_type=source.source_type,
                 source_revision=source.source_revision,
+                index_digest=source.index_digest,
                 index_schema_version=index.index_schema_version,
                 skill_path=repository_relative_source_path(
                     skill.source_root,

@@ -117,6 +117,11 @@ def _entry_from_json(
                 "source_revision",
                 position=position,
             ),
+            index_digest=_required_str(
+                typed_entry,
+                "index_digest",
+                position=position,
+            ),
             skill_path=_required_str(typed_entry, "skill_path", position=position),
             skill_file=_required_str(typed_entry, "skill_file", position=position),
             index_schema_version=_required_int(
@@ -138,6 +143,12 @@ def _required_str(
 ) -> str:
     value = entry.get(field_name)
     if not isinstance(value, str) or not value:
+        if field_name in {"source_revision", "index_digest"}:
+            msg = (
+                f"lockfile skill entry at position {position} is missing verified "
+                f"{field_name}; regenerate ritebook.lock by running ritebook install"
+            )
+            raise ContributionLockfileReadError(msg)
         msg = f"lockfile skill entry at position {position} must include {field_name}"
         raise ContributionLockfileReadError(msg)
     return value

@@ -93,7 +93,22 @@ def _read_entries(path: Path) -> list[dict[str, Any]]:
     ):
         msg = f"installation registry is malformed: {path}"
         raise InstallationPersistenceError(msg)
-    return cast("list[dict[str, Any]]", entries)
+    typed_entries = cast("list[dict[str, Any]]", entries)
+    for entry in typed_entries:
+        if not _has_required_provenance(entry):
+            msg = (
+                "installation registry contains legacy entries without verified "
+                f"provenance: {path}; remove it and reinstall the recorded skills"
+            )
+            raise InstallationPersistenceError(msg)
+    return typed_entries
+
+
+def _has_required_provenance(entry: dict[str, Any]) -> bool:
+    return all(
+        isinstance(entry.get(field_name), str) and bool(entry[field_name])
+        for field_name in ("source_revision", "index_digest")
+    )
 
 
 def _upsert_entry(
@@ -132,13 +147,13 @@ def _entry_to_json(entry: InstallationManifestEntry, target: str) -> dict[str, A
         "target": target,
         "source": entry.source,
         "source_type": entry.source_type,
+        "source_revision": entry.source_revision,
+        "index_digest": entry.index_digest,
         "index_schema_version": entry.index_schema_version,
         "skill_path": entry.skill_path,
         "skill_file": entry.skill_file,
         "installed_at": entry.installed_at,
     }
-    if entry.source_revision is not None:
-        data["source_revision"] = entry.source_revision
     return data
 
 

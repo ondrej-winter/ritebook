@@ -24,7 +24,8 @@ def test_json_lockfile_reader_resolves_exact_requirement(tmp_path: Path) -> None
     )
 
     assert result.requirement == "platform-skills/code-review"
-    assert result.source_revision == "abc123"
+    assert result.source_revision == "a" * 40
+    assert result.index_digest == f"sha256:{'b' * 64}"
     assert result.target == ".agents/skills/code-review"
 
 
@@ -224,6 +225,7 @@ def test_json_lockfile_reader_rejects_non_object_skill_entries(tmp_path: Path) -
         "source",
         "source_type",
         "source_revision",
+        "index_digest",
         "skill_path",
         "skill_file",
     ],
@@ -296,7 +298,8 @@ def lockfile_entry(**overrides: object) -> dict[str, object]:
         "target": ".agents/skills/code-review",
         "source": "git@example.com:example/skills.git",
         "source_type": "git_url",
-        "source_revision": "abc123",
+        "source_revision": "a" * 40,
+        "index_digest": f"sha256:{'b' * 64}",
         "index_schema_version": 1,
         "skill_path": "code-review",
         "skill_file": "code-review/SKILL.md",

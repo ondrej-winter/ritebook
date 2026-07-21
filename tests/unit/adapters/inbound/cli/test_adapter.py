@@ -239,6 +239,8 @@ class FakeInstallSkill:
                 target=".claude/skills/code-review",
                 source="git@example.com:company/skills.git",
                 source_type="git_url",
+                source_revision="a" * 40,
+                index_digest=f"sha256:{'b' * 64}",
                 index_schema_version=1,
                 skill_path="skills/code-review",
                 skill_file="skills/code-review/SKILL.md",

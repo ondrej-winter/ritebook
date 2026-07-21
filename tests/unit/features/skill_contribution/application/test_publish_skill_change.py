@@ -117,7 +117,8 @@ def test_contribution_lockfile_entry_requires_mvp_provenance() -> None:
     entry = contribution_lockfile_entry()
 
     assert entry.requirement == "platform-skills/code-review"
-    assert entry.source_revision == "abc123"
+    assert entry.source_revision == "a" * 40
+    assert entry.index_digest == f"sha256:{'b' * 64}"
     assert entry.skill_path == "skills/code-review"
     assert entry.skill_file == "skills/code-review/SKILL.md"
 
@@ -132,6 +133,7 @@ def test_contribution_lockfile_entry_requires_mvp_provenance() -> None:
         "source",
         "source_type",
         "source_revision",
+        "index_digest",
         "skill_path",
         "skill_file",
     ],
@@ -142,7 +144,10 @@ def test_contribution_lockfile_entry_rejects_missing_required_fields(
     kwargs = _entry_kwargs()
     kwargs[field] = ""
 
-    with pytest.raises(ValueError, match=r"must not be empty|Index name|Skill name"):
+    with pytest.raises(
+        ValueError,
+        match=r"must not be empty|Index name|Skill name|Source revision|Index digest",
+    ):
         ContributionLockfileEntry(**kwargs)
 
 
@@ -488,7 +493,8 @@ def _entry_kwargs() -> dict[str, object]:
         "target": ".agents/skills/code-review",
         "source": "git@example.com:example/skills.git",
         "source_type": "git_url",
-        "source_revision": "abc123",
+        "source_revision": "a" * 40,
+        "index_digest": f"sha256:{'b' * 64}",
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",
         "index_schema_version": 1,

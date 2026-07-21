@@ -31,8 +31,10 @@ class RecordingRunner:
     def __init__(
         self,
         responses: dict[tuple[str, ...], tuple[int, str, str]] | None = None,
+        binary_responses: dict[tuple[str, ...], tuple[int, bytes, bytes]] | None = None,
     ) -> None:
         self.responses = responses or {}
+        self.binary_responses = binary_responses or {}
         self.commands: list[list[str]] = []
 
     def __call__(self, command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -41,6 +43,23 @@ class RecordingRunner:
         if "clone" in recorded:
             Path(recorded[-1], ".git").mkdir(parents=True, exist_ok=True)
         returncode, stdout, stderr = self.responses.get(tuple(recorded), (0, "", ""))
+        return subprocess.CompletedProcess(command, returncode, stdout, stderr)
+
+    def run_bytes(
+        self,
+        command: Sequence[str],
+    ) -> subprocess.CompletedProcess[bytes]:
+        recorded = list(command)
+        self.commands.append(recorded)
+        default_response = self.responses.get(tuple(recorded), (0, "", ""))
+        returncode, stdout, stderr = self.binary_responses.get(
+            tuple(recorded),
+            (
+                default_response[0],
+                default_response[1].encode(),
+                default_response[2].encode(),
+            ),
+        )
         return subprocess.CompletedProcess(command, returncode, stdout, stderr)
 
 
@@ -229,12 +248,13 @@ def test_git_workspace_clones_git_url_to_deterministic_owned_path(
 
     workspace = GitWorkspaceAdapter(
         runner=runner,
+        binary_runner=runner.run_bytes,
         default_contribution_root=lambda: tmp_path / "unused-default",
     ).prepare_workspace(entry, str(contribution_root))
 
     assert Path(workspace.checkout_path) == checkout_path
     assert workspace.current_base_revision == "def456"
-    assert workspace.locked_revision == "abc123"
+    assert workspace.locked_revision == entry.source_revision
     assert workspace.source_skill_path == "skills/code-review"
     assert workspace.has_usable_origin is True
     assert entry.source not in workspace.checkout_path
@@ -242,6 +262,23 @@ def test_git_workspace_clones_git_url_to_deterministic_owned_path(
         ["git", "--no-pager", "clone", "--", entry.source, str(checkout_path)],
         ["git", "--no-pager", "-C", str(checkout_path), "remote", "get-url", "origin"],
         ["git", "--no-pager", "-C", str(checkout_path), "fetch", "--prune", "origin"],
+        [
+            "git",
+            "--no-pager",
+            "-C",
+            str(checkout_path),
+            "cat-file",
+            "-e",
+            f"{entry.source_revision}^{{commit}}",
+        ],
+        [
+            "git",
+            "--no-pager",
+            "-C",
+            str(checkout_path),
+            "show",
+            f"{entry.source_revision}:ritebook-index.json",
+        ],
         [
             "git",
             "--no-pager",
@@ -298,7 +335,10 @@ def test_git_workspace_reuses_owned_checkout_without_cloning(tmp_path: Path) -> 
         },
     )
 
-    GitWorkspaceAdapter(runner=runner).prepare_workspace(
+    GitWorkspaceAdapter(
+        runner=runner,
+        binary_runner=runner.run_bytes,
+    ).prepare_workspace(
         entry,
         str(contribution_root),
     )
@@ -310,6 +350,78 @@ def test_git_workspace_reuses_owned_checkout_without_cloning(tmp_path: Path) -> 
     assert git(checkout_path, "clean", "-fd") in [
         tuple(command) for command in runner.commands
     ]
+
+
+def test_git_workspace_rejects_unavailable_locked_revision_before_cleanup(
+    tmp_path: Path,
+) -> None:
+    entry = contribution_entry()
+    checkout_path = expected_checkout_path(tmp_path, entry)
+    write_workspace_marker(checkout_path)
+    revision_command = git(
+        checkout_path,
+        "cat-file",
+        "-e",
+        f"{entry.source_revision}^{{commit}}",
+    )
+    runner = RecordingRunner({revision_command: (1, "", "fatal: unavailable")})
+
+    with pytest.raises(ContributionGitError, match="reinstall the skill"):
+        GitWorkspaceAdapter(
+            runner=runner,
+            binary_runner=runner.run_bytes,
+        ).prepare_workspace(entry, str(tmp_path))
+
+    assert revision_command in [tuple(command) for command in runner.commands]
+    assert_no_cleanup_commands(runner.commands)
+
+
+def test_git_workspace_rejects_missing_locked_index_before_cleanup(
+    tmp_path: Path,
+) -> None:
+    entry = contribution_entry()
+    checkout_path = expected_checkout_path(tmp_path, entry)
+    write_workspace_marker(checkout_path)
+    index_command = git(
+        checkout_path,
+        "show",
+        f"{entry.source_revision}:ritebook-index.json",
+    )
+    runner = RecordingRunner({index_command: (1, "", "fatal: unavailable")})
+
+    with pytest.raises(ContributionGitError, match="reinstall the skill"):
+        GitWorkspaceAdapter(
+            runner=runner,
+            binary_runner=runner.run_bytes,
+        ).prepare_workspace(entry, str(tmp_path))
+
+    assert index_command in [tuple(command) for command in runner.commands]
+    assert_no_cleanup_commands(runner.commands)
+
+
+def test_git_workspace_rejects_locked_index_digest_mismatch_before_cleanup(
+    tmp_path: Path,
+) -> None:
+    entry = contribution_entry(index_digest=f"sha256:{'b' * 64}")
+    checkout_path = expected_checkout_path(tmp_path, entry)
+    write_workspace_marker(checkout_path)
+    index_command = git(
+        checkout_path,
+        "show",
+        f"{entry.source_revision}:ritebook-index.json",
+    )
+    runner = RecordingRunner(
+        binary_responses={index_command: (0, b'{"schema_version":1}\n', b"")},
+    )
+
+    with pytest.raises(ContributionGitError, match=r"does not match ritebook\.lock"):
+        GitWorkspaceAdapter(
+            runner=runner,
+            binary_runner=runner.run_bytes,
+        ).prepare_workspace(entry, str(tmp_path))
+
+    assert index_command in [tuple(command) for command in runner.commands]
+    assert_no_cleanup_commands(runner.commands)
 
 
 def test_git_workspace_paths_do_not_collide_for_flattened_skill_slugs(
@@ -389,6 +501,7 @@ def test_git_workspace_uses_injected_default_contribution_root(
 
     workspace = GitWorkspaceAdapter(
         runner=runner,
+        binary_runner=runner.run_bytes,
         default_contribution_root=lambda: default_root,
     ).prepare_workspace(entry, None)
 
@@ -410,14 +523,22 @@ def test_git_workspace_local_clone_does_not_mutate_user_working_tree(
     skill_file = source / "skills" / "code-review" / "SKILL.md"
     skill_file.parent.mkdir(parents=True)
     skill_file.write_text("# original\n", encoding="utf-8")
+    index_content = '{"schema_version":1,"skills":[]}\n'
+    (source / "ritebook-index.json").write_text(index_content, encoding="utf-8")
     run_git(source, "add", ".")
     run_git(source, "commit", "--message", "Initial skill")
+    source_revision = run_git(source, "rev-parse", "HEAD").stdout.strip()
     untracked = source / "local-notes.txt"
     untracked.write_text("keep me\n", encoding="utf-8")
     status_before = run_git(source, "status", "--short").stdout
 
     workspace = GitWorkspaceAdapter().prepare_workspace(
-        contribution_entry(source=str(source), source_type="local_git_repo"),
+        contribution_entry(
+            source=str(source),
+            source_type="local_git_repo",
+            source_revision=source_revision,
+            index_digest=f"sha256:{hashlib.sha256(index_content.encode()).hexdigest()}",
+        ),
         str(tmp_path / "contributions"),
     )
 
@@ -461,6 +582,8 @@ def contribution_entry(
     skill_path: str = "skills/code-review",
     source: str = "git@example.com:example/skills.git",
     source_type: str = "git_url",
+    source_revision: str = "a" * 40,
+    index_digest: str = f"sha256:{hashlib.sha256(b'').hexdigest()}",
 ) -> ContributionLockfileEntry:
     return ContributionLockfileEntry(
         requirement=requirement,
@@ -469,7 +592,8 @@ def contribution_entry(
         target=".agents/skills/code-review",
         source=source,
         source_type=source_type,
-        source_revision="abc123",
+        source_revision=source_revision,
+        index_digest=index_digest,
         skill_path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",
         index_schema_version=1,
@@ -518,3 +642,9 @@ def write_workspace_marker(checkout_path: Path) -> None:
     marker = checkout_path / ".git" / git_workspace_adapter.WORKSPACE_MARKER_NAME
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text("managed by Ritebook\n", encoding="utf-8")
+
+
+def assert_no_cleanup_commands(commands: list[list[str]]) -> None:
+    assert all("checkout" not in command for command in commands)
+    assert all("reset" not in command for command in commands)
+    assert all("clean" not in command for command in commands)

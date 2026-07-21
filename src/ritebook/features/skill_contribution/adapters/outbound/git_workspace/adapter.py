@@ -28,6 +28,7 @@ GIT_URL_SOURCE_TYPE = "git_url"
 LOCAL_GIT_REPO_SOURCE_TYPE = "local_git_repo"
 WORKSPACE_MARKER_NAME = "ritebook-contribution-workspace"
 GitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
+BinaryGitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[bytes]]
 ContributionRootResolver = Callable[[], Path]
 
 
@@ -84,10 +85,12 @@ class GitWorkspaceAdapter(SkillSourceWorkspacePort):
     def __init__(
         self,
         runner: GitRunner | None = None,
+        binary_runner: BinaryGitRunner | None = None,
         default_contribution_root: ContributionRootResolver | None = None,
     ) -> None:
         """Initialize injectable Git and default-root boundaries."""
         self._runner = runner or _run_git
+        self._binary_runner = binary_runner or _run_git_bytes
         self._default_contribution_root = (
             default_contribution_root or _default_contribution_root
         )
@@ -124,6 +127,7 @@ class GitWorkspaceAdapter(SkillSourceWorkspacePort):
         has_origin = self._has_origin(checkout_path)
         if has_origin:
             self._run(_git(checkout_path, "fetch", "--prune", "origin"))
+        self._verify_locked_provenance(checkout_path, entry)
         base_reference = self._base_reference(checkout_path, has_origin=has_origin)
         self._run(_git(checkout_path, "checkout", "--detach", base_reference))
         self._run(_git(checkout_path, "reset", "--hard", base_reference))
@@ -138,6 +142,42 @@ class GitWorkspaceAdapter(SkillSourceWorkspacePort):
             locked_revision=entry.source_revision,
             has_usable_origin=(has_origin and entry.source_type == GIT_URL_SOURCE_TYPE),
         )
+
+    def _verify_locked_provenance(
+        self,
+        checkout_path: Path,
+        entry: ContributionLockfileEntry,
+    ) -> None:
+        revision = self._runner(
+            _git(
+                checkout_path,
+                "cat-file",
+                "-e",
+                f"{entry.source_revision}^{{commit}}",
+            ),
+        )
+        if revision.returncode != 0:
+            msg = (
+                "locked source revision is unavailable; restore the source history "
+                "or reinstall the skill to regenerate ritebook.lock"
+            )
+            raise ContributionGitError(msg)
+        committed_index = self._binary_runner(
+            _git(checkout_path, "show", f"{entry.source_revision}:ritebook-index.json"),
+        )
+        if committed_index.returncode != 0:
+            msg = (
+                "locked source index is unavailable; restore the source history "
+                "or reinstall the skill to regenerate ritebook.lock"
+            )
+            raise ContributionGitError(msg)
+        digest = f"sha256:{hashlib.sha256(committed_index.stdout).hexdigest()}"
+        if digest != entry.index_digest:
+            msg = (
+                "locked source index does not match ritebook.lock; reinstall the skill "
+                "to regenerate verified provenance"
+            )
+            raise ContributionGitError(msg)
 
     def _has_origin(self, checkout_path: Path) -> bool:
         result = self._runner(_git(checkout_path, "remote", "get-url", "origin"))
@@ -257,5 +297,18 @@ def _run_git(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
         check=False,
         capture_output=True,
         text=True,
+        env=environment,
+    )
+
+
+def _run_git_bytes(command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:
+    environment = os.environ.copy()
+    environment["GIT_TERMINAL_PROMPT"] = "0"
+    environment["GIT_PAGER"] = "cat"
+    environment.setdefault("GIT_SSH_COMMAND", "ssh -o BatchMode=yes")
+    return subprocess.run(  # noqa: S603
+        command,
+        check=False,
+        capture_output=True,
         env=environment,
     )

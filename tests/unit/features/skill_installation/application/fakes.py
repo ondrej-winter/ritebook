@@ -48,6 +48,7 @@ class FakeSkillSourceResolver:
             source_type="git_url",
             repository_path="/cache/git/company-skills",
             source_revision="c" * 40,
+            index_digest=f"sha256:{'d' * 64}",
         )
         self.failure = failure
         self.resolve_calls: list[RegisteredSkillIndex] = []

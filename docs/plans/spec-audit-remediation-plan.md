@@ -81,7 +81,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 1: Decide and record the end-to-end provenance model
 - [x] Task 2: Bind each cached index to validated source identity
 - [x] Task 3: Install only from the source identity bound to the cached index
-- [ ] Task 4: Propagate verified provenance into lockfiles and contributions
+- [x] Task 4: Propagate verified provenance into lockfiles and contributions
 
 ### Phase 2: Destructive filesystem safety
 
@@ -274,19 +274,19 @@ to regenerate them.
 
 **Acceptance criteria:**
 
-- [ ] `ritebook.lock` and `installations.json` record the verified installed source
+- [x] `ritebook.lock` and `installations.json` record the verified installed source
   identity rather than whatever revision happens to be current afterward.
-- [ ] Contribution comparison and branch preparation use that identity as their
+- [x] Contribution comparison and branch preparation use that identity as their
   locked base and fail clearly when it is unavailable.
-- [ ] Schema-v1 lockfile and installation-registry readers reject missing
+- [x] Schema-v1 lockfile and installation-registry readers reject missing
   provenance with regeneration guidance; parser/writer tests cover rejection and
   the required fields without automatic migration or compatibility inference.
 
 **Verification:**
 
-- [ ] Run focused lockfile writer/reader and contribution application tests.
-- [ ] Run `uv run pytest tests/unit/features/skill_installation`.
-- [ ] Run `uv run pytest tests/unit/features/skill_contribution`.
+- [x] Run focused lockfile writer/reader and contribution application tests.
+- [x] Run `uv run pytest tests/unit/features/skill_installation`.
+- [x] Run `uv run pytest tests/unit/features/skill_contribution`.
 
 **Dependencies:** Tasks 1 through 3.
 
@@ -301,12 +301,20 @@ to regenerate them.
 **Estimated scope:** Medium; split lockfile schema work from contribution behavior
 if necessary.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-21. Installation now carries the exact verified
+`source_revision` and `index_digest` returned by source resolution into deterministic
+`ritebook.lock` and `installations.json` output. Legacy schema-v1 generated state
+without either field is rejected with regeneration guidance. Contribution lockfile
+parsing requires the same pair, and isolated Git workspaces verify that the locked
+commit exists and its committed root index matches the digest before checkout,
+cleanup, comparison, or branch preparation. Focused installation tests passed with
+94 tests, focused contribution tests passed with 109 tests, integration tests passed
+with 6 tests, and the contribution E2E workflow passed with 3 tests.
 
 ## Checkpoint A: Provenance Contract
 
 - [x] ADR is accepted and linked from affected specs.
-- [ ] Registry cache, source resolver, generated state, and contribution workflow
+- [x] Registry cache, source resolver, generated state, and contribution workflow
   agree on one source identity.
 - [x] A failed index update cannot lead to installation of different unvalidated
   source content.
@@ -975,7 +983,7 @@ follow-up rather than leaving an unchecked item implied complete.
 
 | Audit finding | Severity | Primary task(s) | Status |
 | --- | --- | --- | --- |
-| 1. Cached index is not bound to installed source content | Critical | 1–4 | Open |
+| 1. Cached index is not bound to installed source content | Critical | 1–4 | Closed |
 | 2. Installation source-target overlap | Critical | 5 | Open |
 | 3. Contribution index symlink escape | Critical | 6 | Open |
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Open |

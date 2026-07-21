@@ -72,6 +72,8 @@ def _entry_to_json(entry: LockfileManifestEntry) -> dict[str, Any]:
         "target": entry.target,
         "source": entry.source,
         "source_type": entry.source_type,
+        "source_revision": entry.source_revision,
+        "index_digest": entry.index_digest,
         "index_schema_version": entry.index_schema_version,
         "skill_path": entry.skill_path,
         "skill_file": entry.skill_file,
@@ -79,8 +81,6 @@ def _entry_to_json(entry: LockfileManifestEntry) -> dict[str, Any]:
     }
     if entry.target_ref is not None:
         data["target_ref"] = entry.target_ref
-    if entry.source_revision is not None:
-        data["source_revision"] = entry.source_revision
     return data
 
 

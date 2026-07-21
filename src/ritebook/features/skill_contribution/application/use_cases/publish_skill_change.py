@@ -100,6 +100,7 @@ class PublishSkillChange(PublishSkillChangePort):
     ) -> None:
         required_fields = (
             "source_revision",
+            "index_digest",
             "target",
             "source",
             "source_type",

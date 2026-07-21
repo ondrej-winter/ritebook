@@ -44,7 +44,8 @@ def test_json_installation_registry_writes_deterministic_state_sorted_by_target(
         "target": str((Path.cwd() / "a-skill").resolve(strict=False)),
         "source": "git@example.com:company/skills.git",
         "source_type": "git_url",
-        "source_revision": "abc123",
+        "source_revision": "a" * 40,
+        "index_digest": f"sha256:{'b' * 64}",
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",
@@ -61,19 +62,19 @@ def test_json_installation_registry_replaces_same_target_with_force(
     target = tmp_path / "skills" / "code-review"
 
     adapter.write_installation(
-        _entry(target=str(target), source_revision="old"),
+        _entry(target=str(target), source_revision="a" * 40),
         str(registry_path),
         force=False,
     )
     adapter.write_installation(
-        _entry(target=str(target), source_revision="new"),
+        _entry(target=str(target), source_revision="c" * 40),
         str(registry_path),
         force=True,
     )
 
     data = _read_json(registry_path)
     assert len(data["installations"]) == 1
-    assert data["installations"][0]["source_revision"] == "new"
+    assert data["installations"][0]["source_revision"] == "c" * 40
 
 
 def test_json_installation_registry_refuses_conflicting_recorded_target_without_force(
@@ -131,19 +132,25 @@ def test_json_installation_registry_replaces_conflicting_recorded_target_with_fo
     )
 
 
-def test_json_installation_registry_omits_unresolved_source_revision(
+@pytest.mark.parametrize("missing_field", ["source_revision", "index_digest"])
+def test_json_installation_registry_rejects_legacy_entries_without_provenance(
     tmp_path: Path,
+    missing_field: str,
 ) -> None:
     registry_path = tmp_path / "installations.json"
-
-    json_installation_registry.JsonInstallationRegistryAdapter().write_installation(
-        _entry(source_revision=None),
-        str(registry_path),
-        force=False,
+    legacy_entry = _entry_json()
+    del legacy_entry[missing_field]
+    registry_path.write_text(
+        json.dumps({"schema_version": 1, "installations": [legacy_entry]}),
+        encoding="utf-8",
     )
 
-    data = _read_json(registry_path)
-    assert "source_revision" not in data["installations"][0]
+    with pytest.raises(InstallationPersistenceError, match="remove it and reinstall"):
+        json_installation_registry.JsonInstallationRegistryAdapter().write_installation(
+            _entry(),
+            str(registry_path),
+            force=False,
+        )
 
 
 def test_json_installation_registry_rejects_malformed_existing_registry(
@@ -164,7 +171,8 @@ def _entry(
     *,
     requirement: str = "platform-skills/code-review",
     target: str = ".claude/skills/code-review",
-    source_revision: str | None = "abc123",
+    source_revision: str = "a" * 40,
+    index_digest: str = f"sha256:{'b' * 64}",
 ) -> InstallationManifestEntry:
     skill_name = requirement.rsplit("/", maxsplit=1)[1]
     return InstallationManifestEntry(
@@ -175,11 +183,29 @@ def _entry(
         source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision=source_revision,
+        index_digest=index_digest,
         index_schema_version=1,
         skill_path=f"skills/{skill_name}",
         skill_file=f"skills/{skill_name}/SKILL.md",
         installed_at="2026-07-10T21:00:00Z",
     )
+
+
+def _entry_json() -> dict[str, Any]:
+    return {
+        "requirement": "platform-skills/code-review",
+        "index_name": "platform-skills",
+        "skill_name": "code-review",
+        "target": "/tmp/code-review",
+        "source": "git@example.com:company/skills.git",
+        "source_type": "git_url",
+        "source_revision": "a" * 40,
+        "index_digest": f"sha256:{'b' * 64}",
+        "index_schema_version": 1,
+        "skill_path": "skills/code-review",
+        "skill_file": "skills/code-review/SKILL.md",
+        "installed_at": "2026-07-10T21:00:00Z",
+    }
 
 
 def _read_json(path: Path) -> dict[str, Any]:

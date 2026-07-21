@@ -295,6 +295,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 source=item.source.source,
                 source_type=item.source.source_type,
                 source_revision=item.source.source_revision,
+                index_digest=item.source.index_digest,
                 index_schema_version=item.index.index_schema_version,
                 skill_path=repository_relative_source_path(
                     item.skill.source_root,

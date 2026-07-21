@@ -313,6 +313,9 @@ Requirements:
 - Entries are sorted deterministically by `target`.
 - Entries require the verified full `source_revision` and `index_digest` used for
   installation.
+- Existing pre-release schema-v1 registries containing entries without either
+  provenance field are rejected with guidance to remove the generated registry
+  and reinstall; Ritebook does not infer provenance from a mutable source.
 - Reinstalling the same skill to the same target with `--force` replaces that
   entry.
 - Installing a different skill to an already-recorded target is refused unless

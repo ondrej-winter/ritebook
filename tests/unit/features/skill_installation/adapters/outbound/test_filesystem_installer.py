@@ -270,7 +270,8 @@ def resolved_source(repository_path: Path) -> ResolvedSkillSource:
         source="git@example.com:company/skills.git",
         source_type="git_url",
         repository_path=str(repository_path),
-        source_revision="abc123",
+        source_revision="a" * 40,
+        index_digest=f"sha256:{'b' * 64}",
     )
 
 

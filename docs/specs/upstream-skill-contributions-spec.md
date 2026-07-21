@@ -24,10 +24,9 @@ user-owned local source repositories.
   `requirement`, `index_name`, `target`, `source`, `source_type`,
   `source_revision`, `index_digest`, `skill_path`, and `skill_file` for
   requirements-file installs.
-- The current lockfile revision is captured independently from cached-index
-  validation. [ADR 0001](../adr/0001-source-provenance-and-trust.md) requires one
-  verified binding from registration through contribution; implementation is
-  tracked separately.
+- Installation persists the same commit and index-digest binding verified during
+  index registration and source resolution, as required by
+  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
@@ -126,8 +125,8 @@ Error output should be clear and user-facing, for example:
 ```text
 ritebook: error: no lockfile entry found for platform-skills/code-review
 ritebook: error: installed skill target .agents/skills/code-review does not exist
-ritebook: error: lockfile entry for platform-skills/code-review is missing source_revision
-ritebook: error: source revision for platform-skills/code-review is unavailable
+ritebook: error: lockfile skill entry at position 0 is missing verified source_revision; regenerate ritebook.lock by running ritebook install
+ritebook: error: locked source revision is unavailable; restore the source history or reinstall the skill to regenerate ritebook.lock
 ritebook: error: upstream changed since locked revision; resolve the source changes and retry
 ritebook: error: skill validation failed; contribution commit was not created
 ```

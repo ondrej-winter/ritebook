@@ -58,6 +58,7 @@ class SourceRepositoryAdapter:
                     source_type=index.source_type,
                     repository_path=str(snapshot_path),
                     source_revision=index.source_revision,
+                    index_digest=index.index_digest,
                 )
         except SkillSourceResolutionError:
             raise

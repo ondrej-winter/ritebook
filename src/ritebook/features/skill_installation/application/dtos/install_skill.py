@@ -189,14 +189,16 @@ class ResolvedSkillSource:
     source: str
     source_type: str
     repository_path: str
-    source_revision: str | None = None
+    source_revision: str
+    index_digest: str
 
     def __post_init__(self) -> None:
         """Validate resolved source repository metadata."""
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.source_type, field_name="Index source type")
         _require_non_empty(self.repository_path, field_name="Repository path")
-        _require_optional_non_empty(self.source_revision, field_name="Source revision")
+        _require_source_revision(self.source_revision)
+        _require_index_digest(self.index_digest)
 
 
 @dataclass(frozen=True)
@@ -213,8 +215,9 @@ class InstallationManifestEntry:
     skill_path: str
     skill_file: str
     installed_at: str
+    source_revision: str
+    index_digest: str
     schema_version: int = SCHEMA_VERSION
-    source_revision: str | None = None
 
     def __post_init__(self) -> None:
         """Validate generated manifest metadata."""
@@ -227,7 +230,8 @@ class InstallationManifestEntry:
         _require_non_empty(self.skill_path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")
         _require_non_empty(self.installed_at, field_name="Installed timestamp")
-        _require_optional_non_empty(self.source_revision, field_name="Source revision")
+        _require_source_revision(self.source_revision)
+        _require_index_digest(self.index_digest)
         if self.schema_version != SCHEMA_VERSION:
             msg = f"unsupported installation schema_version: {self.schema_version}"
             raise ValueError(msg)
@@ -250,9 +254,10 @@ class LockfileManifestEntry:
     skill_path: str
     skill_file: str
     locked_at: str
+    source_revision: str
+    index_digest: str
     schema_version: int = SCHEMA_VERSION
     target_ref: str | None = None
-    source_revision: str | None = None
 
     def __post_init__(self) -> None:
         """Validate generated lockfile metadata."""
@@ -266,7 +271,8 @@ class LockfileManifestEntry:
         _require_non_empty(self.skill_file, field_name="Skill file")
         _require_non_empty(self.locked_at, field_name="Locked timestamp")
         _require_optional_non_empty(self.target_ref, field_name="Target reference")
-        _require_optional_non_empty(self.source_revision, field_name="Source revision")
+        _require_source_revision(self.source_revision)
+        _require_index_digest(self.index_digest)
         if self.schema_version != SCHEMA_VERSION:
             msg = f"unsupported lockfile schema_version: {self.schema_version}"
             raise ValueError(msg)
@@ -308,6 +314,18 @@ class InstallFromRequirementsResult:
 def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:
     if value is not None:
         _require_non_empty(value, field_name=field_name)
+
+
+def _require_source_revision(value: str) -> None:
+    if not GIT_OBJECT_ID_PATTERN.fullmatch(value):
+        msg = "Source revision must be a full lowercase Git object ID."
+        raise ValueError(msg)
+
+
+def _require_index_digest(value: str) -> None:
+    if not INDEX_DIGEST_PATTERN.fullmatch(value):
+        msg = "Index digest must use sha256:<64 lowercase hex>."
+        raise ValueError(msg)
 
 
 def _require_skill_path(value: str) -> None:

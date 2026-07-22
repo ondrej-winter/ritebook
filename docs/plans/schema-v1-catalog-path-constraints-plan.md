@@ -427,7 +427,7 @@ with Ruff formatting/checks, `ty`, and 602 tests passing with one existing skip.
 
 ### Phase 3: Implement Exact-skill and Collection-selector Semantics
 
-- [ ] Task 6: Restrict direct installation to exact schema-v1 skill paths
+- [x] Task 6: Restrict direct installation to exact schema-v1 skill paths
 - [ ] Task 7: Replace arbitrary prefix expansion with immediate collection expansion
 
 ### Task 6: Restrict Direct Installation to Exact Schema-v1 Skill Paths
@@ -440,23 +440,35 @@ reader having already rejected mixed root-skill/collection catalogs.
 
 **Acceptance criteria:**
 
-- [ ] Direct selectors accept one- or two-segment exact skill paths only.
-- [ ] Malformed, non-kebab-case, and over-deep selectors fail at the
+- [x] Direct selectors accept one- or two-segment exact skill paths only.
+- [x] Malformed, non-kebab-case, and over-deep selectors fail at the
   command/application boundary.
-- [ ] A collection selector with no exact root skill is reported as unknown and is
+- [x] A collection selector with no exact root skill is reported as unknown and is
   never expanded by `install-skill`.
-- [ ] Exact root-skill behavior remains valid.
-- [ ] Exact collection-child behavior remains valid.
-- [ ] Cached metadata entering the slice is structurally validated by the
+- [x] Exact root-skill behavior remains valid.
+- [x] Exact collection-child behavior remains valid.
+- [x] Cached metadata entering the slice is structurally validated by the
   index-reader boundary.
 
 **Verification:**
 
-- [ ] Extend selector DTO tests for one- and two-segment paths plus malformed,
+- [x] Extend selector DTO tests for one- and two-segment paths plus malformed,
   non-kebab-case, and over-deep paths.
-- [ ] Extend direct-install tests for exact root, exact collection child, and
+- [x] Extend direct-install tests for exact root, exact collection child, and
   non-expanding collection selector behavior.
-- [ ] Run focused direct-install and catalog-adapter tests.
+- [x] Run focused direct-install and catalog-adapter tests.
+
+**Implementation note (2026-07-22):** `SkillReference` now validates the literal
+catalog selector with `shared_kernel.catalog_paths.validate_catalog_path` and derives
+the final skill name from the validated catalog path. Direct installation retains
+exact path equality and does not expand one-segment collection selectors. Focused
+DTO and use-case regressions cover valid root and collection-child selectors,
+malformed and non-canonical selectors, over-deep rejection before catalog lookup,
+and collection-only unknown-skill behavior without installation or manifest
+mutation. The existing index-registry catalog adapter remains unchanged because its
+reader dependency already enforces complete cached catalog structure. Focused
+validation passes with 33 tests and Ruff; the full gate passes with Ruff formatting
+and checks, `ty`, and 607 tests passing with one existing skip.
 
 **Dependencies:** Tasks 2 and 4
 
@@ -728,12 +740,13 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 5 complete.** Producer and JSON consumer boundaries enforce the shared
-schema-v1 catalog path policy before catalog metadata escapes, and mutation-safety
-regressions prove invalid add, forced replacement, single update, and bulk update
-candidates preserve existing registry and cache state. Checkpoint B is complete.
-Task 6 is the next sequential slice and must restrict direct installation to exact
-one- or two-segment schema-v1 skill selectors without collection expansion.
+**Task 6 complete.** Direct installation now validates one- or two-segment catalog
+selectors with the shared schema-v1 policy and continues resolving skills by exact
+catalog path only. Malformed, non-canonical, and over-deep selectors fail before
+catalog lookup, while collection-only selectors remain unknown and are never
+expanded. Task 7 is the next sequential slice and must replace requirements-file
+arbitrary prefix expansion with deterministic immediate-child collection expansion
+and complete pre-mutation planning.
 
 ## Handoff Notes
 

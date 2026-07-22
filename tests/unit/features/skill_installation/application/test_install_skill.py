@@ -47,6 +47,21 @@ def test_skill_reference_parses_nested_skill_paths() -> None:
     assert reference.requirement == "platform-skills/browser/runtime-verification"
 
 
+@pytest.mark.parametrize(
+    "skill_reference",
+    [
+        "platform-skills/CodeReview",
+        "platform-skills/quality_tools/code-review",
+        "platform-skills/quality/python/code-review",
+    ],
+)
+def test_skill_reference_rejects_invalid_catalog_selectors(
+    skill_reference: str,
+) -> None:
+    with pytest.raises(ValueError, match="Catalog path"):
+        SkillReference.parse(skill_reference)
+
+
 def test_skill_reference_rejects_invalid_index_names() -> None:
     with pytest.raises(ValueError, match="Local alias"):
         SkillReference.parse("InvalidIndex/code-review")
@@ -63,7 +78,7 @@ def test_skill_reference_rejects_invalid_index_names() -> None:
     ],
 )
 def test_skill_reference_rejects_unsafe_skill_paths(skill_reference: str) -> None:
-    with pytest.raises(ValueError, match="Skill path"):
+    with pytest.raises(ValueError, match="Catalog path"):
         SkillReference.parse(skill_reference)
 
 
@@ -233,6 +248,41 @@ def test_install_skill_does_not_resolve_nested_skill_by_name() -> None:
     assert installer.install_calls == []
 
 
+def test_install_skill_does_not_expand_collection_selector() -> None:
+    index = registered_skill_index(name="platform-skills")
+    collection_child = installable_skill(
+        name="runtime-verification",
+        path="browser/runtime-verification",
+        skill_file="browser/runtime-verification/SKILL.md",
+    )
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (collection_child,)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(
+        UnknownInstallSkillError,
+        match="platform-skills/browser",
+    ):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="platform-skills/browser",
+                target=".claude/skills/browser",
+            ),
+        )
+
+    assert installer.install_calls == []
+    assert manifest.write_calls == []
+
+
 def test_install_skill_rejects_malformed_reference_before_lookup() -> None:
     catalog = FakeSkillCatalog()
     source_resolver = FakeSkillSourceResolver()
@@ -249,6 +299,32 @@ def test_install_skill_rejects_malformed_reference_before_lookup() -> None:
     with pytest.raises(InvalidSkillReferenceError, match="fully qualified"):
         use_case.execute(
             _invalid_install_command("code-review"),
+        )
+
+    assert catalog.get_index_calls == []
+    assert source_resolver.resolve_calls == []
+    assert installer.install_calls == []
+    assert manifest.write_calls == []
+
+
+def test_install_skill_rejects_over_deep_selector_before_lookup() -> None:
+    catalog = FakeSkillCatalog()
+    source_resolver = FakeSkillSourceResolver()
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = InstallSkill(
+        catalog=catalog,
+        source_resolver=source_resolver,
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InvalidSkillReferenceError, match="one or two segments"):
+        use_case.execute(
+            _invalid_install_command(
+                "platform-skills/quality/python/code-review",
+            ),
         )
 
     assert catalog.get_index_calls == []

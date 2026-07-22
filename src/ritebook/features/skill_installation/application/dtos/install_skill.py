@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from pathlib import PurePosixPath
 
 from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel.catalog_paths import validate_catalog_path
 
 SCHEMA_VERSION = 1
 TARGET_NICKNAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
@@ -27,7 +27,7 @@ class SkillReference:
         """Validate parsed reference components."""
         _require_non_empty(self.requirement, field_name="Skill reference")
         require_index_name(self.index_name, field_name="Local alias")
-        _require_skill_path(self.skill_path)
+        validate_catalog_path(self.skill_path)
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
 
     @classmethod
@@ -40,12 +40,12 @@ class SkillReference:
             )
             raise ValueError(msg)
         index_name, skill_path = value.split("/", maxsplit=1)
-        _require_skill_path(skill_path)
+        catalog_path = validate_catalog_path(skill_path)
         return cls(
             requirement=value,
             index_name=index_name,
             skill_path=skill_path,
-            skill_name=PurePosixPath(skill_path).name,
+            skill_name=catalog_path.skill_name,
         )
 
 
@@ -339,23 +339,6 @@ def _require_index_digest(value: str) -> None:
     if not INDEX_DIGEST_PATTERN.fullmatch(value):
         msg = "Index digest must use sha256:<64 lowercase hex>."
         raise ValueError(msg)
-
-
-def _require_skill_path(value: str) -> None:
-    _require_non_empty(value, field_name="Skill path")
-    if value.startswith("/") or value.endswith("/") or "//" in value or "\\" in value:
-        msg = "Skill path must be a safe relative POSIX path."
-        raise ValueError(msg)
-    path = PurePosixPath(value)
-    if (
-        path.is_absolute()
-        or not path.parts
-        or any(part in {".", ".."} for part in path.parts)
-    ):
-        msg = "Skill path must be a safe relative POSIX path."
-        raise ValueError(msg)
-    for part in path.parts:
-        require_kebab_case_identifier(part, field_name="Skill path segment")
 
 
 def _require_non_empty(value: str | None, *, field_name: str) -> None:

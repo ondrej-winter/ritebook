@@ -105,7 +105,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 16: Resolve the `ty` versus `mypy` policy conflict
 - [x] Task 17: Add lifecycle metadata to every specification
 - [x] Task 18: Standardize published-name and local-alias terminology
-- [ ] Task 19: Align Docker E2E isolation claims and behavior
+- [x] Task 19: Align Docker E2E isolation claims and behavior
 
 ### Phase 5: Final synchronization
 
@@ -1028,19 +1028,19 @@ controlled HOME, and explicit network/permission expectations.
 
 **Acceptance criteria:**
 
-- [ ] The Docker spec defines exactly what state, permissions, and network access
+- [x] The Docker spec defines exactly what state, permissions, and network access
   are isolated.
-- [ ] If realistic user permissions are in scope, the image runs tests as an
+- [x] If realistic user permissions are in scope, the image runs tests as an
   unprivileged user with a writable temporary HOME.
-- [ ] CI and local commands exercise the same Docker behavior and remain independent
+- [x] CI and local commands exercise the same Docker behavior and remain independent
   of private credentials and external services.
 
 **Verification:**
 
-- [ ] Build with `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
-- [ ] Run with `docker run --rm ritebook-e2e` and, if required by the contract,
-  verify the effective UID, HOME, and network assumptions in a focused test.
-- [ ] Review `.dockerignore` for sensitive or developer-state exclusions.
+- [x] Build with `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
+- [x] Run with `docker run --rm --network none ritebook-e2e` and verify the
+  effective UID, HOME, and network assumptions in a focused test.
+- [x] Review `.dockerignore` for sensitive or developer-state exclusions.
 
 **Dependencies:** None; complete before Task 20.
 
@@ -1054,14 +1054,30 @@ controlled HOME, and explicit network/permission expectations.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. The image runs as fixed unprivileged UID
+10001 with image-owned writable HOME and XDG paths. Local execution and the main
+CI/CD workflow use `--network none`, and a container-only E2E test verifies
+effective UID, writable state paths, and absence of non-loopback IPv4 routes. The
+specification now distinguishes build-time public dependency access from
+network-disabled runtime execution and documents explicit non-guarantees.
+`.dockerignore` excludes agent/rule state, local execution logs, environment
+files, IDE files, caches, and generated artifacts. The first container run exposed
+Docker Desktop-specific inert virtual interfaces, so the focused assertion was
+corrected to verify the portable route-table contract instead of interface names.
+Ruff formatting and linting passed with 235 files formatted;
+`uv run ty check src/ritebook` passed for
+160 source files; host E2E passed with 16 tests and one intentional container-only
+skip; 540 non-E2E tests passed with 17 deselected; and `uv build` produced the
+0.1.38 source distribution and wheel. The Docker image build passed, and the
+network-disabled container run passed all 17 E2E tests in 24.61 seconds, including
+the focused environment assertion.
 
 ## Checkpoint D: Governance Alignment
 
 - [x] One type checker is consistently required by rules, tooling, docs, and CI.
 - [x] Every spec has current lifecycle metadata and valid cross-links.
 - [x] Shared index terminology is unambiguous.
-- [ ] Docker E2E claims match observable runtime behavior.
+- [x] Docker E2E claims match observable runtime behavior.
 
 ---
 
@@ -1094,7 +1110,7 @@ follow-up rather than leaving an unchecked item implied complete.
 - [ ] Run `uv run pytest -m "not e2e"`.
 - [ ] Run `uv build`.
 - [ ] Run `docker build -f Dockerfile.e2e -t ritebook-e2e .`.
-- [ ] Run `docker run --rm ritebook-e2e`.
+- [ ] Run `docker run --rm --network none ritebook-e2e`.
 - [ ] Review `git --no-pager diff --check` and the final changed-file set.
 
 **Dependencies:** Tasks 1 through 19.
@@ -1131,7 +1147,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Closed |
 | 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Closed |
 | 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Closed |
-| 16. Docker “clean-room” claim exceeds enforcement | Cross-cutting | 19 | Open |
+| 16. Docker “clean-room” claim exceeds enforcement | Cross-cutting | 19 | Closed |
 | Final cross-spec and implementation consistency | Verification | 20 | Open |
 
 ## Sequencing and Parallelization
@@ -1202,8 +1218,12 @@ follow-up rather than leaving an unchecked item implied complete.
   should the project migrate to `mypy`? **Decision:** `ty` is Ritebook's sole
   required type checker; `.clinerules/014-project-tooling-override.md` explicitly
   supersedes the reusable `mypy` default for this repository.
-- [ ] Does Docker E2E need unprivileged-user fidelity, or should “clean-room” be
-  narrowed to dependency and developer-state isolation?
+- [x] Does Docker E2E need unprivileged-user fidelity, or should “clean-room” be
+  narrowed to dependency and developer-state isolation? **Decision:** enforce an
+  unprivileged fixed image user, controlled writable HOME/XDG state, and
+  network-disabled runtime while allowing documented public network access during
+  image construction. Avoid the ambiguous “clean-room” label and state explicit
+  non-guarantees.
 
 ## Completion Handoff
 

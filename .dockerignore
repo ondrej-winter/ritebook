@@ -1,8 +1,13 @@
 .git/
 .github/
+.agents/
+.clinerules/
+.clineignore
+.clinerulesignore
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.ty_cache/
 .venv/
 __pycache__/
 *.py[cod]
@@ -18,6 +23,10 @@ coverage.xml
 .DS_Store
 .idea/
 .vscode/
+
+.envrc
+.execution-logs/
+.python-version
 
 .env
 .env.*

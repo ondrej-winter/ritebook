@@ -191,7 +191,7 @@ uv run ty check src/ritebook
 uv run pytest -m "not e2e"
 uv build
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
+docker run --rm --network none ritebook-e2e
 ```
 
 ## Project structure

@@ -72,7 +72,7 @@ jobs:
         run: docker build -f Dockerfile.e2e -t ritebook-e2e .
 
       - name: Run Docker E2E tests
-        run: docker run --rm ritebook-e2e
+        run: docker run --rm --network none ritebook-e2e
 
   patch-release:
     name: Create patch release and publish to PyPI

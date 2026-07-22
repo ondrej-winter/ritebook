@@ -51,18 +51,21 @@ Run E2E tests directly when iterating on the black-box CLI workflow:
 uv run pytest tests/e2e -q
 ```
 
-Run the mandatory clean-room Docker E2E gate before handoff:
+Run the mandatory isolated Docker E2E gate before handoff:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
+docker run --rm --network none ritebook-e2e
 ```
 
-`Dockerfile.e2e` is a clean-room end-to-end test boundary, not production
-packaging. The Docker runner verifies the publisher-to-consumer CLI workflow
-using local Git repositories, explicit registry files, and explicit cache
-directories without relying on developer-local Ritebook state. CI/CD runs Docker
-E2E as a mandatory quality gate in parallel with the non-E2E quality checks.
+`Dockerfile.e2e` is an isolated end-to-end test boundary, not production
+packaging. Image construction uses the network to obtain the pinned base image
+and locked dependencies. Runtime tests execute as an unprivileged user with a
+controlled writable home and no non-loopback IPv4 route. Tests use local Git
+repositories, explicit registry files, and explicit cache directories. The image
+does not receive host credentials or developer-local Ritebook state. CI/CD uses
+the same build and run commands as this local workflow and runs Docker E2E as a
+mandatory quality gate in parallel with the non-E2E quality checks.
 
 Build the package distributions:
 

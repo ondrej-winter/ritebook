@@ -2,9 +2,9 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
+> **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Implemented
+> **Implementation state:** Partially implemented
 > **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -27,6 +27,8 @@ consumer-side catalog foundation used by the implemented `list-skills`,
 - Publisher indexes are written as root-level `ritebook-index.json` files.
 - Publisher schema v1 includes index metadata and skill entries with required
   `name`, `path`, `skill_file`, and non-empty `description`.
+- Existing schema-v1 parsing validates relative path safety but does not yet
+  enforce the one-or-two-segment catalog-depth contract or mixed-node rejection.
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.
@@ -82,6 +84,15 @@ Requirements:
 - `ritebook-index.json` must be located at the repository root.
 - Ritebook must read and validate root `ritebook-index.json` before registering
   the index.
+- Every `skills[].path` must contain exactly one or two non-empty safe POSIX path
+  segments: `<skill>` or `<collection>/<skill>`. Paths with three or more segments
+  are invalid legacy catalog metadata.
+- An index must not contain both a root skill path `<name>` and any collected skill
+  path beginning `<name>/`. That path set would make the first segment both a skill
+  and a collection and is invalid schema-v1 metadata.
+- `add-index`, including forced replacement, must reject a structurally invalid
+  schema-v1 index before committing cache or registry state and direct the user to
+  reorganize and republish the source catalog.
 - Ritebook must select the source's full Git commit object ID and read the index
   from that commit, not from mutable working-tree contents.
 - Ritebook must compute `index_digest` as `sha256:<lowercase-hex>` over the exact
@@ -156,10 +167,14 @@ Requirements:
   the source and reads root `ritebook-index.json` from that commit.
 - Ritebook validates and hashes those exact bytes before replacing the locally
   cached copy.
+- `update-index` applies the same one-or-two-segment schema-v1 skill-path
+  validation as `add-index`.
 - The cached bytes, `source_revision`, `index_digest`, and registry metadata form
   one coherent logical state.
 - If refresh, revision lookup, index read, validation, hashing, or persistence
   fails, Ritebook keeps the previous coherent binding intact.
+- An over-deep candidate index is a validation failure; update preserves the
+  previously registered cache, revision, digest, and metadata.
 - If the published name inside the refreshed `ritebook-index.json` changes,
   Ritebook keeps the local alias and records the refreshed published name.
 - `update-index` requires exactly one target mode: `--name <local-alias>` or
@@ -312,6 +327,9 @@ Registry schema-v1 provenance requirements follow
 - Duplicate skill names are allowed across different indexes.
 - Duplicate skill names are also allowed within one index when their relative
   skill paths differ, such as `backend/code-review` and `frontend/code-review`.
+- Valid relative skill paths contain one segment (`<skill>`) or two segments
+  (`<collection>/<skill>`). Consumer validation rejects an index that uses the
+  same first segment as both a root skill and a collection.
 - A skill's relative `path` is its identity and resolution key within an index;
   `skills[].name` is metadata and is not a fallback selector.
 - Consumer validation rejects C0 controls (`U+0000`–`U+001F`), DEL (`U+007F`),
@@ -537,6 +555,8 @@ tests/unit/features/index_registry/
 - JSON index reader rejects invalid JSON, missing root metadata, unsupported schema
   versions, missing `skills`, malformed entries, absolute paths, and `..`
   traversal paths.
+- JSON index reader accepts root and collected skill paths and rejects schema-v1
+  paths with three or more segments or a mixed root-skill/collection path set.
 - Filesystem registry writes deterministic `indexes.json` and preserves unrelated
   entries.
 - Index cache writes complete synchronized `ritebook-index.json` generations
@@ -597,6 +617,8 @@ Registry responsibilities:
 - Allow `--alias` to resolve published-name collisions without rewriting
   publisher metadata.
 - Namespace skills by local alias and relative skill path.
+- Validate that every cached schema-v1 skill path has the form `<skill>` or
+  `<collection>/<skill>` at add, update, and cached-index read boundaries.
 - Preserve the previous cached index when `update-index` fails validation.
 - Reject dirty local Git repositories before binding an index.
 - Continue after per-index failures during `update-index --all`.
@@ -632,6 +654,9 @@ Never:
 - Failed updates do not destroy the previous cached index.
 - Dirty local repositories and pre-release schema-v1 entries without provenance
   fail with actionable regeneration guidance.
+- Schema-v1 indexes with over-deep skill paths fail with actionable guidance to
+  reorganize and republish the source catalog, without replacing valid cached
+  state.
 - The local alias defaults from published index metadata and can be set with
   `--alias` without changing the published name.
 - Duplicate skill names across different local aliases and at distinct paths within

@@ -2,9 +2,9 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
+> **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Implemented
+> **Implementation state:** Partially implemented
 > **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -14,9 +14,10 @@ Ritebook provides a consumer-facing `list-skills` workflow for users who have
 already registered one or more Git-backed skill indexes with `add-index`.
 
 The command helps a Ritebook consumer browse locally cached skill indexes from
-the terminal and pick a skill by relative path. It should be deterministic,
-offline-first, and grouped by local index alias so duplicate skill names across
-indexes and at distinct paths within one index remain valid.
+the terminal and pick a skill by relative path. A valid path is `<skill>` for a
+root skill or `<collection>/<skill>` for a collected skill. Listing should be
+deterministic, offline-first, and grouped by local index alias so duplicate skill
+names across indexes and at distinct paths within one index remain valid.
 
 ## Implementation status
 
@@ -39,6 +40,8 @@ indexes and at distinct paths within one index remain valid.
 - `consumer-git-index-registry-spec.md` defines the registry foundation consumed
   by this browsing workflow.
 - `list-skills` is implemented in the existing `index_registry` feature slice.
+- Cached-index depth and mixed-node validation described by this revision remain
+  to be implemented.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -85,6 +88,10 @@ If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
 - `list-skills` does not read raw `SKILL.md` files.
 - If a cached index file is missing, unreadable, or invalid, the command fails
   with a clear user-facing error.
+- A schema-v1 cached index containing a skill path with more than two segments is
+  invalid and fails before any metadata from that index is displayed.
+- A schema-v1 cached index using one path segment as both a root skill and a
+  collection prefix is also invalid and fails before display.
 - A digest mismatch fails as a cache-integrity error. Listing never falls back to
   a mutable source working tree or repairs provenance implicitly.
 
@@ -146,8 +153,9 @@ Tree rules:
 
 - The root label is `Indexes`.
 - First-level children are local aliases.
-- Second-level children are cached relative skill paths that can be copied after
-  the local alias into `install-skill`.
+- Second-level children are cached relative skill paths in the form `<skill>` or
+  `<collection>/<skill>` that can be copied after the local alias into
+  `install-skill`.
 - Relative skill paths, not `skills[].name`, identify entries within an index.
 - Skill descriptions are shown only when `--show-description` is provided.
 - Cached `skills_root`, skill paths, skill-file paths, and descriptions containing
@@ -267,6 +275,8 @@ Cover:
 - Rejects malformed skill entries.
 - Rejects unsafe absolute or parent-traversal paths using the same path-safety
   expectations as existing index validation.
+- Accepts `<skill>` and `<collection>/<skill>` paths and rejects over-deep
+  schema-v1 skill paths and mixed root-skill/collection path sets.
 
 ### CLI tests
 
@@ -298,6 +308,8 @@ Cover:
 - Show skill descriptions only when explicitly requested with
   `--show-description`.
 - Reject cached schema v1 indexes without non-empty descriptions.
+- Reject cached schema v1 indexes containing skill paths outside `<skill>` or
+  `<collection>/<skill>`.
 - Allow duplicate skill names across different local aliases and at distinct paths
   within one index.
 - Keep output deterministic.
@@ -339,6 +351,8 @@ Cover:
 - Output is deterministic and grouped by local alias.
 - No Git or network operations happen during skill listing.
 - Cached metadata is displayed only after its required index digest is verified.
+- Root and collected skill paths are listed, while structurally invalid over-deep
+  schema-v1 paths fail with a clear user-facing error.
 - Application, adapter, and CLI unit tests cover the behavior.
 - README documents the new command.
 - The configured non-E2E quality gate, package build, and Docker E2E suite pass

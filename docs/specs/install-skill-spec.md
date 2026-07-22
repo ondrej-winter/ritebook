@@ -2,9 +2,9 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
+> **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Implemented
+> **Implementation state:** Partially implemented
 > **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -13,9 +13,9 @@
 Ritebook provides consumer-facing skill installation workflows for users who have
 already registered one or more Git-backed skill indexes with `add-index`.
 
-The workflow lets a user install a selected cached skill into an explicit target
-path, and lets a repository declare desired skill installations in
-`ritebook.toml`. Ritebook resolves those declarations, copies the skill
+The workflow lets a user install one exact cached skill into an explicit target
+path, and lets a repository declare exact skills or first-level collections in
+`ritebook.toml`. Ritebook resolves those declarations, copies the selected skill
 directories from registered sources, and writes a deterministic `ritebook.lock`
 for reviewable repo-local install state.
 
@@ -40,6 +40,9 @@ for reviewable repo-local install state.
   index, as required by
   [ADR 0001](../adr/0001-source-provenance-and-trust.md), rather than from the
   source repository's mutable `HEAD` or working tree.
+- Direct exact-skill installation exists. Requirements installation currently
+  expands arbitrary path prefixes; limiting expansion to immediate children of a
+  first-level collection remains to be implemented.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -59,11 +62,14 @@ Requirements:
   `<local-alias>/<skill-path>`.
 - Local aliases must be single-segment kebab-case identifiers and must not contain
   `/`, so the separator before `<skill-path>` is unambiguous.
-- The skill selector after the first slash is a safe relative POSIX path,
-  such as `browser/runtime-verification`, for skills published in subfolders.
+- The skill selector after the first slash is a safe relative POSIX path with one
+  or two segments: `<skill>` or `<collection>/<skill>`, such as
+  `browser/runtime-verification`.
 - Ritebook resolves only exact cached relative paths and never falls back to
   `skills[].name`. A root skill path such as `code-review` remains valid when that
   exact path exists.
+- `install-skill` installs exactly one skill. A collection selector is not a valid
+  direct-install target and is never expanded by this command.
 - Duplicate skill names may coexist within one index when their relative paths
   differ; each is selected by its full path.
 - `install-skill` requires a direct `--target <path>` and also accepts `--force`,
@@ -138,6 +144,10 @@ target = "claude"
 [[skills]]
 name = "platform-skills/browser/runtime-verification"
 target = "claude"
+
+[[skills]]
+name = "platform-skills/quality"
+target = "agents"
 
 [[skills]]
 name = "company-agents/security-review"
@@ -247,9 +257,9 @@ target_path = "../shared-agent-skills/security-review"
 
 Skill entry fields:
 
-- `name`: compatibility-sensitive TOML field containing a fully qualified
-  `<local-alias>/<skill-path>` reference or, for
-  `install`, a folder selector that matches descendant skill paths.
+- `name`: compatibility-sensitive TOML field containing either a fully qualified
+  exact skill reference `<local-alias>/<skill-path>` or a fully qualified
+  first-level collection selector `<local-alias>/<collection>`.
 - `target`: optional target nickname from `[targets]`.
 - `target_path`: optional direct target path.
 
@@ -259,6 +269,10 @@ Target resolution rules:
 - `target` must reference a key in `[targets]`.
 - `target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
 - `target_path` is used as the exact target path for that skill entry.
+- A collection selector must use `target`, because each immediate child resolves
+  below the target base by its final skill name. A collection selector with
+  `target_path` is invalid because one exact path cannot represent multiple
+  resolved skills.
 - `[targets]` is optional when all skill entries use `target_path`.
 
 Validation rules:
@@ -269,11 +283,18 @@ Validation rules:
   underscores, and hyphens.
 - `[[skills]]` must be an array of tables.
 - Each skill `name` must be fully qualified as
-  `<local-alias>/<skill-path>`.
-- Requirements-file `install` first resolves an exact skill path. When no exact
-  skill exists, a selector may intentionally expand all descendants below that
-  folder prefix in deterministic path order.
-- Neither exact nor folder-prefix resolution falls back to `skills[].name`.
+  `<local-alias>/<selector>`.
+- An exact skill selector resolves a schema-v1 path in the form `<skill>` or
+  `<collection>/<skill>`.
+- When no exact skill exists, a single-segment selector may resolve a collection
+  and expand only indexed skills whose paths are immediate children in the form
+  `<collection>/<skill>`, in deterministic path order.
+- A collection must contain at least one indexed immediate child to resolve.
+  Empty and unrelated non-skill directories are not represented by the cached
+  index and therefore cannot be selected.
+- Arbitrary folder prefixes, multi-level collections, and descendant expansion
+  beyond immediate collection children are invalid.
+- Neither exact-skill nor collection resolution falls back to `skills[].name`.
 - Repeated `[[skills]]` entries with the same fully qualified `name` are rejected.
 - Duplicate, canonically equivalent, and parent-child resolved target paths are
   rejected before the first copy. This includes lexical aliases using `.`, `..`,
@@ -608,8 +629,12 @@ Cover:
 
 - Installs one fully qualified exact skill path to an explicit target path.
 - Resolves duplicate names by full relative path and rejects name-only shorthand
-  for nested skills.
-- Expands requirements-file folder selectors without using skill-name fallback.
+  for collected skills.
+- Expands a requirements-file collection selector to its immediate child skills
+  in deterministic path order without using skill-name fallback.
+- Rejects direct collection installation, over-deep cached skill paths, and
+  arbitrary descendant-prefix selectors.
+- Rejects a collection selector using `target_path` before any target mutation.
 - Rejects bare or malformed skill references.
 - Rejects unknown local aliases.
 - Rejects unknown skills.
@@ -736,7 +761,10 @@ Always:
 - Support TOML `[targets]` nicknames for requirements-file installs only.
 - Require fully qualified `<local-alias>/<skill-path>` skill references.
 - Resolve direct installs only by exact relative skill path.
-- Preserve requirements-file folder-prefix expansion without name-only fallback.
+- Resolve requirements-file collection selectors only to immediate child skills,
+  without arbitrary prefix expansion or name-only fallback.
+- Reject cached schema-v1 skill paths outside `<skill>` or
+  `<collection>/<skill>`.
 - Resolve install sources from locally registered and cached indexes.
 - Verify that the cached index and root index at the bound Git commit both match
   the same digest before materializing skill content, as defined by
@@ -784,8 +812,10 @@ Never:
 - Direct `install-skill` writes deterministic user installation state under
   Ritebook's config directory.
 - `uv run ritebook install` reads `ritebook.toml`, resolves `[targets]` nicknames
-  and `target_path` entries, installs all declared skills, and writes
-  `ritebook.lock`.
+  and `target_path` entries, expands declared collections to their immediate child
+  skills, installs all resolved skills, and writes `ritebook.lock`.
+- Direct installation resolves only exact root or collected skill paths; collection
+  selectors are supported only by requirements-file installation.
 - `ritebook.lock` records resolved target paths and the verified source revision
   and index digest deterministically.
 - Installation fails before trusting metadata or copying when the bound source

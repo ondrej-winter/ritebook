@@ -2,9 +2,9 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
+> **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Implemented
+> **Implementation state:** Partially implemented
 > **Dependencies:** [Consumer Skill Installation](install-skill-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -38,6 +38,8 @@ user-owned local source repositories.
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
+- Exact lockfile-path resolution exists; rejecting collection selectors and
+  over-deep legacy lockfile paths remains to be implemented.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -58,6 +60,8 @@ Requirements:
 
 - The skill reference must be fully qualified as
   `<local-alias>/<skill-path>` and must match an exact lockfile skill path.
+- The exact skill path must be `<skill>` or `<collection>/<skill>`. A collection
+  selector is not a skill and cannot be used as a contribution target.
 - The command only supports skills installed from `ritebook.toml` and recorded in
   `ritebook.lock` for the MVP.
 - Ritebook reads `ritebook.lock` from the current working directory by default.
@@ -204,7 +208,7 @@ Requirements:
 
 - The generated branch name uses
   `ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` with a UTC timestamp.
-- Nested skill paths replace `/` with `-` in the branch slug.
+- Collected skill paths replace `/` with `-` in the branch slug.
 - The generated commit message must be clear and imperative.
 - The commit should include the changed skill directory and regenerated
   `ritebook-index.json` when validation succeeds.
@@ -351,6 +355,8 @@ Cover:
 - Rejects unsupported lockfile schema versions.
 - Rejects missing required fields for contribution publishing.
 - Resolves only exact lockfile skill paths and does not fall back to `skill_name`.
+- Rejects collection selectors and lockfile skill paths deeper than
+  `<collection>/<skill>`.
 - Allows duplicate skill names at distinct lockfile paths.
 
 ### Contribution checkout and Git adapter tests
@@ -421,6 +427,7 @@ Always:
 - Require `ritebook.lock` provenance for the MVP.
 - Treat the verified locked revision and index digest as the installed baseline.
 - Resolve contribution references by exact lockfile skill path.
+- Never expand a collection selector into multiple contributions.
 - Prepare contributions in a Ritebook-owned isolated checkout.
 - Fetch or inspect the current upstream base before preparing a contribution.
 - Validate the changed skill before committing.
@@ -455,6 +462,8 @@ Never:
 
 - `uv run ritebook publish-skill-change <local-alias>/<skill-path>` reads
   `ritebook.lock` and resolves one installed repo-local skill.
+- Root and collected skills can be contributed by exact path; collection selectors
+  are rejected rather than expanded.
 - The command fails clearly when the lockfile, selected entry, installed target,
   or required provenance is missing.
 - The command detects and reports when there are no local skill changes to

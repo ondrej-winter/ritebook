@@ -70,6 +70,13 @@ All specifications use these terms consistently:
   local alias.
 - **Qualified skill reference**: `<local-alias>/<skill-path>`. The first segment
   is always a local alias, never an independently resolved published name.
+- **Skill path**: the path relative to `skills_root` that identifies one published
+  skill. A valid schema-v1 path is `<skill>` or `<collection>/<skill>`.
+- **Collection**: an implicit first-level catalog directory whose immediate child
+  directories are skills. A collection is not itself a skill or index entry.
+- **Collection selector**: `<local-alias>/<collection>` in `ritebook.toml`. It
+  resolves only the collection's immediate child skills and is not accepted by
+  exact-skill commands such as `install-skill` or `publish-skill-change`.
 
 Some compatibility-sensitive surfaces retain less-specific names:
 

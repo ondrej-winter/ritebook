@@ -2,9 +2,9 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
+> **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Implemented
+> **Implementation state:** Partially implemented
 > **Dependencies:** None
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -27,9 +27,9 @@ installation.
   adapters separated according to hexagonal architecture principles.
 - Python 3.13, `uv`, `ruff`, `ty`, and `pytest` are the project tooling
   baseline.
-- For discovery, any directory containing `SKILL.md` is considered a candidate
-  skill directory. Candidate skills must pass the skill-header validation flow
-  before they are publishable.
+- Existing discovery recursively treats any directory containing `SKILL.md` as a
+  candidate and validates its header. Enforcement of the catalog-depth contract
+  and mixed-node rejection remains to be implemented.
 
 ## Desired behavior
 
@@ -41,8 +41,9 @@ skills repository.
 1. A maintainer runs a Ritebook publisher command from the repository root that
    will contain `ritebook-index.json`, with an explicit skills root path at or
    below that root.
-2. Ritebook recursively scans the skills root for directories containing a file
-   named `SKILL.md`.
+2. Ritebook scans the skills root for directories containing a file named
+   `SKILL.md` and validates that each candidate is either a root skill or an
+   immediate child of one collection.
 3. Ritebook builds a deterministic catalog of discovered skills.
 4. Ritebook validates every discovered skill with the same rules used by the
    standalone skill lint workflow.
@@ -80,7 +81,24 @@ Requirements:
 ### Skill discovery
 
 - A skill is any directory containing `SKILL.md`.
-- Discovery must be recursive under the explicit skills root.
+- A skill path relative to the explicit skills root must contain exactly one or
+  two non-empty safe POSIX path segments: `<skill>` or
+  `<collection>/<skill>`.
+- A first-level directory without `SKILL.md` may act as an implicit collection
+  when one or more of its immediate child directories are skills.
+- A collection is organizational metadata inferred from the catalog structure;
+  it is not itself a skill and has no separate index entry or manifest.
+- A directory containing `SKILL.md` must not also contain another candidate skill
+  below it. Such a mixed skill/collection node is invalid rather than resolved by
+  exact-match precedence.
+- Candidate skill paths with three or more segments relative to the skills root
+  are invalid. Discovery must report them rather than silently ignore or flatten
+  them.
+- Empty directories and directories containing only documentation, repository
+  tooling, or other non-skill content are ignored.
+- Directories and files inside a valid skill package remain unrestricted unless
+  they contain another `SKILL.md`, which would declare an invalid nested candidate
+  skill.
 - Discovered skills are publishable only when their `SKILL.md` files satisfy the
   required skill-header validation contract.
 - The generated index uses skill-entry paths relative to the skills root and a
@@ -91,6 +109,8 @@ Requirements:
 - Hidden directories under the skills root are skipped by default in the MVP.
 - Missing or unreadable skills root paths must produce clear user-facing errors at the
   adapter boundary.
+- Catalog-structure failures must identify the offending path and whether it is
+  over-deep or combines skill and collection roles.
 
 ### Skill header validation
 
@@ -225,11 +245,17 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `skills`: array of discovered skill entries sorted deterministically.
 - `skills[].name`: skill metadata derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.
+- `skills[].path` contains exactly one or two segments: `<skill>` or
+  `<collection>/<skill>`.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
 - `skills[].description`: required non-empty human-readable description copied
   from the validated skill header `description` field.
 - `skills[].path` is the unique identity and downstream resolution key within an
   index. Multiple entries may have the same `skills[].name` when their paths differ.
+- The catalog-depth rule tightens validation within schema v1; it does not change
+  the serialized fields and does not require a schema-version increment. Existing
+  schema-v1 catalogs with deeper paths must be reorganized and republished before
+  consumers can accept them.
 
 ## CLI and workflow requirements
 
@@ -312,8 +338,9 @@ The MVP should be covered primarily with fast, deterministic unit tests.
 - Application tests verify `publish-index` does not call the writer when skill
   validation fails.
 - Filesystem adapter tests use temporary directories to verify recursive
-  `SKILL.md` discovery, relative path handling, frontmatter parsing, and
-  path-scoped validation failures.
+  `SKILL.md` candidate discovery, valid root and collected skill paths, ignored
+  non-skill directories, over-deep path rejection, mixed skill/collection node
+  rejection, frontmatter parsing, and path-scoped validation failures.
 - JSON writer tests verify schema version, deterministic output, required
   description behavior, two-space indentation, valid JSON, atomic replacement,
   failure preservation and cleanup, permission-safe unique temporary files, and
@@ -332,6 +359,10 @@ network access.
 - Always validate external inputs at adapter boundaries before invoking the
   application use case.
 - Always validate skill headers before publishing an index.
+- Always restrict published skill paths to `<skill>` or
+  `<collection>/<skill>` relative to the explicit skills root.
+- Always reject mixed skill/collection nodes and over-deep candidate paths before
+  writing an index.
 - Always keep output deterministic enough for pull request review.
 - Always allow duplicate skill names at distinct relative paths in one index.
 - Always pretty-print generated JSON with two-space indentation.
@@ -352,7 +383,10 @@ network access.
 
 - A maintainer can run a publisher workflow against an explicit skills root and
   produce `ritebook-index.json`.
-- The generated index lists every discovered directory containing `SKILL.md`.
+- The generated index lists every structurally valid discovered directory
+  containing `SKILL.md`.
+- Root skills and immediate collection-child skills are indexed, while over-deep
+  candidates and mixed skill/collection nodes fail with path-scoped errors.
 - `lint-skills` validates every discovered `SKILL.md` against the required header
   contract and exits non-zero on invalid skills.
 - `publish-index` reuses the same validation flow and refuses to write or

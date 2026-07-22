@@ -39,11 +39,28 @@ contribution workflows must consume and verify that same immutable binding.
 
 The persisted binding consists of:
 
-- `source` and `source_type`: the operational locator and its source category;
+- `source` and `source_type`: a safe persisted locator and its source category;
 - `source_revision`: the full, unshortened Git commit object ID selected during
   index validation; and
 - `index_digest`: `sha256:<lowercase-hex>`, computed over the exact raw bytes of
   root `ritebook-index.json` read from `source_revision`.
+
+Ritebook distinguishes three forms of a source locator:
+
+- The operational form is the caller-provided value used to locate the repository.
+- The persisted form is the operational value only after it passes source-safety
+  validation. Standard URLs containing authority user-info are rejected rather
+  than rewritten, including username-only, password/token, and percent-encoded
+  forms. Authentication must use SSH configuration, a Git credential helper, or
+  another Git-managed mechanism. scp-like SSH syntax such as
+  `git@github.com:company/repository.git` remains valid because its username is an
+  SSH identity rather than URL user-info.
+- The display form is derived defensively and never includes URL user-info, even
+  when rendering malformed legacy or in-memory data.
+
+Registry, installation-registry, lockfile, and contribution readers reject unsafe
+persisted source values with regeneration or reinstall guidance. Git failures are
+translated without exposing raw subprocess output that may contain credentials.
 
 `source_revision` identifies the repository state. `index_digest` independently
 binds the cached artifact to the index file at that state and detects cache
@@ -95,6 +112,10 @@ binding while its commit object remains available.
   merely because the path matches.
 - `installations.json` and `ritebook.lock` record the verified
   `source_revision` and `index_digest` actually used for the copy.
+- User-owned `indexes.json` and `installations.json` files are atomically replaced
+  with POSIX mode `0600` where supported. `ritebook.lock` remains suitable for
+  repository sharing and is protected by rejecting unsafe source values rather
+  than by forcing a private file mode.
 - Contribution preparation requires the lockfile binding, verifies that the bound
   commit and index are available, and treats that commit as the installed
   baseline. It may prepare a change on a newer upstream base only after proving

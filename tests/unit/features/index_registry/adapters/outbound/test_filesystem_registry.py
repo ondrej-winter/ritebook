@@ -1,4 +1,5 @@
 import json
+import stat
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,7 @@ def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> Non
     assert registry.get("alpha-skills", str(path)) == entry(name="alpha-skills")
     assert payload["indexes"][0]["source_revision"] == SOURCE_REVISION
     assert payload["indexes"][0]["index_digest"] == INDEX_DIGEST
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
 def test_filesystem_registry_lists_entries_in_deterministic_order(
@@ -122,6 +124,25 @@ def test_filesystem_registry_rejects_legacy_entries_without_provenance(
         match="regenerate it with add-index",
     ):
         registry.get("company-skills", str(path))
+
+
+def test_filesystem_registry_rejects_credential_bearing_persisted_source(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(entry(), str(path))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["indexes"][0]["source"] = (
+        "https://user:sentinel-secret@example.com/company/skills.git"
+    )
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(IndexRegistryPersistenceError) as exc_info:
+        registry.get("company-skills", str(path))
+
+    assert "unsafe Git source" in str(exc_info.value)
+    assert "sentinel-secret" not in str(exc_info.value)
 
 
 def entry(*, name: str = "company-skills", skill_count: int = 1) -> RegisteredIndex:

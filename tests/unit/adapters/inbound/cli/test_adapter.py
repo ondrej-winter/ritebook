@@ -1012,6 +1012,36 @@ def test_list_indexes_prints_empty_registry_message() -> None:
     assert stdout.getvalue() == "No indexes registered\n"
 
 
+def test_list_indexes_redacts_url_user_info_defensively() -> None:
+    sentinel = "sentinel-secret"
+    stdout = StringIO()
+    result = ListIndexesResult(
+        indexes=(
+            RegisteredIndexSummary(
+                name="company-skills",
+                published_name="company-skills",
+                source_type="git_url",
+                source=f"https://user:{sentinel}@example.com/company/skills.git",
+                skill_count=2,
+                updated_at="2026-07-08T18:00:00Z",
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-indexes"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_indexes=FakeListIndexes(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert sentinel not in stdout.getvalue()
+    assert stdout.getvalue().endswith("https://example.com/company/skills.git\n")
+
+
 def test_list_skills_maps_arguments_to_application_command() -> None:
     list_skills = FakeListSkills()
     stdout = StringIO()

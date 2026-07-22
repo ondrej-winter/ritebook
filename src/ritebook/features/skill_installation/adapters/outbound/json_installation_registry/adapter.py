@@ -11,6 +11,7 @@ from ritebook.features.skill_installation.application.errors import (
     ConflictingRecordedTargetError,
     InstallationPersistenceError,
 )
+from ritebook.shared_kernel import require_safe_persisted_source
 
 if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
@@ -101,6 +102,7 @@ def _read_entries(path: Path) -> list[dict[str, Any]]:
                 f"provenance: {path}; remove it and reinstall the recorded skills"
             )
             raise InstallationPersistenceError(msg)
+        _require_safe_source(entry)
     return typed_entries
 
 
@@ -140,6 +142,9 @@ def _upsert_entry(
 
 
 def _entry_to_json(entry: InstallationManifestEntry, target: str) -> dict[str, Any]:
+    _require_safe_source(
+        {"source": entry.source, "source_type": entry.source_type},
+    )
     data: dict[str, Any] = {
         "requirement": entry.requirement,
         "index_name": entry.index_name,
@@ -169,7 +174,20 @@ def _atomic_write_json(path: Path, data: dict[str, Any]) -> None:
             json.dump(data, temp_file, indent=2)
             temp_file.write("\n")
             temp_name = temp_file.name
-        Path(temp_name).replace(path)
+        temp_path = Path(temp_name)
+        temp_path.chmod(0o600)
+        temp_path.replace(path)
     except OSError as err:
         msg = f"installation registry cannot be written: {path}"
+        raise InstallationPersistenceError(msg) from err
+
+
+def _require_safe_source(entry: dict[str, Any]) -> None:
+    try:
+        require_safe_persisted_source(
+            str(entry.get("source", "")),
+            str(entry.get("source_type", "")),
+        )
+    except ValueError as err:
+        msg = "installation registry contains an unsafe Git source; reinstall it"
         raise InstallationPersistenceError(msg) from err

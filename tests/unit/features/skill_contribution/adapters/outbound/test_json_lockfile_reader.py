@@ -182,6 +182,27 @@ def test_json_lockfile_reader_rejects_non_object_payload(tmp_path: Path) -> None
         )
 
 
+def test_json_lockfile_reader_rejects_credential_bearing_source(tmp_path: Path) -> None:
+    sentinel = "sentinel-secret"
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[
+            lockfile_entry(
+                source=f"https://user:{sentinel}@example.com/company/skills.git",
+            ),
+        ],
+    )
+
+    with pytest.raises(ContributionLockfileReadError) as exc_info:
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
+
+    assert "credentials" in str(exc_info.value)
+    assert sentinel not in str(exc_info.value)
+
+
 def test_json_lockfile_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
     lockfile_path = write_lockfile(tmp_path, overrides={"schema_version": 2})
 

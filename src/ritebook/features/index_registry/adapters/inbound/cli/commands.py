@@ -13,6 +13,7 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexCommand,
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
+from ritebook.shared_kernel import safe_source_display
 
 if TYPE_CHECKING:
     import argparse
@@ -109,9 +110,10 @@ def run_list_indexes(
         print("No indexes registered", file=stdout)
         return 0
     for index in result.indexes:
+        display_source = safe_source_display(index.source, index.source_type)
         print(
             f"{index.name}\t{index.skill_count} skill(s)\t"
-            f"{index.source_type}\t{index.updated_at}\t{index.source}",
+            f"{index.source_type}\t{index.updated_at}\t{display_source}",
             file=stdout,
         )
     return 0

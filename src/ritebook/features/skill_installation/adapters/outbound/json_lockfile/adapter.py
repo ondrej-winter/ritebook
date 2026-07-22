@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ritebook.features.skill_installation.application.errors import (
     InstallationPersistenceError,
 )
+from ritebook.shared_kernel import require_safe_persisted_source
 
 if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
@@ -65,6 +66,11 @@ def _lockfile_path(lockfile_path: str | None) -> Path:
 
 
 def _entry_to_json(entry: LockfileManifestEntry) -> dict[str, Any]:
+    try:
+        require_safe_persisted_source(entry.source, entry.source_type)
+    except ValueError as err:
+        msg = "refusing to write a lockfile containing an unsafe Git source"
+        raise InstallationPersistenceError(msg) from err
     data: dict[str, Any] = {
         "requirement": entry.requirement,
         "index_name": entry.index_name,

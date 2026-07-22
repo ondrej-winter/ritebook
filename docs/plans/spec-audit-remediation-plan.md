@@ -95,7 +95,7 @@ documentation unless the project explicitly accepts and records the existing ris
 ### Phase 3: Persistence and untrusted output
 
 - [x] Task 11: Define and implement registry-cache commit semantics
-- [ ] Task 12: Sanitize and safely persist Git source values
+- [x] Task 12: Sanitize and safely persist Git source values
 - [ ] Task 13: Define terminal control-character handling
 - [ ] Task 14: Define recovery for post-copy generated-state failures
 - [ ] Task 15: Resolve local-source lockfile portability
@@ -674,18 +674,18 @@ state files with private permissions where supported.
 
 **Acceptance criteria:**
 
-- [ ] Credentials embedded in supported URL forms are rejected or removed before
+- [x] Credentials embedded in supported URL forms are rejected or removed before
   registry, lockfile, installation registry, logs, errors, and CLI output.
-- [ ] `list-indexes` displays a useful non-secret source identifier.
-- [ ] Newly created registry and installation state use documented restrictive
+- [x] `list-indexes` displays a useful non-secret source identifier.
+- [x] Newly created registry and installation state use documented restrictive
   permissions without breaking supported platforms.
 
 **Verification:**
 
-- [ ] Add tests using password, token, URL-encoded user-info, SSH/scp-like syntax,
+- [x] Add tests using password, token, URL-encoded user-info, SSH/scp-like syntax,
   and credential-bearing Git failures.
-- [ ] Search generated test artifacts and captured output for sentinel secrets.
-- [ ] Run index registry, installation manifest, CLI, and Git adapter tests.
+- [x] Search generated test artifacts and captured output for sentinel secrets.
+- [x] Run index registry, installation manifest, CLI, and Git adapter tests.
 
 **Dependencies:** Task 1 because persisted source identity may affect provenance.
 
@@ -700,7 +700,19 @@ state files with private permissions where supported.
 **Estimated scope:** Medium; split parsing/redaction from file permissions if the
 task exceeds five files.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Ritebook now distinguishes operational,
+safe persisted, and defensive display forms for Git sources. Standard URLs with
+username-only, password/token, or percent-encoded authority user-info are rejected
+before Git execution, managed-cache mutation, or generated-state persistence;
+scp-like SSH sources remain supported. Registry, installation-registry, lockfile,
+and contribution boundaries reject unsafe legacy or candidate values without
+echoing secrets, `list-indexes` removes URL user-info defensively, and Git failures
+do not surface raw subprocess output. User-owned `indexes.json` and
+`installations.json` replacements receive POSIX mode `0600`, while the shareable
+`ritebook.lock` rejects unsafe sources without forcing private permissions. The
+focused remediation suite passed with 106 tests. The full gate passed Ruff
+formatting and linting, `ty`, all 517 tests including 15 E2E tests, package build,
+and `git diff --check`.
 
 ## Task 13: Define Terminal Control-Character Handling
 
@@ -1055,7 +1067,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Closed |
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Closed |
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Closed |
-| 7. Git source credential exposure | Required | 12 | Open |
+| 7. Git source credential exposure | Required | 12 | Closed |
 | 8. Terminal control-character injection | Required | 13 | Open |
 | 9. Destructive forced replacement | Required | 9 | Closed |
 | 10. Lexical rather than canonical target collisions | Required | 10 | Closed |

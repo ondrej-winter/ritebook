@@ -2,10 +2,15 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
+import pytest
+
 from ritebook.features.skill_installation.adapters.outbound.json_lockfile import (
     JsonLockfileAdapter,
 )
 from ritebook.features.skill_installation.application.dtos import LockfileManifestEntry
+from ritebook.features.skill_installation.application.errors import (
+    InstallationPersistenceError,
+)
 
 
 def test_json_lockfile_writes_deterministic_schema_sorted_by_index_and_skill(
@@ -101,6 +106,22 @@ def test_json_lockfile_full_rewrite_removes_stale_entries(tmp_path: Path) -> Non
     ]
 
 
+def test_json_lockfile_rejects_credential_bearing_source(tmp_path: Path) -> None:
+    lockfile_path = tmp_path / "ritebook.lock"
+    sentinel = "sentinel-secret"
+
+    with pytest.raises(InstallationPersistenceError) as exc_info:
+        JsonLockfileAdapter().write_lockfile(
+            (_entry(source=f"https://user:{sentinel}@example.com/company/skills.git"),),
+            str(lockfile_path),
+            requirements_file="ritebook.toml",
+        )
+
+    assert "unsafe Git source" in str(exc_info.value)
+    assert sentinel not in str(exc_info.value)
+    assert not lockfile_path.exists()
+
+
 def _entry(
     *,
     requirement: str = "platform-skills/code-review",
@@ -108,6 +129,7 @@ def _entry(
     target_ref: str | None = None,
     source_revision: str = "a" * 40,
     index_digest: str = f"sha256:{'b' * 64}",
+    source: str = "git@example.com:company/skills.git",
 ) -> LockfileManifestEntry:
     index_name, skill_name = requirement.rsplit("/", maxsplit=1)
     return LockfileManifestEntry(
@@ -115,7 +137,7 @@ def _entry(
         index_name=index_name,
         skill_name=skill_name,
         target=target,
-        source="git@example.com:company/skills.git",
+        source=source,
         source_type="git_url",
         source_revision=source_revision,
         index_digest=index_digest,

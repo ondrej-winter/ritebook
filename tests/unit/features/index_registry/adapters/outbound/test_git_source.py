@@ -127,6 +127,42 @@ def test_git_source_adapter_clones_git_url_to_hashed_cache(tmp_path: Path) -> No
     ]
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "https://user:sentinel-secret@example.com/company/skills.git",
+        "https://sentinel-token@example.com/company/skills.git",
+        "https://user%40example.com:sentinel-secret@example.com/company/skills.git",
+        "ssh://git@example.com/company/skills.git",
+    ],
+)
+def test_git_source_adapter_rejects_url_user_info_before_git_or_cache_mutation(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    runner = RecordingRunner()
+
+    with pytest.raises(IndexSourceError) as exc_info:
+        GitSourceAdapter(runner).prepare_source(source, str(tmp_path))
+
+    assert "credentials" in str(exc_info.value)
+    assert "sentinel" not in str(exc_info.value)
+    assert runner.commands == []
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_git_source_adapter_accepts_scp_like_ssh_username(tmp_path: Path) -> None:
+    runner = RecordingRunner()
+
+    result = GitSourceAdapter(runner).prepare_source(
+        "git@example.com:company/skills.git",
+        str(tmp_path),
+    )
+
+    assert result.source == "git@example.com:company/skills.git"
+    assert runner.commands[0][3] == "git@example.com:company/skills.git"
+
+
 def test_git_source_adapter_refreshes_existing_clone(tmp_path: Path) -> None:
     clone_path = tmp_path / "git" / "source-id"
     clone_path.mkdir(parents=True)
@@ -193,3 +229,26 @@ def test_git_source_adapter_translates_git_failures(tmp_path: Path) -> None:
             "git@example.com:company/skills.git",
             str(tmp_path),
         )
+
+
+def test_git_source_adapter_does_not_expose_credential_bearing_git_failure(
+    tmp_path: Path,
+) -> None:
+    sentinel = "sentinel-secret"
+
+    def failing_runner(command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(
+            command,
+            1,
+            f"remote output {sentinel}".encode(),
+            f"fatal: authentication failed for {sentinel}".encode(),
+        )
+
+    with pytest.raises(IndexSourceError) as exc_info:
+        GitSourceAdapter(failing_runner).prepare_source(
+            "https://example.com/company/skills.git",
+            str(tmp_path),
+        )
+
+    assert str(exc_info.value) == "git source operation failed"
+    assert sentinel not in str(exc_info.value)

@@ -1,4 +1,5 @@
 import json
+import stat
 from pathlib import Path
 from typing import Any, cast
 
@@ -52,6 +53,7 @@ def test_json_installation_registry_writes_deterministic_state_sorted_by_target(
         "installed_at": "2026-07-10T21:00:00Z",
     }
     assert registry_path.read_text(encoding="utf-8").endswith("\n")
+    assert stat.S_IMODE(registry_path.stat().st_mode) == 0o600
 
 
 def test_json_installation_registry_replaces_same_target_with_force(
@@ -165,6 +167,30 @@ def test_json_installation_registry_rejects_malformed_existing_registry(
             str(registry_path),
             force=False,
         )
+
+
+def test_json_installation_registry_rejects_unsafe_existing_source(
+    tmp_path: Path,
+) -> None:
+    registry_path = tmp_path / "installations.json"
+    unsafe_entry = _entry_json()
+    unsafe_entry["source"] = (
+        "https://user:sentinel-secret@example.com/company/skills.git"
+    )
+    registry_path.write_text(
+        json.dumps({"schema_version": 1, "installations": [unsafe_entry]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(InstallationPersistenceError) as exc_info:
+        json_installation_registry.JsonInstallationRegistryAdapter().write_installation(
+            _entry(),
+            str(registry_path),
+            force=False,
+        )
+
+    assert "unsafe Git source" in str(exc_info.value)
+    assert "sentinel-secret" not in str(exc_info.value)
 
 
 def _entry(

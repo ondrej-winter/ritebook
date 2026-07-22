@@ -17,6 +17,7 @@ from ritebook.features.skill_contribution.application.errors import (
 from ritebook.features.skill_contribution.application.ports import (
     ContributionLockfilePort,
 )
+from ritebook.shared_kernel import require_safe_persisted_source
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -105,13 +106,16 @@ def _entry_from_json(
     typed_entry = cast("Mapping[object, object]", entry)
 
     try:
+        source = _required_str(typed_entry, "source", position=position)
+        source_type = _required_str(typed_entry, "source_type", position=position)
+        require_safe_persisted_source(source, source_type)
         return ContributionLockfileEntry(
             requirement=_required_str(typed_entry, "requirement", position=position),
             index_name=_required_str(typed_entry, "index_name", position=position),
             skill_name=_required_str(typed_entry, "skill_name", position=position),
             target=_required_str(typed_entry, "target", position=position),
-            source=_required_str(typed_entry, "source", position=position),
-            source_type=_required_str(typed_entry, "source_type", position=position),
+            source=source,
+            source_type=source_type,
             source_revision=_required_str(
                 typed_entry,
                 "source_revision",

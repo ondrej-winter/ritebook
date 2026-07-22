@@ -16,6 +16,7 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.index_registry.application.errors import (
     IndexRegistryPersistenceError,
 )
+from ritebook.shared_kernel import require_safe_persisted_source
 
 DEFAULT_REGISTRY_PATH = "~/.config/ritebook/indexes.json"
 
@@ -91,6 +92,7 @@ def _write_entries(path: Path, entries: dict[str, RegisteredIndex]) -> None:
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
+        temp_path.chmod(0o600)
         temp_path.replace(path)
     except OSError as err:
         msg = f"unable to write index registry: {path}"
@@ -117,11 +119,18 @@ def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:
             "remove and regenerate it with add-index"
         )
         raise IndexRegistryPersistenceError(msg) from err
+    source = str(payload["source"])
+    source_type = IndexSourceType(str(payload["source_type"]))
+    try:
+        require_safe_persisted_source(source, source_type.value)
+    except ValueError as err:
+        msg = "index registry contains an unsafe Git source; remove and regenerate it"
+        raise IndexRegistryPersistenceError(msg) from err
     return RegisteredIndex(
         name=str(payload["name"]),
         published_name=str(payload["published_name"]),
-        source=str(payload["source"]),
-        source_type=IndexSourceType(str(payload["source_type"])),
+        source=source,
+        source_type=source_type,
         source_revision=source_revision,
         index_digest=index_digest,
         source_cache_path=cast("str | None", payload.get("source_cache_path")),
@@ -134,6 +143,11 @@ def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:
 
 
 def _entry_to_json(entry: RegisteredIndex) -> dict[str, Any]:
+    try:
+        require_safe_persisted_source(entry.source, entry.source_type.value)
+    except ValueError as err:
+        msg = "refusing to persist an unsafe Git source"
+        raise IndexRegistryPersistenceError(msg) from err
     return {
         "name": entry.name,
         "published_name": entry.published_name,

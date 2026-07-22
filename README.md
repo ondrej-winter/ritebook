@@ -116,6 +116,12 @@ Register a Git URL source:
 uv run ritebook add-index --source git@github.com:company/internal-skills.git
 ```
 
+Use SSH configuration, a Git credential helper, or another Git-managed
+authentication mechanism. Do not embed usernames, passwords, or tokens in a
+standard URL: Ritebook rejects URL authority user-info before running Git or
+writing local state. scp-like SSH sources such as the example above remain
+supported.
+
 Register an already-cloned local Git repository without Ritebook mutating it:
 
 ```bash
@@ -243,6 +249,11 @@ Direct `install-skill` runs write generated user-level installation state to:
 ~/.config/ritebook/installations.json
 ```
 
+On POSIX platforms, Ritebook writes both `indexes.json` and `installations.json`
+with mode `0600`. Persisted source values never include standard-URL user-info, and
+`list-indexes` defensively removes such user-info from displayed sources. Existing
+unsafe generated state is rejected and must be removed and regenerated.
+
 Tests and automation can override both the index registry and direct-install
 state paths:
 
@@ -304,7 +315,9 @@ by `skills[].name`.
 After a successful requirements install, Ritebook writes deterministic generated
 state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
 `ritebook.toml` so repo-local skill installation state is reviewable and
-repeatable.
+repeatable. Because the lockfile is meant to be shared, Ritebook does not force a
+private file mode; it rejects credential-bearing standard source URLs before
+writing instead.
 
 ## Contributing installed skill changes upstream
 

@@ -89,6 +89,13 @@ Requirements:
   alias.
 - Ritebook persists the source locator and type, full `source_revision`, and
   `index_digest` with the cached-index path.
+- Git URL sources must not contain standard-URL authority user-info. Ritebook
+  rejects username-only, password/token, and percent-encoded user-info before Git
+  execution, managed-cache creation, or persistence. Authentication uses the
+  user's SSH configuration, credential helper, or other Git-managed mechanism.
+- scp-like SSH syntax such as `git@github.com:company/internal-skills.git` remains
+  supported; its username is treated as an SSH identity, not embedded URL
+  credentials.
 - If a local alias is already registered, Ritebook refuses to
   overwrite it unless an explicit replacement flag is provided.
 
@@ -115,6 +122,8 @@ Requirements:
 - Empty registries produce concise output: `No indexes registered`.
 - Non-empty output includes the local alias, skill count, source type,
   updated timestamp, and remembered source.
+- Remembered sources are rendered through a defensive display form that removes
+  standard-URL user-info and never prints embedded credentials.
 
 ### Update index
 
@@ -275,6 +284,10 @@ Registry schema-v1 provenance requirements follow
   synchronizes a uniquely named same-directory temporary registry file, then
   atomically replaces `indexes.json` so readers see either the old entry or the new
   entry, never a partially written entry.
+- Before replacement, the temporary registry file receives POSIX mode `0600` where
+  supported so newly written user-owned registry state is private.
+- Registry readers reject legacy entries containing standard-URL user-info and
+  direct users to remove and regenerate the unsafe registration.
 - If candidate cache writing or registry replacement fails, the previous registry
   entry continues to reference its unchanged generation. Ritebook attempts to
   discard the unreferenced candidate without changing the reported commit failure.
@@ -318,7 +331,11 @@ Registry schema-v1 provenance requirements follow
   use fails safely rather than substituting a current ref.
 - Authentication is delegated to the user's existing Git setup, such as SSH keys,
   credential helpers, or configured Git access.
-- Ritebook should surface Git failures clearly without exposing secrets.
+- Standard URLs containing authority user-info are rejected before Git or
+  filesystem mutation. This includes username-only, password/token, and
+  percent-encoded forms; scp-like SSH sources remain supported.
+- Ritebook surfaces a stable, generic Git failure without exposing raw subprocess
+  stdout or stderr, which may contain credentials.
 
 ### Local Git repository sources
 
@@ -516,6 +533,11 @@ tests/unit/features/index_registry/
   detect cached-index digest mismatches.
 - Git adapter invokes Git non-interactively and reports clone/fetch failures
   clearly.
+- Git adapter rejects standard-URL user-info before Git or managed-cache mutation,
+  preserves scp-like SSH support, and does not expose credential-bearing Git
+  output.
+- Registry persistence rejects unsafe source values and writes replacement state
+  with POSIX mode `0600` where supported.
 
 ### CLI tests
 
@@ -526,6 +548,7 @@ tests/unit/features/index_registry/
 - `list-indexes` maps CLI args into application command DTOs.
 - `list-indexes` prints deterministic non-empty output and a concise empty
   registry message.
+- `list-indexes` defensively removes URL user-info from displayed sources.
 - Success output includes local alias and skill count.
 - Error output is concise and user-facing.
 

@@ -12,6 +12,7 @@ from ritebook.features.index_registry.application.dtos import (
     PreparedIndexSource,
 )
 from ritebook.features.index_registry.application.errors import IndexSourceError
+from ritebook.shared_kernel import require_safe_persisted_source
 
 DEFAULT_CACHE_ROOT = "~/.cache/ritebook"
 GitRunner = Callable[[Sequence[str]], subprocess.CompletedProcess[bytes]]
@@ -33,6 +34,7 @@ class GitSourceAdapter:
         source_path = Path(source).expanduser()
         if source_path.exists():
             return self._local_source(source_path)
+        _require_safe_git_url(source)
         clone_path = _managed_clone_path(source, cache_root)
         if clone_path.exists():
             self._refresh_clone(clone_path)
@@ -59,6 +61,7 @@ class GitSourceAdapter:
         source_path = Path(source).expanduser()
         if source_cache_path is None and source_path.exists():
             return self._local_source(source_path)
+        _require_safe_git_url(source)
         clone_path = (
             Path(source_cache_path).expanduser()
             if source_cache_path
@@ -156,6 +159,13 @@ class GitSourceAdapter:
 def _managed_clone_path(source: str, cache_root: str | None) -> Path:
     digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
     return Path(cache_root or DEFAULT_CACHE_ROOT).expanduser() / "git" / digest
+
+
+def _require_safe_git_url(source: str) -> None:
+    try:
+        require_safe_persisted_source(source, IndexSourceType.GIT_URL.value)
+    except ValueError as err:
+        raise IndexSourceError(str(err)) from err
 
 
 def _run_git(command: Sequence[str]) -> subprocess.CompletedProcess[bytes]:

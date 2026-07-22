@@ -20,6 +20,7 @@ from ritebook.features.skill_installation.application.errors import (
     GeneratedStateCommitError,
     InstallationPersistenceError,
     InstalledTargetCleanupError,
+    InvalidSkillReferenceError,
     PartialInstallationError,
     SkillSourceResolutionError,
     UndefinedInstallTargetError,
@@ -136,7 +137,7 @@ def test_install_from_requirements_locks_repository_relative_nested_skill_path()
     assert entry.skill_file == "skills/browser/runtime-verification/SKILL.md"
 
 
-def test_install_from_requirements_expands_folder_prefix_to_matching_skills() -> None:
+def test_install_from_requirements_expands_immediate_collection_children() -> None:
     index = registered_skill_index(name="platform-skills")
     code_review = installable_skill(
         name="code-review",
@@ -200,6 +201,158 @@ def test_install_from_requirements_expands_folder_prefix_to_matching_skills() ->
     assert result.installed_count == 2
 
 
+def test_requirements_install_prefers_exact_root_over_collection_expansion() -> None:
+    index = registered_skill_index(name="platform-skills")
+    exact = installable_skill(name="software-development")
+    child = installable_skill(
+        name="code-review",
+        path="software-development/code-review",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (child, exact)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"agents": ".agents/skills"},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/software-development",
+                    target="agents",
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert [call[1] for call in installer.install_calls] == [exact]
+    assert [entry.requirement for entry in result.lockfile_entries] == [
+        "platform-skills/software-development",
+    ]
+
+
+def test_requirements_install_derives_expansion_identity_from_catalog_path() -> None:
+    index = registered_skill_index(name="platform-skills")
+    child = installable_skill(
+        name="mismatched-name",
+        path="quality/code-review",
+        skill_file="quality/code-review/SKILL.md",
+    )
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (child,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"agents": ".agents/skills"},
+            skills=(SkillRequirement(name="platform-skills/quality", target="agents"),),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    result = use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls[0][2] == ".agents/skills/code-review"
+    entry = result.lockfile_entries[0]
+    assert entry.requirement == "platform-skills/quality/code-review"
+    assert entry.skill_name == "code-review"
+    assert entry.skill_path == "skills/quality/code-review"
+    assert entry.skill_file == "skills/quality/code-review/SKILL.md"
+
+
+def test_requirements_install_rejects_collection_target_path_before_source_open() -> (
+    None
+):
+    index = registered_skill_index(name="platform-skills")
+    child = installable_skill(name="code-review", path="quality/code-review")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={index.cached_index_path: (child,)},
+    )
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/quality",
+                    target_path=".agents/skills/quality",
+                ),
+            ),
+        ),
+    )
+    source_resolver = FakeSkillSourceResolver()
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = _use_case(
+        reader=reader,
+        catalog=catalog,
+        source_resolver=source_resolver,
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(
+        InvalidSkillReferenceError,
+        match=r"collection selector.*target_path",
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert source_resolver.resolve_calls == []
+    assert installer.plan_target_calls == []
+    assert installer.install_calls == []
+    assert manifest.lockfile_validate_calls == []
+    assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_rejects_expanded_target_conflicts_before_source_open(
+    tmp_path: Path,
+) -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="review", path="quality/review"),
+                installable_skill(name="nested", path="quality/nested"),
+            ),
+        },
+    )
+    target_base = tmp_path / "skills"
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={"agents": str(target_base)},
+            skills=(
+                SkillRequirement(name="platform-skills/quality", target="agents"),
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path=str(target_base / "nested" / "child"),
+                ),
+            ),
+        ),
+    )
+    catalog.skills_by_path[index.cached_index_path] += (
+        installable_skill(name="code-review"),
+    )
+    source_resolver = FakeSkillSourceResolver()
+    installer = FakeSkillInstaller()
+    use_case = _use_case(
+        reader=reader,
+        catalog=catalog,
+        source_resolver=source_resolver,
+        installer=installer,
+    )
+
+    with pytest.raises(DuplicateInstallTargetError, match="child"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert source_resolver.resolve_calls == []
+    assert installer.install_calls == []
+
+
 def test_install_from_requirements_uses_target_path_exactly() -> None:
     index = registered_skill_index(name="platform-skills")
     skill = installable_skill(name="code-review")
@@ -260,7 +413,7 @@ def test_install_from_requirements_rejects_undefined_target_before_copy() -> Non
     assert manifest.lockfile_write_calls == []
 
 
-def test_requirements_install_verifies_source_before_trusting_cached_metadata() -> None:
+def test_requirements_install_plans_cached_metadata_before_opening_source() -> None:
     index = registered_skill_index(name="platform-skills")
     catalog = FakeSkillCatalog(
         indexes=[index],
@@ -290,7 +443,7 @@ def test_requirements_install_verifies_source_before_trusting_cached_metadata() 
     with pytest.raises(SkillSourceResolutionError, match="index mismatch"):
         use_case.execute(InstallFromRequirementsCommand())
 
-    assert catalog.read_skills_calls == []
+    assert catalog.read_skills_calls == [index.cached_index_path]
     assert installer.install_calls == []
     assert manifest.lockfile_write_calls == []
 
@@ -861,13 +1014,14 @@ def _use_case(
     *,
     reader: FakeRequirementsReader,
     catalog: FakeSkillCatalog | None = None,
+    source_resolver: FakeSkillSourceResolver | None = None,
     installer: FakeSkillInstaller | None = None,
     manifest: FakeInstallationManifest | None = None,
 ) -> InstallFromRequirements:
     return InstallFromRequirements(
         requirements_reader=reader,
         catalog=catalog or FakeSkillCatalog(),
-        source_resolver=FakeSkillSourceResolver(),
+        source_resolver=source_resolver or FakeSkillSourceResolver(),
         installer=installer or FakeSkillInstaller(),
         manifest=manifest or FakeInstallationManifest(),
         clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),

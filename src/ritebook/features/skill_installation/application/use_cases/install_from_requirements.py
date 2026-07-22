@@ -30,6 +30,10 @@ from ritebook.features.skill_installation.application.errors import (
 from ritebook.features.skill_installation.application.ports import (
     InstallFromRequirementsPort,
 )
+from ritebook.shared_kernel.catalog_paths import (
+    CatalogPathKind,
+    validate_catalog_path,
+)
 
 from ._provenance import repository_relative_source_path
 
@@ -67,6 +71,16 @@ class _InstallPlanItem:
     index: RegisteredSkillIndex
     skill: InstallableSkill
     source: ResolvedSkillSource
+    planned_target: PlannedInstallTarget
+
+
+@dataclass(frozen=True)
+class _PlannedInstallItem:
+    reference: SkillReference
+    target: str
+    target_ref: str | None
+    index: RegisteredSkillIndex
+    skill: InstallableSkill
     planned_target: PlannedInstallTarget
 
 
@@ -164,19 +178,16 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             target_bases,
             command.requirements_file,
         )
-        sources: dict[str, ResolvedSkillSource] = {}
-        plan = tuple(
+        planned_items = tuple(
             item
             for resolved_requirement in resolved_requirements
             for item in self._plan_items(
                 command,
                 resolved_requirement,
-                source_stack,
-                sources,
             )
         )
-        self._reject_conflicting_targets(plan)
-        return plan
+        self._reject_conflicting_targets(planned_items)
+        return self._attach_sources(planned_items, source_stack)
 
     def _resolve_requirements(
         self,
@@ -216,9 +227,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self,
         command: InstallFromRequirementsCommand,
         resolved_requirement: _ResolvedRequirement,
-        source_stack: ExitStack,
-        sources: dict[str, ResolvedSkillSource],
-    ) -> tuple[_InstallPlanItem, ...]:
+    ) -> tuple[_PlannedInstallItem, ...]:
         index = self._catalog.get_index(
             resolved_requirement.reference.index_name,
             command.registry_path,
@@ -226,31 +235,56 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         if index is None:
             raise UnknownInstallIndexError(resolved_requirement.reference.index_name)
 
-        source = sources.get(index.name)
-        if source is None:
-            source = source_stack.enter_context(
-                self._source_resolver.open_source(index),
-            )
-            sources[index.name] = source
-        skills = self._find_skills(
+        skills, expands_collection = self._find_skills(
             resolved_requirement.reference,
             self._catalog.read_skills(index.cached_index_path),
         )
-        items: list[_InstallPlanItem] = []
+        if resolved_requirement.uses_target_path and expands_collection:
+            msg = "A collection selector must use target, not target_path."
+            raise InvalidSkillReferenceError(msg)
+
+        items: list[_PlannedInstallItem] = []
         for skill in skills:
-            target = self._target_for_skill(resolved_requirement, skill)
+            reference = _reference_for_skill(resolved_requirement, skill)
+            target = self._target_for_skill(resolved_requirement, reference)
             items.append(
-                _InstallPlanItem(
-                    reference=_reference_for_skill(resolved_requirement, skill),
+                _PlannedInstallItem(
+                    reference=reference,
                     target=target,
                     target_ref=resolved_requirement.target_ref,
                     index=index,
                     skill=skill,
-                    source=source,
                     planned_target=self._installer.plan_target(target),
                 ),
             )
         return tuple(items)
+
+    def _attach_sources(
+        self,
+        planned_items: tuple[_PlannedInstallItem, ...],
+        source_stack: ExitStack,
+    ) -> tuple[_InstallPlanItem, ...]:
+        sources: dict[str, ResolvedSkillSource] = {}
+        install_items: list[_InstallPlanItem] = []
+        for item in planned_items:
+            source = sources.get(item.index.name)
+            if source is None:
+                source = source_stack.enter_context(
+                    self._source_resolver.open_source(item.index),
+                )
+                sources[item.index.name] = source
+            install_items.append(
+                _InstallPlanItem(
+                    reference=item.reference,
+                    target=item.target,
+                    target_ref=item.target_ref,
+                    index=item.index,
+                    skill=item.skill,
+                    source=source,
+                    planned_target=item.planned_target,
+                ),
+            )
+        return tuple(install_items)
 
     def _resolve_target_base(
         self,
@@ -271,38 +305,44 @@ class InstallFromRequirements(InstallFromRequirementsPort):
     def _target_for_skill(
         self,
         resolved_requirement: _ResolvedRequirement,
-        skill: InstallableSkill,
+        reference: SkillReference,
     ) -> str:
         if resolved_requirement.uses_target_path and (
-            skill.path == resolved_requirement.reference.skill_path
+            reference.skill_path == resolved_requirement.reference.skill_path
         ):
             return resolved_requirement.target_base
-        return str(PurePath(resolved_requirement.target_base, skill.name))
+        return str(PurePath(resolved_requirement.target_base, reference.skill_name))
 
     def _find_skills(
         self,
         reference: SkillReference,
         skills: tuple[InstallableSkill, ...],
-    ) -> tuple[InstallableSkill, ...]:
+    ) -> tuple[tuple[InstallableSkill, ...], bool]:
         for skill in skills:
             if skill.path == reference.skill_path:
-                return (skill,)
-        matching_prefix = tuple(
+                return (skill,), False
+        selector = validate_catalog_path(reference.skill_path)
+        if selector.kind is not CatalogPathKind.ROOT_SKILL:
+            raise UnknownInstallSkillError(reference.requirement)
+        collection_children = tuple(
             sorted(
                 (
                     skill
                     for skill in skills
-                    if skill.path.startswith(f"{reference.skill_path}/")
+                    if _is_immediate_collection_child(skill.path, selector.value)
                 ),
                 key=lambda skill: skill.path,
             ),
         )
-        if matching_prefix:
-            return matching_prefix
+        if collection_children:
+            return collection_children, True
         raise UnknownInstallSkillError(reference.requirement)
 
-    def _reject_conflicting_targets(self, plan: tuple[_InstallPlanItem, ...]) -> None:
-        seen_targets: list[_InstallPlanItem] = []
+    def _reject_conflicting_targets(
+        self,
+        plan: tuple[_PlannedInstallItem, ...],
+    ) -> None:
+        seen_targets: list[_PlannedInstallItem] = []
         for item in plan:
             if any(_targets_overlap(item, seen) for seen in seen_targets):
                 raise DuplicateInstallTargetError(item.target)
@@ -363,7 +403,18 @@ def _reference_for_skill(
     )
 
 
-def _targets_overlap(first: _InstallPlanItem, second: _InstallPlanItem) -> bool:
+def _is_immediate_collection_child(path: str, collection: str) -> bool:
+    catalog_path = validate_catalog_path(path)
+    return (
+        catalog_path.kind is CatalogPathKind.COLLECTION_CHILD
+        and catalog_path.collection == collection
+    )
+
+
+def _targets_overlap(
+    first: _PlannedInstallItem,
+    second: _PlannedInstallItem,
+) -> bool:
     first_parts = PurePath(first.planned_target.canonical_target).parts
     second_parts = PurePath(second.planned_target.canonical_target).parts
     shared_length = min(len(first_parts), len(second_parts))

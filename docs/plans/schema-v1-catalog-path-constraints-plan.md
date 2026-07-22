@@ -428,7 +428,7 @@ with Ruff formatting/checks, `ty`, and 602 tests passing with one existing skip.
 ### Phase 3: Implement Exact-skill and Collection-selector Semantics
 
 - [x] Task 6: Restrict direct installation to exact schema-v1 skill paths
-- [ ] Task 7: Replace arbitrary prefix expansion with immediate collection expansion
+- [x] Task 7: Replace arbitrary prefix expansion with immediate collection expansion
 
 ### Task 6: Restrict Direct Installation to Exact Schema-v1 Skill Paths
 
@@ -494,29 +494,43 @@ selectors using `target_path` during planning.
 
 **Acceptance criteria:**
 
-- [ ] Exact root and collection-child skills retain exact-match precedence.
-- [ ] Selector syntax is validated before lookup or expansion.
-- [ ] A one-segment collection expands only immediate child skills.
-- [ ] Expanded skills are ordered deterministically by catalog path.
-- [ ] Empty or unrelated collection selectors fail as unknown.
-- [ ] Arbitrary descendant prefixes and over-deep selectors are rejected.
-- [ ] A collection selector using `target_path` fails before any mutation.
-- [ ] A collection selector using `target` resolves each child below the target
+- [x] Exact root and collection-child skills retain exact-match precedence.
+- [x] Selector syntax is validated before lookup or expansion.
+- [x] A one-segment collection expands only immediate child skills.
+- [x] Expanded skills are ordered deterministically by catalog path.
+- [x] Empty or unrelated collection selectors fail as unknown.
+- [x] Arbitrary descendant prefixes and over-deep selectors are rejected.
+- [x] A collection selector using `target_path` fails before any mutation.
+- [x] A collection selector using `target` resolves each child below the target
   base by final skill name.
-- [ ] Expanded exact requirements are derived from each cached catalog path, never
+- [x] Expanded exact requirements are derived from each cached catalog path, never
   from `skills[].name`.
-- [ ] Generated lock entries contain one exact requirement per resolved skill and
+- [x] Generated lock entries contain one exact requirement per resolved skill and
   retain repository-relative `skill_path` and `skill_file`.
-- [ ] Duplicate, canonical, and parent-child target conflict checks run over the
+- [x] Duplicate, canonical, and parent-child target conflict checks run over the
   fully expanded plan before source opening or copying.
 
 **Verification:**
 
-- [ ] Replace the obsolete arbitrary-folder-prefix expansion test.
-- [ ] Add immediate-child, deterministic-order, empty-collection, unrelated-prefix,
+- [x] Replace the obsolete arbitrary-folder-prefix expansion test.
+- [x] Add immediate-child, deterministic-order, empty-collection, unrelated-prefix,
   `target_path`, over-deep-selector, and no-mutation tests.
-- [ ] Retain exact-match and duplicate-target regression coverage.
-- [ ] Run the focused requirements-install suite.
+- [x] Retain exact-match and duplicate-target regression coverage.
+- [x] Run the focused requirements-install suite.
+
+**Implementation note (2026-07-22):** Replaced arbitrary `startswith` prefix
+expansion with exact-first schema-v1 resolution. A missing exact one-segment skill
+now expands only validated immediate collection children, sorted by catalog path;
+two-segment selectors never expand. Expanded references, final skill names, and
+targets are derived from cached catalog paths rather than `skills[].name`, while
+lock entries retain repository-relative source paths. Planning now resolves the
+complete expanded target set, canonicalizes targets, and rejects duplicate or
+parent-child conflicts before opening any source repository. Collection selectors
+using `target_path` fail with a slice-owned validation error before source opening,
+copying, or lockfile validation. The focused requirements suite passes with 28
+tests, the complete installation unit suite passes with 132 tests, and the full
+gate passes with Ruff formatting/checks, `ty`, and 611 tests passing with one
+existing skip.
 
 **Dependencies:** Task 6
 
@@ -531,11 +545,11 @@ selectors using `target_path` during planning.
 
 ### Checkpoint C: Installation Semantics
 
-- [ ] All installation unit tests pass.
-- [ ] Direct and requirements workflows have distinct, spec-compliant selector
+- [x] All installation unit tests pass.
+- [x] Direct and requirements workflows have distinct, spec-compliant selector
   behavior.
-- [ ] Invalid collection requests cause no target or lockfile mutation.
-- [ ] Generated lockfiles preserve repository-relative source paths.
+- [x] Invalid collection requests cause no target or lockfile mutation.
+- [x] Generated lockfiles preserve repository-relative source paths.
 
 ### Phase 4: Tighten Contribution Selection
 
@@ -740,13 +754,13 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 6 complete.** Direct installation now validates one- or two-segment catalog
-selectors with the shared schema-v1 policy and continues resolving skills by exact
-catalog path only. Malformed, non-canonical, and over-deep selectors fail before
-catalog lookup, while collection-only selectors remain unknown and are never
-expanded. Task 7 is the next sequential slice and must replace requirements-file
-arbitrary prefix expansion with deterministic immediate-child collection expansion
-and complete pre-mutation planning.
+**Task 7 complete.** Requirements installation now gives exact catalog paths
+precedence, expands only immediate children of a one-segment collection selector,
+and derives expanded identity from validated catalog paths. The complete expanded
+target plan is validated before source opening or filesystem mutation, including
+collection `target_path` rejection and canonical overlap checks. Task 8 is the next
+sequential slice and must make contribution selection use exact qualified
+requirements without skill-name or repository-path fallback.
 
 ## Handoff Notes
 

@@ -88,7 +88,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 5: Reject installation source-target overlap
 - [x] Task 6: Make contribution index regeneration symlink-safe
 - [x] Task 7: Correct publisher output-root and `skills_root` semantics
-- [ ] Task 8: Make publisher index replacement atomic and symlink-safe
+- [x] Task 8: Make publisher index replacement atomic and symlink-safe
 - [ ] Task 9: Make forced installation replacement recoverable
 - [ ] Task 10: Canonicalize and deconflict requirements-install targets
 
@@ -470,19 +470,19 @@ paths and define cleanup and prior-file preservation on every failure path.
 
 **Acceptance criteria:**
 
-- [ ] Existing valid index content remains unchanged when serialization, temporary
+- [x] Existing valid index content remains unchanged when serialization, temporary
   write, flush, or replacement fails.
-- [ ] A symlinked output file or unsafe ancestor is rejected without modifying its
+- [x] A symlinked output file or unsafe ancestor is rejected without modifying its
   target.
-- [ ] Temporary files are uniquely named, permission-safe, and cleaned after
+- [x] Temporary files are uniquely named, permission-safe, and cleaned after
   handled failures.
 
 **Verification:**
 
-- [ ] Add writer tests for successful replacement, write failure, replace failure,
+- [x] Add writer tests for successful replacement, write failure, replace failure,
   existing symlink, and stale temporary-file collision.
-- [ ] Run `uv run pytest tests/unit/features/publisher/adapters/outbound`.
-- [ ] Confirm generated JSON remains deterministic and two-space formatted.
+- [x] Run `uv run pytest tests/unit/features/publisher/adapters/outbound`.
+- [x] Confirm generated JSON remains deterministic and two-space formatted.
 
 **Dependencies:** Task 7.
 
@@ -494,7 +494,17 @@ paths and define cleanup and prior-file preservation on every failure path.
 
 **Estimated scope:** Small.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. The publisher JSON writer now serializes
+the complete payload before filesystem mutation, rejects symlinked output files
+and ancestor components, writes through a uniquely and securely created
+same-directory temporary file, flushes and synchronizes it, revalidates the
+destination, and atomically replaces the index. Serialization, write, sync, and
+replacement failures preserve prior index content and clean the writer-owned
+temporary file; stale similarly named files are not reused or removed. The
+focused writer suite passed with 12 tests, the publisher adapter suite passed
+with 21 tests, the publisher suite passed with 48 tests, the full non-E2E suite
+passed with 473 tests and 15 deselected, the package build succeeded, and Ruff
+and `ty` checks passed.
 
 ## Task 9: Make Forced Installation Replacement Recoverable
 
@@ -571,7 +581,7 @@ equivalent, nested, or otherwise conflicting targets before the first copy.
 ## Checkpoint B: Filesystem Safety
 
 - [ ] Source/target and target/target overlaps are rejected before mutation.
-- [ ] Publisher and contribution index writes cannot follow unsafe symlinks.
+- [x] Publisher and contribution index writes cannot follow unsafe symlinks.
 - [ ] Failed forced replacement preserves prior valid content.
 - [ ] Absolute and relative publisher roots produce portable, installable indexes.
 - [ ] Focused filesystem and publisher suites pass.
@@ -1011,7 +1021,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 2. Installation source-target overlap | Critical | 5 | Closed |
 | 3. Contribution index symlink escape | Critical | 6 | Closed |
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Closed |
-| 5. Publisher write is non-atomic and symlink-following | Required | 8 | Open |
+| 5. Publisher write is non-atomic and symlink-following | Required | 8 | Closed |
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Open |
 | 7. Git source credential exposure | Required | 12 | Open |
 | 8. Terminal control-character injection | Required | 13 | Open |

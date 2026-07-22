@@ -149,6 +149,17 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
   locate skills.
 - The index must be pretty-printed with two-space indentation for pull request
   review.
+- Ritebook must serialize the complete index before creating or replacing output.
+- Ritebook must create a uniquely named, permission-restricted temporary file in
+  the output directory, write and flush the complete UTF-8 payload, synchronize
+  the file, and atomically replace `ritebook-index.json` only after those steps
+  succeed.
+- The output directory path and existing `ritebook-index.json` must not contain
+  symlinks. Unsafe output paths must be rejected without modifying the symlink
+  target.
+- Serialization, temporary-write, flush, synchronization, or replacement failure
+  must leave prior valid index content unchanged. Ritebook-owned temporary files
+  must be removed after handled failures.
 - Schema v1 requires every published skill to have a valid `SKILL.md` header, but
   it does not need to include the full parsed header in `ritebook-index.json`.
 - Schema v1 does not include publisher-generated per-skill or repository content
@@ -283,7 +294,9 @@ The MVP should be covered primarily with fast, deterministic unit tests.
   `SKILL.md` discovery, relative path handling, frontmatter parsing, and
   path-scoped validation failures.
 - JSON writer tests verify schema version, deterministic output, required
-  description behavior, two-space indentation, and valid JSON.
+  description behavior, two-space indentation, valid JSON, atomic replacement,
+  failure preservation and cleanup, permission-safe unique temporary files, and
+  symlink rejection.
 - CLI adapter tests verify argument mapping, clear errors for missing root paths,
   `lint-skills` success/failure behavior, `publish-index` show-stopper behavior,
   and user-facing success output.

@@ -236,7 +236,7 @@ with Ruff, `ty`, and 578 tests passing with one existing skip.
 
 - [x] Task 3: Enforce catalog structure during lint and publisher discovery
 - [x] Task 4: Enforce the contract in the JSON index reader
-- [ ] Task 5: Prove add/update failure preserves registry state
+- [x] Task 5: Prove add/update failure preserves registry state
 
 ### Task 3: Enforce Catalog Structure During Lint and Publisher Discovery
 
@@ -377,23 +377,34 @@ comparing final values.
 
 **Acceptance criteria:**
 
-- [ ] Invalid `add-index` performs no cache or registry mutation.
-- [ ] Invalid forced replacement preserves the existing cache and registry entry.
-- [ ] Invalid `update-index` preserves cache path, bytes, revision, digest,
+- [x] Invalid `add-index` performs no cache or registry mutation.
+- [x] Invalid forced replacement preserves the existing cache and registry entry.
+- [x] Invalid `update-index` preserves cache path, bytes, revision, digest,
   published metadata, skill count, and timestamps.
-- [ ] Registry state and cached index bytes are snapshotted before failure and
+- [x] Registry state and cached index bytes are snapshotted before failure and
   compared afterward where real filesystem state is involved.
-- [ ] `update-index --all` records a structurally invalid alias as failed and
+- [x] `update-index --all` records a structurally invalid alias as failed and
   continues updating other aliases.
-- [ ] Implementation changes are made only if regression tests expose an atomicity
+- [x] Implementation changes are made only if regression tests expose an atomicity
   defect.
 
 **Verification:**
 
-- [ ] Extend add-index application tests with invalid-reader failures and mutation
+- [x] Extend add-index application tests with invalid-reader failures and mutation
   assertions.
-- [ ] Extend update-index application tests for single and bulk update behavior.
-- [ ] Run focused add/update tests.
+- [x] Extend update-index application tests for single and bulk update behavior.
+- [x] Run focused add/update tests.
+
+**Implementation note (2026-07-22):** Added mutation-recording regressions proving
+invalid new adds and forced replacements perform no cache write, cache discard, or
+registry upsert. Single-update coverage now checks the same zero-mutation contract,
+while a filesystem-backed scenario snapshots and preserves the complete registry
+bytes, cached index bytes and path, revision, digest, published metadata, skill
+count, and timestamps. Bulk update records the structurally invalid alias as failed,
+does not mutate it, and continues updating valid aliases in deterministic order.
+The existing validate-before-write sequencing was correct, so no production code
+changed. Focused add/update validation passes with 19 tests; the full gate passes
+with Ruff formatting/checks, `ty`, and 602 tests passing with one existing skip.
 
 **Dependencies:** Task 4
 
@@ -410,9 +421,9 @@ comparing final values.
 
 - [x] Publisher and linter focused tests pass.
 - [x] Registry and listing focused tests pass.
-- [ ] Invalid catalogs cannot be published, registered, updated, listed, or
+- [x] Invalid catalogs cannot be published, registered, updated, listed, or
   passed into installation.
-- [ ] Failed candidate validation leaves existing registry/cache state unchanged.
+- [x] Failed candidate validation leaves existing registry/cache state unchanged.
 
 ### Phase 3: Implement Exact-skill and Collection-selector Semantics
 
@@ -717,11 +728,12 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 4 complete.** Producer and JSON consumer boundaries now enforce the shared
-schema-v1 catalog path policy before catalog metadata escapes. Task 5 is the next
-sequential slice and must prove invalid add, forced replacement, single update,
-and bulk update candidates preserve existing registry and cache state. Checkpoint
-B remains open until those mutation-safety regressions pass.
+**Task 5 complete.** Producer and JSON consumer boundaries enforce the shared
+schema-v1 catalog path policy before catalog metadata escapes, and mutation-safety
+regressions prove invalid add, forced replacement, single update, and bulk update
+candidates preserve existing registry and cache state. Checkpoint B is complete.
+Task 6 is the next sequential slice and must restrict direct installation to exact
+one- or two-segment schema-v1 skill selectors without collection expansion.
 
 ## Handoff Notes
 

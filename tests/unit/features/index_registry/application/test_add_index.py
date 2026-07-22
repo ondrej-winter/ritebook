@@ -10,10 +10,12 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.index_registry.application.errors import (
     DuplicateIndexNameError,
     IndexRegistryPersistenceError,
+    InvalidPublishedIndexError,
 )
 from ritebook.features.index_registry.application.use_cases import AddIndex
 
 from .fakes import (
+    FailingIndexReader,
     FakeCache,
     FakeGitSource,
     FakeIndexReader,
@@ -141,6 +143,47 @@ def test_add_index_replaces_duplicate_with_force() -> None:
 
     assert result.skill_count == 2
     assert registry.entries["company-skills"].skill_count == 2
+
+
+def test_add_index_does_not_mutate_state_when_validation_fails() -> None:
+    registry = FakeRegistry()
+    cache = FakeCache()
+    use_case = AddIndex(
+        git_source=FakeGitSource(),
+        index_reader=FailingIndexReader(InvalidPublishedIndexError("invalid index")),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="invalid index"):
+        use_case.execute(AddIndexCommand(source="repo"))
+
+    assert registry.entries == {}
+    assert registry.upsert_calls == []
+    assert cache.write_calls == []
+    assert cache.discard_calls == []
+
+
+def test_add_index_force_preserves_existing_state_when_validation_fails() -> None:
+    existing = registered_index(skill_count=1)
+    registry = FakeRegistry([existing])
+    cache = FakeCache()
+    use_case = AddIndex(
+        git_source=FakeGitSource(),
+        index_reader=FailingIndexReader(InvalidPublishedIndexError("invalid index")),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="invalid index"):
+        use_case.execute(AddIndexCommand(source="repo", force=True))
+
+    assert registry.entries == {"company-skills": existing}
+    assert registry.upsert_calls == []
+    assert cache.write_calls == []
+    assert cache.discard_calls == []
 
 
 def test_add_index_discards_candidate_when_registry_commit_fails() -> None:

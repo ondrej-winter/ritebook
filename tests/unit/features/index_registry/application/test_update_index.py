@@ -1,7 +1,16 @@
+import hashlib
+from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
+from ritebook.features.index_registry.adapters.outbound.filesystem_registry import (
+    FilesystemIndexRegistry,
+)
+from ritebook.features.index_registry.adapters.outbound.index_cache import (
+    FilesystemIndexCache,
+)
 from ritebook.features.index_registry.application.dtos import (
     IndexSourceType,
     PreparedIndexSource,
@@ -161,8 +170,61 @@ def test_update_index_preserves_cache_and_registry_when_validation_fails() -> No
         use_case.execute(UpdateIndexCommand(name="company-skills"))
 
     assert cache.write_calls == []
+    assert cache.discard_calls == []
     assert registry.entries["company-skills"] == existing
     assert registry.upsert_calls == []
+
+
+def test_update_index_validation_failure_preserves_filesystem_state(
+    tmp_path: Path,
+) -> None:
+    registry_path = tmp_path / "indexes.json"
+    cache_root = tmp_path / "cache"
+    cached_content = '{"schema_version":1,"skills":[{"path":"code-review"}]}\n'
+    cached_digest = f"sha256:{hashlib.sha256(cached_content.encode()).hexdigest()}"
+    cache = FilesystemIndexCache()
+    cached_index_path = cache.write_index(
+        name="company-skills",
+        content=cached_content,
+        index_digest=cached_digest,
+        cache_root=str(cache_root),
+        preserve_path=None,
+    )
+    existing = replace(
+        registered_index(),
+        source_revision="1" * 40,
+        index_digest=cached_digest,
+        cached_index_path=cached_index_path,
+        published_name="published-before-failure",
+        skill_count=1,
+        added_at="2026-07-01T10:00:00Z",
+        updated_at="2026-07-02T11:00:00Z",
+    )
+    registry = FilesystemIndexRegistry()
+    registry.upsert(existing, str(registry_path))
+    registry_bytes_before = registry_path.read_bytes()
+    cache_bytes_before = Path(cached_index_path).read_bytes()
+    use_case = UpdateIndex(
+        git_source=FakeGitSource(),
+        index_reader=FailingIndexReader(InvalidPublishedIndexError("invalid index")),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 19, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="invalid index"):
+        use_case.execute(
+            UpdateIndexCommand(
+                name="company-skills",
+                registry_path=str(registry_path),
+                cache_root=str(cache_root),
+            ),
+        )
+
+    assert registry_path.read_bytes() == registry_bytes_before
+    assert Path(cached_index_path).read_bytes() == cache_bytes_before
+    assert registry.get("company-skills", str(registry_path)) == existing
+    assert tuple(cache_root.rglob("ritebook-index.json")) == (Path(cached_index_path),)
 
 
 def test_update_index_discards_candidate_when_registry_commit_fails() -> None:
@@ -279,3 +341,8 @@ def test_update_index_all_continues_after_failure() -> None:
         ),
     ]
     assert registry.entries["beta-skills"] == beta
+    assert [entry.name for entry, _registry_path in registry.upsert_calls] == [
+        "alpha-skills",
+        "gamma-skills",
+    ]
+    assert cache.discard_calls == []

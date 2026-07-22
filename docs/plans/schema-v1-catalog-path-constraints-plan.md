@@ -235,7 +235,7 @@ with Ruff, `ty`, and 578 tests passing with one existing skip.
 ### Phase 2: Stop Invalid Catalogs at Producer and Consumer Boundaries
 
 - [x] Task 3: Enforce catalog structure during lint and publisher discovery
-- [ ] Task 4: Enforce the contract in the JSON index reader
+- [x] Task 4: Enforce the contract in the JSON index reader
 - [ ] Task 5: Prove add/update failure preserves registry state
 
 ### Task 3: Enforce Catalog Structure During Lint and Publisher Discovery
@@ -320,26 +320,40 @@ installation.
 
 **Acceptance criteria:**
 
-- [ ] `read_index()` and `read_skills()` accept root and collection-child paths.
-- [ ] Both methods reject over-deep and mixed-node catalogs before returning any
+- [x] `read_index()` and `read_skills()` accept root and collection-child paths.
+- [x] Both methods reject over-deep and mixed-node catalogs before returning any
   metadata.
-- [ ] Both methods reject non-kebab-case segments and duplicate exact paths.
-- [ ] Literal non-canonical paths cannot be normalized into apparent validity by
+- [x] Both methods reject non-kebab-case segments and duplicate exact paths.
+- [x] Literal non-canonical paths cannot be normalized into apparent validity by
   `PurePosixPath`.
-- [ ] Adapter errors identify invalid schema-v1 catalog structure and preserve a
+- [x] Adapter errors identify invalid schema-v1 catalog structure and preserve a
   machine-testable cause or stable reason.
-- [ ] CLI-facing errors provide actionable reorganize-and-republish guidance.
-- [ ] Duplicate skill names at distinct valid paths remain allowed.
-- [ ] Existing digest and provenance behavior remains unchanged.
+- [x] CLI-facing errors provide actionable reorganize-and-republish guidance.
+- [x] Duplicate skill names at distinct valid paths remain allowed.
+- [x] Existing digest and provenance behavior remains unchanged.
 
 **Verification:**
 
-- [ ] Extend JSON reader tests for accepted root/collected paths and rejected
+- [x] Extend JSON reader tests for accepted root/collected paths and rejected
   malformed, invalid-segment, duplicate, over-deep, and mixed path sets through
   both reader methods.
-- [ ] Add list-skills tests proving invalid cached indexes fail before display.
-- [ ] Add CLI adapter coverage for actionable validation messages when needed.
-- [ ] Run focused index-registry adapter and list-skills tests.
+- [x] Add list-skills tests proving invalid cached indexes fail before display.
+- [x] Add CLI adapter coverage for actionable validation messages when needed.
+- [x] Run focused index-registry adapter and list-skills tests.
+
+**Implementation note (2026-07-22):** The index-registry JSON reader now routes
+both committed-index and cached-skill reads through the same skill-entry and
+complete catalog-set validation path. Literal `skills[].path` values are passed
+to the shared schema-v1 policy before they can be normalized, while
+repository-relative `skill_file` and `skills_root` retain their existing safe-path
+checks. Shared failures are translated to `InvalidPublishedIndexError` with
+reorganize-and-republish guidance and preserve `CatalogPathValidationError` as the
+machine-testable cause. Reader tests cover both methods across valid root and
+collected paths plus malformed, invalid-segment, over-deep, duplicate, and mixed
+catalogs; list-skills and CLI tests prove rejection occurs before display and the
+guidance reaches users. Focused validation passes with 61 reader/listing tests and
+51 CLI tests; the full gate passes with Ruff, `ty`, and 599 tests passing with one
+existing skip.
 
 **Dependencies:** Task 2
 
@@ -395,7 +409,7 @@ comparing final values.
 ### Checkpoint B: Producer and Consumer Boundaries
 
 - [x] Publisher and linter focused tests pass.
-- [ ] Registry and listing focused tests pass.
+- [x] Registry and listing focused tests pass.
 - [ ] Invalid catalogs cannot be published, registered, updated, listed, or
   passed into installation.
 - [ ] Failed candidate validation leaves existing registry/cache state unchanged.
@@ -703,11 +717,11 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 3 complete.** Producer discovery, linting, and catalog construction now
-enforce the shared schema-v1 catalog path policy before publication. Task 4 is the
-next sequential slice and must apply the same literal and complete-set validation
-to both JSON index reader methods before metadata escapes. Checkpoint B remains
-open until Tasks 4 and 5 establish consumer validation and mutation safety.
+**Task 4 complete.** Producer and JSON consumer boundaries now enforce the shared
+schema-v1 catalog path policy before catalog metadata escapes. Task 5 is the next
+sequential slice and must prove invalid add, forced replacement, single update,
+and bulk update candidates preserve existing registry and cache state. Checkpoint
+B remains open until those mutation-safety regressions pass.
 
 ## Handoff Notes
 

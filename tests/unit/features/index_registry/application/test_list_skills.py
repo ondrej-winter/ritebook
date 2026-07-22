@@ -6,7 +6,10 @@ from ritebook.features.index_registry.application.dtos import (
     ListSkillsCommand,
     ListSkillsResult,
 )
-from ritebook.features.index_registry.application.errors import UnknownIndexNameError
+from ritebook.features.index_registry.application.errors import (
+    InvalidPublishedIndexError,
+    UnknownIndexNameError,
+)
 from ritebook.features.index_registry.application.use_cases import ListSkills
 
 from .fakes import FakeCachedIndexReader, FakeRegistry, registered_index
@@ -183,6 +186,35 @@ def test_list_skills_preserves_selected_index_group_when_no_skills_exist() -> No
     assert result == ListSkillsResult(
         indexes=(ListedIndexSkills(index_name="company-skills", skills=()),),
     )
+
+
+def test_list_skills_rejects_invalid_cached_index_before_display() -> None:
+    entry = registered_index()
+    cached_reader = FailingCachedIndexReader(
+        InvalidPublishedIndexError("invalid schema-v1 catalog structure"),
+    )
+    use_case = ListSkills(
+        registry=FakeRegistry([entry]),
+        cached_index_reader=cached_reader,
+    )
+
+    with pytest.raises(
+        InvalidPublishedIndexError,
+        match="invalid schema-v1 catalog structure",
+    ):
+        use_case.execute(ListSkillsCommand())
+
+    assert cached_reader.read_paths == [entry.cached_index_path]
+
+
+class FailingCachedIndexReader:
+    def __init__(self, error: InvalidPublishedIndexError) -> None:
+        self._error = error
+        self.read_paths: list[str] = []
+
+    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
+        self.read_paths.append(cached_index_path)
+        raise self._error
 
 
 def _skill(name: str, *, path: str | None = None) -> CachedSkillSummary:

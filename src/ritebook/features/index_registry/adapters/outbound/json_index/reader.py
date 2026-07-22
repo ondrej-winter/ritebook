@@ -19,6 +19,10 @@ from ritebook.shared_kernel import (
     require_kebab_case_identifier,
     require_no_terminal_control_characters,
 )
+from ritebook.shared_kernel.catalog_paths import (
+    CatalogPathValidationError,
+    validate_catalog_paths,
+)
 
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 
@@ -121,9 +125,23 @@ def _validate_cached_skills_payload(
         msg = "ritebook-index.json skills_root must be a non-empty string when present"
         raise InvalidPublishedIndexError(msg)
     skills_root = _installable_source_root(raw_skills_root)
-    return tuple(
+    validated_skills = tuple(
         _validate_skill_entry(skill, source_root=skills_root) for skill in skills
     )
+    _validate_catalog_structure(validated_skills)
+    return validated_skills
+
+
+def _validate_catalog_structure(skills: tuple[CachedSkillSummary, ...]) -> None:
+    try:
+        validate_catalog_paths(skill.path for skill in skills)
+    except CatalogPathValidationError as err:
+        msg = (
+            f"invalid schema-v1 catalog structure: {err} "
+            "Reorganize skills into root or collection/skill paths and republish "
+            "the index."
+        )
+        raise InvalidPublishedIndexError(msg) from err
 
 
 def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSummary:

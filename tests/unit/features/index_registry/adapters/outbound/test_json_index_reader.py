@@ -10,6 +10,10 @@ from ritebook.features.index_registry.adapters.outbound.json_index import (
 from ritebook.features.index_registry.application.errors import (
     InvalidPublishedIndexError,
 )
+from ritebook.shared_kernel.catalog_paths import (
+    CatalogPathValidationError,
+    CatalogPathValidationReason,
+)
 
 
 def test_json_index_reader_reads_valid_root_index(tmp_path: Path) -> None:
@@ -86,6 +90,73 @@ def test_json_index_reader_preserves_duplicate_names_at_distinct_paths(
         "backend/code-review",
         "frontend/code-review",
     ]
+
+
+@pytest.mark.parametrize("read_cached", [False, True])
+def test_json_index_reader_accepts_root_and_collection_child_catalog_paths(
+    tmp_path: Path,
+    *,
+    read_cached: bool,
+) -> None:
+    index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        index_path,
+        {
+            "skills": [
+                skill_entry("code-review"),
+                skill_entry("quality/runtime-verification"),
+            ],
+        },
+    )
+
+    if read_cached:
+        result = JsonIndexReader().read_skills(str(index_path))
+        assert [skill.path for skill in result] == [
+            "code-review",
+            "quality/runtime-verification",
+        ]
+    else:
+        result = JsonIndexReader().read_index(index_path.read_bytes())
+        assert result.skill_count == 2
+
+
+@pytest.mark.parametrize("read_cached", [False, True])
+@pytest.mark.parametrize(
+    ("paths", "reason"),
+    [
+        (["quality//code-review"], CatalogPathValidationReason.MALFORMED_PATH),
+        (["Quality/code-review"], CatalogPathValidationReason.INVALID_SEGMENT),
+        (["quality/python/code-review"], CatalogPathValidationReason.INVALID_DEPTH),
+        (
+            ["quality/code-review", "quality/code-review"],
+            CatalogPathValidationReason.DUPLICATE_PATH,
+        ),
+        (["quality", "quality/code-review"], CatalogPathValidationReason.MIXED_NODE),
+    ],
+)
+def test_json_index_reader_rejects_invalid_schema_v1_catalog_paths(
+    tmp_path: Path,
+    *,
+    read_cached: bool,
+    paths: list[str],
+    reason: CatalogPathValidationReason,
+) -> None:
+    index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        index_path,
+        {"skills": [skill_entry(path) for path in paths]},
+    )
+
+    reader = JsonIndexReader()
+    with pytest.raises(
+        InvalidPublishedIndexError,
+        match=r"Reorganize skills.*republish the index",
+    ) as exc_info:
+        read_index(reader, index_path=index_path, read_cached=read_cached)
+
+    cause = exc_info.value.__cause__
+    assert isinstance(cause, CatalogPathValidationError)
+    assert cause.reason is reason
 
 
 def test_json_index_reader_exposes_relative_skills_root_for_installation(
@@ -479,3 +550,24 @@ def default_index_payload() -> dict[str, object]:
             },
         ],
     }
+
+
+def skill_entry(path: str) -> dict[str, str]:
+    name = path.rsplit("/", maxsplit=1)[-1]
+    return {
+        "name": name,
+        "path": path,
+        "skill_file": f"{path}/SKILL.md",
+        "description": f"Helps with {name} workflows.",
+    }
+
+
+def read_index(
+    reader: JsonIndexReader,
+    *,
+    index_path: Path,
+    read_cached: bool,
+) -> object:
+    if read_cached:
+        return reader.read_skills(str(index_path))
+    return reader.read_index(index_path.read_bytes())

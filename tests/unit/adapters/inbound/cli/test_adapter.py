@@ -20,6 +20,7 @@ from ritebook.features.index_registry.application.dtos import (
 )
 from ritebook.features.index_registry.application.errors import (
     DuplicateIndexNameError,
+    InvalidPublishedIndexError,
     UnknownIndexNameError,
 )
 from ritebook.features.linter.application.dtos import (
@@ -1381,6 +1382,29 @@ def test_list_skills_translates_application_errors() -> None:
     assert exit_code == 1
     assert stderr.getvalue() == (
         "ritebook: error: local alias missing-skills is not registered\n"
+    )
+
+
+def test_list_skills_reports_invalid_catalog_republish_guidance() -> None:
+    stderr = StringIO()
+    error = InvalidPublishedIndexError(
+        "invalid schema-v1 catalog structure; reorganize skills and republish "
+        "the index",
+    )
+
+    exit_code = run(
+        ["list-skills"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FailingListSkills(error),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: invalid schema-v1 catalog structure; "
+        "reorganize skills and republish the index\n"
     )
 
 

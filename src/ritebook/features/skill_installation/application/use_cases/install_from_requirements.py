@@ -12,6 +12,7 @@ from ritebook.features.skill_installation.application.dtos import (
     InstallFromRequirementsCommand,
     InstallFromRequirementsResult,
     LockfileManifestEntry,
+    PlannedInstallTarget,
     SkillReference,
 )
 from ritebook.features.skill_installation.application.errors import (
@@ -63,6 +64,7 @@ class _InstallPlanItem:
     index: RegisteredSkillIndex
     skill: InstallableSkill
     source: ResolvedSkillSource
+    planned_target: PlannedInstallTarget
 
 
 class InstallFromRequirements(InstallFromRequirementsPort):
@@ -152,7 +154,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 sources,
             )
         )
-        self._reject_duplicate_targets(plan)
+        self._reject_conflicting_targets(plan)
         return plan
 
     def _resolve_requirements(
@@ -213,17 +215,21 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             resolved_requirement.reference,
             self._catalog.read_skills(index.cached_index_path),
         )
-        return tuple(
-            _InstallPlanItem(
-                reference=_reference_for_skill(resolved_requirement, skill),
-                target=self._target_for_skill(resolved_requirement, skill),
-                target_ref=resolved_requirement.target_ref,
-                index=index,
-                skill=skill,
-                source=source,
+        items: list[_InstallPlanItem] = []
+        for skill in skills:
+            target = self._target_for_skill(resolved_requirement, skill)
+            items.append(
+                _InstallPlanItem(
+                    reference=_reference_for_skill(resolved_requirement, skill),
+                    target=target,
+                    target_ref=resolved_requirement.target_ref,
+                    index=index,
+                    skill=skill,
+                    source=source,
+                    planned_target=self._installer.plan_target(target),
+                ),
             )
-            for skill in skills
-        )
+        return tuple(items)
 
     def _resolve_target_base(
         self,
@@ -274,12 +280,12 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             return matching_prefix
         raise UnknownInstallSkillError(reference.requirement)
 
-    def _reject_duplicate_targets(self, plan: tuple[_InstallPlanItem, ...]) -> None:
-        seen_targets: set[str] = set()
+    def _reject_conflicting_targets(self, plan: tuple[_InstallPlanItem, ...]) -> None:
+        seen_targets: list[_InstallPlanItem] = []
         for item in plan:
-            if item.target in seen_targets:
+            if any(_targets_overlap(item, seen) for seen in seen_targets):
                 raise DuplicateInstallTargetError(item.target)
-            seen_targets.add(item.target)
+            seen_targets.append(item)
 
     def _lockfile_entries(
         self,
@@ -334,3 +340,10 @@ def _reference_for_skill(
     return SkillReference.parse(
         f"{resolved_requirement.reference.index_name}/{skill.path}",
     )
+
+
+def _targets_overlap(first: _InstallPlanItem, second: _InstallPlanItem) -> bool:
+    first_parts = PurePath(first.planned_target.canonical_target).parts
+    second_parts = PurePath(second.planned_target.canonical_target).parts
+    shared_length = min(len(first_parts), len(second_parts))
+    return first_parts[:shared_length] == second_parts[:shared_length]

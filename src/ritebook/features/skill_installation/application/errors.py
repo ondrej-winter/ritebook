@@ -44,7 +44,7 @@ class DuplicateSkillRequirementError(SkillInstallationError):
 
 
 class DuplicateInstallTargetError(SkillInstallationError):
-    """Raised when multiple requirements resolve to the same target."""
+    """Raised when requirements resolve to overlapping filesystem targets."""
 
     def __init__(self, target: str) -> None:
         """Build a duplicate-target error for CLI rendering."""

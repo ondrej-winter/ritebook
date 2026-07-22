@@ -202,6 +202,19 @@ class ResolvedSkillSource:
 
 
 @dataclass(frozen=True)
+class PlannedInstallTarget:
+    """A requested install target paired with its canonical filesystem identity."""
+
+    requested_target: str
+    canonical_target: str
+
+    def __post_init__(self) -> None:
+        """Validate target planning output returned by an installer adapter."""
+        _require_non_empty(self.requested_target, field_name="Requested target")
+        _require_non_empty(self.canonical_target, field_name="Canonical target")
+
+
+@dataclass(frozen=True)
 class InstallationManifestEntry:
     """Generated user-level installation manifest entry."""
 

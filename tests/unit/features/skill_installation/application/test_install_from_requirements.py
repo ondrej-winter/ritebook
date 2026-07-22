@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -346,6 +347,121 @@ def test_install_from_requirements_rejects_duplicate_targets_before_copy() -> No
         use_case.execute(InstallFromRequirementsCommand())
 
     assert installer.install_calls == []
+
+
+def test_install_from_requirements_rejects_canonically_equivalent_targets_before_copy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="code-review"),
+                installable_skill(name="test-driven-development"),
+            ),
+        },
+    )
+    shared_target = tmp_path / "targets" / "shared"
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path="targets/./shared",
+                ),
+                SkillRequirement(
+                    name="platform-skills/test-driven-development",
+                    target_path=str(shared_target.parent / "nested" / ".." / "shared"),
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    with pytest.raises(DuplicateInstallTargetError, match="shared"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_rejects_parent_child_targets_before_copy(
+    tmp_path: Path,
+) -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="code-review"),
+                installable_skill(name="test-driven-development"),
+            ),
+        },
+    )
+    parent = tmp_path / "targets" / "shared"
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path=str(parent),
+                ),
+                SkillRequirement(
+                    name="platform-skills/test-driven-development",
+                    target_path=str(parent / "nested"),
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    with pytest.raises(DuplicateInstallTargetError, match="nested"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+
+
+def test_install_from_requirements_allows_canonical_sibling_targets(
+    tmp_path: Path,
+) -> None:
+    index = registered_skill_index(name="platform-skills")
+    catalog = FakeSkillCatalog(
+        indexes=[index],
+        skills_by_path={
+            index.cached_index_path: (
+                installable_skill(name="code-review"),
+                installable_skill(name="test-driven-development"),
+            ),
+        },
+    )
+    target_parent = tmp_path / "targets"
+    reader = FakeRequirementsReader(
+        SkillRequirements(
+            targets={},
+            skills=(
+                SkillRequirement(
+                    name="platform-skills/code-review",
+                    target_path=str(target_parent / "code-review"),
+                ),
+                SkillRequirement(
+                    name="platform-skills/test-driven-development",
+                    target_path=str(target_parent / "test-driven-development"),
+                ),
+            ),
+        ),
+    )
+    installer = FakeSkillInstaller()
+    use_case = _use_case(reader=reader, catalog=catalog, installer=installer)
+
+    use_case.execute(InstallFromRequirementsCommand())
+
+    assert len(installer.install_calls) == 2
 
 
 def test_install_from_requirements_fails_unknown_index_before_copy() -> None:

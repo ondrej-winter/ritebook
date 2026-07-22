@@ -8,6 +8,7 @@ from contextlib import suppress
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
+from ritebook.features.skill_installation.application.dtos import PlannedInstallTarget
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
     InstallationPersistenceError,
@@ -23,6 +24,13 @@ if TYPE_CHECKING:
 
 class FilesystemSkillInstallerAdapter:
     """Filesystem-backed adapter for installing a whole skill directory."""
+
+    def plan_target(self, target: str) -> PlannedInstallTarget:
+        """Resolve and validate a target without mutating the filesystem."""
+        return PlannedInstallTarget(
+            requested_target=target,
+            canonical_target=str(_safe_target_path(target)),
+        )
 
     def install(
         self,
@@ -118,9 +126,7 @@ def _safe_target_path(value: str) -> Path:
     if not value or not str(target_path):
         msg = "target path must not be empty"
         raise UnsafeInstallPathError(msg)
-    if target_path.is_symlink():
-        msg = f"target {value} is a symlink and cannot be replaced safely"
-        raise UnsafeInstallPathError(msg)
+    _require_no_symlink_components(target_path, value)
     resolved = target_path.resolve(strict=False)
     home = Path.home().resolve()
     cwd = Path.cwd().resolve()
@@ -134,6 +140,14 @@ def _safe_target_path(value: str) -> Path:
         msg = f"target {value} resolves to the current working directory"
         raise UnsafeInstallPathError(msg)
     return resolved
+
+
+def _require_no_symlink_components(target_path: Path, value: str) -> None:
+    absolute_target = target_path.absolute()
+    for path in (absolute_target, *absolute_target.parents):
+        if path.is_symlink():
+            msg = f"target {value} contains a symlink path and cannot be used safely"
+            raise UnsafeInstallPathError(msg)
 
 
 def _install_staged_replacement(

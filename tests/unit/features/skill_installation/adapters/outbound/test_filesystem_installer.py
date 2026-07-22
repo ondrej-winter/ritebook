@@ -418,6 +418,39 @@ def test_filesystem_installer_rejects_existing_symlink_target(tmp_path: Path) ->
         )
 
 
+def test_filesystem_installer_plans_canonical_target_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    target = tmp_path / "targets" / "nested" / ".." / "code-review"
+
+    planned = FilesystemSkillInstallerAdapter().plan_target(
+        "targets/nested/../code-review",
+    )
+
+    assert planned.requested_target == "targets/nested/../code-review"
+    assert planned.canonical_target == str(target.resolve(strict=False))
+    assert not (tmp_path / "targets").exists()
+
+
+def test_filesystem_installer_rejects_symlinked_target_ancestor_during_planning(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target_root = tmp_path / "targets"
+    target_root.mkdir()
+    (target_root / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(UnsafeInstallPathError, match="symlink"):
+        FilesystemSkillInstallerAdapter().plan_target(
+            str(target_root / "linked" / "code-review"),
+        )
+
+    assert list(outside.iterdir()) == []
+
+
 def test_filesystem_installer_rejects_symlink_source_directory(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     actual_skill = tmp_path / "outside-skill"

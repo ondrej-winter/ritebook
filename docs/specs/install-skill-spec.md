@@ -155,6 +155,10 @@ Requirements:
 - `install` parses and resolves requirements from the verified cached-byte
   snapshot and materializes each selected skill directory from that bound commit
   into the resolved target path.
+- Before the first copy, `install` asks the filesystem adapter to canonicalize and
+  validate every target without creating directories or otherwise mutating the
+  filesystem. It rejects equivalent and parent-child target destinations as one
+  conflicting plan.
 - `install` writes or updates `ritebook.lock` after successful installation.
 - `install` refuses existing target paths unless `--force` is provided.
 - `install` fails without partially updating `ritebook.lock` when any declared
@@ -222,8 +226,17 @@ Validation rules:
   folder prefix in deterministic path order.
 - Neither exact nor folder-prefix resolution falls back to `skills[].name`.
 - Repeated `[[skills]]` entries with the same fully qualified `name` are rejected.
-- Duplicate resolved target paths are rejected.
+- Duplicate, canonically equivalent, and parent-child resolved target paths are
+  rejected before the first copy. This includes lexical aliases using `.`, `..`,
+  or relative versus absolute forms.
 - Resolved target paths must not be empty, root-like, or otherwise dangerous.
+- Existing symlinks in a target or any target ancestor are rejected during
+  planning rather than followed.
+- Canonical target comparison follows the host filesystem's path semantics. It
+  detects case aliases when the host resolves them to the same existing path, but
+  cannot portably prove that differently cased, entirely nonexistent paths will
+  collide on every case-insensitive filesystem. Users must not declare such
+  ambiguous targets.
 - Unknown fields are rejected in v1 so mistakes fail fast.
 
 ### Lockfile
@@ -526,7 +539,8 @@ Cover:
 - Rejects skill entries that define both `target` and `target_path`.
 - Rejects skill entries that define neither `target` nor `target_path`.
 - Rejects duplicate skill requirements.
-- Rejects duplicate resolved targets.
+- Rejects duplicate, canonically equivalent, and parent-child resolved targets
+  before any install call while allowing safe siblings.
 - Writes `ritebook.lock` only after successful requirements installation.
 - Rejects an unavailable bound commit, cached-index digest mismatch, or
   bound-commit index digest mismatch before trusting metadata or copying.
@@ -564,7 +578,8 @@ Cover:
 - Rejects equal, ancestor, and descendant source-target overlap before mutation
   while allowing safe sibling paths.
 - Rejects dangerous target paths.
-- Handles symlink targets safely by rejecting them in v1.
+- Handles symlink targets and symlinked target ancestors safely by rejecting them
+  during non-mutating planning in v1.
 
 ### Manifest writer tests
 

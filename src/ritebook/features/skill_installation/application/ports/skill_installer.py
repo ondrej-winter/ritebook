@@ -7,12 +7,16 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
         InstallableSkill,
+        PlannedInstallTarget,
         ResolvedSkillSource,
     )
 
 
 class SkillInstallerPort(Protocol):
     """Outbound dependency for skill directory installation."""
+
+    def plan_target(self, target: str) -> PlannedInstallTarget:
+        """Resolve and validate a target without mutating the filesystem."""
 
     def install(
         self,

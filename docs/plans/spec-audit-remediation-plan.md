@@ -90,7 +90,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 7: Correct publisher output-root and `skills_root` semantics
 - [x] Task 8: Make publisher index replacement atomic and symlink-safe
 - [x] Task 9: Make forced installation replacement recoverable
-- [ ] Task 10: Canonicalize and deconflict requirements-install targets
+- [x] Task 10: Canonicalize and deconflict requirements-install targets
 
 ### Phase 3: Persistence and untrusted output
 
@@ -564,17 +564,17 @@ equivalent, nested, or otherwise conflicting targets before the first copy.
 
 **Acceptance criteria:**
 
-- [ ] Lexically different paths resolving to the same destination are rejected.
-- [ ] Parent-child target overlaps in one plan are rejected before installation.
-- [ ] Target collision semantics are documented for symlinks and case-insensitive
+- [x] Lexically different paths resolving to the same destination are rejected.
+- [x] Parent-child target overlaps in one plan are rejected before installation.
+- [x] Target collision semantics are documented for symlinks and case-insensitive
   filesystems, including platform limitations.
 
 **Verification:**
 
-- [ ] Add tests for `.`/`..` normalization, absolute-relative equivalence,
+- [x] Add tests for `.`/`..` normalization, absolute-relative equivalence,
   symlinked ancestors, parent-child overlap, and safe siblings.
-- [ ] Run requirements-install application and filesystem adapter tests.
-- [ ] Confirm no install calls occur after a planning collision.
+- [x] Run requirements-install application and filesystem adapter tests.
+- [x] Confirm no install calls occur after a planning collision.
 
 **Dependencies:** Task 5. Coordinate with Task 9 for target staging paths.
 
@@ -588,15 +588,26 @@ equivalent, nested, or otherwise conflicting targets before the first copy.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. The skill-installer outbound port now
+provides a non-mutating target-planning boundary. The filesystem adapter rejects
+symlinks in the target or any existing ancestor, applies existing broad-target
+safety checks, and returns the canonical destination without creating paths.
+Requirements installation preflights the complete plan and rejects lexical aliases
+using `.`, `..`, relative/absolute forms, equal destinations, and parent-child
+overlaps before the first install call while allowing safe siblings. The spec
+documents host-filesystem case semantics and the limitation for differently cased,
+entirely nonexistent paths. Focused application and adapter tests passed with 49
+tests, the complete skill-installation suite passed with 108 tests, integration
+tests passed with 6 tests, the full non-E2E suite passed with 483 tests and 15
+deselected, the package build succeeded, and Ruff and `ty` checks passed.
 
 ## Checkpoint B: Filesystem Safety
 
-- [ ] Source/target and target/target overlaps are rejected before mutation.
+- [x] Source/target and target/target overlaps are rejected before mutation.
 - [x] Publisher and contribution index writes cannot follow unsafe symlinks.
 - [x] Failed forced replacement preserves prior valid content or retains an
   identified backup with recovery guidance when automatic restoration fails.
-- [ ] Absolute and relative publisher roots produce portable, installable indexes.
+- [x] Absolute and relative publisher roots produce portable, installable indexes.
 - [x] Focused filesystem and publisher suites pass.
 
 ---
@@ -1039,7 +1050,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 7. Git source credential exposure | Required | 12 | Open |
 | 8. Terminal control-character injection | Required | 13 | Open |
 | 9. Destructive forced replacement | Required | 9 | Closed |
-| 10. Lexical rather than canonical target collisions | Required | 10 | Open |
+| 10. Lexical rather than canonical target collisions | Required | 10 | Closed |
 | 11. Local-source lockfile portability conflict | Required | 15 | Open |
 | 12. Post-copy generated-state failure semantics | Required | 14 | Open |
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Open |

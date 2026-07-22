@@ -1,10 +1,12 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 
 from ritebook.features.skill_installation.application.dtos import (
     InstallableSkill,
     InstallationManifestEntry,
     LockfileManifestEntry,
+    PlannedInstallTarget,
     RegisteredSkillIndex,
     ResolvedSkillSource,
     SkillRequirements,
@@ -67,6 +69,14 @@ class FakeSkillInstaller:
         self.install_calls: list[
             tuple[ResolvedSkillSource, InstallableSkill, str, bool]
         ] = []
+        self.plan_target_calls: list[str] = []
+
+    def plan_target(self, target: str) -> PlannedInstallTarget:
+        self.plan_target_calls.append(target)
+        return PlannedInstallTarget(
+            requested_target=target,
+            canonical_target=str(Path(target).expanduser().resolve(strict=False)),
+        )
 
     def install(
         self,

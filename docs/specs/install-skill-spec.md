@@ -78,6 +78,14 @@ Requirements:
 - Ritebook creates missing target parent directories.
 - Ritebook refuses to overwrite an existing target path unless `--force` is
   provided.
+- Ritebook stages a complete copy beside the target before a forced replacement
+  moves the existing target. A staging failure leaves the existing target intact.
+- After staging, Ritebook moves the existing target to an installer-owned backup,
+  moves the staged directory into place, and restores the backup if that final
+  swap fails.
+- A failed restore retains the backup and reports its exact path with recovery
+  guidance. A successful swap removes installer-owned staging and backup paths;
+  cleanup failure reports the retained backup without removing the new target.
 - Ritebook writes generated installation state after a successful copy.
 
 Example with overwrite:
@@ -375,8 +383,14 @@ Requirements:
   deleting, creating, or copying any path, including when `--force` is provided.
 - Parent directories may be created.
 - Existing target paths are refused unless `--force` is provided.
-- `--force` replacement removes only the resolved target path, not a broader
-  parent directory.
+- `--force` stages the complete source directory in a uniquely created path beside
+  the target before changing the target. It then moves only the resolved target to
+  an installer-owned backup and swaps the staged directory into place.
+- Copy or backup-move failure preserves the prior target. Swap failure restores
+  the backup when possible; restore failure retains the backup and reports its
+  location for recovery.
+- Successful replacement removes installer-owned staging and backup paths without
+  deleting broader parent directories or unrelated similarly named paths.
 - Symlink handling must avoid writing outside the intended target path. The first
   implementation may reject existing symlink targets rather than follow them.
 
@@ -541,6 +555,11 @@ Cover:
 - Creates target parent directories.
 - Refuses existing targets without `force`.
 - Replaces only the target path with `force`.
+- Preserves the prior target on staging or backup failure.
+- Restores the prior target on swap failure and retains it with recovery guidance
+  when restoration fails.
+- Cleans installer-owned staging and backup paths after successful replacement and
+  reports a retained backup if cleanup fails.
 - Rejects unsafe source paths from cached index metadata.
 - Rejects equal, ancestor, and descendant source-target overlap before mutation
   while allowing safe sibling paths.

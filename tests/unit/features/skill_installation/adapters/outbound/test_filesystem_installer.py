@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ from ritebook.features.skill_installation.application.dtos import (
 )
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
+    InstallationPersistenceError,
     UnsafeInstallPathError,
 )
 
@@ -125,6 +127,175 @@ def test_filesystem_installer_replaces_existing_file_target_with_force(
     assert target.is_dir()
     assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
     assert sibling.read_text(encoding="utf-8") == "keep"
+
+
+def test_forced_install_stage_failure_preserves_existing_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target.mkdir(parents=True)
+    (target / "old.md").write_text("old", encoding="utf-8")
+
+    def fail_copy(*_args: object, **_kwargs: object) -> None:
+        message = "injected stage failure"
+        raise OSError(message)
+
+    monkeypatch.setattr(shutil, "copytree", fail_copy)
+
+    with pytest.raises(InstallationPersistenceError, match="stage replacement"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert (target / "old.md").read_text(encoding="utf-8") == "old"
+    assert list(target_parent.iterdir()) == [target]
+
+
+def test_forced_install_backup_failure_preserves_existing_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target.mkdir(parents=True)
+    (target / "old.md").write_text("old", encoding="utf-8")
+
+    def fail_replace(_source: Path, _destination: Path) -> None:
+        message = "injected backup failure"
+        raise OSError(message)
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+
+    with pytest.raises(InstallationPersistenceError, match="preserved"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert (target / "old.md").read_text(encoding="utf-8") == "old"
+    assert list(target_parent.iterdir()) == [target]
+
+
+def test_forced_install_swap_failure_restores_existing_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target.mkdir(parents=True)
+    (target / "old.md").write_text("old", encoding="utf-8")
+    real_replace = Path.replace
+    replace_calls = 0
+
+    def fail_swap(source: Path, destination: Path) -> None:
+        nonlocal replace_calls
+        replace_calls += 1
+        if replace_calls == 2:
+            message = "injected swap failure"
+            raise OSError(message)
+        real_replace(source, destination)
+
+    monkeypatch.setattr(Path, "replace", fail_swap)
+
+    with pytest.raises(InstallationPersistenceError, match="restored"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert replace_calls == 3
+    assert (target / "old.md").read_text(encoding="utf-8") == "old"
+    assert list(target_parent.iterdir()) == [target]
+
+
+def test_forced_install_restore_failure_retains_backup_with_recovery_guidance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target.mkdir(parents=True)
+    (target / "old.md").write_text("old", encoding="utf-8")
+    real_replace = Path.replace
+    replace_calls = 0
+
+    def fail_swap_and_restore(source: Path, destination: Path) -> None:
+        nonlocal replace_calls
+        replace_calls += 1
+        if replace_calls >= 2:
+            message = "injected replacement failure"
+            raise OSError(message)
+        real_replace(source, destination)
+
+    monkeypatch.setattr(Path, "replace", fail_swap_and_restore)
+
+    with pytest.raises(
+        InstallationPersistenceError,
+        match=r"recover.*backup",
+    ) as error:
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert replace_calls == 3
+    assert not target.exists()
+    backup_files = list(target_parent.glob(".code-review.*/previous/old.md"))
+    assert len(backup_files) == 1
+    assert backup_files[0].read_text(encoding="utf-8") == "old"
+    assert str(backup_files[0].parent) in str(error.value)
+
+
+def test_forced_install_cleanup_failure_keeps_new_target_and_retained_backup(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target_parent = tmp_path / "target"
+    target = target_parent / "code-review"
+    target.mkdir(parents=True)
+    (target / "old.md").write_text("old", encoding="utf-8")
+    real_rmtree = shutil.rmtree
+
+    def fail_backup_cleanup(path: Path) -> None:
+        if Path(path).name == "previous":
+            message = "injected cleanup failure"
+            raise OSError(message)
+        real_rmtree(path)
+
+    monkeypatch.setattr(shutil, "rmtree", fail_backup_cleanup)
+
+    with pytest.raises(
+        InstallationPersistenceError,
+        match=r"installed.*backup",
+    ) as error:
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
+    backup_files = list(target_parent.glob(".code-review.*/previous/old.md"))
+    assert len(backup_files) == 1
+    assert backup_files[0].read_text(encoding="utf-8") == "old"
+    assert str(backup_files[0].parent) in str(error.value)
 
 
 @pytest.mark.parametrize("relationship", ["equal", "ancestor", "descendant"])

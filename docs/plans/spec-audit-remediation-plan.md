@@ -89,7 +89,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 6: Make contribution index regeneration symlink-safe
 - [x] Task 7: Correct publisher output-root and `skills_root` semantics
 - [x] Task 8: Make publisher index replacement atomic and symlink-safe
-- [ ] Task 9: Make forced installation replacement recoverable
+- [x] Task 9: Make forced installation replacement recoverable
 - [ ] Task 10: Canonicalize and deconflict requirements-install targets
 
 ### Phase 3: Persistence and untrusted output
@@ -517,17 +517,17 @@ from a failed replacement. Never expose a partially copied target as success.
 
 **Acceptance criteria:**
 
-- [ ] Copy failure leaves the prior target unchanged.
-- [ ] Swap failure restores or preserves the prior target and reports actionable
+- [x] Copy failure leaves the prior target unchanged.
+- [x] Swap failure restores or preserves the prior target and reports actionable
   recovery guidance.
-- [ ] Success removes temporary and backup paths without deleting broader parent
+- [x] Success removes temporary and backup paths without deleting broader parent
   directories.
 
 **Verification:**
 
-- [ ] Add injected-failure tests for staging, backup, swap, restore, and cleanup.
-- [ ] Run filesystem installer tests and relevant integration tests.
-- [ ] Confirm direct and requirements-file `--force` behavior remains consistent.
+- [x] Add injected-failure tests for staging, backup, swap, restore, and cleanup.
+- [x] Run filesystem installer tests and relevant integration tests.
+- [x] Confirm direct and requirements-file `--force` behavior remains consistent.
 
 **Dependencies:** Task 5. Coordinate with Task 14's higher-level commit semantics.
 
@@ -539,7 +539,19 @@ from a failed replacement. Never expose a partially copied target as success.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. The shared filesystem installer now stages
+each complete skill directory in a uniquely created same-parent transaction path
+before changing an existing target. Forced replacement moves the prior target to
+an installer-owned backup, swaps the staged directory into place, restores the
+backup after swap failure, and retains it with actionable recovery guidance if
+restoration or post-swap cleanup fails. Successful replacement removes only its
+own staging and backup paths while preserving sibling content. Failure-injection
+coverage includes staging, backup, swap, restore, and cleanup boundaries. The
+focused adapter suite passed with 28 tests, the skill-installation suite passed
+with 103 tests, integration tests passed with 6 tests, the full non-E2E suite
+passed with 478 tests and 15 deselected, the package build succeeded, and Ruff
+and `ty` checks passed. Application-level multi-target and generated-state commit
+semantics remain owned by Task 14.
 
 ## Task 10: Canonicalize and Deconflict Requirements-Install Targets
 
@@ -582,9 +594,10 @@ equivalent, nested, or otherwise conflicting targets before the first copy.
 
 - [ ] Source/target and target/target overlaps are rejected before mutation.
 - [x] Publisher and contribution index writes cannot follow unsafe symlinks.
-- [ ] Failed forced replacement preserves prior valid content.
+- [x] Failed forced replacement preserves prior valid content or retains an
+  identified backup with recovery guidance when automatic restoration fails.
 - [ ] Absolute and relative publisher roots produce portable, installable indexes.
-- [ ] Focused filesystem and publisher suites pass.
+- [x] Focused filesystem and publisher suites pass.
 
 ---
 
@@ -1025,7 +1038,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Open |
 | 7. Git source credential exposure | Required | 12 | Open |
 | 8. Terminal control-character injection | Required | 13 | Open |
-| 9. Destructive forced replacement | Required | 9 | Open |
+| 9. Destructive forced replacement | Required | 9 | Closed |
 | 10. Lexical rather than canonical target collisions | Required | 10 | Open |
 | 11. Local-source lockfile portability conflict | Required | 15 | Open |
 | 12. Post-copy generated-state failure semantics | Required | 14 | Open |

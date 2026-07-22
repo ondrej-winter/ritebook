@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import shutil
+import tempfile
+from contextlib import suppress
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
+    InstallationPersistenceError,
     UnsafeInstallPathError,
 )
 
@@ -41,10 +44,12 @@ class FilesystemSkillInstallerAdapter:
                 raise UnsafeInstallPathError(msg)
             if not force:
                 raise ExistingInstallTargetError(target)
-            _remove_target(target_path)
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(source_directory, target_path, symlinks=False)
+        _install_staged_replacement(
+            source_directory=source_directory,
+            target_path=target_path,
+        )
 
 
 def _resolve_source_directory(
@@ -131,11 +136,94 @@ def _safe_target_path(value: str) -> Path:
     return resolved
 
 
-def _remove_target(target_path: Path) -> None:
-    if target_path.is_dir():
-        shutil.rmtree(target_path)
-        return
-    target_path.unlink()
+def _install_staged_replacement(
+    *,
+    source_directory: Path,
+    target_path: Path,
+) -> None:
+    transaction_path = Path(
+        tempfile.mkdtemp(
+            dir=target_path.parent,
+            prefix=f".{target_path.name}.",
+        ),
+    )
+    staged_path = transaction_path / "staged"
+    backup_path = transaction_path / "previous"
+    backup_retained = False
+    try:
+        _stage_skill(source_directory, staged_path, target_path)
+        if not target_path.exists():
+            try:
+                _replace_path(staged_path, target_path)
+            except OSError as err:
+                msg = f"unable to install staged target {target_path}"
+                raise InstallationPersistenceError(msg) from err
+            return
+
+        try:
+            _replace_path(target_path, backup_path)
+        except OSError as err:
+            msg = f"unable to replace target {target_path}; prior target was preserved"
+            raise InstallationPersistenceError(msg) from err
+
+        try:
+            _replace_path(staged_path, target_path)
+        except OSError as swap_error:
+            try:
+                _replace_path(backup_path, target_path)
+            except OSError as restore_error:
+                backup_retained = True
+                msg = (
+                    f"unable to replace target {target_path} or restore it; "
+                    f"recover the prior target from backup {backup_path}"
+                )
+                raise InstallationPersistenceError(msg) from restore_error
+            msg = f"unable to replace target {target_path}; prior target was restored"
+            raise InstallationPersistenceError(msg) from swap_error
+
+        try:
+            _remove_path(backup_path)
+        except OSError as err:
+            backup_retained = True
+            msg = (
+                f"target {target_path} was installed but prior backup cleanup failed; "
+                f"remove backup {backup_path} after verifying the installed target"
+            )
+            raise InstallationPersistenceError(msg) from err
+    finally:
+        with suppress(OSError):
+            _remove_path(staged_path)
+        if not backup_retained:
+            with suppress(OSError):
+                _remove_path(backup_path)
+            with suppress(OSError):
+                transaction_path.rmdir()
+
+
+def _stage_skill(
+    source_directory: Path,
+    staged_path: Path,
+    target_path: Path,
+) -> None:
+    try:
+        shutil.copytree(source_directory, staged_path, symlinks=False)
+    except OSError as err:
+        msg = f"unable to stage replacement for target {target_path}"
+        raise InstallationPersistenceError(msg) from err
+    if not staged_path.is_dir():
+        msg = f"staged replacement for target {target_path} is not a directory"
+        raise InstallationPersistenceError(msg)
+
+
+def _replace_path(source: Path, destination: Path) -> None:
+    source.replace(destination)
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink(missing_ok=True)
+    elif path.is_dir():
+        shutil.rmtree(path)
 
 
 def _require_no_source_target_overlap(

@@ -69,6 +69,30 @@ def test_json_lockfile_reader_resolves_exact_collection_child_requirement(
     assert result.skill_path == "skills/software-development/code-review"
 
 
+@pytest.mark.parametrize("skills_root", ["agent_skills", "skills.v1"])
+def test_json_lockfile_reader_accepts_safe_repository_path_segments(
+    tmp_path: Path,
+    skills_root: str,
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[
+            lockfile_entry(
+                skill_path=f"{skills_root}/code-review",
+                skill_file=f"{skills_root}/code-review/SKILL.md",
+            ),
+        ],
+    )
+
+    result = JsonContributionLockfileReader().resolve_entry(
+        ContributionSkillReference.parse("platform-skills/code-review"),
+        str(lockfile_path),
+    )
+
+    assert result.skill_path == f"{skills_root}/code-review"
+    assert result.skill_file == f"{skills_root}/code-review/SKILL.md"
+
+
 def test_json_lockfile_reader_does_not_resolve_nested_skill_by_name(
     tmp_path: Path,
 ) -> None:

@@ -106,8 +106,8 @@ class ContributionLockfileEntry:
         if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
             msg = "Index digest must use sha256:<64 lowercase hex>."
             raise ValueError(msg)
-        _require_safe_posix_path(self.skill_path, field_name="Skill path")
-        _require_safe_file_path(self.skill_file, field_name="Skill file")
+        _require_safe_repository_path(self.skill_path, field_name="Skill path")
+        _require_safe_repository_path(self.skill_file, field_name="Skill file")
         if self.index_schema_version < 1:
             msg = "Index schema version must be positive."
             raise ValueError(msg)
@@ -126,7 +126,10 @@ class ContributionWorkspace:
     def __post_init__(self) -> None:
         """Validate workspace metadata returned by outbound adapters."""
         _require_non_empty(self.checkout_path, field_name="Checkout path")
-        _require_safe_posix_path(self.source_skill_path, field_name="Source skill path")
+        _require_safe_repository_path(
+            self.source_skill_path,
+            field_name="Source skill path",
+        )
         _require_non_empty(
             self.current_base_revision,
             field_name="Current base revision",
@@ -146,7 +149,10 @@ class SkillChangeComparison:
     def __post_init__(self) -> None:
         """Validate comparison summary metadata."""
         _require_non_empty(self.installed_path, field_name="Installed path")
-        _require_safe_posix_path(self.source_skill_path, field_name="Source skill path")
+        _require_safe_repository_path(
+            self.source_skill_path,
+            field_name="Source skill path",
+        )
         if self.changed_file_count < 0:
             msg = "Changed file count must not be negative."
             raise ValueError(msg)
@@ -204,34 +210,20 @@ def _require_optional_non_empty(value: str | None, *, field_name: str) -> None:
         _require_non_empty(value, field_name=field_name)
 
 
-def _require_safe_posix_path(value: str, *, field_name: str) -> None:
+def _require_safe_repository_path(value: str, *, field_name: str) -> None:
     _require_non_empty(value, field_name=field_name)
-    if value.startswith("/") or value.endswith("/") or "//" in value or "\\" in value:
-        msg = f"{field_name} must be a safe relative POSIX path."
-        raise ValueError(msg)
-    path = PurePosixPath(value)
+    literal_parts = value.split("/")
     if (
-        path.is_absolute()
-        or not path.parts
-        or any(part in {".", ".."} for part in path.parts)
+        value.startswith("/")
+        or value.endswith("/")
+        or "//" in value
+        or "\\" in value
+        or any(part in {".", ".."} for part in literal_parts)
     ):
         msg = f"{field_name} must be a safe relative POSIX path."
         raise ValueError(msg)
-    for part in path.parts:
-        require_kebab_case_identifier(part, field_name=f"{field_name} segment")
-
-
-def _require_safe_file_path(value: str, *, field_name: str) -> None:
-    _require_non_empty(value, field_name=field_name)
-    if value.startswith("/") or value.endswith("/") or "//" in value or "\\" in value:
-        msg = f"{field_name} must be a safe relative POSIX path."
-        raise ValueError(msg)
     path = PurePosixPath(value)
-    if (
-        path.is_absolute()
-        or not path.parts
-        or any(part in {".", ".."} for part in path.parts)
-    ):
+    if path.is_absolute() or not path.parts:
         msg = f"{field_name} must be a safe relative POSIX path."
         raise ValueError(msg)
     for part in path.parts:

@@ -125,6 +125,20 @@ def test_contribution_lockfile_entry_requires_mvp_provenance() -> None:
     assert entry.skill_file == "skills/code-review/SKILL.md"
 
 
+@pytest.mark.parametrize("skills_root", ["agent_skills", "skills.v1"])
+def test_contribution_lockfile_entry_accepts_safe_repository_path_segments(
+    skills_root: str,
+) -> None:
+    kwargs = _entry_kwargs()
+    kwargs["skill_path"] = f"{skills_root}/code-review"
+    kwargs["skill_file"] = f"{skills_root}/code-review/SKILL.md"
+
+    entry = ContributionLockfileEntry(**kwargs)
+
+    assert entry.skill_path == f"{skills_root}/code-review"
+    assert entry.skill_file == f"{skills_root}/code-review/SKILL.md"
+
+
 @pytest.mark.parametrize(
     "field",
     [
@@ -153,9 +167,23 @@ def test_contribution_lockfile_entry_rejects_missing_required_fields(
         ContributionLockfileEntry(**kwargs)
 
 
-def test_contribution_lockfile_entry_rejects_unsafe_source_paths() -> None:
+@pytest.mark.parametrize(
+    "skill_path",
+    [
+        "../skills/code-review",
+        "skills/./code-review",
+        "/skills/code-review",
+        "skills//code-review",
+        "skills/code-review/",
+        "skills\\code-review",
+        "skills/code review",
+    ],
+)
+def test_contribution_lockfile_entry_rejects_unsafe_source_paths(
+    skill_path: str,
+) -> None:
     kwargs = _entry_kwargs()
-    kwargs["skill_path"] = "../skills/code-review"
+    kwargs["skill_path"] = skill_path
 
     with pytest.raises(ValueError, match="safe relative POSIX path"):
         ContributionLockfileEntry(**kwargs)

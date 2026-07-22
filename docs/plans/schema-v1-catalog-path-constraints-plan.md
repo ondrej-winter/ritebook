@@ -625,6 +625,7 @@ contribution unit suite passes with 120 tests, and the full gate passes with Ruf
 ### Phase 5: Integrate, Document, and Validate
 
 - [x] Task 9: Add cross-workflow CLI/E2E coverage and update documentation
+- [x] Task 10: Accept safe generated repository paths in contributions
 
 ### Task 9: Add Cross-workflow CLI/E2E Coverage and Update Documentation
 
@@ -697,6 +698,63 @@ Docker run passed all 21 E2E tests.
 
 **Estimated scope:** M when split into integration-tests and documentation changes
 
+### Task 10: Accept Safe Generated Repository Paths in Contributions
+
+**Description:** Follow up on the completed-plan audit by aligning contribution
+lockfile DTO validation with the schema-v1 distinction between catalog selectors
+and repository-relative source paths. Publisher `skills_root` values may contain
+safe repository-path segments that are not canonical catalog identifiers, and
+installation preserves those segments in generated `skill_path` and `skill_file`
+values. Contribution must accept that generated state while retaining literal
+relative POSIX path checks and downstream checkout-containment protections.
+
+**Acceptance criteria:**
+
+- [x] Contribution lockfile entries accept safe repository roots containing
+  underscores or dots, such as `agent_skills` and `skills.v1`.
+- [x] Both `skill_path` and `skill_file` use repository-relative path validation
+  rather than catalog-segment validation.
+- [x] Catalog selectors in `requirement` remain limited to one or two canonical
+  kebab-case segments.
+- [x] Absolute paths, parent or literal dot segments, repeated or trailing
+  separators, backslashes, and unsupported characters remain invalid.
+- [x] Existing adapter-level checkout containment and symlink protections remain
+  unchanged.
+
+**Verification:**
+
+- [x] Add DTO regression coverage for generated repository roots containing `_`
+  and `.`.
+- [x] Add JSON lockfile reader coverage proving exact requirement resolution with
+  those generated repository-relative paths.
+- [x] `uv run pytest tests/unit/features/skill_contribution -q`
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run ty check src/ritebook`
+- [x] `uv run pytest`
+
+**Implementation note (2026-07-22):** A completed-plan audit found that
+`ContributionLockfileEntry` applied the catalog kebab-case identifier rule to
+every `skill_path` segment. This rejected valid lockfiles generated from publisher
+roots such as `agent_skills` or `skills.v1`, even though schema-v1 reserves catalog
+depth and identifier constraints for the selector in `requirement`. Contribution
+repository paths now share one literal relative POSIX validator with the existing
+safe ASCII segment allowlist; exact requirement matching and downstream checkout
+containment remain unchanged. Focused DTO and reader coverage passes with 81
+tests initially and 87 after expanding the unsafe-path matrix; the complete
+contribution unit suite passes with 130 tests. The final full-gate result is
+recorded in the readiness assessment below.
+
+**Dependencies:** Tasks 1 and 8
+
+**Files touched:**
+
+- `src/ritebook/features/skill_contribution/application/dtos/publish_skill_change.py`
+- `tests/unit/features/skill_contribution/application/test_publish_skill_change.py`
+- `tests/unit/features/skill_contribution/adapters/outbound/test_json_lockfile_reader.py`
+
+**Estimated scope:** S, one DTO module and two focused test modules
+
 ### Checkpoint E: Complete
 
 - [x] Every specification acceptance criterion is implemented or explicitly
@@ -749,8 +807,9 @@ Publish safety                            |
 - Task 7 follows Task 6 because both use the same selector contract.
 - Task 8 follows Task 7 so contribution fixtures and exact matching use finalized,
   generated lockfile semantics.
-- Task 9 is last because it integrates every workflow and updates implementation
-  status.
+- Task 9 integrates every planned workflow and updates implementation status.
+- Task 10 follows the completed-plan audit and tightens the Task 1 and Task 8
+  repository-path distinction without changing selector semantics.
 
 ## Risks and Mitigations
 
@@ -779,15 +838,17 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 9 complete and ready for review.** Cross-workflow CLI/E2E coverage now
+**Task 10 complete and ready for review.** Cross-workflow CLI/E2E coverage now
 proves supported root and collection-child catalogs, requirements-only
 immediate-child collection expansion, exact-only direct and contribution
 selectors, actionable invalid-catalog failures, and cached-state preservation.
 README and all five affected specifications match the implemented schema-v1
-behavior. The host quality/build matrix and network-disabled Docker E2E workflow
-pass. Final diff review found only the intended E2E, README, specification, and
-living-plan changes; no production code, dependencies, or architecture boundaries
-changed in this slice.
+behavior. A completed-plan audit additionally found and corrected contribution
+DTO validation that had applied catalog identifier constraints to generated
+repository-relative source paths. The full local gate passes with Ruff, `ty`, and
+629 tests passing with one existing skip; Task 9's package-build and
+network-disabled Docker E2E evidence remains current because this follow-up does
+not change packaging, CLI wiring, or container behavior.
 
 ## Handoff Notes
 

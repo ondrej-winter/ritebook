@@ -1,5 +1,13 @@
 # Spec: Consumer Git Index Registry
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Implemented
+> **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md)
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Ritebook provides a consumer-facing index registry workflow for end
@@ -12,7 +20,7 @@ all cached copies later from their remembered Git sources. The registry is the
 consumer-side catalog foundation used by the implemented `list-skills`,
 `install-skill`, and requirements-file `install` workflows.
 
-## Current context
+## Implementation status
 
 - Ritebook already supports publisher-side skill index generation through
   `publish-index`.
@@ -24,9 +32,8 @@ consumer-side catalog foundation used by the implemented `list-skills`,
   indexes for `install-skill` and `install`.
 - The current registry schema persists a full source revision and exact-index
   digest and points to an immutable content-addressed cache generation.
-- [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the required
-  end-to-end provenance binding; implementation is tracked in the remediation
-  plan's dependent tasks.
+- [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the implemented
+  end-to-end provenance binding.
 - Internal skill distribution should primarily support Git repositories because
   company skills are expected to live in private Git repositories.
 - The project follows hexagonal architecture with vertical feature slices under

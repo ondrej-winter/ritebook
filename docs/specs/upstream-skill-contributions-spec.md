@@ -1,5 +1,13 @@
 # Spec: Upstream Skill Contributions
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Implemented
+> **Dependencies:** [Consumer Skill Installation](install-skill-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Ritebook provides a safe contribution workflow for developers who improve
@@ -13,7 +21,7 @@ when a usable origin exists, or manual inspection guidance otherwise. It must no
 directly mutate canonical source branches, managed index cache clones, or
 user-owned local source repositories.
 
-## Current context
+## Implementation status
 
 - Ritebook already supports Git-backed index registration and updates through
   `add-index`, `update-index`, and `list-indexes`.
@@ -99,8 +107,9 @@ uv run ritebook publish-skill-change <index-name>/<skill-path> \
   --contribution-root <path-to-ritebook-owned-contribution-checkouts>
 ```
 
-Potential future command shapes are intentionally out of scope for the MVP but
-should remain compatible with the core workflow:
+The following command shapes are uncommitted future ideas. Ritebook maintainers
+must approve a new specification or tracked implementation plan before adding
+them; they should remain compatible with the core workflow:
 
 ```bash
 uv run ritebook publish-skill-change platform-skills/code-review --push
@@ -477,7 +486,11 @@ Never:
 - Enterprise governance, approvals, signatures, or trust policy.
 - Skill dependency publishing or multi-repository contribution orchestration.
 
-## Open questions
+## Future considerations
+
+These questions are not commitments. Ritebook maintainers own their disposition,
+and each requires an approved specification or tracked implementation plan before
+implementation:
 
 - What validation evidence should Ritebook include in a future MR body?
 - Should `publish-skill-change` eventually support `--base <branch-or-ref>` for

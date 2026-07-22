@@ -1,5 +1,13 @@
 # Spec: Consumer List Skills
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Implemented
+> **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Ritebook provides a consumer-facing `list-skills` workflow for users who have
@@ -10,7 +18,7 @@ the terminal and pick a skill by relative path. It should be deterministic,
 offline-first, and grouped by local index alias so duplicate skill names across
 indexes and at distinct paths within one index remain valid.
 
-## Current context
+## Implementation status
 
 - Ritebook already supports publisher-side index generation through
   `publish-index`.
@@ -26,9 +34,8 @@ indexes and at distinct paths within one index remain valid.
 - Registry entries already store each index's local alias and
   `cached_index_path`.
 - [ADR 0001](../adr/0001-source-provenance-and-trust.md) requires each cached
-  index to be bound to a full Git commit and exact-index digest. The current
-  listing implementation does not yet verify that digest; implementation is
-  tracked separately.
+  index to be bound to a full Git commit and exact-index digest. Listing verifies
+  the cached bytes against that digest before displaying metadata.
 - `consumer-git-index-registry-spec.md` defines the registry foundation consumed
   by this browsing workflow.
 - `list-skills` is implemented in the existing `index_registry` feature slice.
@@ -336,7 +343,3 @@ Cover:
 - README documents the new command.
 - The configured non-E2E quality gate, package build, and Docker E2E suite pass
   before handoff.
-
-## Open questions
-
-- None. The current v1 intent and output shape were confirmed interactively.

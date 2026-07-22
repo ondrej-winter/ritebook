@@ -1,5 +1,13 @@
 # Spec: Docker E2E Integration Testing
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Partially implemented
+> **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), [Consumer List Skills](list-skills-spec.md), [Consumer Skill Installation](install-skill-spec.md), and [Upstream Skill Contributions](upstream-skill-contributions-spec.md)
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Provide Docker-based end-to-end integration testing for Ritebook so maintainers
@@ -10,7 +18,7 @@ The implementation provides a reliable clean-room test runner rather than broad
 infrastructure. Docker is the execution boundary that proves the workflow
 outside local developer state and outside unit-test fakes.
 
-## Current context
+## Implementation status
 
 - Ritebook is a Python 3.13 CLI package managed with `uv`.
 - The package exposes the console script `ritebook = "ritebook.cli:main"`.
@@ -138,11 +146,9 @@ Primary scenario:
   cache root, verified commit/index bindings, and cached skill listing before and
   after an update.
 
-Provenance regression scenarios should also prove that uncommitted local source
-changes are rejected and that changing source content after registration cannot
-silently change installed bytes. These assertions become release-gating when the
-dependent registry and installation implementation tasks land; this
-documentation task alone does not claim that they pass today.
+Provenance regression scenarios prove that uncommitted local source changes are
+rejected and that changing source content after registration cannot silently
+change installed bytes.
 
 Secondary validation scenario:
 
@@ -206,7 +212,7 @@ For the implementation:
 - README documents the local Docker E2E workflow.
 - CI/CD runs Docker E2E as a blocking gate before release and publishing.
 
-## Open questions
+## Deferred decision
 
-- None currently blocking. Docker E2E has been promoted into the default
-  release-blocking quality gate.
+- The exact Docker isolation contract remains owned by Ritebook maintainers and is
+  tracked by [Task 19 of the specification audit remediation plan](../plans/spec-audit-remediation-plan.md#task-19-align-docker-e2e-isolation-claims-and-behavior).

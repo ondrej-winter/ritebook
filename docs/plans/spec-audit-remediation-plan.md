@@ -103,7 +103,7 @@ documentation unless the project explicitly accepts and records the existing ris
 ### Phase 4: Specification and tooling governance
 
 - [x] Task 16: Resolve the `ty` versus `mypy` policy conflict
-- [ ] Task 17: Add lifecycle metadata to every specification
+- [x] Task 17: Add lifecycle metadata to every specification
 - [ ] Task 18: Standardize published-name and local-alias terminology
 - [ ] Task 19: Align Docker E2E isolation claims and behavior
 
@@ -932,18 +932,18 @@ open questions, and supersession are maintained.
 
 **Acceptance criteria:**
 
-- [ ] Every spec declares status, owner, spec version, last reviewed date,
+- [x] Every spec declares status, owner, spec version, last reviewed date,
   implementation state, dependencies, and associated ADRs.
-- [ ] Normative requirements are distinguishable from current-state notes and
+- [x] Normative requirements are distinguishable from current-state notes and
   future ideas.
-- [ ] Superseded or deferred behavior has an owner or linked follow-up rather than
+- [x] Superseded or deferred behavior has an owner or linked follow-up rather than
   remaining ambiguous prose.
 
 **Verification:**
 
-- [ ] Review all six headers side by side for identical field names and semantics.
-- [ ] Verify every cross-spec and ADR link resolves.
-- [ ] Confirm dates and implementation states reflect the current tree.
+- [x] Review all six headers side by side for identical field names and semantics.
+- [x] Verify every cross-spec and ADR link resolves.
+- [x] Confirm dates and implementation states reflect the current tree.
 
 **Dependencies:** Task 1 so the provenance ADR can be linked.
 
@@ -955,7 +955,17 @@ open questions, and supersession are maintained.
 **Estimated scope:** Medium, documentation only; apply as a dedicated mechanical
 change separate from behavioral rewrites.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. `docs/specs/README.md` now defines the
+shared lifecycle contract, allowed status and implementation-state values,
+content classification, and review process. All six specifications use the same
+seven metadata fields, identify their dependencies and ADRs, and separate current
+implementation evidence from normative requirements and uncommitted future work.
+Stale provenance implementation notes were synchronized with the current tree;
+the unresolved Docker isolation contract remains explicitly owned by Task 19.
+A focused validation helper confirmed all seven fields in all six specs and
+resolved 32 relative documentation links; `git diff --check` passed. No code,
+configuration, or runtime behavior changed, so Python and Docker suites were not
+rerun for this documentation-only task.
 
 ## Task 18: Standardize Published-Name and Local-Alias Terminology
 
@@ -1039,7 +1049,7 @@ controlled HOME, and explicit network/permission expectations.
 ## Checkpoint D: Governance Alignment
 
 - [x] One type checker is consistently required by rules, tooling, docs, and CI.
-- [ ] Every spec has current lifecycle metadata and valid cross-links.
+- [x] Every spec has current lifecycle metadata and valid cross-links.
 - [ ] Shared index terminology is unambiguous.
 - [ ] Docker E2E claims match observable runtime behavior.
 
@@ -1109,7 +1119,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 11. Local-source lockfile portability conflict | Required | 15 | Closed |
 | 12. Post-copy generated-state failure semantics | Required | 14 | Closed |
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Closed |
-| 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Open |
+| 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Closed |
 | 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Open |
 | 16. Docker “clean-room” claim exceeds enforcement | Cross-cutting | 19 | Open |
 | Final cross-spec and implementation consistency | Verification | 20 | Open |

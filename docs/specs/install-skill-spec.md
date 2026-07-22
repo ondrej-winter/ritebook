@@ -1,5 +1,13 @@
 # Spec: Consumer Skill Installation
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Implemented
+> **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Ritebook provides consumer-facing skill installation workflows for users who have
@@ -11,7 +19,7 @@ path, and lets a repository declare desired skill installations in
 directories from registered sources, and writes a deterministic `ritebook.lock`
 for reviewable repo-local install state.
 
-## Current context
+## Implementation status
 
 - Ritebook already supports publisher-side index generation through
   `publish-index`.
@@ -28,10 +36,10 @@ for reviewable repo-local install state.
 - Registry entries already store each index's local alias, remembered
   source, source type, source cache path for Git URL sources, and cached index
   path.
-- The current installation implementation reads the source repository's current
-  `HEAD`; [ADR 0001](../adr/0001-source-provenance-and-trust.md) instead requires
-  installation from the commit bound to the validated cached index. That
-  implementation work is tracked separately.
+- Installation reads skill content from the commit bound to the validated cached
+  index, as required by
+  [ADR 0001](../adr/0001-source-provenance-and-trust.md), rather than from the
+  source repository's mutable `HEAD` or working tree.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -699,7 +707,7 @@ uv run pytest
 uv build
 ```
 
-Current implementation status:
+### Implementation evidence
 
 - Direct `install-skill` and requirements-file `install` are implemented in the
   `features/skill_installation` vertical slice.

@@ -1,5 +1,13 @@
 # Spec: Publisher Skill Index Generation
 
+> **Status:** Active
+> **Owner:** Ritebook maintainers
+> **Spec version:** 1.0
+> **Last reviewed:** 2026-07-22
+> **Implementation state:** Implemented
+> **Dependencies:** None
+> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+
 ## Objective
 
 Ritebook provides a publisher-side workflow for corporate skill maintainers
@@ -12,7 +20,7 @@ The primary user is a skill maintainer or curator inside a company. The workflow
 supports controlled internal skill curation and downstream developer
 installation.
 
-## Current context
+## Implementation status
 
 - Publisher and linter capabilities are implemented as separate vertical feature
   slices under `src/ritebook/features/`, with domain, application, ports, and
@@ -361,8 +369,3 @@ network access.
   argument mapping.
 - `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`, and
   `uv run pytest` pass before handoff.
-
-## Open questions
-
-- None for the publisher workflow. Consumer registry and installation behavior
-  are specified separately.

@@ -95,7 +95,7 @@ docker run --rm --network none ritebook-e2e
 The container's default command runs the E2E suite:
 
 ```bash
-uv run pytest tests/e2e
+uv run --frozen --no-sync pytest tests/e2e
 ```
 
 Existing project validation remains:
@@ -131,6 +131,9 @@ Implemented files:
 - Use `pytest` for E2E tests to stay aligned with existing tooling.
 - Use `uv` for dependency installation and command execution inside the test
   runner.
+- Install locked dependencies while building the image, then use
+  `uv run --frozen --no-sync` so runtime execution never resolves or installs
+  dependencies.
 - Use temporary paths for all registry and cache files.
 - Run container tests as the fixed unprivileged image user rather than root.
 - Set `HOME`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME` to writable image-owned

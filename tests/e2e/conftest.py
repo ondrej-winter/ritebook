@@ -112,7 +112,16 @@ def run_cli(tmp_path: Path) -> CliRunner:
     )
 
     def run(arguments: Sequence[str], *, cwd: Path | None = None) -> CliResult:
-        command = ("uv", "run", "--project", str(PROJECT_ROOT), "ritebook", *arguments)
+        command = (
+            "uv",
+            "run",
+            "--frozen",
+            "--no-sync",
+            "--project",
+            str(PROJECT_ROOT),
+            "ritebook",
+            *arguments,
+        )
         completed = subprocess.run(  # noqa: S603 - E2E tests intentionally drive the local CLI.
             command,
             check=False,

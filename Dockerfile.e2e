@@ -32,4 +32,4 @@ USER ritebook
 
 RUN uv sync --frozen --group dev
 
-CMD ["uv", "run", "pytest", "tests/e2e"]
+CMD ["uv", "run", "--frozen", "--no-sync", "pytest", "tests/e2e"]

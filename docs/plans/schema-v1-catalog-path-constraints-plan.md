@@ -553,7 +553,7 @@ existing skip.
 
 ### Phase 4: Tighten Contribution Selection
 
-- [ ] Task 8: Resolve contributions by exact catalog-relative requirement
+- [x] Task 8: Resolve contributions by exact catalog-relative requirement
 
 ### Task 8: Resolve Contributions by Exact Catalog-relative Requirement
 
@@ -565,30 +565,42 @@ qualified `requirement`. Continue validating repository-relative `skill_path` an
 
 **Acceptance criteria:**
 
-- [ ] Root and collection-child exact requirements resolve one lockfile entry.
-- [ ] The requested alias and catalog selector are compared as one exact qualified
+- [x] Root and collection-child exact requirements resolve one lockfile entry.
+- [x] The requested alias and catalog selector are compared as one exact qualified
   requirement, without independently resolving publisher `index.name`.
-- [ ] A collection-only request is never expanded and fails unless an exact root
+- [x] A collection-only request is never expanded and fails unless an exact root
   skill with that path exists.
-- [ ] Over-deep contribution selectors fail before lockfile or checkout mutation.
-- [ ] Resolution does not fall back to `skill_name` or repository-relative
+- [x] Over-deep contribution selectors fail before lockfile or checkout mutation.
+- [x] Resolution does not fall back to `skill_name` or repository-relative
   `skill_path`.
-- [ ] Duplicate skill names at different catalog paths remain unambiguous.
-- [ ] Lockfile fixtures reflect generated state where `skill_path` includes
+- [x] Duplicate skill names at different catalog paths remain unambiguous.
+- [x] Lockfile fixtures reflect generated state where `skill_path` includes
   `skills_root`.
-- [ ] Existing safe repository-path checks remain active for contribution checkout
+- [x] Existing safe repository-path checks remain active for contribution checkout
   and comparison adapters.
 
 **Verification:**
 
-- [ ] Extend contribution reference DTO tests.
-- [ ] Replace unrealistic lockfile reader fixtures with generated-schema-compatible
+- [x] Extend contribution reference DTO tests.
+- [x] Replace unrealistic lockfile reader fixtures with generated-schema-compatible
   repository-relative paths.
-- [ ] Add exact root, exact collection child, collection-only, over-deep, and
+- [x] Add exact root, exact collection child, collection-only, over-deep, and
   no-fallback lockfile-reader tests.
-- [ ] Add application/CLI boundary tests proving rejection occurs before checkout
+- [x] Add application/CLI boundary tests proving rejection occurs before checkout
   preparation.
-- [ ] Run focused contribution tests.
+- [x] Run focused contribution tests.
+
+**Implementation note (2026-07-22):** `ContributionSkillReference` now validates
+the catalog selector with the shared schema-v1 path policy and derives the final
+skill name from the validated one- or two-segment path. Over-deep and malformed
+selectors fail in the application boundary before lockfile lookup or checkout
+preparation. The JSON lockfile reader now resolves solely by exact qualified
+`requirement`; it no longer filters independently by `index_name` or falls back to
+`skill_name` or repository-relative `skill_path`. Reader fixtures now model generated
+lockfiles whose source paths include `skills_root`, while existing safe-path checks
+remain unchanged. Focused DTO/reader tests pass with 77 tests, the complete
+contribution unit suite passes with 120 tests, and the full gate passes with Ruff,
+`ty`, and 615 tests passing with one existing skip.
 
 **Dependencies:** Task 7
 
@@ -604,10 +616,10 @@ qualified `requirement`. Continue validating repository-relative `skill_path` an
 
 ### Checkpoint D: Contribution Semantics
 
-- [ ] Contribution focused tests pass.
-- [ ] Real generated lockfile shape is covered by fixtures.
-- [ ] No prefix, skill-name, or repository-path selector fallback remains.
-- [ ] Contribution checkout still receives the exact safe repository-relative
+- [x] Contribution focused tests pass.
+- [x] Real generated lockfile shape is covered by fixtures.
+- [x] No prefix, skill-name, or repository-path selector fallback remains.
+- [x] Contribution checkout still receives the exact safe repository-relative
   source path.
 
 ### Phase 5: Integrate, Document, and Validate
@@ -754,13 +766,13 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 7 complete.** Requirements installation now gives exact catalog paths
-precedence, expands only immediate children of a one-segment collection selector,
-and derives expanded identity from validated catalog paths. The complete expanded
-target plan is validated before source opening or filesystem mutation, including
-collection `target_path` rejection and canonical overlap checks. Task 8 is the next
-sequential slice and must make contribution selection use exact qualified
-requirements without skill-name or repository-path fallback.
+**Task 8 complete.** Contribution selectors now enforce one- or two-segment
+schema-v1 catalog paths before lockfile lookup, and lockfile resolution uses exact
+qualified requirements without alias-field, skill-name, or repository-path
+fallback. Generated lockfile path shape and pre-checkout rejection are covered by
+focused tests. Task 9 is the next sequential slice and must add cross-workflow
+CLI/E2E coverage, update user-facing documentation, audit specification
+implementation status, and run the release-oriented validation matrix.
 
 ## Handoff Notes
 

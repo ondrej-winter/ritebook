@@ -44,14 +44,17 @@ def test_json_lockfile_reader_defaults_to_repo_lockfile(
     assert result.skill_name == "code-review"
 
 
-def test_json_lockfile_reader_resolves_exact_skill_path(tmp_path: Path) -> None:
+def test_json_lockfile_reader_resolves_exact_collection_child_requirement(
+    tmp_path: Path,
+) -> None:
     lockfile_path = write_lockfile(
         tmp_path,
         skills=[
             lockfile_entry(requirement="platform-skills/code-review"),
             lockfile_entry(
                 requirement="platform-skills/software-development/code-review",
-                skill_path="software-development/code-review",
+                skill_path="skills/software-development/code-review",
+                skill_file="skills/software-development/code-review/SKILL.md",
             ),
         ],
     )
@@ -63,7 +66,7 @@ def test_json_lockfile_reader_resolves_exact_skill_path(tmp_path: Path) -> None:
         str(lockfile_path),
     )
 
-    assert result.skill_path == "software-development/code-review"
+    assert result.skill_path == "skills/software-development/code-review"
 
 
 def test_json_lockfile_reader_does_not_resolve_nested_skill_by_name(
@@ -75,12 +78,13 @@ def test_json_lockfile_reader_does_not_resolve_nested_skill_by_name(
             lockfile_entry(
                 requirement="platform-skills/security-review",
                 skill_name="security-review",
-                skill_path="security-review",
-                skill_file="security-review/SKILL.md",
+                skill_path="skills/security-review",
+                skill_file="skills/security-review/SKILL.md",
             ),
             lockfile_entry(
                 requirement="platform-skills/software-development/code-review",
-                skill_path="software-development/code-review",
+                skill_path="skills/software-development/code-review",
+                skill_file="skills/software-development/code-review/SKILL.md",
             ),
         ],
     )
@@ -92,22 +96,26 @@ def test_json_lockfile_reader_does_not_resolve_nested_skill_by_name(
         )
 
 
-def test_json_lockfile_reader_filters_by_index_name(tmp_path: Path) -> None:
+def test_json_lockfile_reader_resolves_by_qualified_requirement_not_index_name(
+    tmp_path: Path,
+) -> None:
     lockfile_path = write_lockfile(
         tmp_path,
         skills=[
             lockfile_entry(
-                requirement="other-skills/code-review",
+                requirement="platform-skills/code-review",
                 index_name="other-skills",
             ),
         ],
     )
 
-    with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
-        JsonContributionLockfileReader().resolve_entry(
-            ContributionSkillReference.parse("platform-skills/code-review"),
-            str(lockfile_path),
-        )
+    result = JsonContributionLockfileReader().resolve_entry(
+        ContributionSkillReference.parse("platform-skills/code-review"),
+        str(lockfile_path),
+    )
+
+    assert result.requirement == "platform-skills/code-review"
+    assert result.index_name == "other-skills"
 
 
 def test_json_lockfile_reader_does_not_expand_path_prefixes(tmp_path: Path) -> None:
@@ -116,7 +124,8 @@ def test_json_lockfile_reader_does_not_expand_path_prefixes(tmp_path: Path) -> N
         skills=[
             lockfile_entry(
                 requirement="platform-skills/software-development/code-review",
-                skill_path="software-development/code-review",
+                skill_path="skills/software-development/code-review",
+                skill_file="skills/software-development/code-review/SKILL.md",
             ),
         ],
     )
@@ -128,7 +137,7 @@ def test_json_lockfile_reader_does_not_expand_path_prefixes(tmp_path: Path) -> N
         )
 
 
-def test_json_lockfile_reader_requires_exact_path_for_duplicate_names(
+def test_json_lockfile_reader_requires_exact_requirement_for_duplicate_names(
     tmp_path: Path,
 ) -> None:
     lockfile_path = write_lockfile(
@@ -136,11 +145,37 @@ def test_json_lockfile_reader_requires_exact_path_for_duplicate_names(
         skills=[
             lockfile_entry(
                 requirement="platform-skills/software-development/code-review",
-                skill_path="software-development/code-review",
+                skill_path="skills/software-development/code-review",
+                skill_file="skills/software-development/code-review/SKILL.md",
             ),
             lockfile_entry(
                 requirement="platform-skills/review/code-review",
-                skill_path="review/code-review",
+                skill_path="skills/review/code-review",
+                skill_file="skills/review/code-review/SKILL.md",
+            ),
+        ],
+    )
+
+    result = JsonContributionLockfileReader().resolve_entry(
+        ContributionSkillReference.parse("platform-skills/review/code-review"),
+        str(lockfile_path),
+    )
+
+    assert result.requirement == "platform-skills/review/code-review"
+    assert result.skill_path == "skills/review/code-review"
+
+
+def test_json_lockfile_reader_does_not_fall_back_to_repository_skill_path(
+    tmp_path: Path,
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[
+            lockfile_entry(
+                requirement="other-skills/code-review",
+                index_name="other-skills",
+                skill_path="platform-skills/code-review",
+                skill_file="platform-skills/code-review/SKILL.md",
             ),
         ],
     )
@@ -356,8 +391,8 @@ def lockfile_entry(**overrides: object) -> dict[str, object]:
         "source_revision": "a" * 40,
         "index_digest": f"sha256:{'b' * 64}",
         "index_schema_version": 1,
-        "skill_path": "code-review",
-        "skill_file": "code-review/SKILL.md",
+        "skill_path": "skills/code-review",
+        "skill_file": "skills/code-review/SKILL.md",
         "locked_at": "2026-07-19T17:00:00Z",
     }
     entry.update(overrides)

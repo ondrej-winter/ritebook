@@ -81,12 +81,14 @@ def test_contribution_skill_reference_parses_nested_selector() -> None:
         "platform-skills/../code-review",
         "platform-skills/browser/../code-review",
         "platform-skills/browser\\code-review",
+        "platform-skills/browser/runtime/verification",
+        "platform-skills/Browser/runtime-verification",
     ],
 )
 def test_contribution_skill_reference_rejects_invalid_values(
     skill_reference: str,
 ) -> None:
-    with pytest.raises(ValueError, match=r"Skill reference|Local alias|Skill selector"):
+    with pytest.raises(ValueError, match=r"Skill reference|Local alias|Catalog path"):
         ContributionSkillReference.parse(skill_reference)
 
 
@@ -256,6 +258,28 @@ def test_publish_skill_change_rejects_malformed_reference_before_lookup() -> Non
         use_case.execute(_invalid_publish_command("code-review"))
 
     assert lockfile.resolve_calls == []
+
+
+def test_publish_skill_change_rejects_over_deep_selector_before_lookup() -> None:
+    lockfile = FakeContributionLockfile()
+    source_workspace = FakeSkillSourceWorkspace()
+    use_case = publish_skill_change(
+        lockfile=lockfile,
+        source_workspace=source_workspace,
+    )
+
+    with pytest.raises(
+        InvalidContributionSkillReferenceError,
+        match="one or two segments",
+    ):
+        use_case.execute(
+            _invalid_publish_command(
+                "platform-skills/browser/runtime/verification",
+            ),
+        )
+
+    assert lockfile.resolve_calls == []
+    assert source_workspace.prepare_calls == []
 
 
 def test_publish_skill_change_resolves_lockfile_entry() -> None:

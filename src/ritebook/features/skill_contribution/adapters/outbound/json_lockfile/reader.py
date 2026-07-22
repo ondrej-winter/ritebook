@@ -37,16 +37,8 @@ class JsonContributionLockfileReader(ContributionLockfilePort):
     ) -> ContributionLockfileEntry:
         """Resolve exactly one publishable lockfile entry for a reference."""
         entries = _read_entries(_resolved_lockfile_path(lockfile_path))
-        candidates = tuple(
-            entry for entry in entries if entry.index_name == reference.index_name
-        )
-
-        for entry in candidates:
+        for entry in entries:
             if entry.requirement == reference.requirement:
-                return entry
-
-        for entry in candidates:
-            if entry.skill_path == reference.skill_selector:
                 return entry
 
         msg = f"no lockfile entry found for {reference.requirement}"

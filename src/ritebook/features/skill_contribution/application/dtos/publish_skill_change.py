@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import PurePosixPath
 
 from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel.catalog_paths import validate_catalog_path
 
 SAFE_FILE_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
 GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
@@ -35,7 +36,7 @@ class ContributionSkillReference:
         """Validate parsed contribution reference components."""
         _require_non_empty(self.requirement, field_name="Skill reference")
         require_index_name(self.index_name, field_name="Local alias")
-        _require_safe_posix_path(self.skill_selector, field_name="Skill selector")
+        validate_catalog_path(self.skill_selector)
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
 
     @classmethod
@@ -48,12 +49,12 @@ class ContributionSkillReference:
             )
             raise ValueError(msg)
         index_name, skill_selector = value.split("/", maxsplit=1)
-        _require_safe_posix_path(skill_selector, field_name="Skill selector")
+        catalog_path = validate_catalog_path(skill_selector)
         return cls(
             requirement=value,
             index_name=index_name,
             skill_selector=skill_selector,
-            skill_name=PurePosixPath(skill_selector).name,
+            skill_name=catalog_path.skill_name,
         )
 
 

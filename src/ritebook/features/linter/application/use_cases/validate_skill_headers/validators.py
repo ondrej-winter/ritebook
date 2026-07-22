@@ -11,6 +11,7 @@ from ritebook.features.linter.application.dtos import (
     ParsedSkillHeader,
     SkillValidationIssue,
 )
+from ritebook.shared_kernel import contains_terminal_control_characters
 
 VALID_SKILL_NAME_PATTERN = re.compile(r"^(?!.*--)[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$")
 MAX_DESCRIPTION_LENGTH = 1024
@@ -73,6 +74,13 @@ def _validate_description(
         return (_issue(header, "description must not be empty."),)
     if len(description) > MAX_DESCRIPTION_LENGTH:
         return (_issue(header, "description must be at most 1024 characters."),)
+    if contains_terminal_control_characters(description):
+        return (
+            _issue(
+                header,
+                "description must not contain terminal control characters.",
+            ),
+        )
     return ()
 
 

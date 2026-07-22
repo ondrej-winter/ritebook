@@ -10,6 +10,7 @@ from ritebook.features.publisher.application.dtos import (
     PublishIndexValidationError,
 )
 from ritebook.features.publisher.application.errors import PublisherError
+from ritebook.shared_kernel import escape_terminal_control_characters
 
 if TYPE_CHECKING:
     import argparse
@@ -30,7 +31,7 @@ def run_publish_index(
         result = publisher.execute(command)
     except PublishIndexValidationError as err:
         for issue in err.issues:
-            print(issue.format(), file=stderr)
+            print(escape_terminal_control_characters(issue.format()), file=stderr)
         return 1
     except (PublisherError, ValueError) as err:
         print(f"ritebook: error: {err}", file=stderr)

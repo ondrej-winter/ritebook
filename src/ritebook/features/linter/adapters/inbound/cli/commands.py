@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, TextIO
 
 from ritebook.features.linter.application.dtos import LintSkillsCommand
 from ritebook.features.linter.application.errors import LinterError
+from ritebook.shared_kernel import escape_terminal_control_characters
 
 if TYPE_CHECKING:
     import argparse
@@ -32,7 +33,7 @@ def run_lint_skills(
 
     if not result.succeeded:
         for issue in result.issues:
-            print(issue.format(), file=stderr)
+            print(escape_terminal_control_characters(issue.format()), file=stderr)
         return 1
 
     print(

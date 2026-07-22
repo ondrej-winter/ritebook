@@ -14,7 +14,11 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.index_registry.application.errors import (
     InvalidPublishedIndexError,
 )
-from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel import (
+    require_index_name,
+    require_kebab_case_identifier,
+    require_no_terminal_control_characters,
+)
 
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
 
@@ -138,6 +142,10 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
     description = cast("str", entry["description"])
     try:
         require_kebab_case_identifier(name, field_name="Skill name")
+        require_no_terminal_control_characters(
+            description,
+            field_name="index skill entry description",
+        )
     except ValueError as err:
         raise InvalidPublishedIndexError(str(err)) from err
     _validate_relative_posix_path(path, field_name="path")
@@ -153,6 +161,13 @@ def _validate_skill_entry(value: object, *, source_root: str) -> CachedSkillSumm
 
 
 def _validate_relative_posix_path(value: str, *, field_name: str) -> None:
+    try:
+        require_no_terminal_control_characters(
+            value,
+            field_name=f"index skill entry {field_name}",
+        )
+    except ValueError as err:
+        raise InvalidPublishedIndexError(str(err)) from err
     path = PurePosixPath(value)
     if value.startswith("/") or "\\" in value or ".." in path.parts:
         msg = f"index skill entry {field_name} must be a safe relative POSIX path"
@@ -168,6 +183,10 @@ def _validate_skill_file_inside_path(*, skill_file: str, path: str) -> None:
 
 
 def _installable_source_root(value: str) -> str:
+    try:
+        require_no_terminal_control_characters(value, field_name="skills_root")
+    except ValueError as err:
+        raise InvalidPublishedIndexError(str(err)) from err
     path = PurePosixPath(value)
     if path.is_absolute() or "\\" in value or ".." in path.parts:
         msg = "ritebook-index.json skills_root must be a safe relative POSIX path"

@@ -143,6 +143,14 @@ Tree rules:
   the local alias into `install-skill`.
 - Relative skill paths, not `skills[].name`, identify entries within an index.
 - Skill descriptions are shown only when `--show-description` is provided.
+- Cached `skills_root`, skill paths, skill-file paths, and descriptions containing
+  C0 controls (`U+0000`–`U+001F`), DEL (`U+007F`), or C1 controls
+  (`U+0080`–`U+009F`) are invalid. This includes newline, carriage return, tab,
+  and ANSI escape characters.
+- As defense in depth, the CLI renders any control character reaching a display
+  boundary as a visible deterministic escape (`\n`, `\r`, `\t`, `\x1b`, and
+  equivalent hexadecimal escapes) rather than emitting it to the terminal.
+- Ordinary Unicode descriptions remain readable and are not ASCII-escaped.
 - `skill_file` values may be parsed and carried in application DTOs for install
   workflows, but they are not shown by this command.
 
@@ -244,6 +252,8 @@ Cover:
 
 - Reads valid schema v1 cached indexes and returns skill entries.
 - Reads required descriptions for opt-in display.
+- Rejects control characters in cached path and description fields while
+  preserving ordinary Unicode descriptions.
 - Rejects invalid JSON.
 - Rejects missing or unsupported `schema_version`.
 - Rejects missing or malformed `skills`.
@@ -262,6 +272,8 @@ Cover:
 - Non-empty output is deterministic and tree-shaped.
 - Filtered output still includes the `Indexes` root and index node.
 - Description output appends descriptions only when requested.
+- Control-bearing descriptions cannot add lines or terminal formatting; exact
+  output tests assert visible escapes and the expected line count.
 - Empty output prints `No skills found`.
 - Application and adapter errors are rendered as concise
   `ritebook: error: ...` messages.

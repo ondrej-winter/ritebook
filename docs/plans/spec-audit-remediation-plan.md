@@ -96,7 +96,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 - [x] Task 11: Define and implement registry-cache commit semantics
 - [x] Task 12: Sanitize and safely persist Git source values
-- [ ] Task 13: Define terminal control-character handling
+- [x] Task 13: Define terminal control-character handling
 - [ ] Task 14: Define recovery for post-copy generated-state failures
 - [ ] Task 15: Resolve local-source lockfile portability
 
@@ -726,17 +726,17 @@ at the CLI boundary.
 
 **Acceptance criteria:**
 
-- [ ] Newlines, carriage returns, tabs where disallowed, C0/C1 controls, and ANSI
+- [x] Newlines, carriage returns, tabs where disallowed, C0/C1 controls, and ANSI
   escape sequences cannot forge additional CLI lines or terminal formatting.
-- [ ] Valid Unicode descriptions remain readable and deterministic.
-- [ ] Publisher validation, consumer index validation, and CLI rendering apply one
+- [x] Valid Unicode descriptions remain readable and deterministic.
+- [x] Publisher validation, consumer index validation, and CLI rendering apply one
   documented policy without contradictory transformations.
 
 **Verification:**
 
-- [ ] Add parameterized tests for control characters and representative Unicode.
-- [ ] Run publisher/linter validation, JSON index reader, and CLI rendering tests.
-- [ ] Capture output and assert exact line count and absence of raw escape bytes.
+- [x] Add parameterized tests for control characters and representative Unicode.
+- [x] Run publisher/linter validation, JSON index reader, and CLI rendering tests.
+- [x] Capture output and assert exact line count and absence of raw escape bytes.
 
 **Dependencies:** Task 12 for source display policy.
 
@@ -750,7 +750,14 @@ at the CLI boundary.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Publisher/linter validation, publisher
+domain invariants, and consumer index validation now reject C0 controls, DEL,
+and C1 controls in portable descriptions and paths. CLI source, description, and
+validation-diagnostic boundaries render any remaining controls as deterministic
+visible escapes after source credential redaction, while ordinary Unicode remains
+unchanged. The focused remediation suite passed with 148 tests. The full gate
+passed Ruff formatting and linting, `ty`, 521 non-E2E tests, all 15 E2E tests,
+package build, and `git diff --check`.
 
 ## Task 14: Define Recovery for Post-Copy Generated-State Failures
 
@@ -839,7 +846,7 @@ support with the selected contract.
 - [ ] Registry/cache and installation/state writes have tested commit or recovery
   semantics.
 - [ ] No supported source string or Git error leaks credential sentinels.
-- [ ] CLI output safely handles untrusted control characters.
+- [x] CLI output safely handles untrusted control characters.
 - [ ] Local-source lockfile behavior is explicit and enforced.
 - [ ] Relevant unit, integration, and failure-path E2E tests pass.
 
@@ -1068,7 +1075,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Closed |
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Closed |
 | 7. Git source credential exposure | Required | 12 | Closed |
-| 8. Terminal control-character injection | Required | 13 | Open |
+| 8. Terminal control-character injection | Required | 13 | Closed |
 | 9. Destructive forced replacement | Required | 9 | Closed |
 | 10. Lexical rather than canonical target collisions | Required | 10 | Closed |
 | 11. Local-source lockfile portability conflict | Required | 15 | Open |
@@ -1137,8 +1144,9 @@ follow-up rather than leaving an unchecked item implied complete.
   registry commit pointer, and deterministically recover abandoned adapter-owned
   artifacts on the next mutation; no stronger cross-filesystem or power-loss
   durability guarantee is claimed.
-- [ ] Should control characters be rejected at publication or escaped only at
-  display boundaries for descriptions?
+- [x] Reject C0 controls, DEL, and C1 controls in descriptions at publication and
+  consumer ingestion; escape controls at CLI display boundaries as defense in
+  depth without transforming valid persisted metadata.
 - [ ] Is `ty` the intentional project override to the reusable `mypy` rule, or
   should the project migrate to `mypy`?
 - [ ] Does Docker E2E need unprivileged-user fidelity, or should “clean-room” be

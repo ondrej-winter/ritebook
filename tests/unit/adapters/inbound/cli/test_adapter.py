@@ -1042,6 +1042,36 @@ def test_list_indexes_redacts_url_user_info_defensively() -> None:
     assert stdout.getvalue().endswith("https://example.com/company/skills.git\n")
 
 
+def test_list_indexes_escapes_source_controls_without_forging_lines() -> None:
+    stdout = StringIO()
+    result = ListIndexesResult(
+        indexes=(
+            RegisteredIndexSummary(
+                name="company-skills",
+                published_name="company-skills",
+                source_type="local_git_repo",
+                source="/repos/company\n\x1b[31mforged",
+                skill_count=2,
+                updated_at="2026-07-08T18:00:00Z",
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-indexes"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_indexes=FakeListIndexes(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue().count("\n") == 1
+    assert "\x1b" not in stdout.getvalue()
+    assert stdout.getvalue().endswith(r"/repos/company\n\x1b[31mforged" + "\n")
+
+
 def test_list_skills_maps_arguments_to_application_command() -> None:
     list_skills = FakeListSkills()
     stdout = StringIO()
@@ -1218,6 +1248,40 @@ def test_list_skills_prints_descriptions_when_requested() -> None:
         "    ├── skill-a — Helps with alpha workflows.\n"
         "    └── skill-b — Helps with beta workflows.\n"
     )
+
+
+def test_list_skills_escapes_description_controls_and_preserves_unicode() -> None:
+    stdout = StringIO()
+    result = ListSkillsResult(
+        indexes=(
+            ListedIndexSkills(
+                index_name="platform-skills",
+                skills=(
+                    CachedSkillSummary(
+                        name="skill-a",
+                        path="skill-a",
+                        skill_file="skill-a/SKILL.md",
+                        description="Příliš žluťoučký kůň\n\x1b[31m検証 🔍.",
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    exit_code = run(
+        ["list-skills", "--show-description"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=FakeListSkills(result),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue().count("\n") == 3
+    assert "\x1b" not in stdout.getvalue()
+    assert "Příliš žluťoučký kůň" in stdout.getvalue()
+    assert r"\n\x1b[31m検証 🔍." in stdout.getvalue()
 
 
 def test_list_skills_prints_empty_result_message() -> None:
@@ -1495,6 +1559,35 @@ def test_lint_skills_prints_validation_issues_to_stderr() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == "alpha/SKILL.md: description is required.\n"
+
+
+def test_lint_skills_escapes_controls_in_diagnostics() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["lint-skills", "--skills-root", "skills"],
+        linter=FakeLinter(
+            LintSkillsResult.create(
+                validated_skill_count=1,
+                issues=[
+                    SkillValidationIssue(
+                        skill_file="alpha\nforged/SKILL.md",
+                        message="invalid\x1b[31m description.",
+                    ),
+                ],
+            ),
+        ),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue().count("\n") == 1
+    assert "\x1b" not in stderr.getvalue()
+    assert stderr.getvalue() == (
+        r"alpha\nforged/SKILL.md: invalid\x1b[31m description." + "\n"
+    )
 
 
 def test_lint_skills_translates_invalid_root_errors() -> None:

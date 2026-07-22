@@ -124,6 +124,12 @@ Validation requirements:
 - `name` must match the parent skill directory name.
 - `description` is required, must be a non-empty string, and must be at most
   1024 characters.
+- `description` must not contain C0 controls (`U+0000`–`U+001F`), DEL
+  (`U+007F`), or C1 controls (`U+0080`–`U+009F`). This rejects newlines,
+  carriage returns, tabs, and ANSI escape bytes at publication rather than
+  transforming persisted metadata.
+- Ordinary Unicode text outside those control ranges remains valid and is
+  preserved unchanged.
 - `metadata` is required and must be a mapping.
 - `metadata.version` is required and must be a string.
 - `metadata.dependencies` is required and must be a mapping.
@@ -138,6 +144,11 @@ printing full skill file contents. Example:
 ```text
 conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 ```
+
+Before writing diagnostics to a terminal, Ritebook renders any control character
+that reaches the CLI boundary as a visible deterministic ASCII escape such as
+`\n`, `\t`, or `\x1b`. This is defense in depth for malformed paths and adapter
+errors; it does not make control-bearing publisher metadata valid.
 
 ### Index output
 

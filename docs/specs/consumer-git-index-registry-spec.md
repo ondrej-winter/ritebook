@@ -307,6 +307,11 @@ Registry schema-v1 provenance requirements follow
   skill paths differ, such as `backend/code-review` and `frontend/code-review`.
 - A skill's relative `path` is its identity and resolution key within an index;
   `skills[].name` is metadata and is not a fallback selector.
+- Consumer validation rejects C0 controls (`U+0000`–`U+001F`), DEL (`U+007F`),
+  and C1 controls (`U+0080`–`U+009F`) in `skills_root`, `skills[].path`,
+  `skills[].skill_file`, and `skills[].description`. Existing ASCII identifier
+  validation provides the same protection for index and skill names.
+- Valid Unicode descriptions outside those control ranges are preserved unchanged.
 - The local alias plus relative skill path is the namespace boundary.
 - Installation references skills as `<alias>/<skill-path>` in the
   separate `skill_installation` slice.
@@ -334,6 +339,9 @@ Registry schema-v1 provenance requirements follow
 - Standard URLs containing authority user-info are rejected before Git or
   filesystem mutation. This includes username-only, password/token, and
   percent-encoded forms; scp-like SSH sources remain supported.
+- Source identifiers displayed by the CLI are credential-redacted first and then
+  have any terminal control characters rendered as visible deterministic escapes.
+  A remembered source cannot inject additional output lines or ANSI formatting.
 - Ritebook surfaces a stable, generic Git failure without exposing raw subprocess
   stdout or stderr, which may contain credentials.
 

@@ -297,6 +297,54 @@ def test_json_index_reader_rejects_cached_skill_without_description(
         JsonIndexReader().read_skills(str(cached_index_path))
 
 
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    [
+        ("description", "Safe prefix\nforged line"),
+        ("description", "Safe prefix\x1b[31mred"),
+        ("path", "alpha\tforged"),
+        ("skill_file", "alpha/SKILL.md\x85forged"),
+    ],
+)
+def test_json_index_reader_rejects_controls_in_cached_skill_fields(
+    tmp_path: Path,
+    field_name: str,
+    bad_value: str,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    skill = {
+        "name": "alpha",
+        "path": "alpha",
+        "skill_file": "alpha/SKILL.md",
+        "description": "Alpha helps with planning.",
+    }
+    skill[field_name] = bad_value
+    write_index_file(cached_index_path, {"skills": [skill]})
+
+    with pytest.raises(
+        InvalidPublishedIndexError,
+        match=rf"{field_name} must not contain terminal control characters",
+    ):
+        JsonIndexReader().read_skills(str(cached_index_path))
+
+
+def test_json_index_reader_preserves_readable_unicode_description(
+    tmp_path: Path,
+) -> None:
+    cached_index_path = tmp_path / "ritebook-index.json"
+    skill = {
+        "name": "alpha",
+        "path": "alpha",
+        "skill_file": "alpha/SKILL.md",
+        "description": "Příliš žluťoučký kůň 検証 🔍.",
+    }
+    write_index_file(cached_index_path, {"skills": [skill]})
+
+    result = JsonIndexReader().read_skills(str(cached_index_path))
+
+    assert result[0].description == skill["description"]
+
+
 def test_json_index_reader_rejects_cached_non_object_skill_entries(
     tmp_path: Path,
 ) -> None:

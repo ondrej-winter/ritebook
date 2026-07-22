@@ -6,7 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, Self
 
-from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel import (
+    require_index_name,
+    require_kebab_case_identifier,
+    require_no_terminal_control_characters,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -35,6 +39,10 @@ class SkillEntry:
         if not self.description:
             msg = "Skill entry description must not be empty."
             raise ValueError(msg)
+        require_no_terminal_control_characters(
+            self.description,
+            field_name="Skill entry description",
+        )
 
 
 @dataclass(frozen=True)
@@ -92,6 +100,7 @@ def _require_relative_posix_path(value: str, *, field_name: str) -> None:
     if path.is_absolute() or "\\" in value or ".." in path.parts:
         msg = f"{field_name} must be a safe relative POSIX path."
         raise ValueError(msg)
+    require_no_terminal_control_characters(value, field_name=field_name)
 
 
 def _require_skill_file_inside_path(*, skill_file: str, path: str) -> None:

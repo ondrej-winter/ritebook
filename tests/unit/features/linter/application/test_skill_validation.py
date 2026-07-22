@@ -186,6 +186,42 @@ def test_validate_skill_headers_rejects_missing_or_invalid_description(
 
 
 @pytest.mark.parametrize(
+    "control_character",
+    ["\n", "\r", "\t", "\x00", "\x1b", "\x7f", "\x85", "\x9f"],
+)
+def test_validate_skill_headers_rejects_control_characters_in_description(
+    control_character: str,
+) -> None:
+    frontmatter = _valid_frontmatter()
+    frontmatter["description"] = f"Safe prefix{control_character}unsafe suffix"
+
+    report = _validate(frontmatter)
+
+    assert _messages(report) == [
+        "description must not contain terminal control characters.",
+    ]
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "Příliš žluťoučký kůň.",
+        "ブラウザーの動作を検証します。",
+        "Verify browser behavior 🔍.",
+    ],
+)
+def test_validate_skill_headers_accepts_readable_unicode_description(
+    description: str,
+) -> None:
+    frontmatter = _valid_frontmatter()
+    frontmatter["description"] = description
+
+    report = _validate(frontmatter)
+
+    assert report.succeeded
+
+
+@pytest.mark.parametrize(
     ("metadata", "expected_messages"),
     [
         (None, ["metadata is required."]),

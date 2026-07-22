@@ -13,7 +13,10 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexCommand,
 )
 from ritebook.features.index_registry.application.errors import IndexRegistryError
-from ritebook.shared_kernel import safe_source_display
+from ritebook.shared_kernel import (
+    escape_terminal_control_characters,
+    safe_source_display,
+)
 
 if TYPE_CHECKING:
     import argparse
@@ -110,7 +113,9 @@ def run_list_indexes(
         print("No indexes registered", file=stdout)
         return 0
     for index in result.indexes:
-        display_source = safe_source_display(index.source, index.source_type)
+        display_source = escape_terminal_control_characters(
+            safe_source_display(index.source, index.source_type),
+        )
         print(
             f"{index.name}\t{index.skill_count} skill(s)\t"
             f"{index.source_type}\t{index.updated_at}\t{display_source}",
@@ -179,6 +184,7 @@ def _render_skill_lines(
         skill_connector = "└──" if skill_position == len(index.skills) - 1 else "├──"
         label = skill.path
         if show_description:
-            label = f"{label} — {skill.description}"
+            description = escape_terminal_control_characters(skill.description)
+            label = f"{label} — {description}"
         lines.append(f"{prefix}{skill_connector} {label}")
     return lines

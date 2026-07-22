@@ -26,6 +26,16 @@ DEFAULT_REGISTRY_PATH = Path.home() / ".config" / "ritebook" / "installations.js
 class JsonInstallationRegistryAdapter:
     """JSON-backed writer for generated direct-install registry state."""
 
+    def validate_installation(
+        self,
+        entry: InstallationManifestEntry,
+        registry_path: str | None,
+        *,
+        force: bool,
+    ) -> None:
+        """Validate the candidate registry update without writing it."""
+        _installation_document(entry, registry_path, force=force)
+
     def write_installation(
         self,
         entry: InstallationManifestEntry,
@@ -34,24 +44,20 @@ class JsonInstallationRegistryAdapter:
         force: bool,
     ) -> None:
         """Persist one installation entry with target conflict protection."""
-        path = _registry_path(registry_path)
-        target = _stored_target(entry.target)
-        entries = _read_entries(path)
-        updated_entries = _upsert_entry(
-            entries,
-            _entry_to_json(entry, target),
-            force=force,
-        )
-        _atomic_write_json(
-            path,
-            {
-                "schema_version": SCHEMA_VERSION,
-                "installations": sorted(
-                    updated_entries,
-                    key=lambda item: item["target"],
-                ),
-            },
-        )
+        path, document = _installation_document(entry, registry_path, force=force)
+        _atomic_write_json(path, document)
+
+    def validate_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        """Reject lockfile validation; this adapter owns direct installation state."""
+        del entries, lockfile_path, requirements_file
+        msg = "JsonInstallationRegistryAdapter does not validate lockfiles"
+        raise NotImplementedError(msg)
 
     def write_lockfile(
         self,
@@ -63,6 +69,28 @@ class JsonInstallationRegistryAdapter:
         """Reject lockfile writes; this adapter owns direct installation state."""
         msg = "JsonInstallationRegistryAdapter does not write lockfiles"
         raise NotImplementedError(msg)
+
+
+def _installation_document(
+    entry: InstallationManifestEntry,
+    registry_path: str | None,
+    *,
+    force: bool,
+) -> tuple[Path, dict[str, Any]]:
+    path = _registry_path(registry_path)
+    target = _stored_target(entry.target)
+    updated_entries = _upsert_entry(
+        _read_entries(path),
+        _entry_to_json(entry, target),
+        force=force,
+    )
+    return path, {
+        "schema_version": SCHEMA_VERSION,
+        "installations": sorted(
+            updated_entries,
+            key=lambda item: item["target"],
+        ),
+    }
 
 
 def _registry_path(registry_path: str | None) -> Path:

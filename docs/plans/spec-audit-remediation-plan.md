@@ -97,7 +97,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 11: Define and implement registry-cache commit semantics
 - [x] Task 12: Sanitize and safely persist Git source values
 - [x] Task 13: Define terminal control-character handling
-- [ ] Task 14: Define recovery for post-copy generated-state failures
+- [x] Task 14: Define recovery for post-copy generated-state failures
 - [ ] Task 15: Resolve local-source lockfile portability
 
 ### Phase 4: Specification and tooling governance
@@ -772,19 +772,22 @@ state and recovery instructions.
 
 **Acceptance criteria:**
 
-- [ ] Direct install and requirements install have documented outcomes for clock,
+- [x] Direct install and requirements install have documented outcomes for clock,
   manifest, and lockfile failures after staging or copying.
-- [ ] The CLI distinguishes full failure, rolled-back failure, and retained partial
-  installation state.
-- [ ] Tests prove generated state is never reported as written when persistence
+- [x] The CLI distinguishes pre-mutation full failure, copy failure or restored
+  replacement failure, and retained partial installation state. Application-level
+  cross-target rollback is intentionally not used because a completed forced copy
+  may already have finalized its private backup.
+- [x] Tests prove generated state is never reported as written when persistence
   failed and that recovery does not remove pre-existing user content.
 
 **Verification:**
 
-- [ ] Add application tests for naive clock, manifest failure, lockfile failure,
-  rollback failure, and multi-skill partial failure.
-- [ ] Run all skill installation application and adapter tests.
-- [ ] Add or update an E2E failure scenario with exact diagnostics.
+- [x] Add application tests for naive clock, manifest failure, lockfile failure,
+  restored replacement and retained-backup failure, and multi-skill partial
+  failure.
+- [x] Run all skill installation application and adapter tests.
+- [x] Add or update an E2E failure scenario with exact diagnostics.
 
 **Dependencies:** Tasks 9, 10, and 11 for established staging/commit patterns.
 
@@ -799,7 +802,15 @@ state and recovery instructions.
 **Estimated scope:** Medium; implement direct install and requirements install as
 separate sub-tasks if their recovery protocols differ.
 
-**Status note:** Pending.
+**Status note:** Complete on 2026-07-22. Direct and requirements workflows now
+construct and validate deterministic generated-state candidates before copying,
+then commit state only after successful copies. Unavoidable post-copy registry or
+lockfile failures use an explicit retained-state contract with copied-target and
+retry guidance; installer cleanup failures preserve the exact retained-backup
+recovery path. The focused installation, CLI, and real-CLI E2E suite passed with
+180 tests, including a deterministic post-copy lockfile commit failure that leaves
+the copied target in place and emits exact stderr with no success output. Full
+repository validation is recorded in the Task 14 handoff.
 
 ## Task 15: Resolve Local-Source Lockfile Portability
 
@@ -843,7 +854,7 @@ support with the selected contract.
 
 ## Checkpoint C: Persistence and Trust Boundaries
 
-- [ ] Registry/cache and installation/state writes have tested commit or recovery
+- [x] Registry/cache and installation/state writes have tested commit or recovery
   semantics.
 - [ ] No supported source string or Git error leaks credential sentinels.
 - [x] CLI output safely handles untrusted control characters.
@@ -1079,7 +1090,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 9. Destructive forced replacement | Required | 9 | Closed |
 | 10. Lexical rather than canonical target collisions | Required | 10 | Closed |
 | 11. Local-source lockfile portability conflict | Required | 15 | Open |
-| 12. Post-copy generated-state failure semantics | Required | 14 | Open |
+| 12. Post-copy generated-state failure semantics | Required | 14 | Closed |
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Open |
 | 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Open |
 | 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Open |

@@ -53,6 +53,7 @@ from ritebook.features.skill_installation.application.dtos import (
 )
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
+    GeneratedStateCommitError,
     UnknownInstallIndexError,
 )
 
@@ -1419,6 +1420,36 @@ def test_install_skill_translates_application_errors() -> None:
     )
 
 
+def test_install_skill_reports_retained_target_after_state_commit_failure() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "install-skill",
+            "platform-skills/code-review",
+            "--target",
+            ".claude/skills/code-review",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_skill=FailingInstallSkill(
+            GeneratedStateCommitError(
+                "installations.json",
+                (".claude/skills/code-review",),
+            ),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: installation copied target(s) "
+        ".claude/skills/code-review, but installations.json was not updated; "
+        "copied directories remain, so inspect them and retry the installation\n"
+    )
+
+
 def test_install_maps_default_arguments_to_application_command() -> None:
     install_from_requirements = FakeInstallFromRequirements()
     stdout = StringIO()
@@ -1499,6 +1530,32 @@ def test_install_translates_application_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == "ritebook: error: unknown index: platform-skills\n"
+
+
+def test_install_reports_retained_targets_after_lockfile_commit_failure() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["install", "--file", "ritebook.toml"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=FailingInstallFromRequirements(
+            GeneratedStateCommitError(
+                "ritebook.lock",
+                (".claude/skills/code-review", ".agents/skills/tdd"),
+            ),
+        ),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: installation copied target(s) "
+        ".claude/skills/code-review, .agents/skills/tdd, but ritebook.lock was not "
+        "updated; copied directories remain, so inspect them and retry the "
+        "installation\n"
+    )
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

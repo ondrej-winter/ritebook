@@ -86,7 +86,12 @@ Requirements:
 - A failed restore retains the backup and reports its exact path with recovery
   guidance. A successful swap removes installer-owned staging and backup paths;
   cleanup failure reports the retained backup without removing the new target.
-- Ritebook writes generated installation state after a successful copy.
+- Ritebook constructs the complete timestamped installation entry and asks the
+  installation-state adapter to validate the candidate update before copying.
+- Ritebook writes generated installation state only after a successful copy.
+- If the final atomic `installations.json` replacement fails, Ritebook reports
+  failure rather than success, leaves the copied target in place, states that the
+  registry was not updated, and directs the user to inspect the target and retry.
 
 Example with overwrite:
 
@@ -165,6 +170,41 @@ Requirements:
   install cannot be resolved, validated, or copied.
 - `install` may leave already-copied target directories in place if a later copy
   fails; rollback is out of scope for v1 and the error must make that clear.
+- Before the first copy, `install` constructs all timestamped lockfile entries and
+  validates the complete candidate lockfile without filesystem mutation.
+- If final atomic lockfile replacement fails after all copies, `install` reports
+  failure rather than success, leaves copied targets in place, states that
+  `ritebook.lock` was not updated, and directs the user to inspect the targets and
+  retry.
+
+### Generated-state commit and recovery semantics
+
+The installation use cases use a retained-state recovery protocol rather than
+attempting application-level deletion after a successful copy:
+
+- Resolution, target planning, timestamp normalization, entry construction,
+  existing-state parsing, conflict checks, provenance checks, and deterministic
+  document construction occur before the first target mutation.
+- A failure in any of those preparation steps is a full pre-mutation failure: no
+  target is copied and no generated-state file is written.
+- A first-copy failure is a full copy failure and does not write generated state.
+- A later requirements-copy failure is a partial installation: earlier copied
+  targets remain and `ritebook.lock` is not updated.
+- If a forced replacement installs the new target but cannot remove its prior
+  backup, the target and backup both remain, generated state is not written, and
+  the diagnostic preserves the adapter's exact backup-recovery path.
+- An `installations.json` or `ritebook.lock` atomic-write failure after copying is a
+  generated-state commit failure: copied targets remain, the command exits with
+  failure, and the diagnostic explicitly says which state file was not updated.
+- If direct-install registry state changes between preflight and final commit, a
+  new recorded-target conflict is also reported as a retained generated-state
+  failure because the target has already been copied.
+- The command never prints its success message unless the generated-state write
+  completed.
+- Ritebook does not automatically remove copied targets after a commit failure.
+  A target may have replaced pre-existing user content under `--force`, and the
+  installer has already finalized its private backup before returning success;
+  blind deletion could therefore destroy valid user state.
 
 Example with overwrite:
 
@@ -460,6 +500,7 @@ ritebook: error: unknown index: platform-skills
 ritebook: error: unknown skill platform-skills/code-review
 ritebook: error: target nickname claude is not defined in ritebook.toml
 ritebook: error: skill entries must define exactly one of target or target_path
+ritebook: error: installation copied target(s) .claude/skills/code-review, but installations.json was not updated; copied directories remain, so inspect them and retry the installation
 ```
 
 ## Project structure
@@ -531,6 +572,8 @@ tests/unit/features/skill_installation/
 - Validate external inputs at adapter boundaries.
 - Use deterministic JSON output for generated state files.
 - Use injected clocks for timestamps in tests.
+- Validate timestamps and deterministic generated-state candidates before target
+  mutation, then atomically commit generated state after successful copies.
 - Do not log or print secrets, Git credentials, raw index contents, raw skill file
   contents, or copied file contents.
 
@@ -557,6 +600,10 @@ Cover:
 - Rejects duplicate, canonically equivalent, and parent-child resolved targets
   before any install call while allowing safe siblings.
 - Writes `ritebook.lock` only after successful requirements installation.
+- Rejects naive clocks and deterministic generated-state validation failures before
+  any install call.
+- Reports retained copied targets without a success result when final
+  `installations.json` or `ritebook.lock` persistence fails.
 - Rejects an unavailable bound commit, cached-index digest mismatch, or
   bound-commit index digest mismatch before trusting metadata or copying.
 - Proves that the cached index and root index at `source_revision` both match the
@@ -624,6 +671,8 @@ Cover:
 - Success output is concise and deterministic.
 - Application and adapter errors are rendered as concise
   `ritebook: error: ...` messages.
+- Pre-mutation failures, partial copy failures, and post-copy generated-state
+  commit failures have distinct exact diagnostics.
 
 ## Commands and validation
 
@@ -672,6 +721,8 @@ Always:
 - Write deterministic `ritebook.lock` for `install`.
 - Write user installation state under `~/.config/ritebook/installations.json` for
   direct `install-skill`.
+- Never report installation success unless the corresponding generated-state file
+  has been committed.
 
 Ask first:
 

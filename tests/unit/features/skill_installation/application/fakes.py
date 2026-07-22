@@ -92,11 +92,35 @@ class FakeSkillInstaller:
 
 
 class FakeInstallationManifest:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        validation_failure: Exception | None = None,
+        write_failure: Exception | None = None,
+    ) -> None:
+        self.validation_failure = validation_failure
+        self.write_failure = write_failure
+        self.validate_calls: list[
+            tuple[InstallationManifestEntry, str | None, bool]
+        ] = []
+        self.lockfile_validate_calls: list[
+            tuple[tuple[LockfileManifestEntry, ...], str | None, str]
+        ] = []
         self.write_calls: list[tuple[InstallationManifestEntry, str | None, bool]] = []
         self.lockfile_write_calls: list[
             tuple[tuple[LockfileManifestEntry, ...], str | None, str]
         ] = []
+
+    def validate_installation(
+        self,
+        entry: InstallationManifestEntry,
+        registry_path: str | None,
+        *,
+        force: bool,
+    ) -> None:
+        self.validate_calls.append((entry, registry_path, force))
+        if self.validation_failure is not None:
+            raise self.validation_failure
 
     def write_installation(
         self,
@@ -106,6 +130,21 @@ class FakeInstallationManifest:
         force: bool,
     ) -> None:
         self.write_calls.append((entry, registry_path, force))
+        if self.write_failure is not None:
+            raise self.write_failure
+
+    def validate_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        self.lockfile_validate_calls.append(
+            (entries, lockfile_path, requirements_file),
+        )
+        if self.validation_failure is not None:
+            raise self.validation_failure
 
     def write_lockfile(
         self,
@@ -115,6 +154,8 @@ class FakeInstallationManifest:
         requirements_file: str,
     ) -> None:
         self.lockfile_write_calls.append((entries, lockfile_path, requirements_file))
+        if self.write_failure is not None:
+            raise self.write_failure
 
 
 class FakeRequirementsReader:

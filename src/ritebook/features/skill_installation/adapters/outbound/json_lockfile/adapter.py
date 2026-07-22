@@ -25,6 +25,18 @@ DEFAULT_LOCKFILE_PATH = Path("ritebook.lock")
 class JsonLockfileAdapter:
     """JSON-backed full-rewrite writer for repo-local lockfiles."""
 
+    def validate_installation(
+        self,
+        entry: InstallationManifestEntry,
+        registry_path: str | None,
+        *,
+        force: bool,
+    ) -> None:
+        """Reject direct-install validation; this adapter owns lockfiles."""
+        del entry, registry_path, force
+        msg = "JsonLockfileAdapter does not validate installations"
+        raise NotImplementedError(msg)
+
     def write_installation(
         self,
         entry: InstallationManifestEntry,
@@ -44,19 +56,44 @@ class JsonLockfileAdapter:
         requirements_file: str,
     ) -> None:
         """Persist a complete deterministic lockfile for installed requirements."""
-        path = _lockfile_path(lockfile_path)
-        sorted_entries = sorted(
+        path, document = _lockfile_document(
             entries,
-            key=lambda item: (item.index_name, item.skill_name),
+            lockfile_path,
+            requirements_file=requirements_file,
         )
-        _atomic_write_json(
-            path,
-            {
-                "schema_version": SCHEMA_VERSION,
-                "requirements_file": requirements_file,
-                "skills": [_entry_to_json(entry) for entry in sorted_entries],
-            },
+        _atomic_write_json(path, document)
+
+    def validate_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        """Validate the candidate lockfile document without writing it."""
+        _lockfile_document(
+            entries,
+            lockfile_path,
+            requirements_file=requirements_file,
         )
+
+
+def _lockfile_document(
+    entries: tuple[LockfileManifestEntry, ...],
+    lockfile_path: str | None,
+    *,
+    requirements_file: str,
+) -> tuple[Path, dict[str, Any]]:
+    path = _lockfile_path(lockfile_path)
+    sorted_entries = sorted(
+        entries,
+        key=lambda item: (item.index_name, item.skill_name),
+    )
+    return path, {
+        "schema_version": SCHEMA_VERSION,
+        "requirements_file": requirements_file,
+        "skills": [_entry_to_json(entry) for entry in sorted_entries],
+    }
 
 
 def _lockfile_path(lockfile_path: str | None) -> Path:

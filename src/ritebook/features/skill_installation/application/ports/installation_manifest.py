@@ -14,6 +14,15 @@ if TYPE_CHECKING:
 class InstallationManifestPort(Protocol):
     """Outbound dependency for writing generated installation state."""
 
+    def validate_installation(
+        self,
+        entry: InstallationManifestEntry,
+        registry_path: str | None,
+        *,
+        force: bool,
+    ) -> None:
+        """Validate a direct-install state update without filesystem mutation."""
+
     def write_installation(
         self,
         entry: InstallationManifestEntry,
@@ -22,6 +31,15 @@ class InstallationManifestPort(Protocol):
         force: bool,
     ) -> None:
         """Persist a generated direct-install manifest entry."""
+
+    def validate_lockfile(
+        self,
+        entries: tuple[LockfileManifestEntry, ...],
+        lockfile_path: str | None,
+        *,
+        requirements_file: str,
+    ) -> None:
+        """Validate a lockfile update without filesystem mutation."""
 
     def write_lockfile(
         self,

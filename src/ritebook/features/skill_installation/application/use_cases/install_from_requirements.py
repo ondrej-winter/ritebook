@@ -18,6 +18,9 @@ from ritebook.features.skill_installation.application.dtos import (
 from ritebook.features.skill_installation.application.errors import (
     DuplicateInstallTargetError,
     DuplicateSkillRequirementError,
+    GeneratedStateCommitError,
+    InstallationPersistenceError,
+    InstalledTargetCleanupError,
     InvalidSkillReferenceError,
     PartialInstallationError,
     UndefinedInstallTargetError,
@@ -103,8 +106,14 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 requirements.targets,
                 source_stack,
             )
+            entries = self._lockfile_entries(plan)
+            self._manifest.validate_lockfile(
+                entries,
+                command.lockfile_path,
+                requirements_file=command.requirements_file,
+            )
 
-            copied_count = 0
+            copied_targets: list[str] = []
             try:
                 for item in plan:
                     self._installer.install(
@@ -113,18 +122,30 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                         target=item.target,
                         force=command.force,
                     )
-                    copied_count += 1
+                    copied_targets.append(item.target)
+            except InstalledTargetCleanupError as err:
+                retained_targets = (*copied_targets, item.target)
+                raise PartialInstallationError(
+                    retained_targets,
+                    recovery_detail=str(err),
+                ) from err
             except Exception as err:
-                if copied_count > 0:
-                    raise PartialInstallationError from err
+                if copied_targets:
+                    raise PartialInstallationError(tuple(copied_targets)) from err
                 raise
 
-            entries = self._lockfile_entries(plan)
-            self._manifest.write_lockfile(
-                entries,
-                command.lockfile_path,
-                requirements_file=command.requirements_file,
-            )
+            try:
+                self._manifest.write_lockfile(
+                    entries,
+                    command.lockfile_path,
+                    requirements_file=command.requirements_file,
+                )
+            except InstallationPersistenceError as err:
+                artifact = "ritebook.lock"
+                raise GeneratedStateCommitError(
+                    artifact,
+                    tuple(copied_targets),
+                ) from err
         return InstallFromRequirementsResult(
             requirements_file=command.requirements_file,
             installed_count=len(entries),

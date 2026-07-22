@@ -12,6 +12,7 @@ from ritebook.features.skill_installation.application.dtos import PlannedInstall
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
     InstallationPersistenceError,
+    InstalledTargetCleanupError,
     UnsafeInstallPathError,
 )
 
@@ -199,11 +200,10 @@ def _install_staged_replacement(
             _remove_path(backup_path)
         except OSError as err:
             backup_retained = True
-            msg = (
-                f"target {target_path} was installed but prior backup cleanup failed; "
-                f"remove backup {backup_path} after verifying the installed target"
-            )
-            raise InstallationPersistenceError(msg) from err
+            raise InstalledTargetCleanupError(
+                target=str(target_path),
+                backup_path=str(backup_path),
+            ) from err
     finally:
         with suppress(OSError):
             _remove_path(staged_path)

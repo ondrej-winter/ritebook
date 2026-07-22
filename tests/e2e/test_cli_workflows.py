@@ -620,6 +620,70 @@ target_path = ".agents/skills/tdd"
     assert "target_ref" not in lockfile_data["skills"][1]
 
 
+def test_install_retains_copied_target_when_lockfile_commit_fails(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    skills_root: Path,
+    write_valid_skill: SkillWriter,
+    git_repository: GitRepositoryFactory,
+    registry_path: Path,
+    cache_root: Path,
+) -> None:
+    published_repo = git_repository(tmp_path / "published-index")
+    consumer_repo = tmp_path / "consumer"
+    requirements_file = consumer_repo / "ritebook.toml"
+    target = consumer_repo / ".claude" / "skills" / "code-review"
+    blocked_parent = consumer_repo / "blocked"
+    lockfile = blocked_parent / "ritebook.lock"
+
+    write_valid_skill("code-review", "Helps review code changes.")
+    _publish_and_register_index(
+        run_cli=run_cli,
+        published_repo=published_repo,
+        skills_root=skills_root,
+        index_name="company-skills",
+        registry_path=registry_path,
+        cache_root=cache_root,
+    )
+    consumer_repo.mkdir()
+    requirements_file.write_text(
+        """
+[targets]
+claude = ".claude/skills"
+
+[[skills]]
+name = "company-skills/code-review"
+target = "claude"
+""".lstrip(),
+        encoding="utf-8",
+    )
+    blocked_parent.write_text("not a directory\n", encoding="utf-8")
+
+    result = run_cli(
+        [
+            "install",
+            "--file",
+            str(requirements_file),
+            "--registry-path",
+            str(registry_path),
+            "--lockfile",
+            str(lockfile),
+        ],
+        cwd=consumer_repo,
+    )
+
+    result.assert_failure()
+    assert result.stdout == ""
+    assert result.stderr == (
+        "ritebook: error: installation copied target(s) "
+        ".claude/skills/code-review, but ritebook.lock was not updated; copied "
+        "directories remain, so inspect them and retry the installation\n"
+    )
+    assert (target / "SKILL.md").is_file()
+    assert blocked_parent.read_text(encoding="utf-8") == "not a directory\n"
+    assert not lockfile.exists()
+
+
 def test_install_uses_default_requirements_and_lockfile_paths_with_force(
     tmp_path: Path,
     run_cli: CliRunner,

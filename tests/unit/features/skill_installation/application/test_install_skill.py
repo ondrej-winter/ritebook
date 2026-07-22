@@ -7,7 +7,11 @@ from ritebook.features.skill_installation.application.dtos import (
     SkillReference,
 )
 from ritebook.features.skill_installation.application.errors import (
+    ConflictingRecordedTargetError,
     ExistingInstallTargetError,
+    GeneratedStateCommitError,
+    InstallationPersistenceError,
+    InstalledTargetCleanupError,
     InvalidSkillReferenceError,
     SkillSourceResolutionError,
     UnknownInstallIndexError,
@@ -401,7 +405,7 @@ def test_install_skill_passes_force_to_installer_and_manifest_writer() -> None:
     assert manifest.write_calls[0][2] is True
 
 
-def test_install_skill_rejects_naive_clock_values_after_copy_before_manifest() -> None:
+def test_install_skill_rejects_naive_clock_values_before_copy() -> None:
     index = registered_skill_index()
     catalog = FakeSkillCatalog(
         indexes=[index],
@@ -425,7 +429,135 @@ def test_install_skill_rejects_naive_clock_values_after_copy_before_manifest() -
             ),
         )
 
-    assert installer.install_calls
+    assert installer.install_calls == []
+    assert manifest.write_calls == []
+
+
+def test_install_skill_rejects_manifest_validation_before_copy() -> None:
+    index = registered_skill_index()
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest(
+        validation_failure=InstallationPersistenceError("registry is malformed"),
+    )
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InstallationPersistenceError, match="malformed"):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="company-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert installer.install_calls == []
+    assert manifest.write_calls == []
+
+
+def test_install_skill_reports_retained_target_when_manifest_commit_fails() -> None:
+    index = registered_skill_index()
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest(
+        write_failure=InstallationPersistenceError("registry cannot be written"),
+    )
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(
+        GeneratedStateCommitError,
+        match=r"installations\.json was not updated.*inspect.*retry",
+    ):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="company-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert len(installer.install_calls) == 1
+    assert len(manifest.write_calls) == 1
+
+
+def test_install_skill_reports_retained_target_on_post_copy_registry_conflict() -> None:
+    index = registered_skill_index()
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest(
+        write_failure=ConflictingRecordedTargetError("registry changed"),
+    )
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(
+        GeneratedStateCommitError,
+        match=r"installations\.json was not updated.*inspect.*retry",
+    ):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="company-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert len(installer.install_calls) == 1
+    assert len(manifest.write_calls) == 1
+
+
+def test_install_skill_preserves_backup_guidance_after_cleanup_failure() -> None:
+    index = registered_skill_index()
+    installer = FakeSkillInstaller(
+        InstalledTargetCleanupError(
+            target=".claude/skills/code-review",
+            backup_path=".claude/skills/.code-review-backup/previous",
+        ),
+    )
+    manifest = FakeInstallationManifest()
+    use_case = InstallSkill(
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(
+        GeneratedStateCommitError,
+        match=r"installations\.json was not updated.*remove backup",
+    ):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="company-skills/code-review",
+                target=".claude/skills/code-review",
+            ),
+        )
+
+    assert len(installer.install_calls) == 1
     assert manifest.write_calls == []
 
 

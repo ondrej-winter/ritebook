@@ -14,6 +14,9 @@ from ritebook.features.skill_installation.application.errors import (
     DuplicateInstallTargetError,
     DuplicateSkillRequirementError,
     ExistingInstallTargetError,
+    GeneratedStateCommitError,
+    InstallationPersistenceError,
+    InstalledTargetCleanupError,
     PartialInstallationError,
     SkillSourceResolutionError,
     UndefinedInstallTargetError,
@@ -641,6 +644,111 @@ def test_install_from_requirements_reports_partial_copy_without_lockfile_write()
     assert manifest.lockfile_write_calls == []
 
 
+def test_install_from_requirements_rejects_naive_clock_before_copy() -> None:
+    index = registered_skill_index(name="platform-skills")
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest()
+    use_case = InstallFromRequirements(
+        requirements_reader=_single_requirement_reader(),
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=FakeSkillSourceResolver(),
+        installer=installer,
+        manifest=manifest,
+        clock=lambda: datetime(2026, 7, 10, 21, 0),
+    )
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+    assert manifest.lockfile_validate_calls == []
+    assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_rejects_lockfile_validation_before_copy() -> None:
+    index = registered_skill_index(name="platform-skills")
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest(
+        validation_failure=InstallationPersistenceError("unsafe lockfile source"),
+    )
+    use_case = _use_case(
+        reader=_single_requirement_reader(),
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(InstallationPersistenceError, match="unsafe lockfile"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
+    assert manifest.lockfile_write_calls == []
+
+
+def test_requirements_install_reports_retained_targets_on_lockfile_failure() -> None:
+    index = registered_skill_index(name="platform-skills")
+    installer = FakeSkillInstaller()
+    manifest = FakeInstallationManifest(
+        write_failure=InstallationPersistenceError("lockfile cannot be written"),
+    )
+    use_case = _use_case(
+        reader=_single_requirement_reader(),
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(
+        GeneratedStateCommitError,
+        match=r"ritebook\.lock was not updated.*inspect.*retry",
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert len(installer.install_calls) == 1
+    assert len(manifest.lockfile_write_calls) == 1
+
+
+def test_requirements_install_tracks_target_after_cleanup_failure() -> None:
+    index = registered_skill_index(name="platform-skills")
+    installer = FakeSkillInstaller(
+        failure=InstalledTargetCleanupError(
+            target=".claude/skills/code-review",
+            backup_path=".claude/skills/.code-review-backup/previous",
+        ),
+    )
+    manifest = FakeInstallationManifest()
+    use_case = _use_case(
+        reader=_single_requirement_reader(),
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        installer=installer,
+        manifest=manifest,
+    )
+
+    with pytest.raises(
+        PartialInstallationError,
+        match=(
+            r"\.claude/skills/code-review.*ritebook\.lock was not updated"
+            r".*backup.*remove backup"
+        ),
+    ):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert len(installer.install_calls) == 1
+    assert manifest.lockfile_write_calls == []
+
+
 def test_install_from_requirements_sorts_lockfile_entries() -> None:
     platform = registered_skill_index(
         name="platform-skills",
@@ -698,6 +806,17 @@ class _FailOnSecondInstall(FakeSkillInstaller):
         super().install(source=source, skill=skill, target=target, force=force)
         if len(self.install_calls) == 2:
             raise ExistingInstallTargetError(target)
+
+
+def _single_requirement_reader() -> FakeRequirementsReader:
+    return FakeRequirementsReader(
+        SkillRequirements(
+            targets={"claude": ".claude/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="claude"),
+            ),
+        ),
+    )
 
 
 def _use_case(

@@ -12,6 +12,10 @@ from ritebook.features.skill_installation.application.dtos import (
     SkillReference,
 )
 from ritebook.features.skill_installation.application.errors import (
+    ConflictingRecordedTargetError,
+    GeneratedStateCommitError,
+    InstallationPersistenceError,
+    InstalledTargetCleanupError,
     InvalidSkillReferenceError,
     UnknownInstallIndexError,
     UnknownInstallSkillError,
@@ -67,12 +71,6 @@ class InstallSkill(InstallSkillPort):
                 reference,
                 self._catalog.read_skills(index.cached_index_path),
             )
-            self._installer.install(
-                source=source,
-                skill=skill,
-                target=command.target,
-                force=command.force,
-            )
             entry = InstallationManifestEntry(
                 requirement=reference.requirement,
                 index_name=reference.index_name,
@@ -93,11 +91,40 @@ class InstallSkill(InstallSkillPort):
                 ),
                 installed_at=_utc_timestamp(self._clock()),
             )
-            self._manifest.write_installation(
+            self._manifest.validate_installation(
                 entry,
                 command.installation_registry_path,
                 force=command.force,
             )
+            try:
+                self._installer.install(
+                    source=source,
+                    skill=skill,
+                    target=command.target,
+                    force=command.force,
+                )
+            except InstalledTargetCleanupError as err:
+                artifact = "installations.json"
+                raise GeneratedStateCommitError(
+                    artifact,
+                    (command.target,),
+                    recovery_detail=str(err),
+                ) from err
+            try:
+                self._manifest.write_installation(
+                    entry,
+                    command.installation_registry_path,
+                    force=command.force,
+                )
+            except (
+                ConflictingRecordedTargetError,
+                InstallationPersistenceError,
+            ) as err:
+                artifact = "installations.json"
+                raise GeneratedStateCommitError(
+                    artifact,
+                    (command.target,),
+                ) from err
         return InstallSkillResult(
             requirement=reference.requirement,
             target=command.target,

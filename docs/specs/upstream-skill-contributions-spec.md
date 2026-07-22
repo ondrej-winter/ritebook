@@ -75,6 +75,10 @@ Requirements:
   skill directory inside the isolated checkout.
 - Ritebook runs existing skill validation before creating a commit.
 - Ritebook regenerates `ritebook-index.json` before creating a commit.
+- Before reading or regenerating the index, Ritebook rejects a symlinked
+  `ritebook-index.json` or any symlink component in the contribution checkout
+  path. Rejection occurs before publisher execution and must not modify an
+  external symlink target.
 - Ritebook creates a local Git commit with a generated message.
 - Ritebook prints the contribution checkout path, branch name, commit hash, and
   either suggested push instructions or manual inspection guidance.
@@ -348,6 +352,8 @@ Cover:
 - Resolves the full locked commit and verifies its exact index digest.
 - Creates safe branch names.
 - Creates commits only after validation and index regeneration succeed.
+- Rejects symlinked index files and symlinked checkout ancestors before invoking
+  the publisher, while preserving external symlink targets.
 - Reports Git failures without leaking credentials.
 
 ### Skill directory tests

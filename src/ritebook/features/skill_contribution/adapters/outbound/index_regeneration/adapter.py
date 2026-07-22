@@ -43,6 +43,7 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
     ) -> None:
         """Publish ritebook-index.json in the isolated contribution checkout."""
         checkout_path = Path(workspace.checkout_path)
+        _validate_index_path(checkout_path)
         skills_root = _published_skills_root(checkout_path, entry.skill_path)
         command = PublishIndexCommand(
             index_name=entry.index_name,
@@ -69,6 +70,37 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
                 "contribution commit was not created"
             )
             raise ContributionIndexRegenerationError(message) from err
+
+
+def _validate_index_path(checkout_path: Path) -> None:
+    index_path = checkout_path / "ritebook-index.json"
+    try:
+        _reject_symlink_components(checkout_path)
+        if (
+            not checkout_path.is_dir()
+            or checkout_path.is_symlink()
+            or not index_path.is_file()
+            or index_path.is_symlink()
+        ):
+            raise _index_read_error()
+        resolved_checkout = checkout_path.resolve(strict=True)
+        resolved_index = index_path.resolve(strict=True)
+    except ContributionIndexRegenerationError:
+        raise
+    except OSError as err:
+        raise _index_read_error() from err
+    if not resolved_index.is_relative_to(resolved_checkout):
+        raise _index_read_error()
+
+
+def _reject_symlink_components(path: Path) -> None:
+    current = Path(path.anchor) if path.is_absolute() else Path()
+    for part in path.parts:
+        if part == path.anchor:
+            continue
+        current /= part
+        if current.is_symlink():
+            raise _index_read_error()
 
 
 def _published_skills_root(checkout_path: Path, skill_path: str) -> str:

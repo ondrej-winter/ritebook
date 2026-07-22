@@ -86,7 +86,7 @@ documentation unless the project explicitly accepts and records the existing ris
 ### Phase 2: Destructive filesystem safety
 
 - [x] Task 5: Reject installation source-target overlap
-- [ ] Task 6: Make contribution index regeneration symlink-safe
+- [x] Task 6: Make contribution index regeneration symlink-safe
 - [ ] Task 7: Correct publisher output-root and `skills_root` semantics
 - [ ] Task 8: Make publisher index replacement atomic and symlink-safe
 - [ ] Task 9: Make forced installation replacement recoverable
@@ -379,15 +379,15 @@ checkout contains a symlinked index.
 
 **Acceptance criteria:**
 
-- [ ] Index reading rejects a symlinked file and symlinked ancestor paths.
-- [ ] Index regeneration cannot write outside the resolved contribution checkout.
-- [ ] Rejection occurs before publisher execution or any external file mutation.
+- [x] Index reading rejects a symlinked file and symlinked ancestor paths.
+- [x] Index regeneration cannot write outside the resolved contribution checkout.
+- [x] Rejection occurs before publisher execution or any external file mutation.
 
 **Verification:**
 
-- [ ] Add a regression test with `ritebook-index.json` linked to an external file.
-- [ ] Add a regression test for a symlinked parent path where supported.
-- [ ] Run `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py`.
+- [x] Add a regression test with `ritebook-index.json` linked to an external file.
+- [x] Add a regression test for a symlinked parent path where supported.
+- [x] Run `uv run pytest tests/unit/features/skill_contribution/adapters/outbound/test_index_regeneration_adapter.py`.
 
 **Dependencies:** None; Task 8 may provide a shared safe-write primitive only if
 that primitive remains adapter infrastructure without cross-slice business logic.
@@ -400,7 +400,15 @@ that primitive remains adapter infrastructure without cross-slice business logic
 
 **Estimated scope:** Small.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Contribution index regeneration now
+preflights the Ritebook-owned checkout and root index before reading metadata,
+changing directories, or invoking the publisher. It rejects any symlink component
+in the checkout path, a symlinked or non-regular `ritebook-index.json`, and any
+resolved index outside the checkout. Regression tests confirm publisher execution
+does not begin and an external symlink target remains unchanged. The focused
+adapter suite passed with 5 tests, the full contribution suite passed with 111
+tests, the full non-E2E suite passed with 463 tests and 15 deselected, the package
+build succeeded, and Ruff and `ty` checks passed.
 
 ## Task 7: Correct Publisher Output-Root and `skills_root` Semantics
 
@@ -993,7 +1001,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | --- | --- | --- | --- |
 | 1. Cached index is not bound to installed source content | Critical | 1–4 | Closed |
 | 2. Installation source-target overlap | Critical | 5 | Closed |
-| 3. Contribution index symlink escape | Critical | 6 | Open |
+| 3. Contribution index symlink escape | Critical | 6 | Closed |
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Open |
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Open |
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Open |

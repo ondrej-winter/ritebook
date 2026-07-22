@@ -61,6 +61,70 @@ def test_index_regeneration_adapter_preserves_published_skills_root(
     assert Path.cwd() == original_directory
 
 
+def test_index_regeneration_adapter_rejects_symlinked_index_before_publishing(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    workspace = contribution_workspace(tmp_path)
+    index_path = Path(workspace.checkout_path) / "ritebook-index.json"
+    external_index = tmp_path / "external-index.json"
+    external_content = json.dumps({"skills_root": "skills"})
+    external_index.write_text(external_content, encoding="utf-8")
+    index_path.unlink()
+    index_path.symlink_to(external_index)
+
+    with pytest.raises(
+        ContributionIndexRegenerationError,
+        match=(
+            "existing index metadata could not be read safely; "
+            "contribution commit was not created"
+        ),
+    ):
+        PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+            contribution_entry(),
+            workspace,
+        )
+
+    assert publisher.commands == []
+    assert external_index.read_text(encoding="utf-8") == external_content
+
+
+def test_index_regeneration_adapter_rejects_symlinked_checkout_ancestor(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    real_root = tmp_path / "real-contributions"
+    real_checkout = real_root / "platform-skills-code-review"
+    real_checkout.mkdir(parents=True)
+    (real_checkout / "ritebook-index.json").write_text(
+        json.dumps({"skills_root": "skills"}),
+        encoding="utf-8",
+    )
+    linked_root = tmp_path / "linked-contributions"
+    linked_root.symlink_to(real_root, target_is_directory=True)
+    workspace = ContributionWorkspace(
+        checkout_path=str(linked_root / real_checkout.name),
+        source_skill_path="skills/code-review",
+        current_base_revision="def456",
+        locked_revision="abc123",
+        has_usable_origin=True,
+    )
+
+    with pytest.raises(
+        ContributionIndexRegenerationError,
+        match=(
+            "existing index metadata could not be read safely; "
+            "contribution commit was not created"
+        ),
+    ):
+        PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+            contribution_entry(),
+            workspace,
+        )
+
+    assert publisher.commands == []
+
+
 def test_index_regeneration_adapter_converts_validation_failure_without_details(
     tmp_path: Path,
 ) -> None:

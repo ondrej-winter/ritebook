@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexResult,
 )
 from ritebook.features.index_registry.application.errors import (
+    IndexCacheError,
     IndexRegistryError,
     UnknownIndexNameError,
 )
@@ -90,28 +92,39 @@ class UpdateIndex(UpdateIndexPort):
             cache_root=command.cache_root,
         )
         published_index = self._index_reader.read_index(prepared_source.index_content)
+        updated_at = _utc_timestamp(self._clock())
         cached_index_path = self._cache.write_index(
             name=existing.name,
             content=published_index.cacheable_content,
+            index_digest=published_index.index_digest,
             cache_root=command.cache_root,
+            preserve_path=existing.cached_index_path,
         )
-        self._registry.upsert(
-            RegisteredIndex(
-                name=existing.name,
-                published_name=published_index.published_name,
-                source=prepared_source.source,
-                source_type=prepared_source.source_type,
-                source_revision=prepared_source.source_revision,
-                index_digest=published_index.index_digest,
-                source_cache_path=prepared_source.source_cache_path,
-                cached_index_path=cached_index_path,
-                source_schema_version=published_index.schema_version,
-                skill_count=published_index.skill_count,
-                added_at=existing.added_at,
-                updated_at=_utc_timestamp(self._clock()),
-            ),
-            command.registry_path,
+        entry = RegisteredIndex(
+            name=existing.name,
+            published_name=published_index.published_name,
+            source=prepared_source.source,
+            source_type=prepared_source.source_type,
+            source_revision=prepared_source.source_revision,
+            index_digest=published_index.index_digest,
+            source_cache_path=prepared_source.source_cache_path,
+            cached_index_path=cached_index_path,
+            source_schema_version=published_index.schema_version,
+            skill_count=published_index.skill_count,
+            added_at=existing.added_at,
+            updated_at=updated_at,
         )
+        try:
+            self._registry.upsert(entry, command.registry_path)
+        except IndexRegistryError:
+            if cached_index_path != existing.cached_index_path:
+                with suppress(IndexCacheError):
+                    self._cache.discard_index(
+                        name=existing.name,
+                        cached_index_path=cached_index_path,
+                        cache_root=command.cache_root,
+                    )
+            raise
         return UpdateIndexResult(
             name=existing.name,
             skill_count=published_index.skill_count,

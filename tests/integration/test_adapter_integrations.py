@@ -109,7 +109,9 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     cached_path = FilesystemIndexCache().write_index(
         name="company-skills",
         content=published.cacheable_content,
+        index_digest=published.index_digest,
         cache_root=str(cache_root),
+        preserve_path=None,
     )
     registry = FilesystemIndexRegistry()
     registry.upsert(

@@ -7,7 +7,10 @@ from ritebook.features.index_registry.application.dtos import (
     IndexSourceType,
     PreparedIndexSource,
 )
-from ritebook.features.index_registry.application.errors import DuplicateIndexNameError
+from ritebook.features.index_registry.application.errors import (
+    DuplicateIndexNameError,
+    IndexRegistryPersistenceError,
+)
 from ritebook.features.index_registry.application.use_cases import AddIndex
 
 from .fakes import (
@@ -47,7 +50,13 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     ]
     assert reader.read_contents == [b'{"schema_version":1}\n']
     assert cache.write_calls == [
-        ("company-skills", '{"schema_version":1}\n', "/tmp/cache"),
+        (
+            "company-skills",
+            '{"schema_version":1}\n',
+            f"sha256:{'b' * 64}",
+            "/tmp/cache",
+            None,
+        ),
     ]
     entry = registry.entries["company-skills"]
     assert entry.source_type is IndexSourceType.GIT_URL
@@ -132,6 +141,31 @@ def test_add_index_replaces_duplicate_with_force() -> None:
 
     assert result.skill_count == 2
     assert registry.entries["company-skills"].skill_count == 2
+
+
+def test_add_index_discards_candidate_when_registry_commit_fails() -> None:
+    error = IndexRegistryPersistenceError("injected registry failure")
+    registry = FakeRegistry(upsert_error=error)
+    cache = FakeCache()
+    use_case = AddIndex(
+        git_source=FakeGitSource(),
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(IndexRegistryPersistenceError, match="injected"):
+        use_case.execute(AddIndexCommand(source="repo", cache_root="/tmp/cache"))
+
+    candidate_path = cache.cached_index_path(
+        name="company-skills",
+        index_digest=f"sha256:{'b' * 64}",
+        cache_root="/tmp/cache",
+    )
+    assert cache.discard_calls == [
+        ("company-skills", candidate_path, "/tmp/cache"),
+    ]
 
 
 def test_add_index_rejects_naive_clock_values() -> None:

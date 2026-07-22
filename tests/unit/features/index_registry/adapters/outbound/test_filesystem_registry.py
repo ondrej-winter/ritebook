@@ -72,6 +72,39 @@ def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None
     assert zeta_entry.skill_count == 2
 
 
+def test_filesystem_registry_recovers_abandoned_temporary_file(tmp_path: Path) -> None:
+    path = tmp_path / "indexes.json"
+    abandoned = tmp_path / ".indexes.json.abandoned.tmp"
+    abandoned.write_text("partial", encoding="utf-8")
+
+    FilesystemIndexRegistry().upsert(entry(), str(path))
+
+    assert path.is_file()
+    assert not abandoned.exists()
+
+
+def test_filesystem_registry_replace_failure_preserves_previous_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(entry(skill_count=1), str(path))
+    previous_content = path.read_text(encoding="utf-8")
+
+    def fail_replace(_source: Path, _destination: Path) -> None:
+        message = "injected registry replace failure"
+        raise OSError(message)
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+
+    with pytest.raises(IndexRegistryPersistenceError, match="unable to write"):
+        registry.upsert(entry(skill_count=2), str(path))
+
+    assert path.read_text(encoding="utf-8") == previous_content
+    assert list(tmp_path.glob(".indexes.json.*.tmp")) == []
+
+
 @pytest.mark.parametrize("missing_field", ["source_revision", "index_digest"])
 def test_filesystem_registry_rejects_legacy_entries_without_provenance(
     tmp_path: Path,

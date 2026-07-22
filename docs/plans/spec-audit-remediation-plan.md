@@ -94,7 +94,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 ### Phase 3: Persistence and untrusted output
 
-- [ ] Task 11: Define and implement registry-cache commit semantics
+- [x] Task 11: Define and implement registry-cache commit semantics
 - [ ] Task 12: Sanitize and safely persist Git source values
 - [ ] Task 13: Define terminal control-character handling
 - [ ] Task 14: Define recovery for post-copy generated-state failures
@@ -626,19 +626,19 @@ staged writes with rollback, or another documented recovery protocol. Cover both
 
 **Acceptance criteria:**
 
-- [ ] A failure after either staged artifact write leaves the previous registry
+- [x] A failure after either staged artifact write leaves the previous registry
   entry and cached index coherently usable or clearly recoverable.
-- [ ] Readers never observe registry metadata pointing to absent or partially
+- [x] Readers never observe registry metadata pointing to absent or partially
   written cache content.
-- [ ] Startup or next-command recovery handles abandoned staging artifacts
+- [x] Startup or next-command recovery handles abandoned staging artifacts
   deterministically.
 
 **Verification:**
 
-- [ ] Add failure-injection tests at cache stage, registry stage, commit, rollback,
+- [x] Add failure-injection tests at cache stage, registry stage, commit, rollback,
   and recovery boundaries.
-- [ ] Run all index registry unit and integration tests.
-- [ ] Inspect generated files to confirm deterministic content and cleanup.
+- [x] Run all index registry unit and integration tests.
+- [x] Inspect generated files to confirm deterministic content and cleanup.
 
 **Dependencies:** Task 2 because source identity belongs in the committed state.
 
@@ -653,7 +653,15 @@ staged writes with rollback, or another documented recovery protocol. Cover both
 **Estimated scope:** Medium; split adapter staging from use-case commit orchestration
 if needed.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Cached indexes now use immutable
+content-addressed generations, and deterministic `indexes.json` replacement is the
+atomic commit pointer after the candidate file is flushed and synchronized. Failed
+registry commits preserve the previous pair and best-effort discard the candidate;
+the next add or update for the alias removes abandoned adapter-owned generations
+and temporary files while preserving the registry-referenced generation and legacy
+paths. Focused registry and integration validation passed with 119 tests. The full
+gate passed Ruff formatting and linting, `ty`, 491 non-E2E tests with 15 deselected,
+package build, and `git diff --check`.
 
 ## Task 12: Sanitize and Safely Persist Git Source Values
 
@@ -1046,7 +1054,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 3. Contribution index symlink escape | Critical | 6 | Closed |
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Closed |
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Closed |
-| 6. Registry/cache two-artifact inconsistency | Required | 11 | Open |
+| 6. Registry/cache two-artifact inconsistency | Required | 11 | Closed |
 | 7. Git source credential exposure | Required | 12 | Open |
 | 8. Terminal control-character injection | Required | 13 | Open |
 | 9. Destructive forced replacement | Required | 9 | Closed |
@@ -1111,8 +1119,12 @@ follow-up rather than leaving an unchecked item implied complete.
   schema v1 is updated in place; incompatible local state is rejected and
   regenerated without automatic migration.
 - [ ] Should local Git sources be allowed in committed `ritebook.lock` files?
-- [ ] What durability guarantee is required for local state: process-level atomic
-  replacement, crash consistency, or explicit best-effort recovery?
+- [x] What durability guarantee is required for local state: process-level atomic
+  replacement, crash consistency, or explicit best-effort recovery? **Decision:**
+  synchronize complete same-directory candidate files, atomically replace the
+  registry commit pointer, and deterministically recover abandoned adapter-owned
+  artifacts on the next mutation; no stronger cross-filesystem or power-loss
+  durability guarantee is claimed.
 - [ ] Should control characters be rejected at publication or escaped only at
   display boundaries for descriptions?
 - [ ] Is `ty` the intentional project override to the reusable `mypy` rule, or

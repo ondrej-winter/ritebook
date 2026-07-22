@@ -22,8 +22,8 @@ consumer-side catalog foundation used by the implemented `list-skills`,
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.
-- The current registry schema remembers mutable source locations but does not yet
-  persist a Git revision or exact-index digest.
+- The current registry schema persists a full source revision and exact-index
+  digest and points to an immutable content-addressed cache generation.
 - [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the required
   end-to-end provenance binding; implementation is tracked in the remediation
   plan's dependent tasks.
@@ -200,7 +200,7 @@ Recommended default location:
 
 ```text
 ~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<local-alias>/ritebook-index.json
+~/.cache/ritebook/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
 ~/.cache/ritebook/git/<source-cache-id>/
 ```
 
@@ -222,7 +222,7 @@ stores publisher-owned metadata.
       "source": "git@github.com:company/internal-skills.git",
       "source_type": "git_url",
       "source_cache_path": "/Users/me/.cache/ritebook/git/<cache-id>",
-      "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills/ritebook-index.json",
+      "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
       "source_revision": "0123456789abcdef0123456789abcdef01234567",
       "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "source_schema_version": 1,
@@ -243,7 +243,7 @@ For local repository sources:
   "source": "/absolute/path/to/internal-skills",
   "source_type": "local_git_repo",
   "source_cache_path": null,
-  "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills-local/ritebook-index.json",
+  "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills-local/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
   "source_revision": "0123456789abcdef0123456789abcdef01234567",
   "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "source_schema_version": 1,
@@ -263,6 +263,29 @@ Registry schema-v1 provenance requirements follow
 - Pre-release schema-v1 registry files missing either field are rejected with
   guidance to regenerate the registration. Ritebook does not infer provenance
   from the source's current `HEAD` or silently migrate on first use.
+
+### Registry/cache commit protocol
+
+- Cached indexes are immutable, content-addressed generations. The directory name
+  is the lowercase SHA-256 hex from `index_digest`; the adapter verifies the exact
+  bytes again before writing that generation.
+- `add-index --force` and `update-index` preserve the generation referenced by the
+  current registry entry while writing and synchronizing the candidate generation.
+- The deterministic registry file is the commit record. Ritebook writes and
+  synchronizes a uniquely named same-directory temporary registry file, then
+  atomically replaces `indexes.json` so readers see either the old entry or the new
+  entry, never a partially written entry.
+- If candidate cache writing or registry replacement fails, the previous registry
+  entry continues to reference its unchanged generation. Ritebook attempts to
+  discard the unreferenced candidate without changing the reported commit failure.
+- A process interruption may leave an unreferenced generation or adapter-owned
+  temporary file. The next add or update for that local alias preserves the
+  registry-referenced generation and the current candidate while deterministically
+  removing other content-addressed generations and temporary files. Registry
+  writes similarly remove abandoned adapter-owned registry temporary files.
+- Cleanup never deletes legacy cache paths or files outside the expected
+  content-addressed alias directory. Such paths remain readable until a successful
+  registration or update switches the registry to a generated path.
 
 ## Duplicate behavior
 
@@ -484,7 +507,11 @@ tests/unit/features/index_registry/
   traversal paths.
 - Filesystem registry writes deterministic `indexes.json` and preserves unrelated
   entries.
-- Index cache writes cached `ritebook-index.json` atomically enough for local use.
+- Index cache writes complete synchronized `ritebook-index.json` generations
+  before registry metadata can reference them.
+- Content-addressed cache generations preserve the registry-referenced bytes until
+  the registry commit succeeds and recover abandoned adapter-owned artifacts on the
+  next mutation.
 - Registry/cache readers reject schema-v1 entries missing required provenance and
   detect cached-index digest mismatches.
 - Git adapter invokes Git non-interactively and reports clone/fetch failures

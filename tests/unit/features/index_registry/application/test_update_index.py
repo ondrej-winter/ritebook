@@ -10,6 +10,7 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexResult,
 )
 from ritebook.features.index_registry.application.errors import (
+    IndexRegistryPersistenceError,
     InvalidPublishedIndexError,
     UnknownIndexNameError,
 )
@@ -59,7 +60,13 @@ def test_update_index_refreshes_git_url_source() -> None:
         ("git@example.com:company/skills.git", "/cache/git/source-id", "/tmp/cache"),
     ]
     assert cache.write_calls == [
-        ("company-skills", '{"schema_version":1,"skills":[]}\n', "/tmp/cache"),
+        (
+            "company-skills",
+            '{"schema_version":1,"skills":[]}\n',
+            f"sha256:{'d' * 64}",
+            "/tmp/cache",
+            "/cache/indexes/company-skills/ritebook-index.json",
+        ),
     ]
     entry = registry.entries["company-skills"]
     assert entry.added_at == "2026-07-08T18:00:00Z"
@@ -158,6 +165,35 @@ def test_update_index_preserves_cache_and_registry_when_validation_fails() -> No
     assert registry.upsert_calls == []
 
 
+def test_update_index_discards_candidate_when_registry_commit_fails() -> None:
+    existing = registered_index()
+    error = IndexRegistryPersistenceError("injected registry failure")
+    registry = FakeRegistry([existing], upsert_error=error)
+    cache = FakeCache()
+    use_case = UpdateIndex(
+        git_source=FakeGitSource(),
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 19, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(IndexRegistryPersistenceError, match="injected"):
+        use_case.execute(
+            UpdateIndexCommand(name="company-skills", cache_root="/tmp/cache"),
+        )
+
+    candidate_path = cache.cached_index_path(
+        name="company-skills",
+        index_digest=f"sha256:{'b' * 64}",
+        cache_root="/tmp/cache",
+    )
+    assert registry.entries["company-skills"] == existing
+    assert cache.discard_calls == [
+        ("company-skills", candidate_path, "/tmp/cache"),
+    ]
+
+
 def test_update_index_requires_name_or_all() -> None:
     with pytest.raises(ValueError, match="requires either a name or all=True"):
         UpdateIndexCommand()
@@ -227,7 +263,19 @@ def test_update_index_all_continues_after_failure() -> None:
     )
     assert registry.list_calls == [None]
     assert cache.write_calls == [
-        ("alpha-skills", '{"schema_version":1,"skills":[]}\n', None),
-        ("gamma-skills", '{"schema_version":1,"skills":[{}]}\n', None),
+        (
+            "alpha-skills",
+            '{"schema_version":1,"skills":[]}\n',
+            f"sha256:{'1' * 64}",
+            None,
+            "/cache/indexes/company-skills/ritebook-index.json",
+        ),
+        (
+            "gamma-skills",
+            '{"schema_version":1,"skills":[{}]}\n',
+            f"sha256:{'3' * 64}",
+            None,
+            "/cache/indexes/company-skills/ritebook-index.json",
+        ),
     ]
     assert registry.entries["beta-skills"] == beta

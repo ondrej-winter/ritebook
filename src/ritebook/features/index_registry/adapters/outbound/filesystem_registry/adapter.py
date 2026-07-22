@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+from contextlib import suppress
 from pathlib import Path
 from typing import Any, cast
 
@@ -73,14 +76,35 @@ def _write_entries(path: Path, entries: dict[str, RegisteredIndex]) -> None:
         "schema_version": 1,
         "indexes": [_entry_to_json(entries[name]) for name in sorted(entries)],
     }
-    temp_path = path.with_name(f".{path.name}.tmp")
+    content = json.dumps(payload, indent=2) + "\n"
+    temp_path: Path | None = None
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        _remove_abandoned_temporary_files(path)
+        descriptor, temp_name = tempfile.mkstemp(
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+        )
+        temp_path = Path(temp_name)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
         temp_path.replace(path)
     except OSError as err:
         msg = f"unable to write index registry: {path}"
         raise IndexRegistryPersistenceError(msg) from err
+    finally:
+        if temp_path is not None:
+            with suppress(OSError):
+                temp_path.unlink(missing_ok=True)
+
+
+def _remove_abandoned_temporary_files(path: Path) -> None:
+    pattern = f".{path.name}.*.tmp"
+    for temporary_path in path.parent.glob(pattern):
+        temporary_path.unlink(missing_ok=True)
 
 
 def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:

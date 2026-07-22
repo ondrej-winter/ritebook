@@ -362,12 +362,14 @@ By default, Ritebook stores registry metadata and cached index contents under:
 
 ```text
 ~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<local-alias>/ritebook-index.json
+~/.cache/ritebook/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
 ~/.cache/ritebook/git/<source-cache-id>/
 ```
 
-Local aliases are single path-safe kebab-case segments, so cached index contents
-are stored directly under the alias.
+Local aliases are single path-safe kebab-case segments. Each validated index is
+stored as an immutable generation under its alias, keyed by the lowercase SHA-256
+hex recorded in registry metadata. The registry file atomically switches to the
+new generation only after the complete cache file has been synchronized.
 
 Tests and automation can override these locations:
 

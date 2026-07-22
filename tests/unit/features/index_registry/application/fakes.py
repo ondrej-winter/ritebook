@@ -103,8 +103,14 @@ class FakeCachedIndexReader:
 
 
 class FakeRegistry:
-    def __init__(self, entries: list[RegisteredIndex] | None = None) -> None:
+    def __init__(
+        self,
+        entries: list[RegisteredIndex] | None = None,
+        *,
+        upsert_error: Exception | None = None,
+    ) -> None:
         self.entries = {entry.name: entry for entry in entries or []}
+        self.upsert_error = upsert_error
         self.get_calls: list[tuple[str, str | None]] = []
         self.list_calls: list[str | None] = []
         self.upsert_calls: list[tuple[RegisteredIndex, str | None]] = []
@@ -114,6 +120,8 @@ class FakeRegistry:
         return self.entries.get(name)
 
     def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
+        if self.upsert_error is not None:
+            raise self.upsert_error
         self.entries[entry.name] = entry
         self.upsert_calls.append((entry, registry_path))
 
@@ -124,14 +132,45 @@ class FakeRegistry:
 
 class FakeCache:
     def __init__(self) -> None:
-        self.write_calls: list[tuple[str, str, str | None]] = []
+        self.write_calls: list[tuple[str, str, str, str | None, str | None]] = []
+        self.discard_calls: list[tuple[str, str, str | None]] = []
 
-    def cached_index_path(self, *, name: str, cache_root: str | None) -> str:
-        return f"{cache_root or '/cache'}/indexes/{name}/ritebook-index.json"
+    def cached_index_path(
+        self,
+        *,
+        name: str,
+        index_digest: str,
+        cache_root: str | None,
+    ) -> str:
+        digest = index_digest.removeprefix("sha256:")
+        return f"{cache_root or '/cache'}/indexes/{name}/{digest}/ritebook-index.json"
 
-    def write_index(self, *, name: str, content: str, cache_root: str | None) -> str:
-        self.write_calls.append((name, content, cache_root))
-        return self.cached_index_path(name=name, cache_root=cache_root)
+    def write_index(
+        self,
+        *,
+        name: str,
+        content: str,
+        index_digest: str,
+        cache_root: str | None,
+        preserve_path: str | None,
+    ) -> str:
+        self.write_calls.append(
+            (name, content, index_digest, cache_root, preserve_path),
+        )
+        return self.cached_index_path(
+            name=name,
+            index_digest=index_digest,
+            cache_root=cache_root,
+        )
+
+    def discard_index(
+        self,
+        *,
+        name: str,
+        cached_index_path: str,
+        cache_root: str | None,
+    ) -> None:
+        self.discard_calls.append((name, cached_index_path, cache_root))
 
 
 def registered_index(

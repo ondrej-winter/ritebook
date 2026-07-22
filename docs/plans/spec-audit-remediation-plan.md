@@ -85,7 +85,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 ### Phase 2: Destructive filesystem safety
 
-- [ ] Task 5: Reject installation source-target overlap
+- [x] Task 5: Reject installation source-target overlap
 - [ ] Task 6: Make contribution index regeneration symlink-safe
 - [ ] Task 7: Correct publisher output-root and `skills_root` semantics
 - [ ] Task 8: Make publisher index replacement atomic and symlink-safe
@@ -335,17 +335,17 @@ relationships. Apply the same rule to direct and requirements-file installation.
 
 **Acceptance criteria:**
 
-- [ ] Target equal to the source skill directory is rejected before mutation.
-- [ ] Target above or inside the source skill directory is rejected before
+- [x] Target equal to the source skill directory is rejected before mutation.
+- [x] Target above or inside the source skill directory is rejected before
   mutation.
-- [ ] Errors identify unsafe overlap without exposing file contents or sensitive
+- [x] Errors identify unsafe overlap without exposing file contents or sensitive
   source details.
 
 **Verification:**
 
-- [ ] Add regression tests for equal, ancestor, descendant, and safe sibling paths.
-- [ ] Run `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_filesystem_installer.py`.
-- [ ] Confirm a rejected forced install leaves source and existing target intact.
+- [x] Add regression tests for equal, ancestor, descendant, and safe sibling paths.
+- [x] Run `uv run pytest tests/unit/features/skill_installation/adapters/outbound/test_filesystem_installer.py`.
+- [x] Confirm a rejected forced install leaves source and existing target intact.
 
 **Dependencies:** None; coordinate with Task 9 if both modify the installer.
 
@@ -357,7 +357,15 @@ relationships. Apply the same rule to direct and requirements-file installation.
 
 **Estimated scope:** Small.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-21. The filesystem installer now compares the
+canonical resolved source skill directory and target before any existence check,
+deletion, parent creation, or copy. Equal, ancestor, and descendant relationships
+raise a content-safe overlap error for both direct and requirements-file installs,
+including forced installs. Regression coverage confirms source and existing target
+content remain intact and safe sibling installation still succeeds. The focused
+adapter suite passed with 23 tests, the skill-installation suite passed with 98
+tests, the full non-E2E suite passed with 461 tests and 15 deselected, and Ruff and
+`ty` checks passed.
 
 ## Task 6: Make Contribution Index Regeneration Symlink-Safe
 
@@ -984,7 +992,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | Audit finding | Severity | Primary task(s) | Status |
 | --- | --- | --- | --- |
 | 1. Cached index is not bound to installed source content | Critical | 1–4 | Closed |
-| 2. Installation source-target overlap | Critical | 5 | Open |
+| 2. Installation source-target overlap | Critical | 5 | Closed |
 | 3. Contribution index symlink escape | Critical | 6 | Open |
 | 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Open |
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Open |

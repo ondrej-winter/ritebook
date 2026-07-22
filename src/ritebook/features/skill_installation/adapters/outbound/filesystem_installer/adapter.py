@@ -33,6 +33,7 @@ class FilesystemSkillInstallerAdapter:
         repository_path = Path(source.repository_path).expanduser().resolve()
         source_directory = _resolve_source_directory(repository_path, skill)
         target_path = _safe_target_path(target)
+        _require_no_source_target_overlap(source_directory, target_path)
 
         if target_path.exists() or target_path.is_symlink():
             if target_path.is_symlink():
@@ -135,6 +136,17 @@ def _remove_target(target_path: Path) -> None:
         shutil.rmtree(target_path)
         return
     target_path.unlink()
+
+
+def _require_no_source_target_overlap(
+    source_directory: Path,
+    target_path: Path,
+) -> None:
+    if source_directory.is_relative_to(target_path) or target_path.is_relative_to(
+        source_directory,
+    ):
+        msg = "unsafe source-target overlap; choose a target outside the source skill"
+        raise UnsafeInstallPathError(msg)
 
 
 def _require_contained(path: Path, base: Path, *, label: str) -> None:

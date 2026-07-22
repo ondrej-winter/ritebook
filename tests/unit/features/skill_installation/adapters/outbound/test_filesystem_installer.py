@@ -127,6 +127,52 @@ def test_filesystem_installer_replaces_existing_file_target_with_force(
     assert sibling.read_text(encoding="utf-8") == "keep"
 
 
+@pytest.mark.parametrize("relationship", ["equal", "ancestor", "descendant"])
+def test_filesystem_installer_rejects_source_target_overlap_before_forced_mutation(
+    tmp_path: Path,
+    relationship: str,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    source_directory = repository / "skills" / "code-review"
+    existing_source_file = source_directory / "SKILL.md"
+    if relationship == "equal":
+        target = source_directory
+    elif relationship == "ancestor":
+        target = repository / "skills"
+    else:
+        target = source_directory / "installed-copy"
+        target.mkdir()
+        (target / "existing.md").write_text("keep", encoding="utf-8")
+
+    with pytest.raises(UnsafeInstallPathError, match="source-target overlap"):
+        FilesystemSkillInstallerAdapter().install(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=str(target),
+            force=True,
+        )
+
+    assert existing_source_file.read_text(encoding="utf-8") == "# Code review\n"
+    if relationship == "descendant":
+        assert (target / "existing.md").read_text(encoding="utf-8") == "keep"
+
+
+def test_filesystem_installer_allows_safe_sibling_of_source_directory(
+    tmp_path: Path,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target = repository / "skills" / "installed-code-review"
+
+    FilesystemSkillInstallerAdapter().install(
+        source=resolved_source(repository),
+        skill=installable_skill(),
+        target=str(target),
+        force=False,
+    )
+
+    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
+
+
 @pytest.mark.parametrize(
     ("skill_path", "skill_file"),
     [

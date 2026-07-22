@@ -370,6 +370,9 @@ Requirements:
 - Target paths must not resolve to filesystem root, the user's home directory
   itself, the current working directory itself, or another broad destructive
   destination.
+- The resolved target must not equal, contain, or be contained by the resolved
+  source skill directory. Both installation commands reject this overlap before
+  deleting, creating, or copying any path, including when `--force` is provided.
 - Parent directories may be created.
 - Existing target paths are refused unless `--force` is provided.
 - `--force` replacement removes only the resolved target path, not a broader
@@ -539,6 +542,8 @@ Cover:
 - Refuses existing targets without `force`.
 - Replaces only the target path with `force`.
 - Rejects unsafe source paths from cached index metadata.
+- Rejects equal, ancestor, and descendant source-target overlap before mutation
+  while allowing safe sibling paths.
 - Rejects dangerous target paths.
 - Handles symlink targets safely by rejecting them in v1.
 

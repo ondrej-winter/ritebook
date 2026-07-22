@@ -33,10 +33,10 @@ def test_add_index_command_accepts_optional_overrides() -> None:
 
 
 def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
-    with pytest.raises(ValueError, match="Index alias"):
+    with pytest.raises(ValueError, match="Local alias"):
         AddIndexCommand(source="repo", alias="ondrej-winter/ritebook-shelf")
 
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         UpdateIndexCommand(name="ondrej-winter/ritebook-shelf")
 
     with pytest.raises(ValueError, match="Published index name"):
@@ -48,7 +48,7 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             index_digest=INDEX_DIGEST,
         )
 
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         RegisteredIndex(
             name="ondrej-winter/ritebook-shelf",
             published_name="company-skills",
@@ -64,10 +64,10 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             updated_at="2026-07-08T18:00:00Z",
         )
 
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         AddIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
 
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         UpdateIndexResult(name="ondrej-winter/ritebook-shelf", skill_count=1)
 
 
@@ -75,7 +75,7 @@ def test_add_index_command_rejects_empty_source_and_invalid_alias() -> None:
     with pytest.raises(ValueError, match="Index source"):
         AddIndexCommand(source="")
 
-    with pytest.raises(ValueError, match="Index alias"):
+    with pytest.raises(ValueError, match="Local alias"):
         AddIndexCommand(source="repo", alias="Company Skills")
 
 
@@ -93,12 +93,12 @@ def test_add_index_command_rejects_empty_source_and_invalid_alias() -> None:
     ],
 )
 def test_add_index_command_rejects_unsafe_repository_style_aliases(alias: str) -> None:
-    with pytest.raises(ValueError, match="Index alias"):
+    with pytest.raises(ValueError, match="Local alias"):
         AddIndexCommand(source="repo", alias=alias)
 
 
 def test_update_index_command_rejects_invalid_name() -> None:
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         UpdateIndexCommand(name="-bad")
 
 
@@ -113,7 +113,7 @@ def test_list_skills_command_accepts_optional_filter_and_registry_path() -> None
 
 
 def test_list_skills_command_rejects_invalid_filter_and_empty_registry_path() -> None:
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         ListSkillsCommand(index_name="Company Skills")
 
     with pytest.raises(ValueError, match="Registry path"):
@@ -184,7 +184,7 @@ def test_cached_skill_summary_rejects_empty_required_fields(
 
 
 def test_listed_index_skills_rejects_invalid_index_name() -> None:
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         ListedIndexSkills(index_name="Data Skills", skills=())
 
 

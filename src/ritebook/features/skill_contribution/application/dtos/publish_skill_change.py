@@ -24,7 +24,7 @@ class SkillChangeStatus(StrEnum):
 
 @dataclass(frozen=True)
 class ContributionSkillReference:
-    """A fully qualified contribution reference split into index and selector."""
+    """A contribution reference split into local alias and skill selector."""
 
     requirement: str
     index_name: str
@@ -34,17 +34,17 @@ class ContributionSkillReference:
     def __post_init__(self) -> None:
         """Validate parsed contribution reference components."""
         _require_non_empty(self.requirement, field_name="Skill reference")
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
         _require_safe_posix_path(self.skill_selector, field_name="Skill selector")
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
 
     @classmethod
     def parse(cls, value: str) -> ContributionSkillReference:
-        """Parse a `<index-name>/<skill-path>` contribution reference."""
+        """Parse a `<local-alias>/<skill-path>` contribution reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
             msg = (
-                "Skill reference must be fully qualified as <index-name>/<skill-path>."
+                "Skill reference must be fully qualified as <local-alias>/<skill-path>."
             )
             raise ValueError(msg)
         index_name, skill_selector = value.split("/", maxsplit=1)
@@ -94,7 +94,7 @@ class ContributionLockfileEntry:
     def __post_init__(self) -> None:
         """Validate contribution provenance required by the MVP."""
         ContributionSkillReference.parse(self.requirement)
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
         _require_non_empty(self.target, field_name="Installed skill target")
         _require_non_empty(self.source, field_name="Index source")

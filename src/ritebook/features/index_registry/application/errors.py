@@ -6,19 +6,21 @@ class IndexRegistryError(Exception):
 
 
 class DuplicateIndexNameError(IndexRegistryError):
-    """Raised when adding an index would replace an existing name."""
+    """Raised when adding an index would replace an existing local alias."""
 
     def __init__(self, name: str) -> None:
-        """Build a duplicate-name error for CLI rendering."""
-        super().__init__(f"index {name} already exists; use --force to replace it")
+        """Build a duplicate-local-alias error for CLI rendering."""
+        super().__init__(
+            f"local alias {name} already exists; use --force to replace it",
+        )
 
 
 class UnknownIndexNameError(IndexRegistryError):
-    """Raised when updating an unregistered index name."""
+    """Raised when selecting an unregistered local alias."""
 
     def __init__(self, name: str) -> None:
-        """Build an unknown-name error for CLI rendering."""
-        super().__init__(f"index {name} is not registered")
+        """Build an unknown-local-alias error for CLI rendering."""
+        super().__init__(f"local alias {name} is not registered")
 
 
 class InvalidPublishedIndexError(IndexRegistryError):

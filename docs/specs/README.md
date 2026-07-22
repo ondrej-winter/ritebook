@@ -55,6 +55,35 @@ specification may describe behavior that remains in the tree during migration.
 - A superseded specification must link to its replacement in the metadata or at
   the start of the document.
 
+## Shared index terminology
+
+All specifications use these terms consistently:
+
+- **Published name**: the publisher-owned stable identifier stored as
+  `index.name` in `ritebook-index.json`. Application code may call this value
+  `published_name`. A consumer cannot change it without changing publisher
+  metadata.
+- **Local alias**: the consumer-owned namespace for a registered index. It
+  defaults to the published name, but `add-index --alias` may select a different
+  value. Registry lookup, cache paths, updates, listing, qualified skill
+  references, installation state, lockfiles, and contribution workflows use the
+  local alias.
+- **Qualified skill reference**: `<local-alias>/<skill-path>`. The first segment
+  is always a local alias, never an independently resolved published name.
+
+Some compatibility-sensitive surfaces retain less-specific names:
+
+- Publisher `ritebook-index.json` field `index.name` and `publish-index
+  --index-name` carry the published name.
+- Consumer `indexes.json` field `name`, `update-index --name`, and `list-skills
+  --index-name` carry or select the local alias.
+- Generated `ritebook.lock` and `installations.json` field `index_name` carries
+  the local alias used in the corresponding qualified skill reference.
+
+These field and option names remain unchanged in schema and CLI version 1. A
+rename requires an explicitly versioned migration; documentation and diagnostics
+must state their semantic role in the meantime.
+
 ## Review process
 
 When behavior, dependencies, or architecture decisions change:

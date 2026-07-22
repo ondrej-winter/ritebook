@@ -16,7 +16,7 @@ INDEX_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 @dataclass(frozen=True)
 class SkillReference:
-    """A fully qualified skill reference split into index and skill selector."""
+    """A qualified skill reference split into local alias and skill selector."""
 
     requirement: str
     index_name: str
@@ -26,17 +26,17 @@ class SkillReference:
     def __post_init__(self) -> None:
         """Validate parsed reference components."""
         _require_non_empty(self.requirement, field_name="Skill reference")
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
         _require_skill_path(self.skill_path)
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
 
     @classmethod
     def parse(cls, value: str) -> SkillReference:
-        """Parse a `<index-name>/<skill-path>` reference."""
+        """Parse a `<local-alias>/<skill-path>` reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
             msg = (
-                "Skill reference must be fully qualified as <index-name>/<skill-path>."
+                "Skill reference must be fully qualified as <local-alias>/<skill-path>."
             )
             raise ValueError(msg)
         index_name, skill_path = value.split("/", maxsplit=1)
@@ -146,7 +146,7 @@ class RegisteredSkillIndex:
 
     def __post_init__(self) -> None:
         """Validate registered index metadata used by installation."""
-        require_index_name(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Local alias")
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.source_type, field_name="Index source type")
         if not GIT_OBJECT_ID_PATTERN.fullmatch(self.source_revision):
@@ -235,7 +235,7 @@ class InstallationManifestEntry:
     def __post_init__(self) -> None:
         """Validate generated manifest metadata."""
         SkillReference.parse(self.requirement)
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
         _require_non_empty(self.target, field_name="Target")
         _require_non_empty(self.source, field_name="Index source")
@@ -275,7 +275,7 @@ class LockfileManifestEntry:
     def __post_init__(self) -> None:
         """Validate generated lockfile metadata."""
         SkillReference.parse(self.requirement)
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
         require_kebab_case_identifier(self.skill_name, field_name="Skill name")
         _require_non_empty(self.target, field_name="Target")
         _require_non_empty(self.source, field_name="Index source")

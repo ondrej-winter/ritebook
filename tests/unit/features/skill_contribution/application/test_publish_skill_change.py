@@ -86,7 +86,7 @@ def test_contribution_skill_reference_parses_nested_selector() -> None:
 def test_contribution_skill_reference_rejects_invalid_values(
     skill_reference: str,
 ) -> None:
-    with pytest.raises(ValueError, match=r"Skill reference|Index name|Skill selector"):
+    with pytest.raises(ValueError, match=r"Skill reference|Local alias|Skill selector"):
         ContributionSkillReference.parse(skill_reference)
 
 
@@ -146,7 +146,7 @@ def test_contribution_lockfile_entry_rejects_missing_required_fields(
 
     with pytest.raises(
         ValueError,
-        match=r"must not be empty|Index name|Skill name|Source revision|Index digest",
+        match=r"must not be empty|Local alias|Skill name|Source revision|Index digest",
     ):
         ContributionLockfileEntry(**kwargs)
 

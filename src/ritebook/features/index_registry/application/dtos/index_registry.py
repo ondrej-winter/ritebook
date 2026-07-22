@@ -33,7 +33,7 @@ class AddIndexCommand:
         """Validate command shape after initialization."""
         _require_non_empty(self.source, field_name="Index source")
         if self.alias is not None:
-            require_index_name(self.alias, field_name="Index alias")
+            require_index_name(self.alias, field_name="Local alias")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
 
@@ -53,7 +53,7 @@ class UpdateIndexCommand:
             msg = "Update index requires either a name or all=True."
             raise ValueError(msg)
         if self.name is not None:
-            require_index_name(self.name, field_name="Index name")
+            require_index_name(self.name, field_name="Local alias")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
         _require_optional_non_empty(self.cache_root, field_name="Cache root")
 
@@ -80,7 +80,7 @@ class ListSkillsCommand:
     def __post_init__(self) -> None:
         """Validate command shape after initialization."""
         if self.index_name is not None:
-            require_index_name(self.index_name, field_name="Index name")
+            require_index_name(self.index_name, field_name="Local alias")
         _require_optional_non_empty(self.registry_path, field_name="Registry path")
 
 
@@ -158,7 +158,7 @@ class RegisteredIndex:
 
     def __post_init__(self) -> None:
         """Validate registry entry metadata."""
-        require_index_name(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Local alias")
         require_index_name(
             self.published_name,
             field_name="Published index name",
@@ -194,7 +194,7 @@ class AddIndexResult:
 
     def __post_init__(self) -> None:
         """Validate add-index result metadata."""
-        require_index_name(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Local alias")
         if self.skill_count < 0:
             msg = "Index skill count must not be negative."
             raise ValueError(msg)
@@ -212,14 +212,14 @@ class UpdateIndexResult:
     def __post_init__(self) -> None:
         """Validate update-index result metadata."""
         if self.name is not None:
-            require_index_name(self.name, field_name="Index name")
+            require_index_name(self.name, field_name="Local alias")
         if self.skill_count < 0:
             msg = "Index skill count must not be negative."
             raise ValueError(msg)
         for name in self.updated_indexes:
-            require_index_name(name, field_name="Updated index name")
+            require_index_name(name, field_name="Updated local alias")
         for name in self.failed_indexes:
-            require_index_name(name, field_name="Failed index name")
+            require_index_name(name, field_name="Failed local alias")
 
 
 @dataclass(frozen=True)
@@ -235,7 +235,7 @@ class RegisteredIndexSummary:
 
     def __post_init__(self) -> None:
         """Validate list-indexes summary metadata."""
-        require_index_name(self.name, field_name="Index name")
+        require_index_name(self.name, field_name="Local alias")
         require_index_name(self.published_name, field_name="Published index name")
         _require_non_empty(self.source_type, field_name="Index source type")
         _require_non_empty(self.source, field_name="Index source")
@@ -280,7 +280,7 @@ class ListedIndexSkills:
 
     def __post_init__(self) -> None:
         """Validate listed index metadata."""
-        require_index_name(self.index_name, field_name="Index name")
+        require_index_name(self.index_name, field_name="Local alias")
 
 
 @dataclass(frozen=True)

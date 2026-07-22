@@ -10,11 +10,11 @@ class InvalidSkillReferenceError(SkillInstallationError):
 
 
 class UnknownInstallIndexError(SkillInstallationError):
-    """Raised when an installation references an unknown index."""
+    """Raised when an installation references an unknown local alias."""
 
     def __init__(self, name: str) -> None:
-        """Build an unknown-index error for CLI rendering."""
-        super().__init__(f"unknown index: {name}")
+        """Build an unknown-local-alias error for CLI rendering."""
+        super().__init__(f"unknown local alias: {name}")
 
 
 class UnknownInstallSkillError(SkillInstallationError):

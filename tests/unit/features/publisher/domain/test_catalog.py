@@ -200,7 +200,7 @@ def test_skill_catalog_requires_safe_relative_posix_skills_root(
 
 
 def test_skill_catalog_rejects_slash_separated_index_name() -> None:
-    with pytest.raises(ValueError, match="Catalog index name"):
+    with pytest.raises(ValueError, match="Published index name"):
         SkillCatalog.create(
             index_name="ondrej-winter/ritebook-shelf",
             generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
@@ -210,7 +210,7 @@ def test_skill_catalog_rejects_slash_separated_index_name() -> None:
 
 
 def test_skill_catalog_requires_valid_index_name() -> None:
-    with pytest.raises(ValueError, match="Catalog index name"):
+    with pytest.raises(ValueError, match="Published index name"):
         SkillCatalog.create(
             index_name="Company Skills",
             generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),

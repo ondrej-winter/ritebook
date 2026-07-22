@@ -72,7 +72,7 @@ Ritebook distinguishes two index identifiers:
   names collide or a different local namespace is useful.
 
 The local alias is used for registry lookups, cache paths, update selection,
-skill listing, and `<alias>/<skill-path>` installation references. Setting
+skill listing, and `<local-alias>/<skill-path>` installation references. Setting
 an alias does not rewrite the published name or cached index contents. Projects
 that share alias-based references in `ritebook.toml` or `ritebook.lock` must ensure
 that collaborators and CI register the source under the same alias.
@@ -197,13 +197,13 @@ Publisher index schema v1:
 }
 ```
 
-Index name requirements:
+Published-name requirements:
 
 - Required for generated indexes.
 - Single-segment kebab-case identifier using the same general naming constraints
   as skill names.
 - Slashes are not allowed because downstream skill installation references use
-  `<index-name>/<skill-path>`.
+  `<local-alias>/<skill-path>`.
 - Intended to be stable across updates.
 - Used as the default local alias during `add-index`.
 - Preserved separately when `--alias` selects a different local namespace.
@@ -320,7 +320,7 @@ Registry schema-v1 provenance requirements follow
   validation provides the same protection for index and skill names.
 - Valid Unicode descriptions outside those control ranges are preserved unchanged.
 - The local alias plus relative skill path is the namespace boundary.
-- Installation references skills as `<alias>/<skill-path>` in the
+- Installation references skills as `<local-alias>/<skill-path>` in the
   separate `skill_installation` slice.
 - Duplicate local aliases are not allowed unless the user explicitly
   replaces the existing registration.
@@ -385,7 +385,7 @@ uv run ritebook add-index \
   --cache-root <path>
 
 uv run ritebook update-index \
-  --name <name> \
+  --name <local-alias> \
   --registry-path <path> \
   --cache-root <path>
 
@@ -411,7 +411,7 @@ platform-skills	14 skill(s)	git_url	2026-07-08T18:20:00Z	git@github.com:company/
 Error output should be clear and user-facing, for example:
 
 ```text
-ritebook: error: index platform-skills already exists; use --force to replace it
+ritebook: error: local alias platform-skills already exists; use --force to replace it
 ritebook: error: ritebook-index.json was not found at the repository root
 ritebook: error: unsupported index schema_version: 2
 Failed to update 1 index(es): platform-skills
@@ -499,9 +499,9 @@ tests/unit/features/index_registry/
 
 ### Publisher index metadata tests
 
-- Publisher output includes index metadata with a valid name.
+- Publisher output includes index metadata with a valid published name.
 - Generated JSON remains deterministic except for timestamp.
-- Missing or invalid index names are rejected where appropriate.
+- Missing or invalid published names are rejected where appropriate.
 
 ### Add index application tests
 

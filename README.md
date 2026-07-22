@@ -84,7 +84,7 @@ skills root and validates their required Agent Skill headers without writing an
 index file.
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --index-name <name>
+uv run ritebook publish-index --skills-root <path> --index-name <published-name>
 ```
 
 Run `publish-index` from the repository directory that will contain the generated
@@ -94,9 +94,9 @@ that directory or one of its descendants. Ritebook serializes it as a portable
 repository-relative `skills_root`; equivalent relative and absolute inputs
 produce the same index paths. The `--index-name` option is required and must be a
 stable single-segment kebab-case identifier such as `company-skills`; slashes are
-not allowed because skill references use `<index-name>/<skill-path>`. The index
-name is written to the generated index metadata as the default consumer registry
-name.
+not allowed because skill references use `<local-alias>/<skill-path>`. This
+published name is written to `ritebook-index.json` as `index.name` and becomes the
+default consumer local alias.
 The `publish-index` command reuses the same validation flow as `lint-skills` and
 refuses to write or overwrite `ritebook-index.json` when any discovered skill is
 invalid. When validation succeeds, the success message reports the canonical
@@ -335,7 +335,7 @@ reviewable upstream contribution from its `ritebook.lock` provenance:
 uv run ritebook publish-skill-change platform-skills/code-review
 ```
 
-The reference must be `<index-name>/<skill-path>` and resolves by exact indexed
+The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
 path without falling back to `skill_name`. By default, Ritebook reads
 `ritebook.lock` from the current working directory and creates or reuses an isolated,
 Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and

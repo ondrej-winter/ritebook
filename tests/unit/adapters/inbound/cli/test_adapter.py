@@ -874,7 +874,7 @@ def test_add_index_translates_duplicate_name_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: index company-skills already exists; "
+        "ritebook: error: local alias company-skills already exists; "
         "use --force to replace it\n"
     )
 
@@ -1334,7 +1334,7 @@ def test_list_skills_translates_application_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: index missing-skills is not registered\n"
+        "ritebook: error: local alias missing-skills is not registered\n"
     )
 
 
@@ -1529,7 +1529,9 @@ def test_install_translates_application_errors() -> None:
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == "ritebook: error: unknown index: platform-skills\n"
+    assert stderr.getvalue() == (
+        "ritebook: error: unknown local alias: platform-skills\n"
+    )
 
 
 def test_install_reports_retained_targets_after_lockfile_commit_failure() -> None:

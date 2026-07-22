@@ -83,7 +83,7 @@ class SkillCatalog:
         if self.generated_at.tzinfo is None or self.generated_at.utcoffset() is None:
             msg = "Catalog generation timestamp must be timezone-aware."
             raise ValueError(msg)
-        require_index_name(self.index_name, field_name="Catalog index name")
+        require_index_name(self.index_name, field_name="Published index name")
         _require_relative_posix_path(self.skills_root, field_name="skills_root")
         object.__setattr__(
             self,

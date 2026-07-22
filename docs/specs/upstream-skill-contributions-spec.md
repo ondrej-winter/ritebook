@@ -57,7 +57,7 @@ to the upstream default branch.
 Requirements:
 
 - The skill reference must be fully qualified as
-  `<index-name>/<skill-path>` and must match an exact lockfile skill path.
+  `<local-alias>/<skill-path>` and must match an exact lockfile skill path.
 - The command only supports skills installed from `ritebook.toml` and recorded in
   `ritebook.lock` for the MVP.
 - Ritebook reads `ritebook.lock` from the current working directory by default.
@@ -96,13 +96,13 @@ Requirements:
 Initial command:
 
 ```bash
-uv run ritebook publish-skill-change <index-name>/<skill-path>
+uv run ritebook publish-skill-change <local-alias>/<skill-path>
 ```
 
 Path overrides:
 
 ```bash
-uv run ritebook publish-skill-change <index-name>/<skill-path> \
+uv run ritebook publish-skill-change <local-alias>/<skill-path> \
   --lockfile <path-to-ritebook.lock> \
   --contribution-root <path-to-ritebook-owned-contribution-checkouts>
 ```
@@ -167,8 +167,8 @@ Requirements:
   push, amend, or discard it manually.
 
 The MVP uses reusable deterministic contribution clones under the Ritebook-owned
-contribution root. Each checkout path combines a source digest with the effective
-index name, skill-path slug, and requirement digest. Ritebook marks owned clones,
+contribution root. Each checkout path combines a source digest with the local
+alias, skill-path slug, and requirement digest. Ritebook marks owned clones,
 rejects unmarked directories at a reusable checkout path, and resets/cleans only
 those marked clones before preparing another contribution. The default root is
 `~/.cache/ritebook/contributions`; `--contribution-root` overrides it for tests
@@ -226,7 +226,8 @@ from requirements-file installation.
 Required lockfile fields for each publishable entry:
 
 - `requirement`: original fully qualified requirement string.
-- `index_name`: effective local index name.
+- `index_name`: compatibility-sensitive schema-v1 field containing the local alias
+  from `requirement`; it is not publisher `index.name`.
 - `skill_name`: resolved skill name.
 - `target`: repo-local installed skill target path.
 - `source`: portable Git URL propagated from requirements installation.
@@ -450,7 +451,7 @@ Never:
 
 ## Success criteria
 
-- `uv run ritebook publish-skill-change <index-name>/<skill-path>` reads
+- `uv run ritebook publish-skill-change <local-alias>/<skill-path>` reads
   `ritebook.lock` and resolves one installed repo-local skill.
 - The command fails clearly when the lockfile, selected entry, installed target,
   or required provenance is missing.

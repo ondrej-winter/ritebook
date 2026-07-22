@@ -6,11 +6,11 @@ from ritebook.features.index_registry.application.errors import (
 
 def test_duplicate_index_name_error_mentions_force() -> None:
     assert str(DuplicateIndexNameError("company-skills")) == (
-        "index company-skills already exists; use --force to replace it"
+        "local alias company-skills already exists; use --force to replace it"
     )
 
 
 def test_unknown_index_name_error_is_user_facing() -> None:
     assert str(UnknownIndexNameError("company-skills")) == (
-        "index company-skills is not registered"
+        "local alias company-skills is not registered"
     )

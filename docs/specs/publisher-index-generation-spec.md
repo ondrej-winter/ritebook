@@ -215,7 +215,7 @@ Schema v1 stays small and describes discovered skill package boundaries.
 ### Field requirements
 
 - `schema_version`: integer schema version. MVP value is `1`.
-- `index.name`: required stable kebab-case publisher index name.
+- `index.name`: required stable kebab-case published name owned by the publisher.
 - `generated_at`: timezone-aware UTC timestamp in ISO 8601 format. The timestamp
   source should be injectable or controllable in tests.
 - `skills_root`: normalized POSIX path from the repository root containing
@@ -236,7 +236,7 @@ Schema v1 stays small and describes discovered skill package boundaries.
 The CLI is simple and explicit:
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --index-name <name>
+uv run ritebook publish-index --skills-root <path> --index-name <published-name>
 uv run ritebook lint-skills --skills-root <path>
 ```
 

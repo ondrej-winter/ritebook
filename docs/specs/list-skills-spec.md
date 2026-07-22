@@ -104,7 +104,7 @@ When no `--index-name` is provided:
 When `--index-name <local-alias>` is provided:
 
 - Ritebook looks up the registered index by local alias.
-- If the index is unknown, Ritebook fails with a clear user-facing error.
+- If the local alias is unknown, Ritebook fails with a clear user-facing error.
 - Ritebook reads only that index's cached index file.
 - Output keeps the same tree shape as all-index output, including the `Indexes`
   root and the matching index node.
@@ -273,7 +273,7 @@ Cover:
 Cover:
 
 - `list-skills` maps arguments to `ListSkillsCommand`.
-- `list-skills --index-name <name>` maps the filter correctly.
+- `list-skills --index-name <local-alias>` maps the filter correctly.
 - `list-skills --registry-path <path>` maps the registry path correctly.
 - `list-skills --show-description` maps the description display flag correctly.
 - Non-empty output is deterministic and tree-shaped.
@@ -334,7 +334,7 @@ Cover:
   index's skills while preserving the `Indexes` root and index node.
 - `uv run ritebook list-skills --show-description` appends cached descriptions
   without changing default output.
-- Unknown index names fail with a clear user-facing error.
+- Unknown local aliases fail with a clear user-facing error.
 - Empty registries or empty cached indexes print `No skills found`.
 - Output is deterministic and grouped by local alias.
 - No Git or network operations happen during skill listing.

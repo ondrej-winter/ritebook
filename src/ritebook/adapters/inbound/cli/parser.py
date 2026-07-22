@@ -109,7 +109,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     install_skill.add_argument(
         "skill_reference",
-        help="Fully qualified skill reference as <index-name>/<skill-path>.",
+        help="Fully qualified skill reference as <local-alias>/<skill-path>.",
     )
     install_skill.add_argument(
         "--target",
@@ -154,7 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     publish_skill_change.add_argument(
         "skill_reference",
-        help="Fully qualified skill reference as <index-name>/<skill-path>.",
+        help="Fully qualified skill reference as <local-alias>/<skill-path>.",
     )
     publish_skill_change.add_argument(
         "--lockfile",

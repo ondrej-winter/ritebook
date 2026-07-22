@@ -114,7 +114,7 @@ def test_publish_index_rejects_slash_separated_index_name() -> None:
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
     )
 
-    with pytest.raises(ValueError, match="Publish index name"):
+    with pytest.raises(ValueError, match="Published index name"):
         use_case.execute(
             PublishIndexCommand(
                 index_name="ondrej-winter/ritebook-shelf",
@@ -227,7 +227,7 @@ def test_publish_index_command_rejects_empty_values() -> None:
             published_skills_root=".",
         )
 
-    with pytest.raises(ValueError, match="Publish index name"):
+    with pytest.raises(ValueError, match="Published index name"):
         PublishIndexCommand(
             index_name="Company Skills",
             skills_root="skills",

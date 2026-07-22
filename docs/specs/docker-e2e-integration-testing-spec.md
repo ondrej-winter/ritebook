@@ -52,7 +52,8 @@ The primary E2E scenario focuses on the publisher-to-consumer workflow:
 
 1. Create temporary valid skill fixtures.
 2. Run `ritebook lint-skills --skills-root <skills-root>`.
-3. Run `ritebook publish-index --skills-root <skills-root> --index-name <name>`.
+3. Run `ritebook publish-index --skills-root <skills-root> --index-name
+   <published-name>`.
 4. Initialize and commit a local Git repository containing the generated
    `ritebook-index.json`.
 5. Run `ritebook add-index --source <local-git-repo> --registry-path <path>
@@ -63,7 +64,7 @@ The primary E2E scenario focuses on the publisher-to-consumer workflow:
 7. Run `ritebook list-skills --registry-path <path> --show-description`.
 8. Modify the source skills, regenerate the publisher index, and commit the
    repository update.
-9. Run `ritebook update-index --name <name> --registry-path <path>
+9. Run `ritebook update-index --name <local-alias> --registry-path <path>
    --cache-root <path>`.
 10. Run `ritebook list-skills --registry-path <path> --show-description` again
     and verify the output reflects the newly bound commit and cached index.

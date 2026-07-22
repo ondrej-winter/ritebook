@@ -17,7 +17,7 @@ class PublishIndexCommand:
 
     def __post_init__(self) -> None:
         """Validate command shape after dataclass initialization."""
-        require_index_name(self.index_name, field_name="Publish index name")
+        require_index_name(self.index_name, field_name="Published index name")
         if not self.skills_root:
             msg = "Publish index skills root must not be empty."
             raise ValueError(msg)

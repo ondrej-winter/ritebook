@@ -56,8 +56,8 @@ uv run ritebook install-skill platform-skills/code-review --target .claude/skill
 Requirements:
 
 - The skill reference must be fully qualified as
-  `<index-alias>/<skill-path>`.
-- Index aliases must be single-segment kebab-case identifiers and must not contain
+  `<local-alias>/<skill-path>`.
+- Local aliases must be single-segment kebab-case identifiers and must not contain
   `/`, so the separator before `<skill-path>` is unambiguous.
 - The skill selector after the first slash is a safe relative POSIX path,
   such as `browser/runtime-verification`, for skills published in subfolders.
@@ -247,7 +247,8 @@ target_path = "../shared-agent-skills/security-review"
 
 Skill entry fields:
 
-- `name`: required fully qualified `<index-name>/<skill-path>` reference or, for
+- `name`: compatibility-sensitive TOML field containing a fully qualified
+  `<local-alias>/<skill-path>` reference or, for
   `install`, a folder selector that matches descendant skill paths.
 - `target`: optional target nickname from `[targets]`.
 - `target_path`: optional direct target path.
@@ -268,7 +269,7 @@ Validation rules:
   underscores, and hyphens.
 - `[[skills]]` must be an array of tables.
 - Each skill `name` must be fully qualified as
-  `<index-name>/<skill-path>`.
+  `<local-alias>/<skill-path>`.
 - Requirements-file `install` first resolves an exact skill path. When no exact
   skill exists, a selector may intentionally expand all descendants below that
   folder prefix in deterministic path order.
@@ -326,6 +327,8 @@ Lockfile requirements:
 - `schema_version` is required and must be `1` for v1.
 - `requirements_file` records the requirements file path used by `install`.
 - `skills` are sorted deterministically by `index_name`, then skill path.
+- `index_name` is a compatibility-sensitive schema-v1 field containing the local
+  alias from the qualified skill reference; it is not publisher `index.name`.
 - `target` stores the resolved target path written from the requirements file.
 - `target_ref` is present only when the requirement used a `[targets]` nickname.
 - `source_revision` is required and records the full commit object ID bound during
@@ -391,6 +394,8 @@ Requirements:
 - The default path is `~/.config/ritebook/installations.json`.
 - Tests and automation can override the path with an explicit CLI option or
   injected setting.
+- `index_name` is a compatibility-sensitive schema-v1 field containing the local
+  alias from the qualified skill reference; it is not publisher `index.name`.
 - Entries are sorted deterministically by `target`.
 - Entries require the verified full `source_revision` and `index_digest` used for
   installation.
@@ -485,14 +490,14 @@ Requirements:
 Initial commands:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-path> --target <path> [--force]
+uv run ritebook install-skill <local-alias>/<skill-path> --target <path> [--force]
 uv run ritebook install [--file ritebook.toml] [--force]
 ```
 
 Potential test/automation path overrides:
 
 ```bash
-uv run ritebook install-skill <index-name>/<skill-path> \
+uv run ritebook install-skill <local-alias>/<skill-path> \
   --target <path> \
   --registry-path <path-to-indexes.json> \
   --installation-registry-path <path-to-installations.json>
@@ -514,7 +519,7 @@ Error output should be clear and user-facing, for example:
 
 ```text
 ritebook: error: target .claude/skills/code-review already exists; use --force to replace it
-ritebook: error: unknown index: platform-skills
+ritebook: error: unknown local alias: platform-skills
 ritebook: error: unknown skill platform-skills/code-review
 ritebook: error: target nickname claude is not defined in ritebook.toml
 ritebook: error: skill entries must define exactly one of target or target_path
@@ -606,7 +611,7 @@ Cover:
   for nested skills.
 - Expands requirements-file folder selectors without using skill-name fallback.
 - Rejects bare or malformed skill references.
-- Rejects unknown indexes.
+- Rejects unknown local aliases.
 - Rejects unknown skills.
 - Refuses existing targets without `force`.
 - Allows replacement with `force`.
@@ -724,10 +729,10 @@ uv build
 
 Always:
 
-- Support direct `install-skill <index>/<skill-path> --target <path>`.
+- Support direct `install-skill <local-alias>/<skill-path> --target <path>`.
 - Support `install` from `ritebook.toml`.
 - Support TOML `[targets]` nicknames for requirements-file installs only.
-- Require fully qualified `<index-name>/<skill-path>` skill references.
+- Require fully qualified `<local-alias>/<skill-path>` skill references.
 - Resolve direct installs only by exact relative skill path.
 - Preserve requirements-file folder-prefix expansion without name-only fallback.
 - Resolve install sources from locally registered and cached indexes.
@@ -771,7 +776,7 @@ Never:
 
 ## Success criteria
 
-- `uv run ritebook install-skill <index>/<skill-path> --target <path>`
+- `uv run ritebook install-skill <local-alias>/<skill-path> --target <path>`
   installs the selected skill directory into the explicit target path.
 - `install-skill` refuses existing targets unless `--force` is provided.
 - Direct `install-skill` writes deterministic user installation state under
@@ -784,7 +789,7 @@ Never:
 - Installation fails before trusting metadata or copying when the bound source
   state is unavailable, the cached index does not match its digest, or the root
   index at the bound commit does not match that same digest.
-- Unknown indexes, unknown skills, malformed TOML, undefined target nicknames,
+- Unknown local aliases, unknown skills, malformed TOML, undefined target nicknames,
   duplicate requirements, and duplicate targets fail with clear user-facing
   errors.
 - Application, adapter, and CLI unit tests cover the behavior.

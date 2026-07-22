@@ -104,7 +104,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 - [x] Task 16: Resolve the `ty` versus `mypy` policy conflict
 - [x] Task 17: Add lifecycle metadata to every specification
-- [ ] Task 18: Standardize published-name and local-alias terminology
+- [x] Task 18: Standardize published-name and local-alias terminology
 - [ ] Task 19: Align Docker E2E isolation claims and behavior
 
 ### Phase 5: Final synchronization
@@ -978,18 +978,18 @@ field names unless a versioned migration is approved.
 
 **Acceptance criteria:**
 
-- [ ] `published_name` always means publisher-owned index metadata.
-- [ ] `local_alias` always means the consumer-owned lookup namespace used in skill
+- [x] `published_name` always means publisher-owned index metadata.
+- [x] `local_alias` always means the consumer-owned lookup namespace used in skill
   references.
-- [ ] Any retained `name` or `index_name` field documents its exact semantic role
+- [x] Any retained `name` or `index_name` field documents its exact semantic role
   and migration constraints.
 
 **Verification:**
 
-- [ ] Search specs, README, CLI help, DTOs, and errors for ambiguous index-name
+- [x] Search specs, README, CLI help, DTOs, and errors for ambiguous index-name
   references and classify every remaining use.
-- [ ] Run CLI and DTO tests if user-facing terms change.
-- [ ] Confirm examples use the same vocabulary across registry, listing,
+- [x] Run CLI and DTO tests if user-facing terms change.
+- [x] Confirm examples use the same vocabulary across registry, listing,
   installation, lockfile, and contribution workflows.
 
 **Dependencies:** Tasks 1, 4, and 17.
@@ -1004,7 +1004,17 @@ field names unless a versioned migration is approved.
 **Estimated scope:** Medium; split documentation terminology from versioned API
 renaming if public fields must change.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. `docs/specs/README.md` now defines the
+publisher-owned published name, consumer-owned local alias, and
+`<local-alias>/<skill-path>` reference contract. README, all affected specs, CLI
+help, DTO validation labels, and user-facing errors use that vocabulary while
+retaining schema-v1 `name`/`index_name` fields and public CLI flags with explicit
+compatibility and migration notes. Focused CLI/DTO/application suites passed (149
+tests, followed by 101 tests after the final terminology pass); Ruff formatting
+and linting, `uv run ty check src/ritebook`, 540 non-E2E tests, `uv build`, and
+`git diff --check` passed. Docker E2E image construction was attempted but could
+not run because the local Docker daemon was unavailable; Task 19 remains the
+owner of the Docker isolation contract.
 
 ## Task 19: Align Docker E2E Isolation Claims and Behavior
 
@@ -1050,7 +1060,7 @@ controlled HOME, and explicit network/permission expectations.
 
 - [x] One type checker is consistently required by rules, tooling, docs, and CI.
 - [x] Every spec has current lifecycle metadata and valid cross-links.
-- [ ] Shared index terminology is unambiguous.
+- [x] Shared index terminology is unambiguous.
 - [ ] Docker E2E claims match observable runtime behavior.
 
 ---
@@ -1120,7 +1130,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 12. Post-copy generated-state failure semantics | Required | 14 | Closed |
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Closed |
 | 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Closed |
-| 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Open |
+| 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Closed |
 | 16. Docker “clean-room” claim exceeds enforcement | Cross-cutting | 19 | Open |
 | Final cross-spec and implementation consistency | Verification | 20 | Open |
 

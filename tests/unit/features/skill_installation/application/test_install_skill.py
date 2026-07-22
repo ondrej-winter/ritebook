@@ -48,7 +48,7 @@ def test_skill_reference_parses_nested_skill_paths() -> None:
 
 
 def test_skill_reference_rejects_invalid_index_names() -> None:
-    with pytest.raises(ValueError, match="Index name"):
+    with pytest.raises(ValueError, match="Local alias"):
         SkillReference.parse("InvalidIndex/code-review")
 
 
@@ -270,7 +270,10 @@ def test_install_skill_fails_for_unknown_index_before_copy() -> None:
         clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
     )
 
-    with pytest.raises(UnknownInstallIndexError, match="unknown index: missing-index"):
+    with pytest.raises(
+        UnknownInstallIndexError,
+        match="unknown local alias: missing-index",
+    ):
         use_case.execute(
             InstallSkillCommand(
                 skill_reference="missing-index/code-review",

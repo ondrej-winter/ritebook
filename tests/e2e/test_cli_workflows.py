@@ -35,11 +35,13 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     lint_result.assert_success()
     assert lint_result.stdout == "Validated 2 skill(s)\n"
 
+    published_skills_root = published_repo.path / "skills"
+    _copy_skill_directories_to_repository(skills_root, published_skills_root)
     publish_result = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            str(published_skills_root),
             "--index-name",
             index_name,
         ],
@@ -50,6 +52,9 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         "Published skill index with 2 skill(s) to ritebook-index.json\n"
     )
     assert (published_repo.path / "ritebook-index.json").is_file()
+    assert _read_json(published_repo.path / "ritebook-index.json")["skills_root"] == (
+        "skills"
+    )
     published_repo.commit_all("Publish initial skill index")
 
     add_result = run_cli(
@@ -78,11 +83,12 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     )
 
     write_valid_skill("gamma", "Helps with gamma workflows.")
+    _copy_skill_directories_to_repository(skills_root, published_skills_root)
     republish_result = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            str(published_skills_root),
             "--index-name",
             index_name,
         ],
@@ -210,18 +216,19 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     )
 
     write_valid_skill("query-helper", "Helps query data.")
+    data_skills_root = data_repo.path / "skills"
+    _copy_skill_directories_to_repository(skills_root, data_skills_root)
     publish_data = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            str(data_skills_root),
             "--index-name",
             "data-skills",
         ],
         cwd=data_repo.path,
     )
     publish_data.assert_success()
-    _copy_skill_directories_to_repository(skills_root, data_repo.path)
     data_repo.commit_all("Publish data index")
 
     replace_result = run_cli(
@@ -242,18 +249,18 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     assert replace_result.stdout == "Added index platform-skills with 2 skill(s)\n"
 
     write_valid_skill("chart-builder", "Helps build charts.")
+    _copy_skill_directories_to_repository(skills_root, data_skills_root)
     republish_data = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            str(data_skills_root),
             "--index-name",
             "data-skills",
         ],
         cwd=data_repo.path,
     )
     republish_data.assert_success()
-    _copy_skill_directories_to_repository(skills_root, data_repo.path)
     data_repo.commit_all("Refresh data index")
 
     update_all = run_cli(
@@ -355,9 +362,10 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
             "source": str(published_repo.path),
             "source_type": "local_git_repo",
             "source_revision": _git_head(published_repo.path),
+            "index_digest": installation_registry["installations"][0]["index_digest"],
             "index_schema_version": 1,
-            "skill_path": "code-review",
-            "skill_file": "code-review/SKILL.md",
+            "skill_path": "skills/code-review",
+            "skill_file": "skills/code-review/SKILL.md",
             "installed_at": installation_registry["installations"][0]["installed_at"],
         },
     ]
@@ -418,10 +426,10 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
         "company-skills/skills/code-review"
     )
     assert installation_registry["installations"][0]["skill_path"] == (
-        "skills/code-review"
+        "skills/skills/code-review"
     )
     assert installation_registry["installations"][0]["skill_file"] == (
-        "skills/code-review/SKILL.md"
+        "skills/skills/code-review/SKILL.md"
     )
 
 
@@ -600,9 +608,10 @@ target_path = ".agents/skills/tdd"
         "target": ".claude/skills/code-review",
         "source": str(published_repo.path),
         "source_type": "local_git_repo",
+        "index_digest": lockfile_data["skills"][0]["index_digest"],
         "index_schema_version": 1,
-        "skill_path": "code-review",
-        "skill_file": "code-review/SKILL.md",
+        "skill_path": "skills/code-review",
+        "skill_file": "skills/code-review/SKILL.md",
         "locked_at": lockfile_data["skills"][0]["locked_at"],
         "target_ref": "claude",
         "source_revision": _git_head(published_repo.path),
@@ -737,18 +746,19 @@ def _publish_and_register_index(
     cache_root: Path,
     alias: str | None = None,
 ) -> None:
+    published_skills_root = published_repo.path / "skills"
+    _copy_skill_directories_to_repository(skills_root, published_skills_root)
     publish_result = run_cli(
         [
             "publish-index",
             "--skills-root",
-            str(skills_root),
+            str(published_skills_root),
             "--index-name",
             index_name,
         ],
         cwd=published_repo.path,
     )
     publish_result.assert_success()
-    _copy_skill_directories_to_repository(skills_root, published_repo.path)
     published_repo.commit_all("Publish skill index")
 
     add_arguments = [

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import StringIO
+from pathlib import Path
 from typing import TextIO
 
 from ritebook.adapters.inbound.cli import run as run_cli
@@ -572,7 +573,11 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
 
     assert exit_code == 0
     assert publisher.commands == [
-        PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=str(Path.cwd() / "skills"),
+            published_skills_root="skills",
+        ),
     ]
     assert stdout.getvalue() == (
         "Published skill index with 3 skill(s) to ritebook-index.json\n"
@@ -593,8 +598,67 @@ def test_publish_index_uses_canonical_output_path() -> None:
 
     assert exit_code == 0
     assert publisher.commands == [
-        PublishIndexCommand(index_name="company-skills", skills_root="."),
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=str(Path.cwd()),
+            published_skills_root=".",
+        ),
     ]
+
+
+def test_publish_index_normalizes_absolute_nested_root() -> None:
+    publisher = FakePublisher()
+    skills_root = Path.cwd() / "nested" / "skills"
+
+    exit_code = run(
+        [
+            "publish-index",
+            "--skills-root",
+            str(skills_root),
+            "--index-name",
+            "company-skills",
+        ],
+        linter=FakeLinter(),
+        publisher=publisher,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert publisher.commands == [
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=str(skills_root),
+            published_skills_root="nested/skills",
+        ),
+    ]
+
+
+def test_publish_index_rejects_skills_root_outside_output_directory(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    stderr = StringIO()
+
+    exit_code = run(
+        [
+            "publish-index",
+            "--skills-root",
+            str(tmp_path),
+            "--index-name",
+            "company-skills",
+        ],
+        linter=FakeLinter(),
+        publisher=publisher,
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert publisher.commands == []
+    assert stderr.getvalue() == (
+        "ritebook: error: Skills root must be inside the index output directory.\n"
+    )
 
 
 def test_publish_index_rejects_output_argument_with_argparse_error() -> None:

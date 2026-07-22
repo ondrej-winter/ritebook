@@ -87,16 +87,20 @@ index file.
 uv run ritebook publish-index --skills-root <path> --index-name <name>
 ```
 
-The `--skills-root` option is required so the command only scans the intended
-skills directory. The `--index-name` option is required and must be a stable
-single-segment kebab-case identifier such as `company-skills`; slashes are not
-allowed because skill references use `<index-name>/<skill-path>`. The
-index name is written to the generated index metadata as the default consumer
-registry name.
+Run `publish-index` from the repository directory that will contain the generated
+index. Ritebook always writes `ritebook-index.json` in that current directory.
+The required `--skills-root` may be relative or absolute, but it must resolve to
+that directory or one of its descendants. Ritebook serializes it as a portable
+repository-relative `skills_root`; equivalent relative and absolute inputs
+produce the same index paths. The `--index-name` option is required and must be a
+stable single-segment kebab-case identifier such as `company-skills`; slashes are
+not allowed because skill references use `<index-name>/<skill-path>`. The index
+name is written to the generated index metadata as the default consumer registry
+name.
 The `publish-index` command reuses the same validation flow as `lint-skills` and
 refuses to write or overwrite `ritebook-index.json` when any discovered skill is
-invalid. When validation succeeds, Ritebook writes the canonical index file
-`ritebook-index.json` in the current working directory.
+invalid. When validation succeeds, the success message reports the canonical
+output path `ritebook-index.json` relative to the invocation directory.
 
 Review the generated `ritebook-index.json` before committing it with the related
 skill changes.

@@ -85,11 +85,15 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root="/repo/skills",
+            published_skills_root="skills",
+        ),
     )
 
-    assert precheck.checked_roots == ["skills"]
-    assert discovery.discovered_roots == ["skills"]
+    assert precheck.checked_roots == ["/repo/skills"]
+    assert discovery.discovered_roots == ["/repo/skills"]
     assert writer.output_paths == ["ritebook-index.json"]
     assert result.discovered_skill_count == DISCOVERED_SKILL_COUNT
     assert result.output_path == "ritebook-index.json"
@@ -115,6 +119,7 @@ def test_publish_index_rejects_slash_separated_index_name() -> None:
             PublishIndexCommand(
                 index_name="ondrej-winter/ritebook-shelf",
                 skills_root="skills",
+                published_skills_root="skills",
             ),
         )
 
@@ -132,14 +137,18 @@ def test_publish_index_writes_empty_catalog() -> None:
     )
 
     result = use_case.execute(
-        PublishIndexCommand(index_name="company-skills", skills_root="."),
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root="/repo",
+            published_skills_root=".",
+        ),
     )
 
     assert result.discovered_skill_count == 0
     assert writer.written_catalogs[0].skills == ()
 
 
-def test_publish_index_stores_absolute_skills_root_as_portable_catalog_root(
+def test_publish_index_stores_explicit_portable_catalog_root_for_absolute_scan_root(
     tmp_path: Path,
 ) -> None:
     absolute_skills_root = str(tmp_path / "skills")
@@ -155,10 +164,11 @@ def test_publish_index_stores_absolute_skills_root_as_portable_catalog_root(
         PublishIndexCommand(
             index_name="company-skills",
             skills_root=absolute_skills_root,
+            published_skills_root="skills",
         ),
     )
 
-    assert writer.written_catalogs[0].skills_root == "."
+    assert writer.written_catalogs[0].skills_root == "skills"
 
 
 def test_publish_index_normalizes_generated_at_to_utc() -> None:
@@ -173,7 +183,11 @@ def test_publish_index_normalizes_generated_at_to_utc() -> None:
     )
 
     use_case.execute(
-        PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root="skills",
+            published_skills_root="skills",
+        ),
     )
 
     assert writer.written_catalogs[0].generated_at == datetime(
@@ -197,16 +211,35 @@ def test_publish_index_rejects_naive_clock_values() -> None:
 
     with pytest.raises(ValueError, match="timezone-aware"):
         use_case.execute(
-            PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+            PublishIndexCommand(
+                index_name="company-skills",
+                skills_root="skills",
+                published_skills_root="skills",
+            ),
         )
 
 
 def test_publish_index_command_rejects_empty_values() -> None:
     with pytest.raises(ValueError, match="skills root"):
-        PublishIndexCommand(index_name="company-skills", skills_root="")
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root="",
+            published_skills_root=".",
+        )
 
     with pytest.raises(ValueError, match="Publish index name"):
-        PublishIndexCommand(index_name="Company Skills", skills_root="skills")
+        PublishIndexCommand(
+            index_name="Company Skills",
+            skills_root="skills",
+            published_skills_root="skills",
+        )
+
+    with pytest.raises(ValueError, match="Published skills root"):
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root="skills",
+            published_skills_root="",
+        )
 
 
 def test_publish_index_refuses_to_write_when_validation_fails() -> None:
@@ -245,7 +278,11 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
 
     with pytest.raises(PublishIndexValidationError) as err:
         use_case.execute(
-            PublishIndexCommand(index_name="company-skills", skills_root="skills"),
+            PublishIndexCommand(
+                index_name="company-skills",
+                skills_root="skills",
+                published_skills_root="skills",
+            ),
         )
 
     assert [issue.format() for issue in err.value.issues] == [

@@ -87,7 +87,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 - [x] Task 5: Reject installation source-target overlap
 - [x] Task 6: Make contribution index regeneration symlink-safe
-- [ ] Task 7: Correct publisher output-root and `skills_root` semantics
+- [x] Task 7: Correct publisher output-root and `skills_root` semantics
 - [ ] Task 8: Make publisher index replacement atomic and symlink-safe
 - [ ] Task 9: Make forced installation replacement recoverable
 - [ ] Task 10: Canonicalize and deconflict requirements-install targets
@@ -422,19 +422,19 @@ index is written at that same root by contract.
 
 **Acceptance criteria:**
 
-- [ ] Relative and absolute inputs that select the same directory produce the same
+- [x] Relative and absolute inputs that select the same directory produce the same
   portable index paths.
-- [ ] Every generated `skills[].path` resolves from the serialized `skills_root`
+- [x] Every generated `skills[].path` resolves from the serialized `skills_root`
   relative to the repository containing `ritebook-index.json`.
-- [ ] CLI help, success output, README, and publisher spec clearly state where the
+- [x] CLI help, success output, README, and publisher spec clearly state where the
   index is written.
 
 **Verification:**
 
-- [ ] Add test matrices for repository root, nested skills root, relative input,
+- [x] Add test matrices for repository root, nested skills root, relative input,
   absolute input, and invocation from another directory.
-- [ ] Run publisher application, adapter, and CLI tests.
-- [ ] Generate an index in a temporary repository and install one indexed skill
+- [x] Run publisher application, adapter, and CLI tests.
+- [x] Generate an index in a temporary repository and install one indexed skill
   through the consumer workflow.
 
 **Dependencies:** Task 1 if the output-root decision affects provenance identity.
@@ -449,7 +449,15 @@ index is written at that same root by contract.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. CLI publishing now treats the invocation
+directory as the repository and output root, canonicalizes relative and absolute
+skills-root inputs to one resolved scan path plus a portable repository-relative
+`skills_root`, and rejects roots outside the output repository before publisher
+execution. Contribution regeneration supplies the same explicit pair for its
+isolated checkout. Focused publisher, CLI, and contribution tests passed with 56
+tests. The full non-E2E suite passed with 465 tests and 15 deselected, the full
+E2E suite passed with 15 tests, the package build succeeded, and Ruff and `ty`
+checks passed.
 
 ## Task 8: Make Publisher Index Replacement Atomic and Symlink-Safe
 
@@ -1002,7 +1010,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 1. Cached index is not bound to installed source content | Critical | 1–4 | Closed |
 | 2. Installation source-target overlap | Critical | 5 | Closed |
 | 3. Contribution index symlink escape | Critical | 6 | Closed |
-| 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Open |
+| 4. Publisher output-root/`skills_root` mismatch | Required | 7 | Closed |
 | 5. Publisher write is non-atomic and symlink-following | Required | 8 | Open |
 | 6. Registry/cache two-artifact inconsistency | Required | 11 | Open |
 | 7. Git source credential exposure | Required | 12 | Open |

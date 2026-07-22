@@ -30,8 +30,9 @@ skills repository.
 
 ### Publisher workflow
 
-1. A maintainer runs a Ritebook publisher command or application use case with an
-   explicit skills root path.
+1. A maintainer runs a Ritebook publisher command from the repository root that
+   will contain `ritebook-index.json`, with an explicit skills root path at or
+   below that root.
 2. Ritebook recursively scans the skills root for directories containing a file
    named `SKILL.md`.
 3. Ritebook builds a deterministic catalog of discovered skills.
@@ -74,8 +75,9 @@ Requirements:
 - Discovery must be recursive under the explicit skills root.
 - Discovered skills are publishable only when their `SKILL.md` files satisfy the
   required skill-header validation contract.
-- The generated index should use paths relative to the skills root so the index
-  stays portable within the repository.
+- The generated index uses skill-entry paths relative to the skills root and a
+  `skills_root` relative to the repository root containing the index, so all
+  serialized paths stay portable within the repository.
 - Output ordering must be deterministic, sorted by relative skill path or another
   documented stable key.
 - Hidden directories under the skills root are skipped by default in the MVP.
@@ -186,8 +188,10 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `index.name`: required stable kebab-case publisher index name.
 - `generated_at`: timezone-aware UTC timestamp in ISO 8601 format. The timestamp
   source should be injectable or controllable in tests.
-- `skills_root`: stable representation of the scanned root. Relative inputs are
-  serialized as supplied; absolute inputs are serialized as `.`.
+- `skills_root`: normalized POSIX path from the repository root containing
+  `ritebook-index.json` to the scanned root. The value is `.` when both roots are
+  the same. Relative and absolute inputs resolving to the same directory produce
+  the same value. A scanned root outside the repository root is rejected.
 - `skills`: array of discovered skill entries sorted deterministically.
 - `skills[].name`: skill metadata derived from the skill directory name.
 - `skills[].path`: relative path from the skills root to the skill directory.
@@ -209,10 +213,15 @@ uv run ritebook lint-skills --skills-root <path>
 Requirements:
 
 - Require an explicit `--skills-root`.
+- Treat the invocation working directory as the repository and output root.
+- Require `--skills-root` to resolve to that root or one of its descendants.
+- Normalize relative and absolute `--skills-root` inputs to the same portable
+  repository-relative `skills_root` value.
 - Require an explicit stable kebab-case `--index-name` for `publish-index`.
 - Support one skills root per command invocation; multiple roots are out of scope
   for the MVP.
-- Always write the canonical `ritebook-index.json`; no output argument is needed.
+- Always write the canonical `ritebook-index.json` in the invocation working
+  directory; no output argument is needed.
 - Overwrite an existing generated index only when the command is explicitly run;
   no background or implicit updates.
 - `publish-index` must reuse the skill-header validation flow as a hard

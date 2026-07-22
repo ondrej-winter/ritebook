@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, TextIO
 
 from ritebook.features.publisher.application.dtos import (
@@ -24,11 +25,8 @@ def run_publish_index(
     stderr: TextIO,
 ) -> int:
     """Run the publish-index command against the injected application port."""
-    command = PublishIndexCommand(
-        index_name=args.index_name,
-        skills_root=args.skills_root,
-    )
     try:
+        command = _publish_command(args)
         result = publisher.execute(command)
     except PublishIndexValidationError as err:
         for issue in err.issues:
@@ -44,3 +42,18 @@ def run_publish_index(
         file=stdout,
     )
     return 0
+
+
+def _publish_command(args: argparse.Namespace) -> PublishIndexCommand:
+    output_root = Path.cwd().resolve()
+    skills_root = Path(args.skills_root).resolve()
+    try:
+        published_root = skills_root.relative_to(output_root)
+    except ValueError as err:
+        msg = "Skills root must be inside the index output directory."
+        raise ValueError(msg) from err
+    return PublishIndexCommand(
+        index_name=args.index_name,
+        skills_root=str(skills_root),
+        published_skills_root=published_root.as_posix(),
+    )

@@ -54,7 +54,8 @@ def test_index_regeneration_adapter_preserves_published_skills_root(
     assert publisher.commands == [
         PublishIndexCommand(
             index_name="platform-skills",
-            skills_root="skills",
+            skills_root=str(checkout / "skills"),
+            published_skills_root="skills",
         ),
     ]
     assert publisher.working_directories == [checkout]

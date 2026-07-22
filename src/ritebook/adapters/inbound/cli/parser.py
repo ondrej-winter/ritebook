@@ -37,7 +37,10 @@ def build_parser() -> argparse.ArgumentParser:
     publish_index.add_argument(
         "--skills-root",
         required=True,
-        help="Explicit root directory to scan for SKILL.md files.",
+        help=(
+            "Root directory to scan for SKILL.md files; must be inside the current "
+            "directory where ritebook-index.json is written."
+        ),
     )
     publish_index.add_argument(
         "--index-name",

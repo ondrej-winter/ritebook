@@ -47,7 +47,8 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
         skills_root = _published_skills_root(checkout_path, entry.skill_path)
         command = PublishIndexCommand(
             index_name=entry.index_name,
-            skills_root=skills_root,
+            skills_root=str(checkout_path / skills_root),
+            published_skills_root=skills_root,
         )
         try:
             with _working_directory(checkout_path):

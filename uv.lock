@@ -574,7 +574,7 @@ wheels = [
 
 [[package]]
 name = "ritebook"
-version = "0.1.38"
+version = "0.1.39"
 source = { editable = "." }
 dependencies = [
     { name = "pyyaml" },

@@ -572,11 +572,13 @@ tests/unit/features/index_registry/
 When changing this workflow, use focused tests first, then the full quality gate:
 
 ```bash
-uv run ruff format .
+uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest
+uv run pytest -m "not e2e"
 uv build
+docker build -f Dockerfile.e2e -t ritebook-e2e .
+docker run --rm --network none ritebook-e2e
 ```
 
 ## Boundaries
@@ -637,8 +639,9 @@ Never:
 - Duplicate local aliases are refused unless explicitly replaced.
 - Relevant unit tests cover application behavior, JSON validation, registry/cache
   persistence, Git source handling, and CLI argument mapping.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
-  `uv run pytest`, and `uv build` pass before handoff.
+- `uv run ruff format --check .`, `uv run ruff check .`,
+  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
+  network-disabled Docker E2E gate pass before handoff.
 
 ## Out of scope for the registry slice
 

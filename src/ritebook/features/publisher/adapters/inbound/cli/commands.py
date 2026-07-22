@@ -34,7 +34,8 @@ def run_publish_index(
             print(escape_terminal_control_characters(issue.format()), file=stderr)
         return 1
     except (PublisherError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        detail = escape_terminal_control_characters(str(err))
+        print(f"ritebook: error: {detail}", file=stderr)
         return 1
 
     print(

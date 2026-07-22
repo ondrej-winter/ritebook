@@ -287,11 +287,13 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 When changing this workflow, use focused checks first, then the full local
 quality gate before handoff.
 
-- Format: `uv run ruff format .`
+- Format check: `uv run ruff format --check .`
 - Lint: `uv run ruff check .`
 - Type check: `uv run ty check src/ritebook`
-- Test: `uv run pytest`
+- Non-E2E tests: `uv run pytest -m "not e2e"`
 - Build: `uv build`
+- Docker E2E: `docker build -f Dockerfile.e2e -t ritebook-e2e .` then
+  `docker run --rm --network none ritebook-e2e`
 
 Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
 `uv.lock`.
@@ -367,5 +369,6 @@ network access.
   direction.
 - Relevant unit tests cover discovery, index generation, JSON output, and CLI
   argument mapping.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`, and
-  `uv run pytest` pass before handoff.
+- `uv run ruff format --check .`, `uv run ruff check .`,
+  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
+  network-disabled Docker E2E gate pass before handoff.

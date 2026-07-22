@@ -11,6 +11,7 @@ from ritebook.features.skill_installation.application.dtos import (
 from ritebook.features.skill_installation.application.errors import (
     SkillInstallationError,
 )
+from ritebook.shared_kernel import escape_terminal_control_characters
 
 if TYPE_CHECKING:
     import argparse
@@ -39,7 +40,7 @@ def run_install_skill(
     try:
         result = install_skill.execute(command)
     except (SkillInstallationError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     print(f"Installed {result.requirement} to {result.target}", file=stdout)
     return 0
@@ -62,10 +63,15 @@ def run_install(
     try:
         result = install_from_requirements.execute(command)
     except (SkillInstallationError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     print(
         f"Installed {result.installed_count} skill(s) from {result.requirements_file}",
         file=stdout,
     )
     return 0
+
+
+def _error_message(err: Exception) -> str:
+    detail = escape_terminal_control_characters(str(err))
+    return f"ritebook: error: {detail}"

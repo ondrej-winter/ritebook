@@ -101,10 +101,10 @@ uv run pytest tests/e2e
 Existing project validation remains:
 
 ```bash
-uv run ruff format .
+uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest
+uv run pytest -m "not e2e"
 uv build
 ```
 

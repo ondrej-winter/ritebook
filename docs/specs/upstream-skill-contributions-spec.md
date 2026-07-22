@@ -404,11 +404,13 @@ When changing this workflow, use focused tests first, then the full quality gate
 uv run pytest tests/unit/features/skill_contribution/application
 uv run pytest tests/unit/features/skill_contribution/adapters/outbound
 uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py
-uv run ruff format .
+uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest
+uv run pytest -m "not e2e"
 uv build
+docker build -f Dockerfile.e2e -t ritebook-e2e .
+docker run --rm --network none ritebook-e2e
 ```
 
 ## Boundaries
@@ -470,8 +472,9 @@ Never:
 - The command prints branch, commit, checkout, and next-step instructions for the
   developer.
 - Application, adapter, and CLI unit tests cover the behavior.
-- `uv run ruff format .`, `uv run ruff check .`, `uv run ty check src/ritebook`,
-  `uv run pytest`, and `uv build` pass before implementation handoff.
+- `uv run ruff format --check .`, `uv run ruff check .`,
+  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
+  network-disabled Docker E2E gate pass before implementation handoff.
 
 ## Out of scope
 

@@ -47,7 +47,7 @@ def run_add_index(
     try:
         result = add_index.execute(command)
     except (IndexRegistryError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     print(f"Added index {result.name} with {result.skill_count} skill(s)", file=stdout)
     return 0
@@ -70,7 +70,7 @@ def run_update_index(
     try:
         result = update_index.execute(command)
     except (IndexRegistryError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     if result.name is not None:
         print(
@@ -107,7 +107,7 @@ def run_list_indexes(
     try:
         result = list_indexes.execute(command)
     except (IndexRegistryError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     if not result.indexes:
         print("No indexes registered", file=stdout)
@@ -140,7 +140,7 @@ def run_list_skills(
     try:
         result = list_skills.execute(command)
     except (IndexRegistryError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        print(_error_message(err), file=stderr)
         return 1
     if _total_skill_count(result) == 0:
         print("No skills found", file=stdout)
@@ -154,6 +154,11 @@ def run_list_skills(
 
 def _total_skill_count(result: ListSkillsResult) -> int:
     return sum(len(index.skills) for index in result.indexes)
+
+
+def _error_message(err: Exception) -> str:
+    detail = escape_terminal_control_characters(str(err))
+    return f"ritebook: error: {detail}"
 
 
 def _render_skill_tree(result: ListSkillsResult, *, show_description: bool) -> str:

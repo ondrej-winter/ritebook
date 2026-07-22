@@ -535,6 +535,52 @@ def test_publish_skill_change_translates_application_errors() -> None:
     )
 
 
+def test_cli_error_boundaries_escape_controls_without_forging_lines() -> None:
+    unsafe_error = ValueError("unsafe\n\x1b[31mforged")
+    scenarios = (
+        (
+            ["add-index", "--source", "git@example.com:company/skills.git"],
+            {"add_index": FailingAddIndex(unsafe_error)},
+        ),
+        (
+            ["install-skill", "platform-skills/code-review", "--target", "target"],
+            {"install_skill": FailingInstallSkill(unsafe_error)},
+        ),
+        (
+            ["publish-skill-change", "platform-skills/code-review"],
+            {"publish_skill_change": FailingPublishSkillChange(unsafe_error)},
+        ),
+        (
+            ["publish-index", "--skills-root", ".", "--index-name", "skills"],
+            {"publisher": FailingPublisher(unsafe_error)},
+        ),
+        (
+            ["lint-skills", "--skills-root", "."],
+            {"linter": FailingLinter(unsafe_error)},
+        ),
+    )
+
+    for argv, overrides in scenarios:
+        stderr = StringIO()
+        dependencies = {
+            "linter": FakeLinter(),
+            "publisher": FakePublisher(),
+            **overrides,
+        }
+
+        exit_code = run(
+            argv,
+            stdout=StringIO(),
+            stderr=stderr,
+            **dependencies,
+        )
+
+        assert exit_code == 1
+        assert stderr.getvalue() == r"ritebook: error: unsafe\n\x1b[31mforged" + "\n"
+        assert stderr.getvalue().count("\n") == 1
+        assert "\x1b" not in stderr.getvalue()
+
+
 def test_publish_skill_change_requires_skill_reference_with_argparse_error() -> None:
     stderr = StringIO()
 

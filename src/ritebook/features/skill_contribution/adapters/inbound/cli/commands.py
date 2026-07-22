@@ -12,6 +12,7 @@ from ritebook.features.skill_contribution.application.dtos import (
 from ritebook.features.skill_contribution.application.errors import (
     SkillContributionError,
 )
+from ritebook.shared_kernel import escape_terminal_control_characters
 
 if TYPE_CHECKING:
     import argparse
@@ -40,7 +41,8 @@ def run_publish_skill_change(
         )
         result = publish_skill_change.execute(command)
     except (SkillContributionError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        detail = escape_terminal_control_characters(str(err))
+        print(f"ritebook: error: {detail}", file=stderr)
         return 1
 
     if result.status is SkillChangeStatus.NO_CHANGES:

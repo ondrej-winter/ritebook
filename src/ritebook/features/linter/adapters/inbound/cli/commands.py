@@ -28,7 +28,8 @@ def run_lint_skills(
     try:
         result = linter.execute(command)
     except (LinterError, ValueError) as err:
-        print(f"ritebook: error: {err}", file=stderr)
+        detail = escape_terminal_control_characters(str(err))
+        print(f"ritebook: error: {detail}", file=stderr)
         return 1
 
     if not result.succeeded:

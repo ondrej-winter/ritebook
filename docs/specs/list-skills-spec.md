@@ -4,7 +4,7 @@
 > **Owner:** Ritebook maintainers
 > **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Partially implemented
+> **Implementation state:** Implemented
 > **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -40,8 +40,8 @@ names across indexes and at distinct paths within one index remain valid.
 - `consumer-git-index-registry-spec.md` defines the registry foundation consumed
   by this browsing workflow.
 - `list-skills` is implemented in the existing `index_registry` feature slice.
-- Cached-index depth and mixed-node validation described by this revision remain
-  to be implemented.
+- Cached indexes are validated for schema-v1 depth, canonical segments,
+  duplicate paths, and mixed nodes before any skill metadata is displayed.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 

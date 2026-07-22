@@ -4,7 +4,7 @@
 > **Owner:** Ritebook maintainers
 > **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Partially implemented
+> **Implementation state:** Implemented
 > **Dependencies:** [Consumer Git Index Registry](consumer-git-index-registry-spec.md) and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -40,9 +40,9 @@ for reviewable repo-local install state.
   index, as required by
   [ADR 0001](../adr/0001-source-provenance-and-trust.md), rather than from the
   source repository's mutable `HEAD` or working tree.
-- Direct exact-skill installation exists. Requirements installation currently
-  expands arbitrary path prefixes; limiting expansion to immediate children of a
-  first-level collection remains to be implemented.
+- Direct installation resolves exact schema-v1 paths only. Requirements
+  installation resolves exact paths first and expands only immediate children of
+  a first-level collection after validating the complete mutation plan.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 

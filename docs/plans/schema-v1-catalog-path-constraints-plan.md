@@ -624,7 +624,7 @@ contribution unit suite passes with 120 tests, and the full gate passes with Ruf
 
 ### Phase 5: Integrate, Document, and Validate
 
-- [ ] Task 9: Add cross-workflow CLI/E2E coverage and update documentation
+- [x] Task 9: Add cross-workflow CLI/E2E coverage and update documentation
 
 ### Task 9: Add Cross-workflow CLI/E2E Coverage and Update Documentation
 
@@ -638,35 +638,48 @@ subset, has implementation evidence.
 
 **Acceptance criteria:**
 
-- [ ] CLI/integration/E2E coverage includes publishing and listing root and
+- [x] CLI/integration/E2E coverage includes publishing and listing root and
   collection-child skills.
-- [ ] Requirements installation expands a collection through the real CLI.
-- [ ] Direct installation and contribution reject collection-only selectors.
-- [ ] Over-deep and mixed-node catalogs fail with clear user-facing errors.
-- [ ] State preservation is covered at the highest practical boundary without
+- [x] Requirements installation expands a collection through the real CLI.
+- [x] Direct installation and contribution reject collection-only selectors.
+- [x] Over-deep and mixed-node catalogs fail with clear user-facing errors.
+- [x] State preservation is covered at the highest practical boundary without
   duplicating lower-level atomicity tests.
-- [ ] README documents the one/two-level catalog layout and requirements-only
+- [x] README documents the one/two-level catalog layout and requirements-only
   collection expansion.
-- [ ] README examples use valid catalog paths and distinguish catalog-relative
+- [x] README examples use valid catalog paths and distinguish catalog-relative
   selectors from repository-relative lockfile paths.
-- [ ] Each changed specification's `Implementation state` reflects its complete
+- [x] Each changed specification's `Implementation state` reflects its complete
   normative scope; specs with unrelated remaining work stay `Partially
   implemented` with accurate implementation-status notes.
-- [ ] `Spec version` and `Last reviewed` metadata are updated only according to
+- [x] `Spec version` and `Last reviewed` metadata are updated only according to
   `docs/specs/README.md` governance.
 
 **Verification:**
 
-- [ ] `uv run ruff format .`
-- [ ] `uv run ruff check .`
-- [ ] `uv run ty check src/ritebook`
-- [ ] `uv run pytest -m "not e2e"`
-- [ ] `uv build`
-- [ ] `uv run pytest tests/e2e -q`
-- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
-- [ ] `docker run --rm --network none ritebook-e2e`
-- [ ] Review the final diff for architecture-boundary compliance and unrelated
+- [x] `uv run ruff format .`
+- [x] `uv run ruff check .`
+- [x] `uv run ty check src/ritebook`
+- [x] `uv run pytest -m "not e2e"`
+- [x] `uv build`
+- [x] `uv run pytest tests/e2e -q`
+- [x] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [x] `docker run --rm --network none ritebook-e2e`
+- [x] Review the final diff for architecture-boundary compliance and unrelated
   churn.
+
+**Implementation note (2026-07-22):** Added real CLI coverage for root and
+collection-child publishing/listing, requirements-only immediate-child collection
+expansion with deterministic exact lockfile requirements, and exact-only direct
+installation and contribution rejection. Added CLI coverage for over-deep and
+mixed-node producer failures plus update-index rejection that preserves the prior
+registry and cached catalog. Updated README catalog, selector, and lockfile
+terminology, and audited all five affected specifications as `Implemented` while
+retaining their `1.1` versions and `2026-07-22` review dates. The release matrix
+passed: Ruff formatting left 238 files unchanged; Ruff lint and `ty` passed; 599
+non-E2E tests passed with 21 deselected; both distribution artifacts built; host
+E2E passed with 20 tests and one container-only skip; and the network-disabled
+Docker run passed all 21 E2E tests.
 
 **Dependencies:** Tasks 3 through 8
 
@@ -686,12 +699,12 @@ subset, has implementation evidence.
 
 ### Checkpoint E: Complete
 
-- [ ] Every specification acceptance criterion is implemented or explicitly
+- [x] Every specification acceptance criterion is implemented or explicitly
   accounted for.
-- [ ] All focused and full quality checks pass.
-- [ ] Package build and Docker E2E pass.
-- [ ] Specs and README match real behavior.
-- [ ] The final change set is ready for review.
+- [x] All focused and full quality checks pass.
+- [x] Package build and Docker E2E pass.
+- [x] Specs and README match real behavior.
+- [x] The final change set is ready for review.
 
 ## Dependency Graph
 
@@ -766,13 +779,15 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Task 8 complete.** Contribution selectors now enforce one- or two-segment
-schema-v1 catalog paths before lockfile lookup, and lockfile resolution uses exact
-qualified requirements without alias-field, skill-name, or repository-path
-fallback. Generated lockfile path shape and pre-checkout rejection are covered by
-focused tests. Task 9 is the next sequential slice and must add cross-workflow
-CLI/E2E coverage, update user-facing documentation, audit specification
-implementation status, and run the release-oriented validation matrix.
+**Task 9 complete and ready for review.** Cross-workflow CLI/E2E coverage now
+proves supported root and collection-child catalogs, requirements-only
+immediate-child collection expansion, exact-only direct and contribution
+selectors, actionable invalid-catalog failures, and cached-state preservation.
+README and all five affected specifications match the implemented schema-v1
+behavior. The host quality/build matrix and network-disabled Docker E2E workflow
+pass. Final diff review found only the intended E2E, README, specification, and
+living-plan changes; no production code, dependencies, or architecture boundaries
+changed in this slice.
 
 ## Handoff Notes
 

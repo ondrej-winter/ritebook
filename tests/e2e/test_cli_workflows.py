@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 import shutil
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from tests.e2e.conftest import (
         CliRunner,
         GitRepository,
@@ -29,7 +28,12 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     index_name = "company-skills"
 
     write_valid_skill("alpha", "Helps with alpha workflows.")
-    write_valid_skill("beta", "Helps with beta workflows.")
+    collected_skill = skills_root / "browser" / "beta" / "SKILL.md"
+    collected_skill.parent.mkdir(parents=True)
+    collected_skill.write_text(
+        _valid_skill_content("beta", "Helps with beta workflows."),
+        encoding="utf-8",
+    )
 
     lint_result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
     lint_result.assert_success()
@@ -79,7 +83,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         "Indexes\n"
         "└── company-skills\n"
         "    ├── alpha — Helps with alpha workflows.\n"
-        "    └── beta — Helps with beta workflows.\n"
+        "    └── browser/beta — Helps with beta workflows.\n"
     )
 
     write_valid_skill("gamma", "Helps with gamma workflows.")
@@ -122,7 +126,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         "Indexes\n"
         "└── company-skills\n"
         "    ├── alpha — Helps with alpha workflows.\n"
-        "    ├── beta — Helps with beta workflows.\n"
+        "    ├── browser/beta — Helps with beta workflows.\n"
         "    └── gamma — Helps with gamma workflows.\n"
     )
 
@@ -302,6 +306,123 @@ def test_lint_skills_reports_invalid_metadata_failure(
     result.assert_failure()
     assert result.stdout == ""
     assert result.stderr == ("missing-description/SKILL.md: description is required.\n")
+
+
+def test_catalog_commands_reject_over_deep_and_mixed_skill_nodes(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    skills_root: Path,
+    git_repository: GitRepositoryFactory,
+) -> None:
+    over_deep_skill = skills_root / "quality" / "python" / "review" / "SKILL.md"
+    over_deep_skill.parent.mkdir(parents=True)
+    over_deep_skill.write_text(
+        _valid_skill_content("review", "Helps review Python changes."),
+        encoding="utf-8",
+    )
+
+    lint_result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
+
+    lint_result.assert_failure()
+    assert lint_result.stdout == ""
+    assert "quality/python/review/SKILL.md" in lint_result.stderr
+    assert "one or two segments" in lint_result.stderr
+
+    shutil.rmtree(skills_root)
+    root_skill = skills_root / "quality" / "SKILL.md"
+    child_skill = skills_root / "quality" / "review" / "SKILL.md"
+    root_skill.parent.mkdir(parents=True)
+    child_skill.parent.mkdir(parents=True)
+    root_skill.write_text(
+        _valid_skill_content("quality", "Helps with quality workflows."),
+        encoding="utf-8",
+    )
+    child_skill.write_text(
+        _valid_skill_content("review", "Helps review changes."),
+        encoding="utf-8",
+    )
+    published_repo = git_repository(tmp_path / "published-index")
+    published_skills_root = published_repo.path / "skills"
+    _copy_skill_directories_to_repository(skills_root, published_skills_root)
+
+    publish_result = run_cli(
+        [
+            "publish-index",
+            "--skills-root",
+            str(published_skills_root),
+            "--index-name",
+            "company-skills",
+        ],
+        cwd=published_repo.path,
+    )
+
+    publish_result.assert_failure()
+    assert publish_result.stdout == ""
+    assert "cannot be both a root skill and a collection" in publish_result.stderr
+    assert not (published_repo.path / "ritebook-index.json").exists()
+
+
+def test_update_index_preserves_cached_catalog_after_invalid_candidate(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    skills_root: Path,
+    write_valid_skill: SkillWriter,
+    git_repository: GitRepositoryFactory,
+    registry_path: Path,
+    cache_root: Path,
+) -> None:
+    published_repo = git_repository(tmp_path / "published-index")
+    write_valid_skill("code-review", "Helps review code changes.")
+    _publish_and_register_index(
+        run_cli=run_cli,
+        published_repo=published_repo,
+        skills_root=skills_root,
+        index_name="company-skills",
+        registry_path=registry_path,
+        cache_root=cache_root,
+    )
+    before_registry = registry_path.read_bytes()
+    registry_data = _read_json(registry_path)
+    cached_index = Path(registry_data["indexes"][0]["cached_index_path"])
+    before_cache = cached_index.read_bytes()
+
+    candidate = _read_json(published_repo.path / "ritebook-index.json")
+    candidate["skills"].append(
+        {
+            "name": "deep-review",
+            "path": "quality/python/deep-review",
+            "skill_file": "quality/python/deep-review/SKILL.md",
+            "description": "Helps review deeply nested changes.",
+        },
+    )
+    (published_repo.path / "ritebook-index.json").write_text(
+        f"{json.dumps(candidate, indent=2)}\n",
+        encoding="utf-8",
+    )
+    published_repo.commit_all("Publish invalid candidate index")
+
+    update_result = run_cli(
+        [
+            "update-index",
+            "--name",
+            "company-skills",
+            "--registry-path",
+            str(registry_path),
+            "--cache-root",
+            str(cache_root),
+        ],
+    )
+
+    update_result.assert_failure()
+    assert "invalid schema-v1 catalog structure" in update_result.stderr
+    assert "reorganize skills into root or collection/skill paths" in (
+        update_result.stderr.lower()
+    )
+    assert registry_path.read_bytes() == before_registry
+    assert cached_index.read_bytes() == before_cache
+    listed = run_cli(["list-skills", "--registry-path", str(registry_path)])
+    listed.assert_success()
+    assert listed.stdout == "Indexes\n└── company-skills\n    └── code-review\n"
 
 
 def test_install_skill_copies_cached_skill_directory_and_writes_installation_state(
@@ -619,6 +740,100 @@ target_path = ".agents/skills/tdd"
     }
     assert lockfile_data["skills"][1]["target"] == ".agents/skills/tdd"
     assert "target_ref" not in lockfile_data["skills"][1]
+
+
+def test_install_expands_collection_but_install_skill_keeps_exact_selection(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    skills_root: Path,
+    git_repository: GitRepositoryFactory,
+    registry_path: Path,
+    cache_root: Path,
+) -> None:
+    published_repo = git_repository(tmp_path / "published-index")
+    consumer_repo = tmp_path / "consumer"
+    requirements_file = consumer_repo / "ritebook.toml"
+    lockfile = consumer_repo / "ritebook.lock"
+    installation_registry = tmp_path / "config" / "installations.json"
+    direct_target = consumer_repo / ".direct" / "browser"
+
+    for name, description in (
+        ("alpha-tool", "Helps with alpha browser workflows."),
+        ("zeta-tool", "Helps with zeta browser workflows."),
+    ):
+        skill_file = skills_root / "browser" / name / "SKILL.md"
+        skill_file.parent.mkdir(parents=True)
+        skill_file.write_text(
+            _valid_skill_content(name, description),
+            encoding="utf-8",
+        )
+    _publish_and_register_index(
+        run_cli=run_cli,
+        published_repo=published_repo,
+        skills_root=skills_root,
+        index_name="company-skills",
+        registry_path=registry_path,
+        cache_root=cache_root,
+        portable_source=True,
+    )
+    consumer_repo.mkdir()
+    requirements_file.write_text(
+        """
+[targets]
+agents = ".agents/skills"
+
+[[skills]]
+name = "company-skills/browser"
+target = "agents"
+""".lstrip(),
+        encoding="utf-8",
+    )
+
+    install_result = run_cli(
+        [
+            "install",
+            "--file",
+            str(requirements_file),
+            "--registry-path",
+            str(registry_path),
+            "--lockfile",
+            str(lockfile),
+        ],
+        cwd=consumer_repo,
+    )
+
+    install_result.assert_success()
+    assert install_result.stdout == f"Installed 2 skill(s) from {requirements_file}\n"
+    assert (consumer_repo / ".agents" / "skills" / "alpha-tool" / "SKILL.md").is_file()
+    assert (consumer_repo / ".agents" / "skills" / "zeta-tool" / "SKILL.md").is_file()
+    lockfile_data = _read_json(lockfile)
+    assert [entry["requirement"] for entry in lockfile_data["skills"]] == [
+        "company-skills/browser/alpha-tool",
+        "company-skills/browser/zeta-tool",
+    ]
+    assert [entry["skill_path"] for entry in lockfile_data["skills"]] == [
+        "skills/browser/alpha-tool",
+        "skills/browser/zeta-tool",
+    ]
+
+    direct_result = run_cli(
+        [
+            "install-skill",
+            "company-skills/browser",
+            "--target",
+            str(direct_target),
+            "--registry-path",
+            str(registry_path),
+            "--installation-registry-path",
+            str(installation_registry),
+        ],
+        cwd=consumer_repo,
+    )
+
+    direct_result.assert_failure()
+    assert "unknown skill company-skills/browser" in direct_result.stderr.lower()
+    assert not direct_target.exists()
+    assert not installation_registry.exists()
 
 
 def test_install_retains_copied_target_when_lockfile_commit_fails(

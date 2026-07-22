@@ -4,7 +4,7 @@
 > **Owner:** Ritebook maintainers
 > **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Partially implemented
+> **Implementation state:** Implemented
 > **Dependencies:** [Consumer Skill Installation](install-skill-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -38,8 +38,9 @@ user-owned local source repositories.
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
-- Exact qualified-requirement resolution exists; rejecting collection selectors
-  and over-deep catalog selectors remains to be implemented.
+- Contribution references enforce one-or-two-segment catalog selectors and
+  resolve one exact qualified lockfile requirement without collection, name, or
+  repository-path fallback.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 

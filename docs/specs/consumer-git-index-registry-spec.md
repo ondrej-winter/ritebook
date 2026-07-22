@@ -4,7 +4,7 @@
 > **Owner:** Ritebook maintainers
 > **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Partially implemented
+> **Implementation state:** Implemented
 > **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md)
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -27,8 +27,9 @@ consumer-side catalog foundation used by the implemented `list-skills`,
 - Publisher indexes are written as root-level `ritebook-index.json` files.
 - Publisher schema v1 includes index metadata and skill entries with required
   `name`, `path`, `skill_file`, and non-empty `description`.
-- Existing schema-v1 parsing validates relative path safety but does not yet
-  enforce the one-or-two-segment catalog-depth contract or mixed-node rejection.
+- Schema-v1 parsing validates literal catalog paths, one-or-two-segment depth,
+  canonical segments, duplicate paths, and mixed nodes before candidate cache or
+  registry mutation.
 - The registry supports `add-index`, `list-indexes`, `list-skills`, and
   `update-index`. The `skill_installation` slice consumes registered cached
   indexes for `install-skill` and `install`.

@@ -127,6 +127,43 @@ def test_publish_skill_change_reports_no_local_changes(
     _assert_source_repository_unchanged(installed.source_repository)
 
 
+def test_publish_skill_change_rejects_collection_only_reference_before_checkout(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    write_valid_skill: SkillWriter,
+    git_repository: GitRepositoryFactory,
+    registry_path: Path,
+    cache_root: Path,
+) -> None:
+    installed = _install_contribution_skill(
+        tmp_path=tmp_path,
+        run_cli=run_cli,
+        write_valid_skill=write_valid_skill,
+        git_repository=git_repository,
+        registry_path=registry_path,
+        cache_root=cache_root,
+    )
+
+    result = run_cli(
+        [
+            "publish-skill-change",
+            "company-skills/software-development",
+            "--lockfile",
+            str(installed.lockfile),
+            "--contribution-root",
+            str(installed.contribution_root),
+        ],
+        cwd=installed.consumer_repository,
+    )
+
+    result.assert_failure()
+    assert (
+        result.stderr == "ritebook: error: no lockfile entry found for "
+        "company-skills/software-development\n"
+    )
+    assert not installed.contribution_root.exists()
+
+
 def test_publish_skill_change_fails_when_upstream_skill_changed(
     tmp_path: Path,
     run_cli: CliRunner,

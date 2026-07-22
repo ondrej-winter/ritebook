@@ -4,7 +4,7 @@
 > **Owner:** Ritebook maintainers
 > **Spec version:** 1.1
 > **Last reviewed:** 2026-07-22
-> **Implementation state:** Partially implemented
+> **Implementation state:** Implemented
 > **Dependencies:** None
 > **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
 
@@ -27,9 +27,9 @@ installation.
   adapters separated according to hexagonal architecture principles.
 - Python 3.13, `uv`, `ruff`, `ty`, and `pytest` are the project tooling
   baseline.
-- Existing discovery recursively treats any directory containing `SKILL.md` as a
-  candidate and validates its header. Enforcement of the catalog-depth contract
-  and mixed-node rejection remains to be implemented.
+- Discovery recursively identifies every directory containing `SKILL.md` as a
+  candidate, validates its header, and enforces schema-v1 depth, canonical
+  segments, duplicate-path, and mixed-node constraints before publication.
 
 ## Desired behavior
 

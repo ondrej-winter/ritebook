@@ -82,8 +82,13 @@ index from an explicit skills root:
 uv run ritebook lint-skills --skills-root <path>
 ```
 
-The `lint-skills` command recursively discovers `SKILL.md` files under the
-skills root and validates their required Agent Skill headers without writing an
+The `lint-skills` command recursively finds `SKILL.md` candidates so invalid
+nested declarations are reported, then enforces the schema-v1 catalog layout.
+A skill must be either `<skill>/SKILL.md` at the catalog root or
+`<collection>/<skill>/SKILL.md` one level below an implicit collection. Every
+catalog segment must be a canonical kebab-case identifier. A node cannot be both
+a root skill and a collection, and a `SKILL.md` directly at the skills root is
+invalid. The command validates required Agent Skill headers without writing an
 index file.
 
 ```bash
@@ -224,15 +229,16 @@ uv run ritebook install-skill platform-skills/code-review \
   --target .claude/skills/code-review
 ```
 
-For skills published below subfolders, use the relative skill path shown by
-`list-skills` after the local alias:
+For skills published in a first-level collection, use the relative skill path
+shown by `list-skills` after the local alias:
 
 ```bash
 uv run ritebook install-skill platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
 
-`install-skill` resolves that path exactly. A shorthand such as
+`install-skill` resolves that path exactly and never expands a collection. A
+shorthand such as
 `platform-skills/runtime-verification` does not select
 `platform-skills/browser/runtime-verification`.
 
@@ -310,10 +316,13 @@ uv run ritebook install \
 `target_path` is used exactly as the target path for that skill entry. Each skill
 entry must use exactly one of `target` or `target_path`.
 
-In `ritebook.toml`, a `name` may also select a folder prefix. For example,
-`platform-skills/browser` installs all indexed skills below `browser/` in
-deterministic path order. Folder expansion still follows paths and never searches
-by `skills[].name`.
+In `ritebook.toml` only, a one-segment selector may select an implicit
+first-level collection. For example, `platform-skills/browser` expands to the
+indexed immediate children `browser/<skill>` in deterministic catalog-path order.
+A collection requirement must use `target`, so each child is installed below the
+target base by its final skill name; it cannot use `target_path`. Expansion never
+matches deeper descendants or searches by `skills[].name`. Direct `install-skill`
+and `publish-skill-change` commands remain exact-only and never expand collections.
 
 After a successful requirements install, Ritebook writes deterministic generated
 state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
@@ -321,6 +330,13 @@ state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository us
 repeatable. Because the lockfile is meant to be shared, Ritebook does not force a
 private file mode; it rejects credential-bearing standard source URLs before
 writing instead.
+
+Each lock entry's `requirement` stores the exact catalog-qualified selector, such
+as `platform-skills/browser/runtime-verification`. Its `skill_path` and
+`skill_file` are different: they are safe paths relative to the source repository
+and include the published `skills_root`, such as
+`skills/browser/runtime-verification` and
+`skills/browser/runtime-verification/SKILL.md`.
 
 Shared `ritebook.lock` entries require indexes registered from portable Git URLs.
 An index registered from a local repository path remains available for browsing
@@ -339,7 +355,8 @@ uv run ritebook publish-skill-change platform-skills/code-review
 ```
 
 The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
-path without falling back to `skill_name`. By default, Ritebook reads
+path without falling back to `skill_name`. Collection-only references are not
+expanded. By default, Ritebook reads
 `ritebook.lock` from the current working directory and creates or reuses an isolated,
 Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
 automation can override both paths:

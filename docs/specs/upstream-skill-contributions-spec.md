@@ -145,9 +145,6 @@ Requirements:
 - Do not mutate user-owned local source repositories by default.
 - For Git URL sources, create or reuse a Ritebook-owned contribution clone under a
   dedicated contribution cache root.
-- For local Git repository sources, create a separate Ritebook-owned clone or
-  worktree derived from the local repository without modifying the user's working
-  tree.
 - Fetch source `origin` before selecting the upstream base when the source has an
   origin remote.
 - Require the full locked `source_revision` to exist in the isolated checkout and
@@ -223,8 +220,9 @@ Required lockfile fields for each publishable entry:
 - `index_name`: effective local index name.
 - `skill_name`: resolved skill name.
 - `target`: repo-local installed skill target path.
-- `source`: Git URL or local Git repository source.
-- `source_type`: source kind, initially `git_url` or `local_git_repo`.
+- `source`: portable Git URL propagated from requirements installation.
+- `source_type`: must be `git_url`; shared lockfiles do not support
+  `local_git_repo` entries.
 - `source_revision`: required full commit object ID bound during index validation
   and used for installation.
 - `index_digest`: required SHA-256 digest that both the exact cached index used to
@@ -237,6 +235,11 @@ Required lockfile fields for each publishable entry:
 Pre-release schema-v1 lockfiles missing `source_revision` or `index_digest` are
 rejected with guidance to refresh registration and reinstall. Ritebook does not
 infer missing provenance from the source's current `HEAD`.
+
+Legacy or hand-written lock entries with `source_type = "local_git_repo"` are
+rejected at lockfile ingestion before contribution workspace or Git operations.
+The diagnostic does not echo the machine-local path and directs the user to
+register the index from a Git URL and reinstall to regenerate `ritebook.lock`.
 
 ## Project structure
 

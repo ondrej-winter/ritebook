@@ -203,6 +203,40 @@ def test_json_lockfile_reader_rejects_credential_bearing_source(tmp_path: Path) 
     assert sentinel not in str(exc_info.value)
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "../internal-skills",
+        "/Users/example/internal-skills",
+        "missing/internal-skills",
+        "/Volumes/moved/internal-skills",
+    ],
+)
+def test_json_lockfile_reader_rejects_local_sources(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[
+            lockfile_entry(
+                source=source,
+                source_type="local_git_repo",
+            ),
+        ],
+    )
+
+    with pytest.raises(ContributionLockfileReadError) as exc_info:
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
+
+    assert "Git URL" in str(exc_info.value)
+    assert "regenerate ritebook.lock" in str(exc_info.value)
+    assert source not in str(exc_info.value)
+
+
 def test_json_lockfile_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
     lockfile_path = write_lockfile(tmp_path, overrides={"schema_version": 2})
 

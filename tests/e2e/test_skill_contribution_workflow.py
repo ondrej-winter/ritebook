@@ -70,8 +70,7 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     assert output.checkout.is_relative_to(installed.contribution_root)
     assert output.checkout != installed.source_repository.path
     assert output.next_step == (
-        "Next: inspect the checkout and push or share the branch manually; "
-        "no usable origin remote is configured."
+        f"Next: cd {output.checkout} && git push origin {output.branch_name}"
     )
     assert (
         _git_output(output.checkout, "branch", "--show-current") == output.branch_name
@@ -216,7 +215,7 @@ def _install_contribution_skill(
         [
             "add-index",
             "--source",
-            str(source_repository.path),
+            source_repository.path.as_uri(),
             "--registry-path",
             str(registry_path),
             "--cache-root",

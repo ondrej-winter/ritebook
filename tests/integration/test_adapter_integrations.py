@@ -214,7 +214,7 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         force=False,
     )
     JsonLockfileAdapter().write_lockfile(
-        (_lockfile_entry(source=str(repository)),),
+        (_lockfile_entry(source=repository.as_uri()),),
         str(lockfile_path),
         requirements_file="ritebook.toml",
     )
@@ -353,7 +353,7 @@ def _lockfile_entry(*, source: str) -> LockfileManifestEntry:
         skill_name="code-review",
         target=".claude/skills/code-review",
         source=source,
-        source_type="local_git_repo",
+        source_type="git_url",
         source_revision="a" * 40,
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,

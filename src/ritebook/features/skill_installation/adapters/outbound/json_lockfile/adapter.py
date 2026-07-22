@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 SCHEMA_VERSION = 1
 DEFAULT_LOCKFILE_PATH = Path("ritebook.lock")
+LOCAL_GIT_REPO_SOURCE_TYPE = "local_git_repo"
 
 
 class JsonLockfileAdapter:
@@ -103,6 +104,12 @@ def _lockfile_path(lockfile_path: str | None) -> Path:
 
 
 def _entry_to_json(entry: LockfileManifestEntry) -> dict[str, Any]:
+    if entry.source_type == LOCAL_GIT_REPO_SOURCE_TYPE:
+        msg = (
+            "ritebook.lock requires a portable Git URL source; register the index "
+            "from a Git URL and reinstall to regenerate ritebook.lock"
+        )
+        raise InstallationPersistenceError(msg)
     try:
         require_safe_persisted_source(entry.source, entry.source_type)
     except ValueError as err:

@@ -122,6 +122,36 @@ def test_json_lockfile_rejects_credential_bearing_source(tmp_path: Path) -> None
     assert not lockfile_path.exists()
 
 
+@pytest.mark.parametrize(
+    "source",
+    [
+        "../internal-skills",
+        "/Users/example/internal-skills",
+        "missing/internal-skills",
+        "/Volumes/moved/internal-skills",
+    ],
+)
+def test_json_lockfile_rejects_machine_specific_local_sources(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    lockfile_path = tmp_path / "ritebook.lock"
+    existing_content = '{"previous": true}\n'
+    lockfile_path.write_text(existing_content, encoding="utf-8")
+
+    with pytest.raises(InstallationPersistenceError) as exc_info:
+        JsonLockfileAdapter().write_lockfile(
+            (_entry(source=source, source_type="local_git_repo"),),
+            str(lockfile_path),
+            requirements_file="ritebook.toml",
+        )
+
+    assert "Git URL" in str(exc_info.value)
+    assert "regenerate ritebook.lock" in str(exc_info.value)
+    assert source not in str(exc_info.value)
+    assert lockfile_path.read_text(encoding="utf-8") == existing_content
+
+
 def _entry(
     *,
     requirement: str = "platform-skills/code-review",
@@ -130,6 +160,7 @@ def _entry(
     source_revision: str = "a" * 40,
     index_digest: str = f"sha256:{'b' * 64}",
     source: str = "git@example.com:company/skills.git",
+    source_type: str = "git_url",
 ) -> LockfileManifestEntry:
     index_name, skill_name = requirement.rsplit("/", maxsplit=1)
     return LockfileManifestEntry(
@@ -138,7 +169,7 @@ def _entry(
         skill_name=skill_name,
         target=target,
         source=source,
-        source_type="git_url",
+        source_type=source_type,
         source_revision=source_revision,
         index_digest=index_digest,
         index_schema_version=1,

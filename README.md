@@ -319,6 +319,13 @@ repeatable. Because the lockfile is meant to be shared, Ritebook does not force 
 private file mode; it rejects credential-bearing standard source URLs before
 writing instead.
 
+Shared `ritebook.lock` entries require indexes registered from portable Git URLs.
+An index registered from a local repository path remains available for browsing
+and direct `install-skill`, but `ritebook install` rejects it before copying because
+relative, absolute, missing, or moved machine-local paths are not commit-safe. To
+migrate, register the same published index from its Git URL (using the same local
+alias when applicable), then rerun `ritebook install` to regenerate the lockfile.
+
 ## Contributing installed skill changes upstream
 
 After editing a repo-local skill installed from `ritebook.toml`, prepare one
@@ -350,21 +357,25 @@ No local changes to publish for platform-skills/code-review
 When local changes exist, Ritebook copies only that skill into the isolated
 checkout, validates it, regenerates `ritebook-index.json`, and creates a local
 branch and commit. Branches use
-`ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` in UTC. For a local source
-without a usable `origin`, output resembles:
+`ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` in UTC. For a portable Git
+URL source with a usable `origin`, output resembles:
 
 ```text
 Prepared contribution for platform-skills/code-review
 Branch: ritebook/code-review-20260718201534
 Commit: 0123456789abcdef0123456789abcdef01234567
 Checkout: /path/to/contributions/0123456789abcdef/platform-skills-code-review-01234567
-Next: inspect the checkout and push or share the branch manually; no usable origin remote is configured.
+Next: cd /path/to/contributions/0123456789abcdef/platform-skills-code-review-01234567 && git push origin ritebook/code-review-20260718201534
 ```
 
-When a usable `origin` exists, the final line instead provides a `cd` and
-`git push origin <branch>` command. Ritebook does not run that command, push any
-branch, or open a merge request or pull request. Inspect the checkout and commit
-before following the suggested next step.
+Ritebook does not run the suggested command, push any branch, or open a merge
+request or pull request. Inspect the checkout and commit before following the
+suggested next step.
+
+Contribution publishing accepts only portable `git_url` entries from shared
+`ritebook.lock`. Legacy or hand-written `local_git_repo` entries fail before any
+contribution clone or Git operation, with guidance to re-register by Git URL and
+regenerate the lockfile.
 
 If the selected upstream skill path changed after the lockfile's
 `source_revision`, Ritebook stops instead of attempting to merge or overwrite the

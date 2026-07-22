@@ -557,6 +557,7 @@ def test_install_reads_requirements_file_and_writes_lockfile(
         index_name="company-skills",
         registry_path=registry_path,
         cache_root=cache_root,
+        portable_source=True,
     )
     consumer_repo.mkdir()
     requirements_file.write_text(
@@ -606,8 +607,8 @@ target_path = ".agents/skills/tdd"
         "index_name": "company-skills",
         "skill_name": "code-review",
         "target": ".claude/skills/code-review",
-        "source": str(published_repo.path),
-        "source_type": "local_git_repo",
+        "source": published_repo.path.as_uri(),
+        "source_type": "git_url",
         "index_digest": lockfile_data["skills"][0]["index_digest"],
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
@@ -644,6 +645,7 @@ def test_install_retains_copied_target_when_lockfile_commit_fails(
         index_name="company-skills",
         registry_path=registry_path,
         cache_root=cache_root,
+        portable_source=True,
     )
     consumer_repo.mkdir()
     requirements_file.write_text(
@@ -711,6 +713,7 @@ def test_install_uses_default_requirements_and_lockfile_paths_with_force(
         index_name="company-skills",
         registry_path=registry_path,
         cache_root=cache_root,
+        portable_source=True,
     )
     consumer_repo.mkdir()
     target.mkdir(parents=True)
@@ -763,6 +766,7 @@ def test_install_does_not_write_lockfile_when_requirements_are_invalid(
         index_name="company-skills",
         registry_path=registry_path,
         cache_root=cache_root,
+        portable_source=True,
     )
     consumer_repo.mkdir()
     requirements_file.write_text(
@@ -809,6 +813,7 @@ def _publish_and_register_index(
     registry_path: Path,
     cache_root: Path,
     alias: str | None = None,
+    portable_source: bool = False,
 ) -> None:
     published_skills_root = published_repo.path / "skills"
     _copy_skill_directories_to_repository(skills_root, published_skills_root)
@@ -828,7 +833,7 @@ def _publish_and_register_index(
     add_arguments = [
         "add-index",
         "--source",
-        str(published_repo.path),
+        published_repo.path.as_uri() if portable_source else str(published_repo.path),
     ]
     if alias is not None:
         add_arguments.extend(["--alias", alias])

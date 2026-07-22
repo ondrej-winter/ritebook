@@ -3,6 +3,9 @@ from pathlib import Path
 
 import pytest
 
+from ritebook.features.skill_installation.adapters.outbound.json_lockfile import (
+    JsonLockfileAdapter,
+)
 from ritebook.features.skill_installation.application.dtos import (
     InstallableSkill,
     InstallFromRequirementsCommand,
@@ -689,6 +692,41 @@ def test_install_from_requirements_rejects_lockfile_validation_before_copy() -> 
 
     assert installer.install_calls == []
     assert manifest.lockfile_write_calls == []
+
+
+def test_install_from_requirements_rejects_local_source_before_copy() -> None:
+    index = registered_skill_index(
+        name="platform-skills",
+        source="/Users/example/internal-skills",
+        source_type="local_git_repo",
+        source_cache_path=None,
+    )
+    installer = FakeSkillInstaller()
+    source_resolver = FakeSkillSourceResolver(
+        ResolvedSkillSource(
+            source=index.source,
+            source_type=index.source_type,
+            repository_path=index.source,
+            source_revision=index.source_revision,
+            index_digest=index.index_digest,
+        ),
+    )
+    use_case = InstallFromRequirements(
+        requirements_reader=_single_requirement_reader(),
+        catalog=FakeSkillCatalog(
+            indexes=[index],
+            skills_by_path={index.cached_index_path: (installable_skill(),)},
+        ),
+        source_resolver=source_resolver,
+        installer=installer,
+        manifest=JsonLockfileAdapter(),
+        clock=lambda: datetime(2026, 7, 10, 21, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InstallationPersistenceError, match="Git URL"):
+        use_case.execute(InstallFromRequirementsCommand())
+
+    assert installer.install_calls == []
 
 
 def test_requirements_install_reports_retained_targets_on_lockfile_failure() -> None:

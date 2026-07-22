@@ -98,7 +98,7 @@ documentation unless the project explicitly accepts and records the existing ris
 - [x] Task 12: Sanitize and safely persist Git source values
 - [x] Task 13: Define terminal control-character handling
 - [x] Task 14: Define recovery for post-copy generated-state failures
-- [ ] Task 15: Resolve local-source lockfile portability
+- [x] Task 15: Resolve local-source lockfile portability
 
 ### Phase 4: Specification and tooling governance
 
@@ -824,19 +824,19 @@ support with the selected contract.
 
 **Acceptance criteria:**
 
-- [ ] The installation and contribution specs state whether local-source lockfiles
+- [x] The installation and contribution specs state whether local-source lockfiles
   are portable and commit-safe.
-- [ ] The writer rejects or transforms machine-specific absolute paths according to
+- [x] The writer rejects or transforms machine-specific absolute paths according to
   the chosen contract.
-- [ ] Contribution publishing either resolves the portable source safely or fails
+- [x] Contribution publishing either resolves the portable source safely or fails
   with actionable guidance for unsupported local entries.
 
 **Verification:**
 
-- [ ] Add lockfile writer/reader tests for relative, absolute, missing, and moved
+- [x] Add lockfile writer/reader tests for relative, absolute, missing, and moved
   local repositories.
-- [ ] Add contribution tests for the supported and unsupported local-source cases.
-- [ ] Confirm README guidance matches the enforced behavior.
+- [x] Add contribution tests for the supported and unsupported local-source cases.
+- [x] Confirm README guidance matches the enforced behavior.
 
 **Dependencies:** Tasks 1 and 4.
 
@@ -850,7 +850,17 @@ support with the selected contract.
 
 **Estimated scope:** Medium.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Shared `ritebook.lock` files now accept only
+portable `git_url` sources. Requirements installs backed by `local_git_repo`
+registrations fail during candidate lockfile validation before any copy, while
+direct `install-skill` support remains unchanged. Contribution lockfile ingestion
+rejects relative, absolute, missing, and moved local repository values without
+echoing the path and directs users to register a Git URL and regenerate the
+lockfile. Portable local `file://` Git URL integration and E2E workflows cover
+requirements installation and contribution publishing. Validation passed Ruff
+formatting and linting, `ty`, 63 focused tests, 540 non-E2E tests, all 16 E2E
+tests, and the package build. Docker E2E was attempted but could not start because
+the local Docker daemon was unavailable.
 
 ## Checkpoint C: Persistence and Trust Boundaries
 
@@ -858,8 +868,8 @@ support with the selected contract.
   semantics.
 - [ ] No supported source string or Git error leaks credential sentinels.
 - [x] CLI output safely handles untrusted control characters.
-- [ ] Local-source lockfile behavior is explicit and enforced.
-- [ ] Relevant unit, integration, and failure-path E2E tests pass.
+- [x] Local-source lockfile behavior is explicit and enforced.
+- [x] Relevant unit, integration, and failure-path E2E tests pass.
 
 ---
 
@@ -1089,7 +1099,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 8. Terminal control-character injection | Required | 13 | Closed |
 | 9. Destructive forced replacement | Required | 9 | Closed |
 | 10. Lexical rather than canonical target collisions | Required | 10 | Closed |
-| 11. Local-source lockfile portability conflict | Required | 15 | Open |
+| 11. Local-source lockfile portability conflict | Required | 15 | Closed |
 | 12. Post-copy generated-state failure semantics | Required | 14 | Closed |
 | 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Open |
 | 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Open |
@@ -1148,7 +1158,10 @@ follow-up rather than leaving an unchecked item implied complete.
   compatibility mode, or rejected with guidance? **Decision:** this pre-release
   schema v1 is updated in place; incompatible local state is rejected and
   regenerated without automatic migration.
-- [ ] Should local Git sources be allowed in committed `ritebook.lock` files?
+- [x] Should local Git sources be allowed in committed `ritebook.lock` files?
+  **Decision:** No. Shared lockfiles require portable `git_url` sources; local Git
+  repository registrations remain supported only for browsing and direct
+  `install-skill` workflows.
 - [x] What durability guarantee is required for local state: process-level atomic
   replacement, crash consistency, or explicit best-effort recovery? **Decision:**
   synchronize complete same-directory candidate files, atomically replace the

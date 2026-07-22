@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 SCHEMA_VERSION = 1
 DEFAULT_LOCKFILE_PATH = Path("ritebook.lock")
+LOCAL_GIT_REPO_SOURCE_TYPE = "local_git_repo"
 
 
 class JsonContributionLockfileReader(ContributionLockfilePort):
@@ -108,6 +109,13 @@ def _entry_from_json(
     try:
         source = _required_str(typed_entry, "source", position=position)
         source_type = _required_str(typed_entry, "source_type", position=position)
+        if source_type == LOCAL_GIT_REPO_SOURCE_TYPE:
+            msg = (
+                "local repository sources are not supported in shared ritebook.lock; "
+                "register the index from a Git URL and reinstall to regenerate "
+                "ritebook.lock"
+            )
+            raise ContributionLockfileReadError(msg)
         require_safe_persisted_source(source, source_type)
         return ContributionLockfileEntry(
             requirement=_required_str(typed_entry, "requirement", position=position),

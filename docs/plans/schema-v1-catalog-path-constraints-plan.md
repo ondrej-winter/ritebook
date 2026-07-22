@@ -35,7 +35,8 @@ hexagonal vertical-slice boundaries.
 ### Success Criteria
 
 - Root and collected skills are accepted throughout supported workflows.
-- Over-deep and mixed-node catalogs fail with deterministic, actionable errors.
+- Zero-segment, malformed, non-kebab-case, over-deep, and mixed-node catalogs fail
+  with deterministic, actionable errors.
 - Invalid add/update candidates preserve existing cache and registry state.
 - Direct installation and contribution commands never expand collections.
 - Requirements installation expands only immediate collection children and
@@ -53,9 +54,9 @@ hexagonal vertical-slice boundaries.
 - Keep existing valid cached state intact when candidate validation fails.
 - Use `ty`, not `mypy`, for Ritebook static type validation.
 
-## Required Specification Clarification
+## Resolved Schema-v1 Contract Clarifications
 
-The updated contribution specification currently conflates two path concepts:
+The updated specifications use two distinct path concepts:
 
 - `requirement` contains the catalog-relative selector after the local alias,
   such as `browser/runtime-verification`.
@@ -63,14 +64,20 @@ The updated contribution specification currently conflates two path concepts:
   checkout path that includes `skills_root`, such as
   `skills/browser/runtime-verification`.
 
-The new text says lockfile skill paths deeper than `<collection>/<skill>` must be
-rejected. Applying that rule to `skill_path` would reject valid collected skills
-whenever `skills_root` is not `.`.
+The schema-v1 contract is resolved as follows before implementation:
 
-Implementation must first clarify the specification: enforce the one/two-segment
-catalog rule on the selector encoded in `requirement`, while retaining
-`skill_path` as a safe repository-relative checkout path. This clarifies the
-existing lockfile schema and does not require an ADR.
+- Apply catalog-depth and catalog-segment validation to the selector encoded in
+  `requirement`, not to repository-relative `skill_path` or `skill_file`.
+- Require every catalog segment, including both `<collection>` and `<skill>`, to
+  use Ritebook's existing 1-64 character canonical kebab-case identifier rule.
+- Reject a `SKILL.md` directly at `skills_root`; its relative directory is `.`, so
+  it represents a zero-segment candidate rather than a valid catalog skill.
+- Retain `skill_path` and `skill_file` as safe repository-relative checkout paths.
+  They may contain additional segments contributed by `skills_root`.
+
+Task 1 makes these decisions normative and aligns terminology across the affected
+specifications. They clarify the existing schema-v1 contract without changing
+serialized fields or requiring an ADR.
 
 ## Architecture Decisions
 
@@ -86,8 +93,10 @@ existing lockfile schema and does not require an ADR.
   externally generated invalid schema-v1 indexes.
 - Preserve the current validate-before-cache sequencing for add/update and prove
   its atomicity through regression tests.
-- Resolve requirement selectors by exact match first. Collection expansion is a
-  requirements-only fallback for one-segment selectors with immediate children.
+- Resolve requirement selectors by exact match first, but only after complete
+  index validation has made mixed root-skill/collection nodes impossible.
+  Collection expansion is a requirements-only fallback for one-segment selectors
+  with immediate children.
 
 ## Progress Tracking
 
@@ -107,45 +116,61 @@ Keep this section and the task list current without waiting for a progress reque
 
 ### Phase 1: Define the Shared Contract
 
-- [ ] Task 1: Clarify contribution selector and lockfile path semantics
+- [ ] Task 1: Align schema-v1 catalog-path and lockfile semantics
 - [ ] Task 2: Add a shared schema-v1 catalog-path policy
 
-### Task 1: Clarify Contribution Selector and Lockfile Path Semantics
+### Task 1: Align Schema-v1 Catalog-path and Lockfile Semantics
 
-**Description:** Update the contribution specification so catalog-depth validation
-applies to the catalog-relative selector encoded in `requirement`, not to the
-repository-relative `skill_path`. Keep `skill_path` as the exact checkout path
-used for source comparison and contribution preparation.
+**Description:** Align the affected specifications before code changes. Define a
+catalog path as one or two canonical kebab-case segments, reject a zero-segment
+candidate at `skills_root`, and distinguish catalog-relative selectors from
+repository-relative lockfile source paths. Apply catalog-depth validation to the
+selector encoded in `requirement`, not to `skill_path` or `skill_file`.
 
 **Acceptance criteria:**
 
-- [ ] The specification distinguishes catalog-relative selectors from
+- [ ] The specifications distinguish catalog-relative selectors from
   repository-relative lockfile paths.
 - [ ] Root and collected selectors are limited to one or two segments.
+- [ ] Collection and skill segments both use the existing 1-64 character canonical
+  kebab-case identifier rule.
+- [ ] A `SKILL.md` directly at `skills_root` is explicitly invalid as a
+  zero-segment candidate.
 - [ ] Repository-relative lockfile paths remain valid regardless of
   `skills_root` depth, subject to existing safe-path validation.
-- [ ] Lockfile-reader test requirements use the same terminology.
+- [ ] `requirement`, `skill_path`, and `skill_file` use consistent terminology
+  across specification requirements and test expectations.
 
 **Verification:**
 
 - [ ] Compare the clarified text with lockfile generation in
   `src/ritebook/features/skill_installation/application/use_cases/install_from_requirements.py`.
 - [ ] Confirm examples remain consistent with the documented lockfile schema.
+- [ ] Check metadata updates against `docs/specs/README.md`; change `Spec version`,
+  `Last reviewed`, and `Implementation state` only when their governance rules
+  require it.
 
 **Dependencies:** None
 
 **Files likely touched:**
 
+- `docs/specs/README.md`
+- `docs/specs/publisher-index-generation-spec.md`
+- `docs/specs/consumer-git-index-registry-spec.md`
+- `docs/specs/install-skill-spec.md`
+- `docs/specs/list-skills-spec.md`
 - `docs/specs/upstream-skill-contributions-spec.md`
 
-**Estimated scope:** XS, one file
+**Estimated scope:** S, terminology and normative contract alignment only
 
 ### Task 2: Add a Shared Schema-v1 Catalog-path Policy
 
-**Description:** Add a pure shared-kernel module that validates and classifies
-catalog-relative skill paths and validates complete path sets. It must validate
-canonical safe kebab-case POSIX segments, require one or two segments, and reject
-mixed root-skill/collection path sets.
+**Description:** Add a pure shared-kernel module that validates literal
+catalog-relative skill paths, classifies valid paths, and validates complete path
+sets. Validate the literal string before constructing `PurePosixPath` so path
+normalization cannot hide invalid input. Reuse the existing identifier policy,
+require one or two canonical kebab-case segments, and reject mixed
+root-skill/collection path sets.
 
 **Acceptance criteria:**
 
@@ -158,12 +183,18 @@ mixed root-skill/collection path sets.
   collection children without introducing transport-specific types.
 - [ ] Rejects sets such as `quality` plus `quality/code-review`.
 - [ ] Allows duplicate skill names at distinct valid paths.
-- [ ] Exposes a small intentional shared-kernel API.
+- [ ] Rejects duplicate exact paths deterministically.
+- [ ] Distinguishes malformed paths, invalid depth, and mixed-node sets through
+  technology-neutral typed failures or stable reason codes.
+- [ ] Reuses `shared_kernel.identifiers` rather than defining a second identifier
+  regex.
+- [ ] Exposes a small intentional shared-kernel API; update `__init__.py` only if a
+  stable package-level re-export is deliberately required.
 
 **Verification:**
 
 - [ ] Focused shared-kernel tests cover valid, malformed, over-deep, mixed-node,
-  and duplicate-name-at-distinct-path cases.
+  duplicate-exact-path, and duplicate-name-at-distinct-path cases.
 - [ ] `uv run pytest tests/unit/shared_kernel/test_catalog_paths.py`
 - [ ] `uv run ruff check src/ritebook/shared_kernel tests/unit/shared_kernel`
 - [ ] `uv run ty check src/ritebook`
@@ -173,10 +204,11 @@ mixed root-skill/collection path sets.
 **Files likely touched:**
 
 - `src/ritebook/shared_kernel/catalog_paths.py`
-- `src/ritebook/shared_kernel/__init__.py`
+- `src/ritebook/shared_kernel/__init__.py` only if an intentional re-export is added
 - `tests/unit/shared_kernel/test_catalog_paths.py`
+- `tests/unit/shared_kernel/__init__.py` if required by the repository test layout
 
-**Estimated scope:** S, three files
+**Estimated scope:** S, two required files plus optional package initializers
 
 ### Checkpoint A: Shared Contract
 
@@ -193,11 +225,12 @@ mixed root-skill/collection path sets.
 ### Task 3: Enforce Catalog Structure During Lint and Publisher Discovery
 
 **Description:** Keep recursive candidate discovery so invalid nested `SKILL.md`
-files are detected rather than ignored. Validate all discovered candidate paths
-as a set before publication. The linter should emit deterministic path-scoped
-issues; publisher discovery should raise actionable discovery errors. Valid skill
-package contents remain unrestricted unless another nested `SKILL.md` declares a
-candidate skill.
+files are detected rather than ignored. In both adapters, derive literal
+catalog-relative parent paths for every candidate and run the shared complete-set
+validator. The linter should aggregate deterministic path-scoped issues;
+publisher discovery should translate the same failure reasons into actionable
+discovery errors before publication. Valid skill package contents remain
+unrestricted unless another nested `SKILL.md` declares a candidate skill.
 
 Implement this as two focused changes if necessary: linter issue reporting first,
 then publisher rejection using the same policy.
@@ -205,21 +238,30 @@ then publisher rejection using the same policy.
 **Acceptance criteria:**
 
 - [ ] Root skills and immediate collection children are discovered.
+- [ ] A `SKILL.md` directly at `skills_root` is reported as an invalid
+  zero-segment candidate.
 - [ ] Empty, non-skill, hidden, and symlinked directories retain their current
   behavior.
 - [ ] Over-deep candidates are reported with the offending path.
+- [ ] Non-kebab-case collection and skill directory segments are reported with the
+  offending path.
 - [ ] A skill directory containing a descendant skill is rejected as a mixed
   skill/collection node.
 - [ ] A collection remains implicit and produces no separate index entry.
 - [ ] Structural issues are deterministic and path-scoped in `lint-skills`.
+- [ ] Multiple structural failures are ordered deterministically, while publisher
+  failure remains actionable without requiring linter-style aggregation.
 - [ ] `publish-index` writes or replaces no index when structural validation
   fails.
 
 **Verification:**
 
-- [ ] Extend linter filesystem-discovery tests for root, collected, over-deep,
-  mixed-node, ignored-content, and deterministic issue cases.
+- [ ] Extend linter filesystem-discovery tests for root, collected, zero-segment,
+  invalid segment, over-deep, mixed-node, ignored-content, and deterministic
+  multi-issue cases.
 - [ ] Extend publisher filesystem-discovery tests for the same path matrix.
+- [ ] Prove directory-path errors remain deterministic when frontmatter also
+  contains an invalid or mismatched skill name.
 - [ ] Extend publish-index use-case tests to prove the writer is not called after
   structural failure.
 - [ ] Run the focused linter and publisher unit suites.
@@ -239,19 +281,23 @@ then publisher rejection using the same policy.
 
 ### Task 4: Enforce the Contract in the JSON Index Reader
 
-**Description:** Validate every schema-v1 `skills[].path`, then validate the
-complete path set in the index-registry JSON adapter. Apply the same validation
-path to committed indexes used by `add-index` and `update-index`, and cached
-indexes used by `list-skills` and installation.
+**Description:** Validate every literal schema-v1 `skills[].path`, then validate
+the complete path set in the index-registry JSON adapter before metadata escapes.
+Make `read_index()` and `read_skills()` share one parsing and catalog-validation
+path so their contracts cannot drift. Apply it to committed indexes used by
+`add-index` and `update-index`, and cached indexes used by `list-skills` and
+installation.
 
 **Acceptance criteria:**
 
 - [ ] `read_index()` and `read_skills()` accept root and collection-child paths.
 - [ ] Both methods reject over-deep and mixed-node catalogs before returning any
   metadata.
+- [ ] Both methods reject non-kebab-case segments and duplicate exact paths.
 - [ ] Literal non-canonical paths cannot be normalized into apparent validity by
   `PurePosixPath`.
-- [ ] Errors identify invalid schema-v1 catalog structure.
+- [ ] Adapter errors identify invalid schema-v1 catalog structure and preserve a
+  machine-testable cause or stable reason.
 - [ ] CLI-facing errors provide actionable reorganize-and-republish guidance.
 - [ ] Duplicate skill names at distinct valid paths remain allowed.
 - [ ] Existing digest and provenance behavior remains unchanged.
@@ -259,7 +305,8 @@ indexes used by `list-skills` and installation.
 **Verification:**
 
 - [ ] Extend JSON reader tests for accepted root/collected paths and rejected
-  malformed, over-deep, and mixed path sets.
+  malformed, invalid-segment, duplicate, over-deep, and mixed path sets through
+  both reader methods.
 - [ ] Add list-skills tests proving invalid cached indexes fail before display.
 - [ ] Add CLI adapter coverage for actionable validation messages when needed.
 - [ ] Run focused index-registry adapter and list-skills tests.
@@ -280,7 +327,9 @@ indexes used by `list-skills` and installation.
 **Description:** Add regression coverage around the existing validate-before-write
 sequencing. Confirm invalid candidate indexes fail before cache writes and registry
 upserts, including forced replacement and update. Confirm bulk update records the
-failed alias and continues.
+failed alias and continues. Use mutation-recording test doubles or call-order
+assertions so the tests prove that mutation was never attempted rather than only
+comparing final values.
 
 **Acceptance criteria:**
 
@@ -288,6 +337,8 @@ failed alias and continues.
 - [ ] Invalid forced replacement preserves the existing cache and registry entry.
 - [ ] Invalid `update-index` preserves cache path, bytes, revision, digest,
   published metadata, skill count, and timestamps.
+- [ ] Registry state and cached index bytes are snapshotted before failure and
+  compared afterward where real filesystem state is involved.
 - [ ] `update-index --all` records a structurally invalid alias as failed and
   continues updating other aliases.
 - [ ] Implementation changes are made only if regression tests expose an atomicity
@@ -327,13 +378,16 @@ failed alias and continues.
 ### Task 6: Restrict Direct Installation to Exact Schema-v1 Skill Paths
 
 **Description:** Reuse the shared catalog-path validator in installation selector
-parsing. Keep `install-skill` exact-only and add explicit tests proving over-deep
-selectors are rejected and a first-level collection selector is not expanded.
+parsing before catalog lookup. Keep `install-skill` exact-only and add explicit
+tests proving malformed or over-deep selectors are rejected and a first-level
+collection selector is not expanded. Exact-match behavior relies on the index
+reader having already rejected mixed root-skill/collection catalogs.
 
 **Acceptance criteria:**
 
 - [ ] Direct selectors accept one- or two-segment exact skill paths only.
-- [ ] Over-deep selectors fail at the command/application boundary.
+- [ ] Malformed, non-kebab-case, and over-deep selectors fail at the
+  command/application boundary.
 - [ ] A collection selector with no exact root skill is reported as unknown and is
   never expanded by `install-skill`.
 - [ ] Exact root-skill behavior remains valid.
@@ -343,7 +397,8 @@ selectors are rejected and a first-level collection selector is not expanded.
 
 **Verification:**
 
-- [ ] Extend selector DTO tests for one, two, and over-deep paths.
+- [ ] Extend selector DTO tests for one- and two-segment paths plus malformed,
+  non-kebab-case, and over-deep paths.
 - [ ] Extend direct-install tests for exact root, exact collection child, and
   non-expanding collection selector behavior.
 - [ ] Run focused direct-install and catalog-adapter tests.
@@ -361,15 +416,19 @@ selectors are rejected and a first-level collection selector is not expanded.
 
 ### Task 7: Replace Arbitrary Prefix Expansion With Immediate Collection Expansion
 
-**Description:** In `InstallFromRequirements`, resolve exact matches first. If no
-exact match exists, permit only a one-segment selector and resolve indexed skills
-whose paths are exactly `<selector>/<skill>`. Require collection selectors to use
-`target`; reject collection selectors using `target_path` during planning before
-source opening, target planning, copying, or lockfile writing.
+**Description:** In `InstallFromRequirements`, validate selector syntax before
+catalog lookup and resolve exact matches first. If no exact match exists, permit
+only a one-segment selector and resolve indexed skills whose paths are exactly
+`<selector>/<skill>`. Mixed root-skill/collection catalogs are impossible because
+the index reader validates the complete path set first. Build and validate the
+complete expanded target and lock-entry plan before source opening or filesystem
+mutation. Require collection selectors to use `target`; reject collection
+selectors using `target_path` during planning.
 
 **Acceptance criteria:**
 
 - [ ] Exact root and collection-child skills retain exact-match precedence.
+- [ ] Selector syntax is validated before lookup or expansion.
 - [ ] A one-segment collection expands only immediate child skills.
 - [ ] Expanded skills are ordered deterministically by catalog path.
 - [ ] Empty or unrelated collection selectors fail as unknown.
@@ -377,10 +436,12 @@ source opening, target planning, copying, or lockfile writing.
 - [ ] A collection selector using `target_path` fails before any mutation.
 - [ ] A collection selector using `target` resolves each child below the target
   base by final skill name.
+- [ ] Expanded exact requirements are derived from each cached catalog path, never
+  from `skills[].name`.
 - [ ] Generated lock entries contain one exact requirement per resolved skill and
   retain repository-relative `skill_path` and `skill_file`.
 - [ ] Duplicate, canonical, and parent-child target conflict checks run over the
-  fully expanded plan before copying.
+  fully expanded plan before source opening or copying.
 
 **Verification:**
 
@@ -415,14 +476,17 @@ source opening, target planning, copying, or lockfile writing.
 
 ### Task 8: Resolve Contributions by Exact Catalog-relative Requirement
 
-**Description:** Limit `ContributionSkillReference` to one or two catalog segments
-and remove the lockfile reader's `skill_path == selector` fallback. Resolve by
-exact stored `requirement` and local alias. Continue validating repository-relative
-`skill_path` for safe checkout use, but do not apply catalog-depth rules to it.
+**Description:** Parse `ContributionSkillReference` as a local alias plus a
+one- or two-segment catalog selector and remove the lockfile reader's
+`skill_path == selector` fallback. Resolve by exact equality with the stored
+qualified `requirement`. Continue validating repository-relative `skill_path` and
+`skill_file` for safe checkout use, but do not apply catalog-depth rules to them.
 
 **Acceptance criteria:**
 
 - [ ] Root and collection-child exact requirements resolve one lockfile entry.
+- [ ] The requested alias and catalog selector are compared as one exact qualified
+  requirement, without independently resolving publisher `index.name`.
 - [ ] A collection-only request is never expanded and fails unless an exact root
   skill with that path exists.
 - [ ] Over-deep contribution selectors fail before lockfile or checkout mutation.
@@ -445,7 +509,7 @@ exact stored `requirement` and local alias. Continue validating repository-relat
   preparation.
 - [ ] Run focused contribution tests.
 
-**Dependencies:** Tasks 1 and 2
+**Dependencies:** Task 7
 
 **Files likely touched:**
 
@@ -474,9 +538,10 @@ exact stored `requirement` and local alias. Continue validating repository-relat
 **Description:** Cover supported catalog layouts and rejection behavior at real
 CLI boundaries. Update README language that currently describes unrestricted
 recursive discovery. Document collection selectors for `ritebook install`, while
-reiterating that `install-skill` and `publish-skill-change` are exact-only. Return
-specification implementation-state metadata to `Implemented` only after all
-acceptance criteria pass.
+reiterating that `install-skill` and `publish-skill-change` are exact-only. Audit
+each affected specification independently against all of its normative behavior;
+mark it `Implemented` only when the complete specification, not merely this plan's
+subset, has implementation evidence.
 
 **Acceptance criteria:**
 
@@ -491,8 +556,11 @@ acceptance criteria pass.
   collection expansion.
 - [ ] README examples use valid catalog paths and distinguish catalog-relative
   selectors from repository-relative lockfile paths.
-- [ ] Changed specifications are marked `Implemented` only after all code and test
-  work succeeds.
+- [ ] Each changed specification's `Implementation state` reflects its complete
+  normative scope; specs with unrelated remaining work stay `Partially
+  implemented` with accurate implementation-status notes.
+- [ ] `Spec version` and `Last reviewed` metadata are updated only according to
+  `docs/specs/README.md` governance.
 
 **Verification:**
 
@@ -502,7 +570,8 @@ acceptance criteria pass.
 - [ ] `uv run pytest -m "not e2e"`
 - [ ] `uv build`
 - [ ] `uv run pytest tests/e2e -q`
-- [ ] Run the canonical Docker E2E command documented by the repository/specification.
+- [ ] `docker build -f Dockerfile.e2e -t ritebook-e2e .`
+- [ ] `docker run --rm --network none ritebook-e2e`
 - [ ] Review the final diff for architecture-boundary compliance and unrelated
   churn.
 
@@ -534,7 +603,7 @@ acceptance criteria pass.
 ## Dependency Graph
 
 ```text
-Contribution terminology clarification
+Schema-v1 contract alignment
               |
               v
 Shared catalog-path policy
@@ -572,8 +641,8 @@ Publish safety                            |
   validation failures.
 - Task 6 depends on the shared validator and consumer read boundary.
 - Task 7 follows Task 6 because both use the same selector contract.
-- Task 8 can proceed after Tasks 1 and 2, but its integration tests should be
-  reconciled with generated lockfile behavior from Task 7.
+- Task 8 follows Task 7 so contribution fixtures and exact matching use finalized,
+  generated lockfile semantics.
 - Task 9 is last because it integrates every workflow and updates implementation
   status.
 
@@ -594,10 +663,6 @@ Publish safety                            |
 
 ## Assumptions
 
-- Kebab-case segment validation remains the project-wide rule for catalog paths
-  because current installation and contribution selectors already require it.
-- A `SKILL.md` directly at `skills_root` is not a valid skill because its relative
-  directory is `.`, which is not `<skill>` or `<collection>/<skill>`.
 - Duplicate paths remain invalid or nonsensical JSON catalog state, while duplicate
   skill names at distinct valid paths remain supported.
 - Collection expansion is based solely on cached index entries; empty and
@@ -606,16 +671,12 @@ Publish safety                            |
   validation precedes cache writes; Task 5 verifies rather than assumes this.
 - No new dependency or ADR is required.
 
-## Open Questions
+## Readiness Assessment
 
-- [ ] Confirm the required specification clarification: catalog-depth validation
-  applies to the selector in `requirement`, while lockfile `skill_path` remains
-  repository-relative.
-- [ ] Confirm whether a `SKILL.md` directly at `skills_root` should be rejected as
-  an invalid zero-segment skill, as implied by the new path grammar.
-
-These questions affect precise test expectations but not the overall dependency
-order. Resolve them before Task 2 is finalized.
+**Ready after this plan revision.** The naming, zero-segment, lockfile-path, and
+task-dependency decisions are resolved. Implementation can begin with Task 1 and
+must preserve the constraints, focused checkpoints, and validate-before-mutation
+sequencing above. No unresolved question blocks Task 2.
 
 ## Handoff Notes
 

@@ -1,10 +1,13 @@
 """Validate contribution checkouts through the linter application boundary."""
 
+from pathlib import Path, PurePosixPath
+
 from ritebook.features.linter.application.dtos import LintSkillsCommand
 from ritebook.features.linter.application.errors import LinterError
 from ritebook.features.linter.application.ports import LintSkillsPort
 from ritebook.features.skill_contribution.application.dtos import (
     ContributionLockfileEntry,
+    ContributionSkillReference,
     ContributionWorkspace,
 )
 from ritebook.features.skill_contribution.application.errors import (
@@ -25,11 +28,10 @@ class LinterSkillValidatorAdapter(SkillValidatorPort):
         entry: ContributionLockfileEntry,
         workspace: ContributionWorkspace,
     ) -> None:
-        """Validate every skill under the contribution checkout root."""
-        del entry
+        """Validate every skill under the contribution catalog root."""
         try:
             result = self._linter.execute(
-                LintSkillsCommand(skills_root=workspace.checkout_path),
+                LintSkillsCommand(skills_root=_catalog_root(entry, workspace)),
             )
         except LinterError as err:
             message = (
@@ -46,3 +48,19 @@ class LinterSkillValidatorAdapter(SkillValidatorPort):
                 "contribution commit was not created"
             )
             raise SkillContributionValidationError(message)
+
+
+def _catalog_root(
+    entry: ContributionLockfileEntry,
+    workspace: ContributionWorkspace,
+) -> str:
+    selector = PurePosixPath(
+        ContributionSkillReference.parse(entry.requirement).skill_selector,
+    )
+    skill_path = PurePosixPath(entry.skill_path)
+    selector_depth = len(selector.parts)
+    if skill_path.parts[-selector_depth:] != selector.parts:
+        msg = "Contribution skill path does not match its catalog selector."
+        raise SkillContributionValidationError(msg)
+    root_parts = skill_path.parts[:-selector_depth]
+    return str(Path(workspace.checkout_path).joinpath(*root_parts))

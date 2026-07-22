@@ -44,6 +44,70 @@ def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> Non
     }
 
 
+def test_discover_headers_reports_zero_segment_candidate_before_frontmatter(
+    tmp_path: Path,
+) -> None:
+    write_skill(tmp_path / "SKILL.md", "not valid frontmatter")
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert result.headers == ()
+    assert [issue.format() for issue in result.issues] == [
+        "SKILL.md: Catalog path is not a literal relative POSIX path: '.'.",
+    ]
+
+
+def test_discover_headers_reports_invalid_and_over_deep_paths_deterministically(
+    tmp_path: Path,
+) -> None:
+    write_skill(
+        tmp_path / "valid" / "SKILL.md",
+        frontmatter(name="valid"),
+    )
+    write_skill(
+        tmp_path / "BadCollection" / "skill" / "SKILL.md",
+        "not valid frontmatter",
+    )
+    write_skill(
+        tmp_path / "collection" / "nested" / "skill" / "SKILL.md",
+        "not valid frontmatter",
+    )
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert [header.skill_file for header in result.headers] == ["valid/SKILL.md"]
+    assert [issue.format() for issue in result.issues] == [
+        "BadCollection/skill/SKILL.md: Catalog path contains a non-canonical "
+        "identifier segment: 'BadCollection/skill'.",
+        "collection/nested/skill/SKILL.md: Catalog path must contain one or two "
+        "segments: 'collection/nested/skill'.",
+    ]
+
+
+def test_discover_headers_reports_every_mixed_skill_collection_child(
+    tmp_path: Path,
+) -> None:
+    write_skill(tmp_path / "quality" / "SKILL.md", frontmatter(name="quality"))
+    write_skill(
+        tmp_path / "quality" / "alpha" / "SKILL.md",
+        frontmatter(name="alpha"),
+    )
+    write_skill(
+        tmp_path / "quality" / "zeta" / "SKILL.md",
+        frontmatter(name="zeta"),
+    )
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert [header.skill_file for header in result.headers] == ["quality/SKILL.md"]
+    assert [issue.format() for issue in result.issues] == [
+        "quality/alpha/SKILL.md: Catalog node cannot be both a root skill and a "
+        "collection: 'quality' conflicts with 'quality/alpha'.",
+        "quality/zeta/SKILL.md: Catalog node cannot be both a root skill and a "
+        "collection: 'quality' conflicts with 'quality/zeta'.",
+    ]
+
+
 def test_discover_headers_skips_hidden_directories(tmp_path: Path) -> None:
     write_skill(tmp_path / "visible" / "SKILL.md", frontmatter(name="visible"))
     write_skill(tmp_path / ".hidden" / "SKILL.md", frontmatter(name="hidden"))
@@ -58,13 +122,16 @@ def test_discover_headers_skips_hidden_directories(tmp_path: Path) -> None:
     assert result.issues == ()
 
 
-def test_discover_headers_supports_root_skill_directory(tmp_path: Path) -> None:
+def test_discover_headers_rejects_skill_file_directly_at_skills_root(
+    tmp_path: Path,
+) -> None:
     write_skill(tmp_path / "SKILL.md", frontmatter(name=tmp_path.name))
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
-    assert [(header.skill_file, header.expected_name) for header in result.headers] == [
-        ("SKILL.md", tmp_path.name),
+    assert result.headers == ()
+    assert [issue.format() for issue in result.issues] == [
+        "SKILL.md: Catalog path is not a literal relative POSIX path: '.'.",
     ]
 
 

@@ -13,6 +13,10 @@ from ritebook.adapters.outbound.filesystem import (
 from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.domain import SkillEntry
 from ritebook.shared_kernel import SKILL_FILE_NAME
+from ritebook.shared_kernel.catalog_paths import (
+    CatalogPathValidationError,
+    validate_catalog_paths,
+)
 
 
 class FilesystemSkillDiscovery:
@@ -25,8 +29,13 @@ class FilesystemSkillDiscovery:
                 Path(skills_root),
                 file_name=SKILL_FILE_NAME,
             )
+            validate_catalog_paths(
+                discovered.relative_dir for discovered in discovered_files
+            )
             entries = [_skill_entry(discovered) for discovered in discovered_files]
         except FilesystemSkillDiscoveryError as err:
+            raise PublishIndexDiscoveryError(str(err)) from err
+        except CatalogPathValidationError as err:
             raise PublishIndexDiscoveryError(str(err)) from err
 
         return tuple(sorted(entries, key=lambda entry: entry.path))

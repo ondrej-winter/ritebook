@@ -36,14 +36,16 @@ class FakeLinter:
         return self.result
 
 
-def test_validation_adapter_lints_checkout_root() -> None:
+def test_validation_adapter_lints_catalog_root() -> None:
     linter = FakeLinter()
     adapter = LinterSkillValidatorAdapter(linter=linter)
 
     adapter.validate(contribution_entry(), contribution_workspace())
 
     assert linter.commands == [
-        LintSkillsCommand(skills_root="/tmp/contributions/platform-skills-code-review"),
+        LintSkillsCommand(
+            skills_root="/tmp/contributions/platform-skills-code-review/skills",
+        ),
     ]
 
 

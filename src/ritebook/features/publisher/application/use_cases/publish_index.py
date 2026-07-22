@@ -14,6 +14,7 @@ from ritebook.features.publisher.application.dtos import (
     PublishIndexResult,
     PublishIndexValidationError,
 )
+from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.application.ports import (
     PublishIndexPort,
     SkillDiscoveryPort,
@@ -21,6 +22,7 @@ from ritebook.features.publisher.application.ports import (
     SkillPrecheckPort,
 )
 from ritebook.features.publisher.domain import SkillCatalog
+from ritebook.shared_kernel.catalog_paths import CatalogPathValidationError
 
 
 class PublishIndex(PublishIndexPort):
@@ -47,12 +49,15 @@ class PublishIndex(PublishIndexPort):
             raise PublishIndexValidationError(precheck_result.issues)
 
         skills = self._skill_discovery.discover_skills(command.skills_root)
-        catalog = SkillCatalog.create(
-            index_name=command.index_name,
-            generated_at=_utc_timestamp(self._clock()),
-            skills_root=command.published_skills_root,
-            skills=skills,
-        )
+        try:
+            catalog = SkillCatalog.create(
+                index_name=command.index_name,
+                generated_at=_utc_timestamp(self._clock()),
+                skills_root=command.published_skills_root,
+                skills=skills,
+            )
+        except CatalogPathValidationError as err:
+            raise PublishIndexDiscoveryError(str(err)) from err
         self._index_writer.write_index(catalog, CANONICAL_INDEX_FILENAME)
         return PublishIndexResult(
             discovered_skill_count=len(skills),

@@ -9,6 +9,7 @@ from ritebook.features.publisher.application.dtos import (
     SkillPrecheckIssue,
     SkillPrecheckResult,
 )
+from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.application.use_cases import PublishIndex
 from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
 
@@ -290,5 +291,44 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
         "beta/SKILL.md: frontmatter must be valid YAML.",
     ]
     assert discovery.discovered_roots == []
+    assert writer.written_catalogs == []
+    assert writer.output_paths == []
+
+
+def test_publish_index_refuses_to_write_structurally_invalid_discovery() -> None:
+    discovery = FakeSkillDiscovery(
+        skills=(
+            SkillEntry(
+                name="quality",
+                path="quality",
+                skill_file="quality/SKILL.md",
+                description="Quality skill.",
+            ),
+            SkillEntry(
+                name="code-review",
+                path="quality/code-review",
+                skill_file="quality/code-review/SKILL.md",
+                description="Code review skill.",
+            ),
+        ),
+    )
+    writer = FakeIndexWriter()
+    use_case = PublishIndex(
+        skill_discovery=discovery,
+        precheck=FakePrecheck(SkillPrecheckResult(checked_skill_count=2)),
+        index_writer=writer,
+        clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+    )
+
+    with pytest.raises(PublishIndexDiscoveryError, match="both a root skill") as err:
+        use_case.execute(
+            PublishIndexCommand(
+                index_name="company-skills",
+                skills_root="skills",
+                published_skills_root="skills",
+            ),
+        )
+
+    assert err.value.__cause__ is not None
     assert writer.written_catalogs == []
     assert writer.output_paths == []

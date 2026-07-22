@@ -44,6 +44,40 @@ def test_discover_skills_skips_hidden_directories(tmp_path: Path) -> None:
     assert [entry.path for entry in entries] == ["visible"]
 
 
+@pytest.mark.parametrize(
+    ("relative_path", "expected_message"),
+    [
+        ("BadCollection/skill", "non-canonical identifier segment"),
+        ("collection/nested/skill", "one or two segments"),
+    ],
+)
+def test_discover_skills_rejects_invalid_catalog_paths_before_frontmatter(
+    tmp_path: Path,
+    relative_path: str,
+    expected_message: str,
+) -> None:
+    write_skill(tmp_path / relative_path / "SKILL.md", "not valid frontmatter")
+
+    with pytest.raises(PublishIndexDiscoveryError, match=expected_message) as err:
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert err.value.__cause__ is not None
+
+
+def test_discover_skills_rejects_mixed_skill_collection_node(tmp_path: Path) -> None:
+    write_skill(tmp_path / "quality" / "SKILL.md", skill_content(name="quality"))
+    write_skill(
+        tmp_path / "quality" / "code-review" / "SKILL.md",
+        skill_content(name="code-review"),
+    )
+
+    with pytest.raises(PublishIndexDiscoveryError, match="both a root skill") as err:
+        FilesystemSkillDiscovery().discover_skills(str(tmp_path))
+
+    assert "quality/code-review" in str(err.value)
+    assert err.value.__cause__ is not None
+
+
 def test_discover_skills_rejects_missing_description(tmp_path: Path) -> None:
     write_skill(
         tmp_path / "undocumented" / "SKILL.md",
@@ -89,18 +123,14 @@ def test_discover_skills_translates_skill_file_read_errors(tmp_path: Path) -> No
     assert err.value.__cause__ is not None
 
 
-def test_discover_skills_supports_root_skill_directory(tmp_path: Path) -> None:
+def test_discover_skills_rejects_skill_file_directly_at_skills_root(
+    tmp_path: Path,
+) -> None:
     skill_root = tmp_path / "root-skill"
     write_skill(skill_root / "SKILL.md", skill_content(name="root-skill"))
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(skill_root))
-
-    assert [
-        (entry.name, entry.path, entry.skill_file, entry.description)
-        for entry in entries
-    ] == [
-        ("root-skill", ".", "SKILL.md", "Example skill"),
-    ]
+    with pytest.raises(PublishIndexDiscoveryError, match="literal relative POSIX"):
+        FilesystemSkillDiscovery().discover_skills(str(skill_root))
 
 
 def test_discover_skills_rejects_missing_root(tmp_path: Path) -> None:

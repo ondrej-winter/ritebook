@@ -234,7 +234,7 @@ with Ruff, `ty`, and 578 tests passing with one existing skip.
 
 ### Phase 2: Stop Invalid Catalogs at Producer and Consumer Boundaries
 
-- [ ] Task 3: Enforce catalog structure during lint and publisher discovery
+- [x] Task 3: Enforce catalog structure during lint and publisher discovery
 - [ ] Task 4: Enforce the contract in the JSON index reader
 - [ ] Task 5: Prove add/update failure preserves registry state
 
@@ -253,34 +253,48 @@ then publisher rejection using the same policy.
 
 **Acceptance criteria:**
 
-- [ ] Root skills and immediate collection children are discovered.
-- [ ] A `SKILL.md` directly at `skills_root` is reported as an invalid
+- [x] Root skills and immediate collection children are discovered.
+- [x] A `SKILL.md` directly at `skills_root` is reported as an invalid
   zero-segment candidate.
-- [ ] Empty, non-skill, hidden, and symlinked directories retain their current
+- [x] Empty, non-skill, hidden, and symlinked directories retain their current
   behavior.
-- [ ] Over-deep candidates are reported with the offending path.
-- [ ] Non-kebab-case collection and skill directory segments are reported with the
+- [x] Over-deep candidates are reported with the offending path.
+- [x] Non-kebab-case collection and skill directory segments are reported with the
   offending path.
-- [ ] A skill directory containing a descendant skill is rejected as a mixed
+- [x] A skill directory containing a descendant skill is rejected as a mixed
   skill/collection node.
-- [ ] A collection remains implicit and produces no separate index entry.
-- [ ] Structural issues are deterministic and path-scoped in `lint-skills`.
-- [ ] Multiple structural failures are ordered deterministically, while publisher
+- [x] A collection remains implicit and produces no separate index entry.
+- [x] Structural issues are deterministic and path-scoped in `lint-skills`.
+- [x] Multiple structural failures are ordered deterministically, while publisher
   failure remains actionable without requiring linter-style aggregation.
-- [ ] `publish-index` writes or replaces no index when structural validation
+- [x] `publish-index` writes or replaces no index when structural validation
   fails.
 
 **Verification:**
 
-- [ ] Extend linter filesystem-discovery tests for root, collected, zero-segment,
+- [x] Extend linter filesystem-discovery tests for root, collected, zero-segment,
   invalid segment, over-deep, mixed-node, ignored-content, and deterministic
   multi-issue cases.
-- [ ] Extend publisher filesystem-discovery tests for the same path matrix.
-- [ ] Prove directory-path errors remain deterministic when frontmatter also
+- [x] Extend publisher filesystem-discovery tests for the same path matrix.
+- [x] Prove directory-path errors remain deterministic when frontmatter also
   contains an invalid or mismatched skill name.
-- [ ] Extend publish-index use-case tests to prove the writer is not called after
+- [x] Extend publish-index use-case tests to prove the writer is not called after
   structural failure.
-- [ ] Run the focused linter and publisher unit suites.
+- [x] Run the focused linter and publisher unit suites.
+
+**Implementation note (2026-07-22):** Added literal catalog-path validation to
+the linter and publisher filesystem discovery adapters before frontmatter parsing.
+The linter aggregates deterministic path-scoped issues for independent malformed,
+invalid-segment, over-deep, and mixed-node candidates; publisher discovery fails
+actionably with the shared typed failure preserved as its cause. `SkillCatalog`
+also validates the complete path set so alternate discovery ports cannot bypass
+the producer invariant, and `PublishIndex` translates that failure before the
+writer is called. Full-suite validation exposed that contribution validation had
+treated a repository checkout as a catalog root; the adapter now derives the real
+catalog root from the locked catalog selector and repository-relative skill path.
+Focused producer tests pass with 113 tests, contribution compatibility passes with
+6 focused unit/E2E tests, and the full gate passes with Ruff, `ty`, and 585 tests
+passing with one existing skip.
 
 **Dependencies:** Task 2
 
@@ -380,7 +394,7 @@ comparing final values.
 
 ### Checkpoint B: Producer and Consumer Boundaries
 
-- [ ] Publisher and linter focused tests pass.
+- [x] Publisher and linter focused tests pass.
 - [ ] Registry and listing focused tests pass.
 - [ ] Invalid catalogs cannot be published, registered, updated, listed, or
   passed into installation.
@@ -689,10 +703,11 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Phase 1 complete.** The normative path semantics and shared schema-v1 catalog
-path policy are implemented and verified. Task 3 is the next sequential slice;
-Task 4 may proceed independently from the same shared API. Both must preserve the
-focused checkpoints and validate-before-mutation sequencing above.
+**Task 3 complete.** Producer discovery, linting, and catalog construction now
+enforce the shared schema-v1 catalog path policy before publication. Task 4 is the
+next sequential slice and must apply the same literal and complete-set validation
+to both JSON index reader methods before metadata escapes. Checkpoint B remains
+open until Tasks 4 and 5 establish consumer validation and mutation safety.
 
 ## Handoff Notes
 

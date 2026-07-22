@@ -11,6 +11,7 @@ from ritebook.shared_kernel import (
     require_kebab_case_identifier,
     require_no_terminal_control_characters,
 )
+from ritebook.shared_kernel.catalog_paths import validate_catalog_paths
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -90,6 +91,7 @@ class SkillCatalog:
             "skills",
             tuple(sorted(self.skills, key=lambda skill: skill.path)),
         )
+        validate_catalog_paths(skill.path for skill in self.skills)
 
 
 def _require_relative_posix_path(value: str, *, field_name: str) -> None:

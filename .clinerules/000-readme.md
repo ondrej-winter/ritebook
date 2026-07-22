@@ -25,6 +25,7 @@
 
 - Treat rules marked as **hard constraints** or **non-negotiable** as highest priority within `.clinerules/`.
 - Explicit overrides beat implicit interpretation. When a later module intentionally sharpens an earlier rule, it should say so directly.
+- Project-specific overrides may replace reusable defaults when a later module names the overridden rule and the repository-specific command explicitly.
 - More specific rules take precedence over broader rules on the same topic.
 - **Must** statements take precedence over **Should** statements.
 - If two rules with the same strength and scope still conflict, use file order only as a **last-resort tiebreaker**, then update the ruleset to make precedence explicit.
@@ -91,6 +92,7 @@
 - `011-tooling-and-ci.md` - `uv` dependency-group, validation policy, and CI expectations
 - `012-documentation-standards.md` - Clear, concise docstrings and comments policy
 - `013-logging-conventions.md` - Module-level logger standard, structured context, and safe redaction practices
+- `014-project-tooling-override.md` - Ritebook-specific `ty` type-checking policy overriding the reusable `mypy` default
 - `999-command-execution-safety.md` - Hard ban on inline interpreter heredocs; require file-based helper scripts and non-interactive version-control usage
 
 ## Workflows

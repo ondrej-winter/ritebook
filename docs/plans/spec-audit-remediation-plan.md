@@ -102,7 +102,7 @@ documentation unless the project explicitly accepts and records the existing ris
 
 ### Phase 4: Specification and tooling governance
 
-- [ ] Task 16: Resolve the `ty` versus `mypy` policy conflict
+- [x] Task 16: Resolve the `ty` versus `mypy` policy conflict
 - [ ] Task 17: Add lifecycle metadata to every specification
 - [ ] Task 18: Standardize published-name and local-alias terminology
 - [ ] Task 19: Align Docker E2E isolation claims and behavior
@@ -887,18 +887,18 @@ require two type checkers without a documented reason and ownership model.
 
 **Acceptance criteria:**
 
-- [ ] `pyproject.toml`, dependency lock, CI, specs, README, and active rules name
+- [x] `pyproject.toml`, dependency lock, CI, specs, README, and active rules name
   the same required type checker.
-- [ ] The selected checker covers the intended source set and passes without
+- [x] The selected checker covers the intended source set and passes without
   ignored unexplained failures.
-- [ ] Contributor commands and CI commands are identical except for explicit
+- [x] Contributor commands and CI commands are identical except for explicit
   environment setup.
 
 **Verification:**
 
-- [ ] Run the selected type-check command from a synchronized `uv` environment.
-- [ ] Search the repository for stale required commands naming the rejected tool.
-- [ ] Confirm dependency and lockfile changes are synchronized if applicable.
+- [x] Run the selected type-check command from a synchronized `uv` environment.
+- [x] Search the repository for stale required commands naming the rejected tool.
+- [x] Confirm dependency and lockfile changes are synchronized if applicable.
 
 **Dependencies:** None; complete before final validation.
 
@@ -912,7 +912,14 @@ require two type checkers without a documented reason and ownership model.
 
 **Estimated scope:** Medium, mostly configuration/documentation.
 
-**Status note:** Pending.
+**Status note:** Completed 2026-07-22. Ritebook keeps `ty` as its only required
+static type checker. A late active project rule explicitly overrides the reusable
+profile's `mypy` default and requires `uv run ty check src/ritebook`, matching
+`pyproject.toml`, the locked development dependency, pre-commit, CI, README, and
+all six specifications. `uv sync --frozen --group dev` and the selected checker
+passed across 160 source files. A repository-wide command search found no
+project-required `mypy` invocation outside the intentionally superseded reusable
+rules and reusable skill templates; no dependency or lockfile change was needed.
 
 ## Task 17: Add Lifecycle Metadata to Every Specification
 
@@ -1031,7 +1038,7 @@ controlled HOME, and explicit network/permission expectations.
 
 ## Checkpoint D: Governance Alignment
 
-- [ ] One type checker is consistently required by rules, tooling, docs, and CI.
+- [x] One type checker is consistently required by rules, tooling, docs, and CI.
 - [ ] Every spec has current lifecycle metadata and valid cross-links.
 - [ ] Shared index terminology is unambiguous.
 - [ ] Docker E2E claims match observable runtime behavior.
@@ -1101,7 +1108,7 @@ follow-up rather than leaving an unchecked item implied complete.
 | 10. Lexical rather than canonical target collisions | Required | 10 | Closed |
 | 11. Local-source lockfile portability conflict | Required | 15 | Closed |
 | 12. Post-copy generated-state failure semantics | Required | 14 | Closed |
-| 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Open |
+| 13. `ty` versus `mypy` governance conflict | Cross-cutting | 16 | Closed |
 | 14. Missing specification lifecycle metadata | Cross-cutting | 17 | Open |
 | 15. Published-name/local-alias terminology drift | Cross-cutting | 18 | Open |
 | 16. Docker “clean-room” claim exceeds enforcement | Cross-cutting | 19 | Open |
@@ -1171,8 +1178,10 @@ follow-up rather than leaving an unchecked item implied complete.
 - [x] Reject C0 controls, DEL, and C1 controls in descriptions at publication and
   consumer ingestion; escape controls at CLI display boundaries as defense in
   depth without transforming valid persisted metadata.
-- [ ] Is `ty` the intentional project override to the reusable `mypy` rule, or
-  should the project migrate to `mypy`?
+- [x] Is `ty` the intentional project override to the reusable `mypy` rule, or
+  should the project migrate to `mypy`? **Decision:** `ty` is Ritebook's sole
+  required type checker; `.clinerules/014-project-tooling-override.md` explicitly
+  supersedes the reusable `mypy` default for this repository.
 - [ ] Does Docker E2E need unprivileged-user fidelity, or should “clean-room” be
   narrowed to dependency and developer-state isolation?
 

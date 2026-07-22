@@ -4,6 +4,7 @@ from io import StringIO
 from pathlib import Path
 from typing import TextIO
 
+from ritebook import __version__
 from ritebook.adapters.inbound.cli import run as run_cli
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
@@ -747,6 +748,23 @@ def test_top_level_help_uses_injected_stdout() -> None:
     assert exit_code == 0
     assert "usage: ritebook" in stdout.getvalue()
     assert "publish-index" in stdout.getvalue()
+    assert stderr.getvalue() == ""
+
+
+def test_top_level_version_uses_injected_stdout() -> None:
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["--version"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert stdout.getvalue() == f"ritebook {__version__}\n"
     assert stderr.getvalue() == ""
 
 

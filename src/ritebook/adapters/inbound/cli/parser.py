@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from ritebook import __version__
+
 LINT_SKILLS_COMMAND = "lint-skills"
 PUBLISH_INDEX_COMMAND = "publish-index"
 ADD_INDEX_COMMAND = "add-index"
@@ -18,6 +20,11 @@ PUBLISH_SKILL_CHANGE_COMMAND = "publish-skill-change"
 def build_parser() -> argparse.ArgumentParser:
     """Build the Ritebook command-line argument parser."""
     parser = argparse.ArgumentParser(prog="ritebook")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     lint_skills = subparsers.add_parser(

@@ -73,6 +73,12 @@ Build the package distributions:
 uv build
 ```
 
+Print the installed Ritebook version:
+
+```bash
+uv run ritebook --version
+```
+
 ## Publisher skill index generation
 
 Maintainers can validate skill headers and generate a reviewable skill catalog

@@ -117,7 +117,7 @@ Keep this section and the task list current without waiting for a progress reque
 ### Phase 1: Define the Shared Contract
 
 - [x] Task 1: Align schema-v1 catalog-path and lockfile semantics
-- [ ] Task 2: Add a shared schema-v1 catalog-path policy
+- [x] Task 2: Add a shared schema-v1 catalog-path policy
 
 ### Task 1: Align Schema-v1 Catalog-path and Lockfile Semantics
 
@@ -181,30 +181,39 @@ root-skill/collection path sets.
 
 **Acceptance criteria:**
 
-- [ ] Accepts `code-review` and `quality/code-review`.
-- [ ] Rejects empty, absolute, backslash, dot, parent, repeated-separator,
+- [x] Accepts `code-review` and `quality/code-review`.
+- [x] Rejects empty, absolute, backslash, dot, parent, repeated-separator,
   trailing-separator, and three-or-more-segment paths.
-- [ ] Rejects non-kebab-case catalog segments consistently with existing
+- [x] Rejects non-kebab-case catalog segments consistently with existing
   application selectors.
-- [ ] Classifies one-segment paths as root skills and two-segment paths as
+- [x] Classifies one-segment paths as root skills and two-segment paths as
   collection children without introducing transport-specific types.
-- [ ] Rejects sets such as `quality` plus `quality/code-review`.
-- [ ] Allows duplicate skill names at distinct valid paths.
-- [ ] Rejects duplicate exact paths deterministically.
-- [ ] Distinguishes malformed paths, invalid depth, and mixed-node sets through
+- [x] Rejects sets such as `quality` plus `quality/code-review`.
+- [x] Allows duplicate skill names at distinct valid paths.
+- [x] Rejects duplicate exact paths deterministically.
+- [x] Distinguishes malformed paths, invalid depth, and mixed-node sets through
   technology-neutral typed failures or stable reason codes.
-- [ ] Reuses `shared_kernel.identifiers` rather than defining a second identifier
+- [x] Reuses `shared_kernel.identifiers` rather than defining a second identifier
   regex.
-- [ ] Exposes a small intentional shared-kernel API; update `__init__.py` only if a
+- [x] Exposes a small intentional shared-kernel API; update `__init__.py` only if a
   stable package-level re-export is deliberately required.
 
 **Verification:**
 
-- [ ] Focused shared-kernel tests cover valid, malformed, over-deep, mixed-node,
+- [x] Focused shared-kernel tests cover valid, malformed, over-deep, mixed-node,
   duplicate-exact-path, and duplicate-name-at-distinct-path cases.
-- [ ] `uv run pytest tests/unit/shared_kernel/test_catalog_paths.py`
-- [ ] `uv run ruff check src/ritebook/shared_kernel tests/unit/shared_kernel`
-- [ ] `uv run ty check src/ritebook`
+- [x] `uv run pytest tests/unit/shared_kernel/test_catalog_paths.py`
+- [x] `uv run ruff check src/ritebook/shared_kernel tests/unit/shared_kernel`
+- [x] `uv run ty check src/ritebook`
+
+**Implementation note (2026-07-22):** Added the pure
+`shared_kernel.catalog_paths` API with validated root-skill and collection-child
+classifications, literal-before-normalization checks, and stable typed failure
+reasons for malformed paths, invalid depth or segments, duplicates, and mixed
+nodes. Complete-set validation preserves input order on success and deterministically
+identifies mixed-node conflicts. The API remains module-scoped rather than adding a
+package-level re-export. Focused coverage passes with 21 tests; the full gate passes
+with Ruff, `ty`, and 578 tests passing with one existing skip.
 
 **Dependencies:** Task 1
 
@@ -219,9 +228,9 @@ root-skill/collection path sets.
 
 ### Checkpoint A: Shared Contract
 
-- [ ] Shared catalog-path tests pass.
-- [ ] Changed modules pass Ruff and `ty`.
-- [ ] Shared code contains no filesystem, JSON, CLI, or slice-specific errors.
+- [x] Shared catalog-path tests pass.
+- [x] Changed modules pass Ruff and `ty`.
+- [x] Shared code contains no filesystem, JSON, CLI, or slice-specific errors.
 
 ### Phase 2: Stop Invalid Catalogs at Producer and Consumer Boundaries
 
@@ -680,10 +689,10 @@ Publish safety                            |
 
 ## Readiness Assessment
 
-**Ready after this plan revision.** The naming, zero-segment, lockfile-path, and
-task-dependency decisions are resolved. Implementation can begin with Task 1 and
-must preserve the constraints, focused checkpoints, and validate-before-mutation
-sequencing above. No unresolved question blocks Task 2.
+**Phase 1 complete.** The normative path semantics and shared schema-v1 catalog
+path policy are implemented and verified. Task 3 is the next sequential slice;
+Task 4 may proceed independently from the same shared API. Both must preserve the
+focused checkpoints and validate-before-mutation sequencing above.
 
 ## Handoff Notes
 
@@ -693,5 +702,7 @@ sequencing above. No unresolved question blocks Task 2.
 - Avoid unrelated refactors in shared filesystem discovery, DTO modules, or CLI
   wiring.
 - Preserve public import paths unless a deliberate shared-kernel export is added.
+- Import the Task 2 policy from `ritebook.shared_kernel.catalog_paths`; no
+  package-level re-export was added.
 - If implementation uncovers a schema change rather than a validation tightening,
   stop and record that decision through the ADR workflow before proceeding.

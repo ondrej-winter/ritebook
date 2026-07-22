@@ -65,6 +65,8 @@ Requirements:
 - The skill selector after the first slash is a safe relative POSIX path with one
   or two segments: `<skill>` or `<collection>/<skill>`, such as
   `browser/runtime-verification`.
+- Every selector segment must use the canonical 1–64 character Ritebook kebab-case
+  identifier form.
 - Ritebook resolves only exact cached relative paths and never falls back to
   `skills[].name`. A root skill path such as `code-review` remains valid when that
   exact path exists.
@@ -348,6 +350,10 @@ Lockfile requirements:
 - `schema_version` is required and must be `1` for v1.
 - `requirements_file` records the requirements file path used by `install`.
 - `skills` are sorted deterministically by `index_name`, then skill path.
+- `requirement` stores the exact qualified catalog selector
+  `<local-alias>/<skill>` or `<local-alias>/<collection>/<skill>` resolved for the
+  entry. Collection expansion writes one exact child requirement per resolved
+  skill.
 - `index_name` is a compatibility-sensitive schema-v1 field containing the local
   alias from the qualified skill reference; it is not publisher `index.name`.
 - `target` stores the resolved target path written from the requirements file.
@@ -356,6 +362,15 @@ Lockfile requirements:
   index validation and actually used for installation.
 - `index_digest` is required and records the verified digest of the cached index
   used to resolve the skill.
+- `skill_path` stores the selected skill directory path relative to the source
+  repository, formed from the index `skills_root` and catalog-relative skill path.
+- `skill_file` stores the selected `SKILL.md` path relative to the source
+  repository, formed from the index `skills_root` and catalog-relative skill-file
+  path.
+- Catalog one-or-two-segment depth validation applies to the selector encoded in
+  `requirement`, not to repository-relative `skill_path` or `skill_file`. Those
+  repository paths may contain additional segments contributed by `skills_root`
+  and remain subject to safe relative-path validation.
 - `source` must be the safe persisted locator propagated from the registry. A
   standard URL containing authority user-info is rejected before lockfile writing.
 - Shared lockfiles support `source_type = "git_url"` only. A registration backed by

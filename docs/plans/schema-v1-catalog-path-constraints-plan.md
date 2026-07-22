@@ -116,7 +116,7 @@ Keep this section and the task list current without waiting for a progress reque
 
 ### Phase 1: Define the Shared Contract
 
-- [ ] Task 1: Align schema-v1 catalog-path and lockfile semantics
+- [x] Task 1: Align schema-v1 catalog-path and lockfile semantics
 - [ ] Task 2: Add a shared schema-v1 catalog-path policy
 
 ### Task 1: Align Schema-v1 Catalog-path and Lockfile Semantics
@@ -129,26 +129,33 @@ selector encoded in `requirement`, not to `skill_path` or `skill_file`.
 
 **Acceptance criteria:**
 
-- [ ] The specifications distinguish catalog-relative selectors from
+- [x] The specifications distinguish catalog-relative selectors from
   repository-relative lockfile paths.
-- [ ] Root and collected selectors are limited to one or two segments.
-- [ ] Collection and skill segments both use the existing 1-64 character canonical
+- [x] Root and collected selectors are limited to one or two segments.
+- [x] Collection and skill segments both use the existing 1-64 character canonical
   kebab-case identifier rule.
-- [ ] A `SKILL.md` directly at `skills_root` is explicitly invalid as a
+- [x] A `SKILL.md` directly at `skills_root` is explicitly invalid as a
   zero-segment candidate.
-- [ ] Repository-relative lockfile paths remain valid regardless of
+- [x] Repository-relative lockfile paths remain valid regardless of
   `skills_root` depth, subject to existing safe-path validation.
-- [ ] `requirement`, `skill_path`, and `skill_file` use consistent terminology
+- [x] `requirement`, `skill_path`, and `skill_file` use consistent terminology
   across specification requirements and test expectations.
 
 **Verification:**
 
-- [ ] Compare the clarified text with lockfile generation in
+- [x] Compare the clarified text with lockfile generation in
   `src/ritebook/features/skill_installation/application/use_cases/install_from_requirements.py`.
-- [ ] Confirm examples remain consistent with the documented lockfile schema.
-- [ ] Check metadata updates against `docs/specs/README.md`; change `Spec version`,
+- [x] Confirm examples remain consistent with the documented lockfile schema.
+- [x] Check metadata updates against `docs/specs/README.md`; change `Spec version`,
   `Last reviewed`, and `Implementation state` only when their governance rules
   require it.
+
+**Implementation note (2026-07-22):** Aligned the shared and workflow-specific
+specifications around catalog selectors and repository-relative lockfile paths.
+The documented lockfile semantics now match generation: `requirement` preserves
+the qualified catalog selector, while `skill_path` and `skill_file` prepend the
+published `skills_root`. Existing `1.1`, `2026-07-22`, and `Partially implemented`
+metadata remains accurate because this clarification does not complete enforcement.
 
 **Dependencies:** None
 

@@ -38,8 +38,8 @@ user-owned local source repositories.
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
-- Exact lockfile-path resolution exists; rejecting collection selectors and
-  over-deep legacy lockfile paths remains to be implemented.
+- Exact qualified-requirement resolution exists; rejecting collection selectors
+  and over-deep catalog selectors remains to be implemented.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
@@ -59,9 +59,12 @@ to the upstream default branch.
 Requirements:
 
 - The skill reference must be fully qualified as
-  `<local-alias>/<skill-path>` and must match an exact lockfile skill path.
-- The exact skill path must be `<skill>` or `<collection>/<skill>`. A collection
-  selector is not a skill and cannot be used as a contribution target.
+  `<local-alias>/<catalog-selector>` and must exactly match a lockfile entry's
+  stored `requirement`.
+- The catalog selector must be `<skill>` or `<collection>/<skill>`, with every
+  segment using the canonical 1–64 character Ritebook kebab-case identifier form.
+  A collection selector is not a skill and cannot be used as a contribution
+  target.
 - The command only supports skills installed from `ritebook.toml` and recorded in
   `ritebook.lock` for the MVP.
 - Ritebook reads `ritebook.lock` from the current working directory by default.
@@ -229,7 +232,9 @@ from requirements-file installation.
 
 Required lockfile fields for each publishable entry:
 
-- `requirement`: original fully qualified requirement string.
+- `requirement`: exact fully qualified catalog selector resolved during
+  installation. Contribution selection compares the requested local alias and
+  catalog selector to this field as one qualified value.
 - `index_name`: compatibility-sensitive schema-v1 field containing the local alias
   from `requirement`; it is not publisher `index.name`.
 - `skill_name`: resolved skill name.
@@ -245,6 +250,11 @@ Required lockfile fields for each publishable entry:
 - `skill_path`: source skill directory path relative to the source repository.
 - `skill_file`: source `SKILL.md` path relative to the source repository.
 - `index_schema_version`: publisher index schema version used at install time.
+
+Catalog depth and segment validation applies to the selector encoded in
+`requirement`, not to `skill_path` or `skill_file`. The latter include the
+published `skills_root`, may contain additional safe segments, and remain subject
+to repository-relative path validation before checkout or comparison.
 
 Pre-release schema-v1 lockfiles missing `source_revision` or `index_digest` are
 rejected with guidance to refresh registration and reinstall. Ritebook does not
@@ -354,8 +364,9 @@ Cover:
 - Rejects invalid JSON.
 - Rejects unsupported lockfile schema versions.
 - Rejects missing required fields for contribution publishing.
-- Resolves only exact lockfile skill paths and does not fall back to `skill_name`.
-- Rejects collection selectors and lockfile skill paths deeper than
+- Resolves only exact qualified `requirement` values and does not fall back to
+  `skill_name` or repository-relative `skill_path`.
+- Rejects collection selectors and catalog selectors deeper than
   `<collection>/<skill>`.
 - Allows duplicate skill names at distinct lockfile paths.
 
@@ -426,7 +437,7 @@ Always:
 - Support one skill contribution per command.
 - Require `ritebook.lock` provenance for the MVP.
 - Treat the verified locked revision and index digest as the installed baseline.
-- Resolve contribution references by exact lockfile skill path.
+- Resolve contribution references by exact qualified lockfile `requirement`.
 - Never expand a collection selector into multiple contributions.
 - Prepare contributions in a Ritebook-owned isolated checkout.
 - Fetch or inspect the current upstream base before preparing a contribution.

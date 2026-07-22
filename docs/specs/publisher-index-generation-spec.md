@@ -84,6 +84,11 @@ Requirements:
 - A skill path relative to the explicit skills root must contain exactly one or
   two non-empty safe POSIX path segments: `<skill>` or
   `<collection>/<skill>`.
+- Every skill and collection path segment must use the canonical Ritebook
+  kebab-case identifier form: 1–64 lowercase ASCII letters, digits, or hyphens,
+  without a leading, trailing, or consecutive hyphen.
+- A `SKILL.md` directly at the skills root is an invalid zero-segment candidate;
+  the skills root itself cannot be published as a skill.
 - A first-level directory without `SKILL.md` may act as an implicit collection
   when one or more of its immediate child directories are skills.
 - A collection is organizational metadata inferred from the catalog structure;
@@ -247,6 +252,8 @@ Schema v1 stays small and describes discovered skill package boundaries.
 - `skills[].path`: relative path from the skills root to the skill directory.
 - `skills[].path` contains exactly one or two segments: `<skill>` or
   `<collection>/<skill>`.
+- Every `skills[].path` segment satisfies the canonical Ritebook kebab-case
+  identifier rule.
 - `skills[].skill_file`: relative path from the skills root to `SKILL.md`.
 - `skills[].description`: required non-empty human-readable description copied
   from the validated skill header `description` field.

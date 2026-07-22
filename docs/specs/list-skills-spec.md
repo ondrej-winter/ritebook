@@ -90,6 +90,9 @@ If `--index-name` is omitted, Ritebook lists skills from all registered indexes.
   with a clear user-facing error.
 - A schema-v1 cached index containing a skill path with more than two segments is
   invalid and fails before any metadata from that index is displayed.
+- A schema-v1 cached index containing a collection or skill path segment that is
+  not a canonical 1–64 character Ritebook kebab-case identifier is invalid and
+  fails before display.
 - A schema-v1 cached index using one path segment as both a root skill and a
   collection prefix is also invalid and fails before display.
 - A digest mismatch fails as a cache-integrity error. Listing never falls back to

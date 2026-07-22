@@ -87,6 +87,8 @@ Requirements:
 - Every `skills[].path` must contain exactly one or two non-empty safe POSIX path
   segments: `<skill>` or `<collection>/<skill>`. Paths with three or more segments
   are invalid legacy catalog metadata.
+- Every collection and skill segment in `skills[].path` must use the canonical
+  1–64 character Ritebook kebab-case identifier form.
 - An index must not contain both a root skill path `<name>` and any collected skill
   path beginning `<name>/`. That path set would make the first segment both a skill
   and a collection and is invalid schema-v1 metadata.

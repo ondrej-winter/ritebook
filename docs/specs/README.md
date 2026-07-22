@@ -68,10 +68,15 @@ All specifications use these terms consistently:
   value. Registry lookup, cache paths, updates, listing, qualified skill
   references, installation state, lockfiles, and contribution workflows use the
   local alias.
-- **Qualified skill reference**: `<local-alias>/<skill-path>`. The first segment
-  is always a local alias, never an independently resolved published name.
-- **Skill path**: the path relative to `skills_root` that identifies one published
-  skill. A valid schema-v1 path is `<skill>` or `<collection>/<skill>`.
+- **Qualified skill reference**: `<local-alias>/<catalog-selector>`. The first
+  segment is always a local alias, never an independently resolved published name.
+- **Catalog skill path**: the path relative to `skills_root` that identifies one
+  published skill. A valid schema-v1 path is `<skill>` or
+  `<collection>/<skill>`. Every segment is a canonical 1–64 character Ritebook
+  kebab-case identifier.
+- **Catalog selector**: the catalog-relative portion after the local alias in a
+  qualified skill reference. Generated `ritebook.lock` entries preserve the exact
+  qualified selector in `requirement`.
 - **Collection**: an implicit first-level catalog directory whose immediate child
   directories are skills. A collection is not itself a skill or index entry.
 - **Collection selector**: `<local-alias>/<collection>` in `ritebook.toml`. It
@@ -86,6 +91,9 @@ Some compatibility-sensitive surfaces retain less-specific names:
   --index-name` carry or select the local alias.
 - Generated `ritebook.lock` and `installations.json` field `index_name` carries
   the local alias used in the corresponding qualified skill reference.
+- Generated `ritebook.lock` fields `skill_path` and `skill_file` are safe paths
+  relative to the source repository. They include the published `skills_root` and
+  may therefore contain more segments than the catalog selector in `requirement`.
 
 These field and option names remain unchanged in schema and CLI version 1. A
 rename requires an explicitly versioned migration; documentation and diagnostics

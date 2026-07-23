@@ -2,7 +2,7 @@
 name: browser-runtime-verification
 description: Verify browser-facing changes in a real browser using visual checks, console output, network behavior, accessibility basics, and user-flow smoke tests. Use when building, debugging, or validating UI behavior beyond static code and unit tests.
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
   dependencies:
     tools:
       - name: browser runtime
@@ -157,8 +157,11 @@ Browser verification:
 - Route: <route or scenario>
 - Viewport/browser: <environment>
 - Method/tool: <manual browser check or automation used>
+- Expected: <behavior that should occur>
+- Observed: <behavior that occurred>
 - Checked: visual result, console, network, keyboard/focus
 - Result: <pass/fail summary>
+- Deferred checks: <none or list with reason>
 - Known unrelated issues: <none or list>
 ```
 

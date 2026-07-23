@@ -2,7 +2,7 @@
 name: frontend-ui-engineering
 description: Build, review, or refine browser-facing user interfaces so they are accessible, responsive, performant, visually coherent, and aligned with the project design system.
 metadata:
-  version: "1.1.3"
+  version: "1.2.0"
   dependencies:
     tools: []
     skills:
@@ -155,8 +155,10 @@ Use the project’s breakpoints or device classes rather than hardcoded assumpti
 
 ### 8. Verify runtime behavior
 
-Use the `browser-runtime-verification` skill when the change affects rendering,
-interaction, network behavior, focus, accessibility, or visual layout.
+When available, use the `browser-runtime-verification` skill if the change
+affects rendering, interaction, network behavior, focus, accessibility, or
+visual layout. Otherwise, use the project's available browser testing or manual
+verification workflow and document the limitation.
 
 At minimum, verify:
 
@@ -165,6 +167,22 @@ At minimum, verify:
 - loading, empty, and error states behave as expected
 - responsive layout works at representative viewport sizes
 - relevant network or mutation behavior is not duplicated or unsafe
+
+### 9. Protect user-facing performance
+
+Keep the interface responsive without optimizing against assumptions.
+
+Check for:
+
+- unnecessary requests, repeated work, or avoidable rerenders
+- unexpectedly large assets, bundles, or dependencies
+- layout shifts caused by images, fonts, or late-loading content
+- slow interactions or long-running work that blocks user input
+- long lists or media that need deferred loading or bounded rendering
+
+Use project performance budgets and measurement tools when they exist. For a
+suspected regression, compare relevant measurements before and after the change
+instead of claiming improvement from code inspection alone.
 
 ## Red flags
 
@@ -175,6 +193,7 @@ At minimum, verify:
 - arbitrary spacing, typography, or animation values
 - component owns unrelated data, layout, and business behavior at once
 - responsive behavior is assumed but not checked
+- performance claims made without relevant measurement
 - UI shipped without browser runtime verification when visual behavior matters
 
 ## Output checklist
@@ -186,4 +205,5 @@ At minimum, verify:
 - accessibility checklist was considered for interactive changes
 - responsive behavior was checked at representative sizes
 - loading, empty, error, and success states are handled
+- user-facing performance risks were checked and measured when relevant
 - browser runtime verification was run or skipped with a reason

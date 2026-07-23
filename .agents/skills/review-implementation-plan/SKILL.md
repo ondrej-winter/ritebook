@@ -2,7 +2,7 @@
 name: review-implementation-plan
 description: Review an implementation plan for completeness, ambiguity, sequencing, risks, dependencies, validation, readiness labeling, and handoff before coding.
 metadata:
-  version: "1.0.6"
+  version: "1.1.0"
   dependencies:
     tools: []
     skills:
@@ -38,6 +38,22 @@ Use this skill when:
 - the user asks for deep planning, audit, or review before coding
 
 For simple one-file edits, use only the relevant parts and keep the review brief.
+
+## Expected output
+
+Produce a review of the plan rather than rewriting it unless the user asks for a
+revised plan. Organize the review as:
+
+1. readiness label and brief rationale
+2. findings ordered from implementation-blocking gaps to advisory improvements
+3. open questions and decisions, with an owner when known
+4. recommended sequence and validation checks
+5. handoff notes, including deferred work
+
+For each finding, identify the relevant plan section or state that the plan omits
+it. Explain the gap, why it matters, and the smallest concrete revision needed.
+Distinguish missing plan evidence from reviewer uncertainty, and do not invent
+repository paths, commands, owners, or requirements.
 
 ## Steps
 
@@ -130,7 +146,7 @@ Return a concise review that includes:
 - readiness assessment
 - intended implementation owner or handoff audience when relevant
 - required clarifying questions, if any
-- missing or weak plan sections
+- findings tied to missing or weak plan sections
 - recommended implementation order changes
 - required validation commands or checks
 - deferred backlog items that should not block the first pass

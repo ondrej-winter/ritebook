@@ -2,5 +2,5 @@
 agents = ".agents/skills"
 
 [[skills]]
-name = "ondrej-winter-ritebook-shelf/software-development"
+name = "ondrej-winter-ritebook-shelf/agnostic-software-development"
 target = "agents"

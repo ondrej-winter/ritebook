@@ -2,7 +2,7 @@
 name: idea-refine
 description: Refine raw ideas into actionable concepts through divergent exploration, convergent evaluation, assumption testing, and a final one-page brief. Use when an idea is vague, over-scoped, solution-led, or needs pressure-testing before planning or implementation.
 metadata:
-  version: "1.0.4"
+  version: "1.0.5"
   dependencies:
     tools:
       - name: sh
@@ -183,7 +183,7 @@ workspace.
 ## References
 
 - `references/frameworks.md` lists optional ideation frameworks.
-- `references/refinement-criteria.md` provides a Phase 2 evaluation rubric.
+- `references/refinement-criteria.md` provides a convergence evaluation rubric.
 - `references/examples.md` shows example sessions and one-page briefs.
 
 ## Red flags

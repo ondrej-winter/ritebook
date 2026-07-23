@@ -2,7 +2,7 @@
 name: planning-and-task-breakdown
 description: Breaks work into ordered tasks. Use when you have a spec or clear requirements and need to break work into implementable tasks. Use when a task feels too large to start, when you need to estimate scope, or when parallel work is possible.
 metadata:
-  version: "1.3.0"
+  version: "1.3.1"
   dependencies:
     tools: []
     skills:
@@ -76,7 +76,8 @@ Foundational data or state model
   - Supporting setup, migration, or seed data
 ```
 
-Implementation order follows the dependency graph bottom-up: build foundations first.
+Implementation order follows dependencies from foundations outward: build each
+prerequisite before the work that depends on it.
 
 ### Step 3: Slice vertically
 
@@ -129,7 +130,7 @@ Each task follows this structure:
 - `<module_path>`
 - `<test_path>`
 
-**Estimated scope:** [Small: 1-2 files | Medium: 3-5 files | Large: 5+ files]
+**Estimated scope:** [XS: 1 file | Small: 2 files | Medium: 3-5 files | Large: 6-8 files | XL: 9+ files]
 ```
 
 ### Step 5: Order and checkpoint
@@ -157,10 +158,10 @@ Add explicit checkpoints:
 | Size   | Files | Scope                                      | Example                                          |
 | ------ | ----- | ------------------------------------------ | ------------------------------------------------ |
 | **XS** | 1     | Single function or config change           | Add a validation rule                            |
-| **S**  | 1-2   | One component, interface, or workflow step | Add a new command handler or interface operation |
+| **S**  | 2     | One component, interface, or workflow step | Add a new command handler or interface operation |
 | **M**  | 3-5   | One feature slice                          | User registration flow                           |
-| **L**  | 5-8   | Multi-component feature                    | Search with filtering and pagination             |
-| **XL** | 8+    | **Too large — break it down further**      | Break into smaller tasks                         |
+| **L**  | 6-8   | Multi-component feature                    | Search with filtering and pagination             |
+| **XL** | 9+    | **Too large - break it down further**      | Break into smaller tasks                         |
 
 If a task is L or larger, it should be broken into smaller tasks. An agent performs best on S and M tasks.
 

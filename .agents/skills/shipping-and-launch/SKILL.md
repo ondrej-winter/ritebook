@@ -2,7 +2,7 @@
 name: shipping-and-launch
 description: Prepares production launches. Use when preparing to deploy to production. Use when you need a pre-launch checklist, when setting up monitoring, when planning a staged rollout, or when you need a rollback strategy.
 metadata:
-  version: "1.2.2"
+  version: "1.3.0"
   dependencies:
     tools: []
     skills:
@@ -21,7 +21,11 @@ metadata:
 
 ## Overview
 
-Ship with confidence. The goal is not just to deploy, but to deploy safely, with monitoring in place, a rollback plan ready, and a clear understanding of what success looks like. Every launch should be reversible, observable, and incremental.
+Ship with confidence. The goal is not just to deploy, but to deploy safely, with
+monitoring in place, a recovery plan ready, and a clear understanding of what
+success looks like. Make each launch observable and incremental when the system
+allows it. Define a rollback, disablement, roll-forward, or compensation path for
+changes that cannot be directly reversed.
 
 ## When to Use
 
@@ -44,10 +48,11 @@ active failure that needs root-cause repair.
 2. Complete the pre-launch checklist sections that apply to the release.
 3. Use the supporting reference checklists for deeper security, performance, or
    accessibility verification when those risks apply.
-4. Define the rollout sequence, monitoring thresholds, and rollback triggers
+4. Define the rollout sequence, monitoring thresholds, recovery triggers, and
+   recovery path
    before changing production state.
-5. Deploy incrementally, verify post-launch signals, and hold or roll back when
-   thresholds are missed.
+5. Deploy incrementally, verify post-launch signals, and hold or execute the
+   recovery plan when thresholds are missed.
 6. Record launch evidence, accepted residual risks, cleanup owners, and any
    follow-up work after the release.
 
@@ -110,7 +115,8 @@ active failure that needs root-cause repair.
 
 ## Feature Flag Strategy
 
-Ship behind feature flags to decouple deployment from release:
+When the change can be controlled safely at runtime, ship behind a feature flag
+or equivalent release control to decouple deployment from release:
 
 ```text
 if release_control_enabled("new_capability", actor_or_context):
@@ -123,7 +129,7 @@ else:
 
 1. Deploy with flag off: code is in production but inactive.
 2. Enable for team or beta users: internal testing happens in the production environment.
-3. Gradually roll out: increase exposure from 5% to 25% to 50% to 100% of users.
+3. Gradually roll out: increase exposure through risk-appropriate stages.
 4. Monitor at each stage: watch error rates, performance, and user feedback.
 5. Clean up: remove the flag and dead code path after full rollout.
 
@@ -136,7 +142,12 @@ else:
 
 ## Staged Rollout
 
-### The Rollout Sequence
+### Example Rollout Sequence
+
+Tailor cohort sizes and observation windows to traffic volume, release risk,
+time-to-detection, and how quickly recovery can complete. Do not advance merely
+because an example time window elapsed; advance when the defined evidence is
+sufficient.
 
 1. Deploy to staging.
    - Run the full test suite in the staging environment.
@@ -146,22 +157,23 @@ else:
    - Check error monitoring for new errors.
 3. Enable for the team with the flag on for internal users.
    - Have the team use the feature in production.
-   - Use a 24-hour monitoring window.
+   - Observe for a risk-appropriate period.
 4. Start a canary rollout with the flag on for 5% of users.
    - Monitor error rates, latency, and user behavior.
    - Compare canary metrics against baseline metrics.
-   - Use a 24-48 hour monitoring window.
+   - Observe long enough to collect representative evidence.
    - Advance only if all thresholds pass.
 5. Gradually increase from 25% to 50% to 100%.
    - Repeat the same monitoring at each step.
    - Keep the ability to roll back to the previous percentage at any point.
 6. Complete the full rollout with the flag on for all users.
-   - Monitor for 1 week.
-   - Clean up the feature flag.
+   - Continue monitoring through the agreed stabilization period.
+   - Clean up the feature flag after the stabilization period succeeds.
 
-### Rollout Decision Thresholds
+### Example Rollout Decision Thresholds
 
-Use these thresholds to decide whether to advance, hold, or roll back at each stage:
+Replace these example values with release-specific thresholds, then use them to
+decide whether to advance, hold, or execute the recovery plan at each stage:
 
 | Metric                      | Advance (green)        | Hold and investigate (yellow) | Roll back (red)     |
 | --------------------------- | ---------------------- | ----------------------------- | ------------------- |
@@ -219,21 +231,22 @@ When an error reaches a release boundary:
 
 ### Post-Launch Verification
 
-In the first hour after launch:
+During the initial post-launch observation window:
 
-1. Check that the health endpoint returns 200.
+1. Check the system's health, readiness, smoke, or equivalent operational signal.
 2. Check the error monitoring dashboard for new error types.
 3. Check the latency dashboard for regressions.
 4. Test the critical user flow manually.
 5. Verify logs are flowing and readable.
-6. Confirm the rollback mechanism works, using a dry run if possible.
+6. Confirm the recovery mechanism works, using a dry run if possible.
 
-## Rollback Strategy
+## Recovery Strategy
 
-Every deployment needs a rollback plan before it happens:
+Every deployment needs a recovery plan before it happens. Use rollback or
+disablement when safe; otherwise define roll-forward or compensation steps:
 
 ```markdown
-## Rollback Plan for [Feature/Release]
+## Recovery Plan for [Feature/Release]
 
 ### Trigger Conditions
 
@@ -249,12 +262,17 @@ Every deployment needs a rollback plan before it happens:
 1. Verify rollback: health check, error monitoring
 1. Communicate: notify team of rollback
 
+### Alternative Recovery Steps
+
+- If rollback is unsafe or impossible, disable exposure, roll forward, or execute
+  the tested compensation procedure: `<recovery_command_or_runbook>`
+
 ### Data and State Considerations
 
 - Migration, schema change, configuration change, or state transition [X] has a tested rollback or compensation plan
 - Data written by the release is [preserved / migrated back / cleaned up / reconciled]
 
-### Time to Rollback
+### Recovery Time Targets
 
 - Feature flag: < 1 minute
 - Redeploy previous version: < 5 minutes
@@ -283,7 +301,7 @@ Every deployment needs a rollback plan before it happens:
 - No monitoring or error reporting in production
 - Big-bang releases (everything at once, no staging)
 - Feature flags with no expiration or owner
-- No one monitoring the deploy for the first hour
+- No one monitoring the deploy during the initial observation window
 - Production environment configuration done by memory, not code
 - "It is Friday afternoon, let us ship it"
 
@@ -291,17 +309,17 @@ Every deployment needs a rollback plan before it happens:
 
 Before deploying:
 
-- [ ] Pre-launch checklist completed (all sections green)
+- [ ] Applicable pre-launch checklist sections completed
 - [ ] Feature flag configured (if applicable)
-- [ ] Rollback plan documented
-- [ ] Monitoring dashboards set up
+- [ ] Recovery plan documented
+- [ ] Monitoring views and alerts set up
 - [ ] Team notified of deployment
 
 After deploying:
 
-- [ ] Health check returns 200
+- [ ] Health, readiness, smoke, or equivalent operational check passes
 - [ ] Error rate is normal
 - [ ] Latency is normal
 - [ ] Critical user flow works
 - [ ] Logs are flowing
-- [ ] Rollback tested or verified ready
+- [ ] Recovery mechanism tested or verified ready

@@ -1,8 +1,8 @@
 ---
 name: debugging-and-error-recovery
-description: Diagnose failures systematically by preserving evidence, reproducing the issue, localizing and reducing the cause, fixing the root problem, adding a guard, and verifying recovery.
+description: Diagnose failures systematically by preserving evidence, reproducing the issue, localizing and reducing the cause, fixing the root problem, adding a guard, and verifying recovery. Use when tests, builds, runtime behavior, or recovery attempts fail or behave unexpectedly.
 metadata:
-  version: "1.1.4"
+  version: "1.1.5"
   dependencies:
     tools: []
     skills:

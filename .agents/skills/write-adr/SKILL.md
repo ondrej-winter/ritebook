@@ -2,7 +2,7 @@
 name: write-adr
 description: Create an Architecture Decision Record with the next sequential number, a clear title, and documented consequences when asked to record an architectural decision.
 metadata:
-  version: "1.1.4"
+  version: "1.1.5"
   dependencies:
     tools: []
     skills:
@@ -44,15 +44,18 @@ obvious.
 
 ### 2. Determine the next ADR number
 
-Inspect Markdown files in the ADR directory, find the highest four-digit file
-prefix, then increment it by one.
+Inspect Markdown files in the ADR directory, identify the existing numeric prefix
+width and file-name separator, find the highest prefix, then increment it by one
+while preserving that convention.
 
-- If no ADRs exist yet, start with `0001`.
+- If no ADRs exist yet, start with `0001` and use a hyphen after the number.
 - Example: if `0003-...` is the latest ADR, use `0004`.
+- Ignore files that do not follow the directory's numeric ADR naming convention.
 
 ### 3. Create the ADR file
 
-Use this file name format:
+Use the repository's existing ADR file-name convention. If no convention exists,
+use this format:
 
 `<adr_directory>/<NNNN>-<short-title-kebab-case>.md`
 
@@ -62,6 +65,8 @@ Example:
 
 Derive the slug from the ADR title by converting it to kebab-case. Remove filler
 words only when doing so keeps the title recognizable.
+
+Before writing, confirm that the selected number and path do not already exist.
 
 ### 4. Fill in the ADR template
 

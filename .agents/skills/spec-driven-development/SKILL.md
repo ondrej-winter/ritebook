@@ -2,7 +2,7 @@
 name: spec-driven-development
 description: Creates a specification before implementation. Use when starting a project, feature, integration, workflow, migration, or significant change with unclear or incomplete requirements.
 metadata:
-  version: "1.2.2"
+  version: "1.3.0"
   dependencies:
     tools: []
     skills:
@@ -100,17 +100,18 @@ Cover these areas at the appropriate level of detail:
 1. Objective: what is being built, who it is for, and why it matters.
 2. Current context: relevant existing behavior, files, workflows, constraints, and
    dependencies.
-3. Desired behavior: user-visible behavior, interfaces, data changes,
+3. Assumptions: unconfirmed beliefs that affect requirements or implementation.
+4. Desired behavior: user-visible behavior, interfaces, data changes,
    operational behavior, or workflow changes.
-4. Commands and validation: exact build, test, lint, documentation, migration, or
+5. Commands and validation: exact build, test, lint, documentation, migration, or
    manual verification commands where known.
-5. Project structure: where implementation, tests, docs, and configuration belong.
-6. Style and conventions: naming, formatting, error handling, logging, API,
+6. Project structure: where implementation, tests, docs, and configuration belong.
+7. Style and conventions: naming, formatting, error handling, logging, API,
    accessibility, security, or platform conventions that matter for the change.
-7. Testing strategy: which test levels or checks prove the behavior works.
-8. Boundaries: what to always do, ask before doing, and never do.
-9. Success criteria: specific, testable conditions for completion.
-10. Open questions: unresolved decisions that need user input.
+8. Testing strategy: which test levels or checks prove the behavior works.
+9. Boundaries: what to always do, ask before doing, and never do.
+10. Success criteria: specific, testable conditions for completion.
+11. Open questions: unresolved decisions that need user input.
 
 ### Spec template
 
@@ -124,6 +125,10 @@ Cover these areas at the appropriate level of detail:
 ## Current context
 
 <Existing behavior, constraints, files, systems, and dependencies.>
+
+## Assumptions
+
+- <Assumption that must be confirmed or tested.>
 
 ## Desired behavior
 
@@ -257,7 +262,8 @@ truth.
 Before implementation begins, confirm:
 
 - [ ] assumptions and open questions are visible
+- [ ] blocking questions are resolved
 - [ ] the spec defines objective, desired behavior, constraints, and boundaries
 - [ ] success criteria are specific and testable
 - [ ] validation commands or manual checks are recorded where known
-- [ ] the user has reviewed or accepted the spec and plan
+- [ ] the user has accepted the spec, plan, and task list

@@ -2,7 +2,7 @@
 name: git-workflow-and-versioning
 description: Use version control intentionally with small changes, clear branches, atomic commits, safe history operations, useful summaries, and validation before merge or handoff.
 metadata:
-  version: "1.1.4"
+  version: "1.2.0"
   dependencies:
     tools:
       - name: git
@@ -140,7 +140,26 @@ git --no-pager log --grep=<keyword> --oneline
 Use destructive commands such as reset, clean, rebase, or force-push only when the
 target is explicit and the user has approved the risk.
 
-### 7. Summarize changes for review
+### 7. Resolve conflicts deliberately
+
+Before resolving a conflict, inspect both sides and determine the intended final
+behavior. Do not automatically choose all of one side unless that outcome is
+explicitly correct.
+
+For each conflicted file:
+
+1. identify the purpose of the incoming and current changes
+2. combine compatible changes or choose the behavior required by the task
+3. remove conflict markers and inspect the resulting diff
+4. run validation that covers the affected behavior
+5. stage the file only after confirming the resolution is complete
+
+If intent is unclear or the conflict involves changes owned by someone else,
+pause and ask for context rather than guessing. Do not abort, continue, or commit
+a merge or rebase unless the operation is understood and within the requested
+scope.
+
+### 8. Summarize changes for review
 
 Before handoff, provide:
 

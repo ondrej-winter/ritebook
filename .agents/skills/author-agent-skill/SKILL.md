@@ -2,7 +2,7 @@
 name: author-agent-skill
 description: Create, update, or review Agent Skill directories and SKILL.md files for valid frontmatter, structure, portability, progressive disclosure, and validation readiness.
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   dependencies:
     tools: []
     skills: []
@@ -107,16 +107,19 @@ that the skill expects. Prefer a list of objects when details matter:
 
 ```md
 metadata:
-version: "1.0.0"
-dependencies:
-tools: - name: git
-purpose: Inspect repository history and changed files.
-required: false - name: python
-purpose: Run local validation scripts.
-required: false
-skills: - name: run-local-quality-gate
-purpose: Validate formatting, linting, tests, and builds before handoff.
-required: false
+  version: "1.0.0"
+  dependencies:
+    tools:
+      - name: git
+        purpose: Inspect repository history and changed files.
+        required: false
+      - name: python
+        purpose: Run local validation scripts.
+        required: false
+    skills:
+      - name: run-local-quality-gate
+        purpose: Validate formatting, linting, tests, and builds before handoff.
+        required: false
 ```
 
 Use `metadata.dependencies.tools: []` when the skill has no known tool, command,
@@ -138,18 +141,19 @@ Add optional fields only when they are useful and supported by the skill format.
 For this skill format, required metadata includes `metadata.version` and
 `metadata.dependencies`; additional metadata keys remain optional.
 
-Supported optional fields are:
+Supported optional top-level fields are:
 
 - `license`
 - `compatibility`
-- `metadata`
 - `allowed-tools`
 
 Keep optional fields concise and format them according to the target Agent Skills
 specification. Use `compatibility` only for meaningful environment requirements,
-additional `metadata` keys only for useful key-value metadata, and
 `allowed-tools` only when tool pre-approval is supported by the target
 environment.
+
+Additional keys under required `metadata` are optional. Include them only when
+they provide useful key-value metadata supported by the target environment.
 
 Do not add custom frontmatter fields unless the target skill system or repository
 tooling explicitly requires them.

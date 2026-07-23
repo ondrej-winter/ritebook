@@ -88,8 +88,8 @@ Imagine the idea failed after launch, then work backward:
 3. Decide which failures are preventable.
 4. Decide which failures would kill the idea.
 
-Best for Phase 2 stress-testing when an idea feels good but has not faced hard
-questions.
+Best for convergence and assumption auditing when an idea feels good but has not
+faced hard questions.
 
 ## Analogous Inspiration
 

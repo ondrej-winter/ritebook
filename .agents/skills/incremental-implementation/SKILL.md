@@ -2,7 +2,7 @@
 name: incremental-implementation
 description: Guide agents to deliver changes incrementally. Use when implementing a feature or change that touches more than one file, when a task feels too large to land in one step, or before writing a large amount of code at once.
 metadata:
-  version: "1.1.4"
+  version: "1.1.5"
   dependencies:
     tools: []
     skills: []
@@ -27,26 +27,29 @@ Do not use this skill for single-file, single-function changes where the scope i
 
 Use this increment cycle for each implementation slice:
 
-```
+```text
 Implement -> Test -> Verify -> Checkpoint -> Next slice
 Repeat the cycle for each slice.
 ```
 
 For each slice:
 
-1. **Implement** the smallest complete piece of functionality
-2. **Test** — run the test suite (or write a test if none exists)
-3. **Verify** — confirm the slice works as expected (tests pass, build succeeds, manual check)
-4. **Checkpoint**: save progress with the project's normal checkpoint or handoff mechanism, such as a descriptive commit when appropriate or an explicit progress note
-5. **Move to the next slice** — carry forward, don't restart
+1. **Implement**: complete the smallest useful piece of functionality.
+2. **Test**: run the narrowest relevant tests, or add a test when coverage is missing.
+3. **Verify**: confirm the slice works as expected through applicable tests, builds,
+   checks, or focused manual verification.
+4. **Checkpoint**: save progress with the project's normal checkpoint or handoff
+   mechanism, such as a descriptive commit when appropriate or an explicit
+   progress note.
+5. **Move to the next slice**: carry forward; do not restart.
 
-## Slicing Strategies
+## Slicing strategies
 
-### Vertical Slices (Preferred)
+### Vertical slices (preferred)
 
 Build one complete path through the stack:
 
-```
+```text
 Slice 1: Create a record (<data_store> + <interface> + basic <user_surface>)
     Result: Tests pass, user can create a record through the primary surface
 
@@ -62,22 +65,22 @@ Slice 4: Delete a record (<delete_path> + <interface> + confirmation)
 
 Each slice delivers working end-to-end functionality.
 
-### Contract-First Slicing
+### Contract-first slicing
 
 When producers and consumers need to develop in parallel:
 
-```
+```text
 Slice 0: Define the contract artifact (<schema>, <interface>, <protocol>, or <spec>)
 Slice 1a: Implement the producer against the contract + contract tests
 Slice 1b: Implement the consumer against representative test data
 Slice 2: Integrate and test the complete path
 ```
 
-### Risk-First Slicing
+### Risk-first slicing
 
 Tackle the riskiest or most uncertain piece first:
 
-```
+```text
 Slice 1: Prove the riskiest integration point works
 Slice 2: Build the first user-visible behavior on the proven integration
 Slice 3: Add resilience behavior such as retry, fallback, or recovery
@@ -85,9 +88,9 @@ Slice 3: Add resilience behavior such as retry, fallback, or recovery
 
 If Slice 1 fails, you discover it before investing in Slices 2 and 3.
 
-## Implementation Rules
+## Implementation rules
 
-### Rule 0: Simplicity First
+### Rule 0: Simplicity first
 
 Before writing any code, ask: "What is the simplest thing that could work?"
 
@@ -98,7 +101,7 @@ After writing code, review it against these checks:
 - Would an experienced reviewer ask why this was not implemented more directly?
 - Am I building for hypothetical future requirements, or the current task?
 
-```
+```text
 SIMPLICITY CHECK:
 Avoid: Generic event pipeline for one notification
 Prefer: Direct call or the simplest local coordination mechanism
@@ -112,7 +115,7 @@ Prefer: Three clear variants with duplication removed only when the shared conce
 
 Three similar lines of code is better than a premature abstraction. Implement the naive, obviously-correct version first. Optimize only after correctness is proven with tests.
 
-### Rule 0.5: Scope Discipline
+### Rule 0.5: Scope discipline
 
 Touch only what the task requires.
 
@@ -126,14 +129,15 @@ Do not:
 
 If you notice something worth improving outside your task scope, note it instead of fixing it:
 
-```
+```text
 NOTICED BUT NOT TOUCHING:
 - <module_path> has an unused dependency (unrelated to this task)
 - The <boundary_or_component> could use clearer error messages (separate task)
-Capture these as follow-up notes or separate tasks only if requested.
 ```
 
-### Rule 1: One Thing at a Time
+Capture these as follow-up notes or separate tasks only if requested.
+
+### Rule 1: One thing at a time
 
 Each increment changes one logical thing. Don't mix concerns:
 
@@ -141,11 +145,13 @@ Avoid: One checkpoint that adds a new component, refactors an existing one, and 
 
 Prefer: Three separate checkpoints, one for each change.
 
-### Rule 2: Keep It Compilable
+### Rule 2: Keep it working
 
-After each increment, the project must build and existing tests must pass. Don't leave the codebase in a broken state between slices.
+After each increment, run the checks affected by the change and keep the project in
+a working state. Run broader tests and builds when the slice can affect them. Do not
+leave the codebase broken between slices.
 
-### Rule 3: Feature Flags for Incomplete Features
+### Rule 3: Feature flags for incomplete features
 
 If a feature isn't ready for users but you need to merge increments:
 
@@ -158,7 +164,7 @@ else:
 
 This lets you merge small increments to the main branch without exposing incomplete work.
 
-### Rule 4: Safe Defaults
+### Rule 4: Safe defaults
 
 New code should default to safe, conservative behavior:
 
@@ -168,7 +174,7 @@ create record with notify defaulting to false:
     send notification only when notify is explicitly enabled
 ```
 
-### Rule 5: Rollback-Friendly
+### Rule 5: Rollback-friendly
 
 Each increment should be independently revertible:
 
@@ -177,11 +183,11 @@ Each increment should be independently revertible:
 - Data migrations should have corresponding rollback or recovery plans
 - Avoid deleting something in one commit and replacing it in the same commit — separate them
 
-## Working with Agents
+## Working with agents
 
 When directing an agent to implement incrementally:
 
-```
+```text
 "Let's implement Task 3 from the plan.
 
 Start with just the storage change and the external interface.
@@ -193,12 +199,12 @@ nothing is broken."
 
 Be explicit about what is in scope and what is not in scope for each increment.
 
-## Increment Checklist
+## Increment checklist
 
 After each increment, verify:
 
 - [ ] The change does one thing and does it completely
-- [ ] All existing tests still pass (`<test_command>`)
+- [ ] Relevant tests pass (`<test_command>`)
 - [ ] The build succeeds when applicable (`<build_command>`)
 - [ ] Type or contract checking passes when applicable (`<type_check_command>`)
 - [ ] Linting or static analysis passes when applicable (`<lint_command>`)
@@ -207,7 +213,7 @@ After each increment, verify:
 
 **Note:** Run each verification command after a change that could affect it. After a successful run, don't repeat the same command unless the code has changed since — re-running on unchanged code adds no information.
 
-## Common Rationalizations
+## Common rationalizations
 
 - "I'll test it all at the end." Bugs compound. A bug in Slice 1 makes
   Slices 2-5 wrong. Test each slice.
@@ -223,7 +229,7 @@ After each increment, verify:
   repeating the same command adds nothing unless the code has changed since. Run
   it again after subsequent edits, not as reassurance.
 
-## Red Flags
+## Red flags
 
 - More than 100 lines of code written without running tests
 - Multiple unrelated changes in a single increment
@@ -241,7 +247,7 @@ After each increment, verify:
 After completing all increments for a task:
 
 - [ ] Each increment was individually tested and checkpointed
-- [ ] The full test suite passes
-- [ ] The build is clean
+- [ ] The full test suite passes when practical and relevant to the change
+- [ ] The build is clean when the project has an applicable build step
 - [ ] The feature works end-to-end as specified
 - [ ] The final handoff clearly explains any uncommitted or uncheckpointed changes

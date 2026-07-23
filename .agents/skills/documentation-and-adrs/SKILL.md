@@ -2,7 +2,7 @@
 name: documentation-and-adrs
 description: Decide whether durable documentation is needed, choose the right documentation artifact, and route ADR or project documentation work to the appropriate specialized skill.
 metadata:
-  version: "1.2.2"
+  version: "1.2.3"
   dependencies:
     tools: []
     skills:
@@ -137,8 +137,8 @@ Good comments answer:
 - what external constraint shaped the code
 - what future maintainer should not simplify away
 
-Avoid comments that restate syntax, preserve deleted code, or create TODOs with no
-owner or timeframe.
+Avoid comments that restate syntax, preserve deleted code, or create TODOs with
+no owner or timeframe.
 
 ### 7. Validate and prune
 

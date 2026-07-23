@@ -2,10 +2,13 @@
 name: api-and-interface-design
 description: Design stable APIs, module contracts, schemas, component boundaries, command interfaces, or other public integration surfaces that are predictable, documented, and hard to misuse.
 metadata:
-  version: "1.1.3"
+  version: "1.1.4"
   dependencies:
     tools: []
-    skills: []
+    skills:
+      - name: deprecation-and-migration
+        purpose: Plan breaking interface changes, consumer migration, and removal.
+        required: false
 ---
 
 # API and Interface Design

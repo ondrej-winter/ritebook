@@ -8,6 +8,7 @@ Use this checklist to plan and verify performance work.
 - Capture a baseline metric before changing code.
 - Define the target metric and acceptable trade-offs.
 - Use realistic data volume, network conditions, and concurrency.
+- Repeat noisy measurements and record the sample count and variability.
 
 ## Investigation
 
@@ -27,7 +28,8 @@ Use this checklist to plan and verify performance work.
 ## Verification
 
 - Re-measure the same scenario after the change.
-- Compare against the baseline and target.
+- Compare the same summary statistic against the baseline and target.
+- Keep workload, environment, warm-up, and cache conditions comparable.
 - Check for regressions in edge cases and resource usage.
 - Document the evidence and remaining risks.
 

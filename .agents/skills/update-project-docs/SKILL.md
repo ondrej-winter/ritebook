@@ -1,8 +1,8 @@
 ---
 name: update-project-docs
-description: Update project-facing documentation after a user-visible behavior, configuration, operation, or workflow change.
+description: Update project-facing documentation after a reader-visible behavior, configuration, operation, or developer workflow change.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   dependencies:
     tools: []
     skills:
@@ -16,7 +16,7 @@ metadata:
 
 # Update Project Docs
 
-Use this skill when a change affects user-visible behavior, configuration,
+Use this skill when a change affects reader-visible behavior, configuration,
 operations, or developer workflows and project-facing documentation must stay in
 sync.
 

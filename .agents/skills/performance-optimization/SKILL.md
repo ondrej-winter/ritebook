@@ -2,7 +2,7 @@
 name: performance-optimization
 description: Optimizes software performance using measurement-driven diagnosis, targeted fixes, and regression guards. Use when performance requirements exist, users or monitoring report slow behavior, a regression is suspected, or profiling reveals bottlenecks that need fixing.
 metadata:
-  version: "1.1.5"
+  version: "1.2.0"
   dependencies:
     tools: []
     skills:
@@ -87,6 +87,11 @@ Use complementary measurement sources when possible:
 - synthetic benchmarks or repeatable tests to isolate causes
 - profiles, traces, logs, query plans, and resource metrics to locate bottlenecks
 - representative fixtures, datasets, network conditions, and concurrency levels
+
+For noisy metrics, run enough repetitions to distinguish the change from normal
+variation. Report a suitable summary such as a percentile, range, confidence
+interval, or other distribution measure, and include the sample count instead of
+relying on one unusually fast or slow run.
 
 Record the baseline in a format that can be compared after the fix:
 
@@ -227,6 +232,11 @@ Re-run the same scenario under comparable conditions. Do not claim improvement
 from a different workload, smaller dataset, warmer cache, or more powerful
 environment unless that difference is intentional and documented.
 
+Repeat measurements when results vary, compare the same summary statistic, and
+report the sample count and spread needed to support the conclusion. Account for
+warm-up, cache state, background load, and rate limiting when they affect the
+scenario.
+
 ```text
 PERFORMANCE RESULT
 Scenario: <operation_or_user_flow>
@@ -334,6 +344,7 @@ For a concise planning and verification checklist, see
 After any performance-related change:
 
 - [ ] Before and after measurements exist with specific numbers and units.
+- [ ] Noisy measurements include enough repetitions and report variability.
 - [ ] The measured scenario matches the user-visible symptom or requirement.
 - [ ] The specific bottleneck was identified and addressed.
 - [ ] The result was compared against the baseline and target.

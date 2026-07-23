@@ -2,7 +2,7 @@
 name: security-and-hardening
 description: Hardens software against vulnerabilities. Use when handling untrusted input, authentication, authorization, sensitive data, dependencies, or external integrations.
 metadata:
-  version: "1.1.4"
+  version: "1.1.5"
   dependencies:
     tools: []
     skills: []
@@ -44,7 +44,8 @@ credentials, networks, files, subprocesses, or third-party services.
 ### Always do
 
 - Validate and normalize untrusted input at the boundary where it enters the system.
-- Use parameterized database, query, and command APIs instead of string concatenation.
+- Use parameterized query APIs and argument-vector subprocess APIs instead of
+  constructing queries or commands with string concatenation.
 - Encode or escape output for the target context before rendering or serialization.
 - Authenticate identities before using identity-specific data.
 - Authorize every protected operation against the specific resource and action.
@@ -252,10 +253,12 @@ For a focused companion checklist, see `references/security-checklist.md`.
 
 ## Red flags
 
-- User-controlled input reaches queries, commands, templates, file paths, or rendered output without validation and encoding.
+- User-controlled input reaches queries, commands, templates, file paths, or
+  rendered output without validation and encoding.
 - Authorization checks rely only on UI controls, client-provided roles, or authentication status.
 - Secrets, tokens, private keys, or sensitive personal data appear in source code, logs, traces, errors, or screenshots.
-- Debug mode, permissive cross-origin settings, wildcard network access, or detailed error pages are enabled in production.
+- Debug mode, permissive cross-origin settings, wildcard network access, or
+  detailed error pages are enabled in production.
 - Dependency vulnerabilities are ignored without reachability analysis or documented risk acceptance.
 - File uploads, archive extraction, dynamic imports, plugins, or generated code execute with excessive privileges.
 - Tests cover success paths but not rejected, unauthorized, malformed, expired, or cross-boundary cases.
@@ -264,7 +267,8 @@ For a focused companion checklist, see `references/security-checklist.md`.
 
 After implementing security-relevant code:
 
-- Run the project's configured dependency, secret, static-analysis, lint, test, and build checks that apply to the change.
+- Run the project's configured dependency, secret, static-analysis, lint, test,
+  and build checks that apply to the change.
 - Add or update tests for validation failures, authorization denials, abuse controls, and sensitive-data redaction.
 - Manually inspect configuration and staged changes for secrets or insecure defaults.
 - Document any deferred vulnerability or accepted risk with an owner and review date.

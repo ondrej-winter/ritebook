@@ -47,7 +47,8 @@ dev = [
 packages = ["src/ritebook"]
 
 [tool.semantic_release]
-build_command = "uv build"
+assets = ["uv.lock"]
+build_command = "uv lock && uv build"
 commit_message = "release: bump version to {version}"
 commit_parser = "conventional"
 tag_format = "v{version}"

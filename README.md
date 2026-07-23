@@ -459,10 +459,11 @@ Python Semantic Release to:
 
 1. run the quality gate,
 2. bump `pyproject.toml` from `0.1.x` to the next patch version,
-3. commit the version bump,
-4. create the matching `v0.1.x` tag, and
-5. publish a GitHub release without maintaining a changelog, and
-6. publish the built distributions to PyPI in the same workflow run.
+3. update `uv.lock` to the same package version,
+4. commit both version files together,
+5. create the matching `v0.1.x` tag,
+6. publish a GitHub release without maintaining a changelog, and
+7. publish the built distributions to PyPI in the same workflow run.
 
 The release job skips commits authored by `github-actions[bot]` so the automated
 version-bump commit does not trigger another release. When the project is ready

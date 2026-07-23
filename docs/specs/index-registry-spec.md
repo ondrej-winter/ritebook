@@ -1,12 +1,12 @@
-# Spec: Consumer Git Index Registry
+# Spec: Index Registry
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.1
-> **Last reviewed:** 2026-07-22
+> **Spec version:** 2.0
+> **Last reviewed:** 2026-07-23
 > **Implementation state:** Implemented
-> **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md)
-> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
+> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
 
 ## Objective
 
@@ -146,6 +146,51 @@ Requirements:
 - Remembered sources are rendered through a defensive display form that removes
   standard-URL user-info and never prints embedded credentials.
 
+### List skills
+
+A user can browse all cached skills or filter by one local alias without network
+access:
+
+```bash
+uv run ritebook list-skills
+uv run ritebook list-skills --index-name platform-skills
+uv run ritebook list-skills --show-description
+uv run ritebook list-skills --registry-path /tmp/indexes.json
+uv run ritebook list-skills --index-name platform-skills --registry-path /tmp/indexes.json
+```
+
+Requirements:
+
+- Read selected entries from the existing local registry and their immutable
+  `cached_index_path` values.
+- Verify the exact cached bytes against each registry entry's `index_digest`
+  before displaying metadata.
+- Do not clone, fetch, pull, inspect publisher directories, or read `SKILL.md`.
+- Apply the shared schema-v1 catalog validation before displaying any entry.
+- List all indexes in deterministic local-alias order and skills in catalog-path
+  order. Duplicate names at distinct paths remain valid.
+- Treat `--index-name` as a local-alias filter. Unknown aliases fail clearly.
+- Render non-empty output as a tree rooted at `Indexes`, with local aliases as
+  first-level nodes and catalog paths as second-level nodes.
+- Show descriptions only with `--show-description`; default output remains paths
+  only. `skill_file` is never displayed.
+- Preserve ordinary Unicode descriptions and visibly escape control characters at
+  the CLI boundary.
+- Print `No skills found` when no selected cached index contains a skill.
+- Accept `--registry-path` as an explicit test and automation override without
+  changing the default user registry location.
+
+Example:
+
+```text
+Indexes
+├── data-skills
+│   └── query-helper
+└── platform-skills
+    ├── browser/skill-b
+    └── skill-a
+```
+
 ### Update index
 
 A user can refresh an existing registered index from its remembered Git source.
@@ -190,41 +235,11 @@ Requirements:
 
 ## Publisher index metadata
 
-The publisher-generated `ritebook-index.json` includes metadata that canonically
-names the published index. This name becomes the default local alias but remains
-distinct from any consumer-selected alias.
-
-Publisher index schema v1:
-
-```json
-{
-  "schema_version": 1,
-  "index": {
-    "name": "company-skills"
-  },
-  "generated_at": "2026-07-08T18:20:00Z",
-  "skills_root": ".",
-  "skills": [
-    {
-      "name": "skill-a",
-      "path": "skill-a",
-      "skill_file": "skill-a/SKILL.md",
-      "description": "Helps with skill A workflows."
-    }
-  ]
-}
-```
-
-Published-name requirements:
-
-- Required for generated indexes.
-- Single-segment kebab-case identifier using the same general naming constraints
-  as skill names.
-- Slashes are not allowed because downstream skill installation references use
-  `<local-alias>/<skill-path>`.
-- Intended to be stable across updates.
-- Used as the default local alias during `add-index`.
-- Preserved separately when `--alias` selects a different local namespace.
+The publisher index schema, published-name contract, and catalog path model are
+defined by the shared catalog contract. The registry validates that complete
+contract when adding, updating, or reading a cached index. It uses `index.name`
+as the default local alias while preserving the publisher-owned value separately
+when the consumer chooses `--alias`.
 
 ## Local registry and cache
 
@@ -417,6 +432,11 @@ uv run ritebook update-index \
 
 uv run ritebook list-indexes \
   --registry-path <path>
+
+uv run ritebook list-skills \
+  [--index-name <local-alias>] \
+  [--show-description] \
+  --registry-path <path>
 ```
 
 Success output should be concise, for example:
@@ -553,6 +573,16 @@ tests/unit/features/index_registry/
 - Lists registered index summaries in deterministic local-alias order.
 - Returns an empty result for an empty registry.
 
+### List skills tests
+
+- Application tests cover all-index and filtered listing, deterministic ordering,
+  duplicate names at distinct paths, empty results, unknown aliases, provenance
+  verification, and the absence of Git calls.
+- Cached-index reader tests cover schema-v1 validation, required descriptions,
+  unsafe paths, control characters, digest mismatches, and ordinary Unicode.
+- CLI tests cover argument mapping, stable tree output, opt-in descriptions,
+  visible control escapes, empty output, and concise errors.
+
 ### Adapter tests
 
 - JSON index reader rejects invalid JSON, missing root metadata, unsupported schema
@@ -584,6 +614,8 @@ tests/unit/features/index_registry/
 - `update-index --all` maps CLI args into application command DTOs.
 - `update-index` rejects missing or conflicting target modes.
 - `list-indexes` maps CLI args into application command DTOs.
+- `list-skills` maps filtering, registry-path, and description flags into its
+  application command DTO.
 - `list-indexes` prints deterministic non-empty output and a concise empty
   registry message.
 - `list-indexes` defensively removes URL user-info from displayed sources.
@@ -609,7 +641,8 @@ docker run --rm --network none ritebook-e2e
 Registry responsibilities:
 
 - Support `add-index` and `update-index` for index registration and refresh.
-- Support `list-indexes` for registered index metadata only.
+- Support `list-indexes` for registered index metadata.
+- Support offline `list-skills` browsing from verified cached indexes.
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
 - Cache the current index contents locally.
@@ -628,8 +661,7 @@ Registry responsibilities:
 
 Extensions outside this registry specification:
 
-- Skill browsing is specified in `list-skills-spec.md`.
-- Skill installation is specified in `install-skill-spec.md`.
+- Skill installation is specified in `skill-installation-spec.md`.
 - Adding remote non-Git HTTP indexes.
 - Adding trust signatures, approvals, lockfiles, or policy enforcement.
 - Changing install path conventions.
@@ -643,6 +675,11 @@ Never:
   in errors.
 - Treat duplicate skill names across different indexes or at distinct paths in one
   index as an error.
+- Read live Git sources, mutate registry/cache state, or repair provenance while
+  listing skills.
+- Read raw `SKILL.md` contents while listing skills.
+- Add installation side effects, live refresh, script-oriented output formats, or
+  search behavior to `list-skills` without an approved specification change.
 
 ## Success criteria
 
@@ -665,6 +702,9 @@ Never:
 - Duplicate skill names across different local aliases and at distinct paths within
   one index are allowed.
 - Duplicate local aliases are refused unless explicitly replaced.
+- A user can browse all or one index's verified cached skills in deterministic
+  tree output without network access.
+- Empty skill listings print `No skills found`, and descriptions remain opt-in.
 - Relevant unit tests cover application behavior, JSON validation, registry/cache
   persistence, Git source handling, and CLI argument mapping.
 - `uv run ruff format --check .`, `uv run ruff check .`,
@@ -673,7 +713,6 @@ Never:
 
 ## Out of scope for the registry slice
 
-- Skill browsing behavior owned by the `list-skills` use case.
 - Skill installation behavior owned by the `skill_installation` slice.
 - Non-Git HTTP index sources.
 - Signed indexes, trust policy, approvals, and enterprise governance.

@@ -4,6 +4,39 @@ This directory contains Ritebook's product and workflow specifications. Each
 specification uses the same lifecycle metadata so readers can distinguish the
 authority of the document from the completeness of its implementation.
 
+Specifications stay in one flat directory while their filenames communicate
+ownership. Feature specifications map to vertical slices under
+`src/ritebook/features/`; shared specifications define contracts consumed by more
+than one slice; quality specifications govern cross-cutting validation
+infrastructure.
+
+## Specification catalog
+
+### Shared contract
+
+| Specification | Owner | Status | Implementation | Purpose |
+| --- | --- | --- | --- | --- |
+| [Shared Catalog Contract](shared-catalog-contract-spec.md) | Shared kernel and consuming slices | Active | Implemented | Catalog identity, schema-v1 paths, index fields, provenance, and shared trust rules. |
+
+### Feature slices
+
+| Specification | Slice | Status | Implementation | Direct dependencies |
+| --- | --- | --- | --- | --- |
+| [Skill Linter](linter-spec.md) | `linter` | Active | Implemented | Shared catalog contract |
+| [Publisher](publisher-spec.md) | `publisher` | Active | Implemented | Shared catalog contract; linter |
+| [Index Registry](index-registry-spec.md) | `index_registry` | Active | Implemented | Shared catalog contract |
+| [Skill Installation](skill-installation-spec.md) | `skill_installation` | Active | Implemented | Shared catalog contract; index registry |
+| [Skill Contribution](skill-contribution-spec.md) | `skill_contribution` | Active | Implemented | Shared catalog contract; installation; index registry; publisher |
+
+### Quality and infrastructure
+
+| Specification | Area | Status | Implementation | Purpose |
+| --- | --- | --- | --- | --- |
+| [Docker E2E Testing](docker-e2e-testing-spec.md) | Cross-feature quality gate | Active | Implemented | Hermetic container validation of supported CLI workflows. |
+
+The catalog is the navigation index, not a replacement for metadata in each
+specification. Update both when adding, retiring, or superseding a specification.
+
 ## Required metadata
 
 Every specification must declare these fields immediately after its title:
@@ -55,49 +88,17 @@ specification may describe behavior that remains in the tree during migration.
 - A superseded specification must link to its replacement in the metadata or at
   the start of the document.
 
-## Shared index terminology
+## Shared contracts
 
-All specifications use these terms consistently:
+Cross-feature terminology and normative behavior belong in a named shared
+specification rather than in this governance file or repeated across feature
+specifications. The current shared catalog vocabulary, schema-v1 path model,
+compatibility-sensitive names, provenance binding, and trust rules are defined by
+the [Shared Catalog Contract](shared-catalog-contract-spec.md).
 
-- **Published name**: the publisher-owned stable identifier stored as
-  `index.name` in `ritebook-index.json`. Application code may call this value
-  `published_name`. A consumer cannot change it without changing publisher
-  metadata.
-- **Local alias**: the consumer-owned namespace for a registered index. It
-  defaults to the published name, but `add-index --alias` may select a different
-  value. Registry lookup, cache paths, updates, listing, qualified skill
-  references, installation state, lockfiles, and contribution workflows use the
-  local alias.
-- **Qualified skill reference**: `<local-alias>/<catalog-selector>`. The first
-  segment is always a local alias, never an independently resolved published name.
-- **Catalog skill path**: the path relative to `skills_root` that identifies one
-  published skill. A valid schema-v1 path is `<skill>` or
-  `<collection>/<skill>`. Every segment is a canonical 1–64 character Ritebook
-  kebab-case identifier.
-- **Catalog selector**: the catalog-relative portion after the local alias in a
-  qualified skill reference. Generated `ritebook.lock` entries preserve the exact
-  qualified selector in `requirement`.
-- **Collection**: an implicit first-level catalog directory whose immediate child
-  directories are skills. A collection is not itself a skill or index entry.
-- **Collection selector**: `<local-alias>/<collection>` in `ritebook.toml`. It
-  resolves only the collection's immediate child skills and is not accepted by
-  exact-skill commands such as `install-skill` or `publish-skill-change`.
-
-Some compatibility-sensitive surfaces retain less-specific names:
-
-- Publisher `ritebook-index.json` field `index.name` and `publish-index
-  --index-name` carry the published name.
-- Consumer `indexes.json` field `name`, `update-index --name`, and `list-skills
-  --index-name` carry or select the local alias.
-- Generated `ritebook.lock` and `installations.json` field `index_name` carries
-  the local alias used in the corresponding qualified skill reference.
-- Generated `ritebook.lock` fields `skill_path` and `skill_file` are safe paths
-  relative to the source repository. They include the published `skills_root` and
-  may therefore contain more segments than the catalog selector in `requirement`.
-
-These field and option names remain unchanged in schema and CLI version 1. A
-rename requires an explicitly versioned migration; documentation and diagnostics
-must state their semantic role in the meantime.
+Create another shared specification only when at least two slices consume one
+stable product contract. Generic architecture, tooling, and documentation policy
+belong in their existing project rules or ADRs instead.
 
 ## Review process
 

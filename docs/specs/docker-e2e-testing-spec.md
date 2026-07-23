@@ -1,12 +1,12 @@
-# Spec: Docker E2E Integration Testing
+# Spec: Docker E2E Testing
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
-> **Last reviewed:** 2026-07-22
+> **Spec version:** 2.0
+> **Last reviewed:** 2026-07-23
 > **Implementation state:** Implemented
-> **Dependencies:** [Publisher Skill Index Generation](publisher-index-generation-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), [Consumer List Skills](list-skills-spec.md), [Consumer Skill Installation](install-skill-spec.md), and [Upstream Skill Contributions](upstream-skill-contributions-spec.md)
-> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+> **Dependencies:** [Skill Linter](linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
+> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
 
 ## Objective
 
@@ -112,7 +112,7 @@ uv build
 
 Implemented files:
 
-- Spec: `docs/specs/docker-e2e-integration-testing-spec.md`
+- Spec: `docs/specs/docker-e2e-testing-spec.md`
 - `Dockerfile.e2e`: dedicated Docker E2E test-runner image.
 - `.dockerignore`: keep Docker build context small and avoid copying local caches
   and generated artifacts.

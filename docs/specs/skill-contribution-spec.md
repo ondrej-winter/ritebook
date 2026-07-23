@@ -1,12 +1,12 @@
-# Spec: Upstream Skill Contributions
+# Spec: Skill Contribution
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.1
-> **Last reviewed:** 2026-07-22
+> **Spec version:** 2.0
+> **Last reviewed:** 2026-07-23
 > **Implementation state:** Implemented
-> **Dependencies:** [Consumer Skill Installation](install-skill-spec.md), [Consumer Git Index Registry](consumer-git-index-registry-spec.md), and [Publisher Skill Index Generation](publisher-index-generation-spec.md)
-> **Associated ADRs:** [ADR 0001: Source Provenance and Trust](../adr/0001-source-provenance-and-trust.md)
+> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
+> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
 
 ## Objective
 

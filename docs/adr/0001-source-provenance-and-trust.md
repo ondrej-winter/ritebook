@@ -186,9 +186,9 @@ schema changes require an explicit version and migration decision.
 
 ## Related specifications
 
-- [Consumer Git Index Registry](../specs/consumer-git-index-registry-spec.md)
-- [Consumer Skill Installation](../specs/install-skill-spec.md)
-- [Upstream Skill Contributions](../specs/upstream-skill-contributions-spec.md)
-- [Publisher Skill Index Generation](../specs/publisher-index-generation-spec.md)
-- [Consumer List Skills](../specs/list-skills-spec.md)
-- [Docker E2E Integration Testing](../specs/docker-e2e-integration-testing-spec.md)
+- [Shared Catalog Contract](../specs/shared-catalog-contract-spec.md)
+- [Index Registry](../specs/index-registry-spec.md)
+- [Skill Installation](../specs/skill-installation-spec.md)
+- [Skill Contribution](../specs/skill-contribution-spec.md)
+- [Publisher](../specs/publisher-spec.md)
+- [Docker E2E Testing](../specs/docker-e2e-testing-spec.md)

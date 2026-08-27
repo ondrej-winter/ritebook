@@ -5,6 +5,13 @@ installing Agent Skill indexes. It supports publisher workflows that generate
 reviewable `ritebook-index.json` files and consumer workflows that install skills
 from registered Git-backed indexes.
 
+## Specifications
+
+[`docs/specs/`](docs/specs/README.md) is the canonical source for Ritebook's
+product, shared-contract, and supported-workflow requirements. This README
+provides setup and usage guidance; when its examples need more detail, the owning
+specification defines the contract.
+
 ## Requirements
 
 - Python 3.13 or newer

@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 1.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** None
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -18,7 +18,7 @@ Feature specifications depend on this contract instead of redefining its terms.
 They remain responsible for workflow-specific orchestration, persistence,
 diagnostics, and recovery behavior.
 
-## Implementation status
+## Current context
 
 - Shared identifier and catalog-path rules are implemented under
   `src/ritebook/shared_kernel/`.
@@ -28,6 +28,17 @@ diagnostics, and recovery behavior.
   a full Git commit and digest in accordance with ADR 0001.
 - Feature-specific adapters add stricter filesystem and mutation checks where
   their workflows require them.
+
+## Assumptions
+
+- Schema version `1` remains the supported publisher-index compatibility target.
+- Git-backed sources remain the supported provenance model for consumer workflows.
+- Unresolved assumptions: None.
+
+## Desired behavior
+
+All consuming slices use the terminology, catalog structure, compatibility rules,
+and provenance requirements defined below rather than redefining them locally.
 
 ## Shared terminology and identity
 
@@ -177,7 +188,36 @@ diagnostics must state the semantic role of these fields in the meantime.
 - A mutating feature must define its own symlink, atomic-write, rollback, and
   recovery semantics in its owning specification.
 
+## Commands and validation
+
+- Test: `uv run pytest tests/unit/shared_kernel tests/unit/features/index_registry`
+- Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
+- Manual verification: inspect a generated schema-v1 `ritebook-index.json` and
+  verify consumers reject invalid catalog paths and provenance.
+
+## Project structure
+
+- Spec: `docs/specs/shared-catalog-contract-spec.md`
+- `src/ritebook/shared_kernel/`: shared pure identifiers, catalog paths, and
+  source-safety concepts.
+- `tests/unit/shared_kernel/`: shared-contract unit coverage.
+- Consuming feature slices: enforce their workflow-specific boundaries.
+
+## Conventions
+
+- Use exact terms defined by this contract rather than overloaded aliases.
+- Keep transport, filesystem, Git, and persistence concerns in owning adapters.
+
+## Testing strategy
+
+- Shared-kernel tests cover identifiers, catalog paths, and unsafe-input handling.
+- Publisher and consumer adapter tests verify schema-v1 parsing and provenance at
+  their boundaries.
+- E2E tests verify the binding survives the publisher-to-consumer workflow.
+
 ## Boundaries
+
+### Always
 
 - Shared kernel code may own pure identifiers, path policies, and immutable
   boundary concepts used by multiple slices.
@@ -187,6 +227,17 @@ diagnostics must state the semantic role of these fields in the meantime.
   tooling, CLI rendering, or test conventions.
 - A schema change requires an explicitly versioned specification update and a
   compatibility or migration decision.
+
+### Ask first
+
+- Adding a shared concept that fewer than two feature slices consume.
+- Changing schema-v1 compatibility or the provenance binding.
+
+### Never
+
+- Let the shared contract become a generic architecture, tooling, or CLI policy
+  catch-all.
+- Treat mutable source state as a substitute for required provenance.
 
 ## Success criteria
 
@@ -198,3 +249,7 @@ diagnostics must state the semantic role of these fields in the meantime.
   binding required by ADR 0001.
 - Feature specifications depend on this contract and document only their stricter
   or workflow-specific behavior.
+
+## Open questions
+
+None for the current specification version.

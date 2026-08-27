@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 2.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 2.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](linter-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -20,7 +20,7 @@ The primary user is a skill maintainer or curator inside a company. The workflow
 supports controlled internal skill curation and downstream developer
 installation.
 
-## Implementation status
+## Current context
 
 - Publisher and linter capabilities are implemented as separate vertical feature
   slices under `src/ritebook/features/`.
@@ -29,6 +29,14 @@ installation.
 - Discovery recursively identifies every directory containing `SKILL.md` as a
   candidate, validates its header, and enforces schema-v1 depth, canonical
   segments, duplicate-path, and mixed-node constraints before publication.
+
+## Assumptions
+
+- Publisher-maintained skills repositories are Git repositories with a reviewable
+  root `ritebook-index.json` artifact.
+- Schema version `1` and the shared catalog contract remain the compatibility
+  baseline.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -147,6 +155,12 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 - `docs/specs/publisher-spec.md`: this specification.
 - `docs/specs/linter-spec.md`: the validation contract consumed by publisher.
 
+## Conventions
+
+- Keep discovery, filesystem writes, and JSON serialization in adapters.
+- Keep publisher orchestration independent of CLI and filesystem details.
+- Render path-scoped diagnostics without logging raw skill-file contents.
+
 ## Commands and validation
 
 When changing this workflow, use focused checks first, then the full local
@@ -189,6 +203,8 @@ network access.
 
 ## Boundaries
 
+### Always
+
 - Always keep business rules and catalog concepts independent of CLI, filesystem,
   and JSON serialization details.
 - Always validate external inputs at adapter boundaries before invoking the
@@ -203,11 +219,17 @@ network access.
 - Always pretty-print generated JSON with two-space indentation.
 - Mandatory `SKILL.md` header validation is in scope for this milestone and must
   be shared by `lint-skills` and `publish-index`.
+
+### Ask first
+
 - Ask before adding consumer install, sync, or list commands to this milestone.
 - Ask before adding content hashes, signatures, policy enforcement, or trust-chain
   behavior to the publisher artifact. The consumer-owned exact-index digest
   required by [ADR 0001](../adr/0001-source-provenance-and-trust.md) is not a
   publisher field.
+
+### Never
+
 - Never scan a whole repository implicitly in the first MVP; require an explicit
   skills root.
 - Never accept multiple skills roots in a single MVP command invocation.
@@ -239,3 +261,7 @@ network access.
 - `uv run ruff format --check .`, `uv run ruff check .`,
   `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
   network-disabled Docker E2E gate pass before handoff.
+
+## Open questions
+
+None for the current specification version.

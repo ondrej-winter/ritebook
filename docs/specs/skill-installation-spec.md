@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 2.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 2.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -19,7 +19,7 @@ path, and lets a repository declare exact skills or first-level collections in
 directories from registered sources, and writes a deterministic `ritebook.lock`
 for reviewable repo-local install state.
 
-## Implementation status
+## Current context
 
 - Ritebook already supports publisher-side index generation through
   `publish-index`.
@@ -45,6 +45,14 @@ for reviewable repo-local install state.
   a first-level collection after validating the complete mutation plan.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
+
+## Assumptions
+
+- Installation consumes only registered Git-backed indexes that satisfy the shared
+  catalog contract.
+- Schema version `1` and ADR 0001's commit-and-digest binding remain the
+  compatibility baseline.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -769,7 +777,7 @@ docker run --rm --network none ritebook-e2e
 
 ## Boundaries
 
-Always:
+### Always
 
 - Support direct `install-skill <local-alias>/<skill-path> --target <path>`.
 - Support `install` from `ritebook.toml`.
@@ -792,7 +800,7 @@ Always:
 - Never report installation success unless the corresponding generated-state file
   has been committed.
 
-Ask first:
+### Ask first
 
 - Adding target aliases or target kinds to `install-skill`.
 - Adding default install destinations.
@@ -806,7 +814,7 @@ Ask first:
   policy beyond the required local cached-index digest.
 - Supporting dependency relationships between skills.
 
-Never:
+### Never
 
 - Mutate source repositories during installation.
 - Install from live remotes without cached registered indexes.
@@ -845,16 +853,6 @@ Never:
   `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
   network-disabled Docker E2E gate pass before handoff.
 
-## Out of scope
+## Open questions
 
-- `sync`, `restore`, `update-skill`, and `uninstall-skill` commands.
-- Target aliases or target kinds for direct `install-skill`.
-- Default install destinations.
-- Installing from unregistered Git URLs.
-- Refreshing, pulling, or fetching mutable refs during installation; exact-object
-  recovery for an already-bound managed-source commit remains permitted.
-- Non-Git HTTP index sources.
-- Signed indexes, trust policy, approvals, and enterprise governance.
-- Skill dependency resolution.
-- Multiple lockfiles per requirements file.
-- Machine-specific absolute paths in committed repo lockfiles.
+None for the current specification version.

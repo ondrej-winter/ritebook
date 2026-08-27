@@ -1,8 +1,28 @@
 # Specification Governance
 
-This directory contains Ritebook's product and workflow specifications. Each
-specification uses the same lifecycle metadata so readers can distinguish the
-authority of the document from the completeness of its implementation.
+This directory is the canonical source for Ritebook's product, shared-contract,
+and supported-workflow requirements. Each specification uses the same lifecycle
+metadata so readers can distinguish the authority of the document from the
+completeness of its implementation.
+
+## Authority and precedence
+
+- An `Active` specification is the normative contract for the behavior it owns.
+- Feature code, tests, CLI help, generated artifacts, and user-facing
+  documentation must conform to their owning active specification. They provide
+  implementation or conformance evidence; they do not redefine the contract.
+- The root [`README.md`](../../README.md) owns setup and concise usage guidance.
+  It must link to the owning specification instead of duplicating detailed
+  product requirements.
+- [Architecture Decision Records](../adr/README.md) own durable decision
+  rationale, trade-offs, and consequences. A specification linked to an ADR must
+  implement that decision's outcome without copying its rationale wholesale.
+- If an active specification conflicts with code, tests, CLI help, or derived
+  documentation, correct the conflicting artifact in the same change. Do not
+  silently treat current implementation as a contract change.
+- If an active specification appears to conflict with an accepted ADR, stop and
+  reconcile both documents before implementation. Use a new ADR to change a
+  durable decision; then update or supersede the affected specification.
 
 Specifications stay in one flat directory while their filenames communicate
 ownership. Feature specifications map to vertical slices under
@@ -54,6 +74,22 @@ Every specification must declare these fields immediately after its title:
 All specifications must use the exact field names above and link dependencies
 and ADRs with repository-relative Markdown links.
 
+## Required specification structure
+
+Every feature, shared-contract, and quality specification must use the
+spec-driven-development template headings: `Objective`, `Current context`,
+`Assumptions`, `Desired behavior`, `Commands and validation`, `Project
+structure`, `Conventions`, `Testing strategy`, `Boundaries`, `Success criteria`,
+and `Open questions`.
+
+Feature-specific normative sections may appear between `Desired behavior` and
+`Commands and validation` when they make a contract easier to review, such as a
+schema, provenance, path-safety, or isolation contract. An implemented
+specification may record confirmed compatibility and operating foundations under
+`Assumptions`; it must state `None` when no unresolved assumptions remain.
+Likewise, use `None` under `Open questions` when the current specification
+version has no decision awaiting maintainer input.
+
 ## Allowed lifecycle values
 
 `Status` must be one of:
@@ -80,7 +116,7 @@ specification may describe behavior that remains in the tree during migration.
 - Normative requirements belong in sections such as `Desired behavior`,
   `Boundaries`, and `Success criteria` and use requirement language such as
   **must**, **must not**, or an unambiguous imperative.
-- Current-state notes belong under `Implementation status`. They describe evidence
+- Current-state notes belong under `Current context`. They describe evidence
   in the current tree and are not additional requirements.
 - Deferred behavior must name its owner or link to a tracked follow-up.
 - Future ideas that are not commitments must be labeled as such and require a new
@@ -106,7 +142,12 @@ When behavior, dependencies, or architecture decisions change:
 
 1. Update the specification and its implementation evidence together.
 2. Recheck dependency and ADR links.
-3. Update `Spec version` when the document contract changes materially.
-4. Set `Last reviewed` only after comparing the document with the current tree.
+3. Update `Spec version` when normative behavior, compatibility, data format, or
+   an externally visible workflow changes materially. Editorial-only corrections
+   do not require a version increase.
+4. Set `Last reviewed` only after comparing the document with the current tree,
+   relevant tests, CLI surface, and linked contracts.
 5. Update `Implementation state` and identify any remaining work with an owner or
    linked follow-up.
+6. Update the root README only when setup, supported usage, or operator guidance
+   changes; keep detailed requirements in the owning specification.

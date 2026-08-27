@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 1.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
 > **Associated ADRs:** None
@@ -15,13 +15,20 @@ and the publisher slice. It discovers catalog candidates, validates each
 `SKILL.md` header, and emits deterministic path-scoped diagnostics without
 modifying publisher or consumer state.
 
-## Implementation status
+## Current context
 
 - The linter is implemented as the `src/ritebook/features/linter/` vertical slice.
 - The `lint-skills` command exposes the validation use case directly.
 - The publisher calls the linter through an application boundary as a hard
   precondition for index generation.
 - Filesystem discovery and YAML parsing remain in outbound adapters.
+
+## Assumptions
+
+- Ritebook supports Python 3.13 or newer and uses `uv` for command execution.
+- The shared catalog contract remains the source of truth for identifiers and
+  catalog paths.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -96,6 +103,12 @@ Example:
 conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 ```
 
+## Commands and validation
+
+- Test: `uv run pytest tests/unit/features/linter`
+- Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
+- Manual verification: `uv run ritebook lint-skills --skills-root <path>`
+
 ## Project structure
 
 - `src/ritebook/features/linter/application/`: validation use cases, DTOs, ports,
@@ -104,6 +117,13 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 - `src/ritebook/features/linter/adapters/outbound/`: discovery and frontmatter
   adapters.
 - `tests/unit/features/linter/`: focused application and adapter tests.
+
+## Conventions
+
+- Keep filesystem and YAML parsing in outbound adapters and CLI rendering in the
+  inbound adapter.
+- Render diagnostics deterministically without raw skill-file contents or terminal
+  control bytes.
 
 ## Testing strategy
 
@@ -120,6 +140,8 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 
 ## Boundaries
 
+### Always
+
 - Keep YAML parsing and filesystem traversal in adapters.
 - Keep validation orchestration independent of the publisher and CLI.
 - Share the linter through an application port; do not import adapter internals
@@ -129,6 +151,16 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 - Changes to catalog depth, identifiers, or path semantics belong in the shared
   catalog contract.
 
+### Ask first
+
+- Expanding the accepted Agent Skill header schema or catalog path model.
+- Adding mutation behavior to the validation-only workflow.
+
+### Never
+
+- Mutate skill files, publisher indexes, registry state, or install state.
+- Log or print raw skill contents.
+
 ## Success criteria
 
 - Authors and CI can validate an explicit skills root without generating an index.
@@ -137,3 +169,7 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 - Publisher index generation uses the same validation use case and cannot write an
   index after validation failure.
 - Unit tests cover application, adapter, and CLI behavior.
+
+## Open questions
+
+None for the current specification version.

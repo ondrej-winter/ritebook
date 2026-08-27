@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 2.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 2.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -21,7 +21,7 @@ when a usable origin exists, or manual inspection guidance otherwise. It must no
 directly mutate canonical source branches, managed index cache clones, or
 user-owned local source repositories.
 
-## Implementation status
+## Current context
 
 - Ritebook already supports Git-backed index registration and updates through
   `add-index`, `update-index`, and `list-indexes`.
@@ -43,6 +43,14 @@ user-owned local source repositories.
   repository-path fallback.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
+
+## Assumptions
+
+- Contributions originate from requirements-file installs recorded in
+  `ritebook.lock`, not ad hoc direct installations.
+- Git remains the supported contribution transport and ADR 0001's provenance
+  binding remains required.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -433,7 +441,7 @@ docker run --rm --network none ritebook-e2e
 
 ## Boundaries
 
-Always:
+### Always
 
 - Support one skill contribution per command.
 - Require `ritebook.lock` provenance for the MVP.
@@ -447,7 +455,7 @@ Always:
 - Create a reviewable local Git branch and commit.
 - Print clear next steps for inspecting and optionally pushing the contribution.
 
-Ask first:
+### Ask first
 
 - Adding `--push` behavior.
 - Adding `--open-mr` behavior.
@@ -458,7 +466,7 @@ Ask first:
 - Changing lockfile schema or installation provenance.
 - Adding cleanup, pruning, or automatic deletion of contribution checkouts.
 
-Never:
+### Never
 
 - Directly mutate the source default branch.
 - Mutate the managed index cache clone as a contribution workspace.
@@ -497,21 +505,7 @@ Never:
   `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
   network-disabled Docker E2E gate pass before implementation handoff.
 
-## Out of scope
-
-- Automatic push support.
-- Automatic MR/PR creation.
-- Provider API integration.
-- Native GitHub, GitLab, Gitea, `gh`, or `glab` adapters.
-- Batch contribution of multiple skills.
-- Contribution support for ad hoc direct `install-skill` installs without
-  `ritebook.lock` provenance.
-- Direct writes to source default branches.
-- Automatic conflict resolution.
-- Enterprise governance, approvals, signatures, or trust policy.
-- Skill dependency publishing or multi-repository contribution orchestration.
-
-## Future considerations
+## Open questions
 
 These questions are not commitments. Ritebook maintainers own their disposition,
 and each requires an approved specification or tracked implementation plan before

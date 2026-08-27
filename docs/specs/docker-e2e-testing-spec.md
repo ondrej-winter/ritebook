@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 2.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 2.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Skill Linter](linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -18,7 +18,7 @@ The implementation provides an isolated test runner rather than broad
 infrastructure. Docker proves the workflow outside local developer state and
 unit-test fakes under the explicit state, permission, and network contract below.
 
-## Implementation status
+## Current context
 
 - Ritebook is a Python 3.13 CLI package managed with `uv`.
 - The package exposes the console script `ritebook = "ritebook.cli:main"`.
@@ -46,6 +46,13 @@ unit-test fakes under the explicit state, permission, and network contract below
   - `update-index`
   - `install-skill`
   - `install`
+
+## Assumptions
+
+- Docker is available to maintainers and CI for the isolated E2E gate.
+- Runtime networking remains disabled and E2E fixtures remain local and
+  deterministic.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -190,7 +197,7 @@ investigating a failure.
 
 ## Boundaries
 
-Always:
+### Always
 
 - Use local temporary Git repositories for the first milestone.
 - Pass explicit `--registry-path` and `--cache-root` values in E2E tests.
@@ -202,13 +209,13 @@ Always:
 - Treat Docker as an isolated test runner, not as product runtime packaging.
 - Prefer deterministic fixtures and fewer assertions over broad fragile checks.
 
-Ask first:
+### Ask first
 
 - Adding Docker Compose or service containers.
 - Requiring live remote Git repositories or network-dependent test scenarios.
 - Adding new runtime dependencies only to support E2E tests.
 
-Never:
+### Never
 
 - Touch real user registry or cache paths in E2E tests.
 - Depend on private repositories, credentials, or external services.
@@ -247,3 +254,7 @@ and prevents runtime network access. Build-time public network access remains
 required. The boundary does not promise a reproducible operating-system image,
 separate kernel, production packaging, or protection against a malicious test
 process with container-escape capabilities.
+
+## Open questions
+
+None for the current specification version.

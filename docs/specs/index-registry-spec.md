@@ -2,8 +2,8 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 2.0
-> **Last reviewed:** 2026-07-23
+> **Spec version:** 2.1
+> **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
@@ -20,7 +20,7 @@ all cached copies later from their remembered Git sources. The registry is the
 consumer-side catalog foundation used by the implemented `list-skills`,
 `install-skill`, and requirements-file `install` workflows.
 
-## Implementation status
+## Current context
 
 - Ritebook already supports publisher-side skill index generation through
   `publish-index`.
@@ -41,6 +41,13 @@ consumer-side catalog foundation used by the implemented `list-skills`,
   company skills are expected to live in private Git repositories.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
+
+## Assumptions
+
+- Git URLs and clean local Git repositories remain the supported index sources.
+- Schema version `1` and ADR 0001's commit-and-digest binding remain the
+  compatibility baseline.
+- Unresolved assumptions: None.
 
 ## Desired behavior
 
@@ -638,7 +645,7 @@ docker run --rm --network none ritebook-e2e
 
 ## Boundaries
 
-Registry responsibilities:
+### Always
 
 - Support `add-index` and `update-index` for index registration and refresh.
 - Support `list-indexes` for registered index metadata.
@@ -659,14 +666,14 @@ Registry responsibilities:
 - Reject dirty local Git repositories before binding an index.
 - Continue after per-index failures during `update-index --all`.
 
-Extensions outside this registry specification:
+### Ask first
 
 - Skill installation is specified in `skill-installation-spec.md`.
 - Adding remote non-Git HTTP indexes.
 - Adding trust signatures, approvals, lockfiles, or policy enforcement.
 - Changing install path conventions.
 
-Never:
+### Never
 
 - Assume an index file outside the repository root for this milestone.
 - Mutate user-owned local repositories during add/update.
@@ -711,10 +718,6 @@ Never:
   `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
   network-disabled Docker E2E gate pass before handoff.
 
-## Out of scope for the registry slice
+## Open questions
 
-- Skill installation behavior owned by the `skill_installation` slice.
-- Non-Git HTTP index sources.
-- Signed indexes, trust policy, approvals, and enterprise governance.
-- Multiple index files per repository.
-- Index files outside repository root.
+None for the current specification version.

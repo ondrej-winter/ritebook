@@ -1,11 +1,5 @@
 import pytest
 
-from ritebook.features.linter.application.dtos import (
-    LintSkillsCommand,
-    LintSkillsResult,
-    SkillValidationIssue,
-)
-from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
 from ritebook.features.skill_contribution.adapters.outbound.validation import (
     LinterSkillValidatorAdapter,
 )
@@ -16,6 +10,12 @@ from ritebook.features.skill_contribution.application.dtos import (
 from ritebook.features.skill_contribution.application.errors import (
     SkillContributionValidationError,
 )
+from ritebook.features.skill_linter.application.dtos import (
+    LintSkillsCommand,
+    LintSkillsResult,
+    SkillValidationIssue,
+)
+from ritebook.features.skill_linter.application.errors import LintSkillsDiscoveryError
 
 
 class FakeLinter:

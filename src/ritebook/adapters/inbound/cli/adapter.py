@@ -24,7 +24,6 @@ from ritebook.features.index_registry.adapters.inbound.cli import (
     run_list_skills,
     run_update_index,
 )
-from ritebook.features.linter.adapters.inbound.cli import run_lint_skills
 from ritebook.features.publisher.adapters.inbound.cli import run_publish_index
 from ritebook.features.skill_contribution.adapters.inbound.cli import (
     run_publish_skill_change,
@@ -33,6 +32,7 @@ from ritebook.features.skill_installation.adapters.inbound.cli import (
     run_install,
     run_install_skill,
 )
+from ritebook.features.skill_linter.adapters.inbound.cli import run_lint_skills
 
 if TYPE_CHECKING:
     import argparse
@@ -44,7 +44,6 @@ if TYPE_CHECKING:
         ListSkillsPort,
         UpdateIndexPort,
     )
-    from ritebook.features.linter.application.ports import LintSkillsPort
     from ritebook.features.publisher.application.ports import PublishIndexPort
     from ritebook.features.skill_contribution.application.ports import (
         PublishSkillChangePort,
@@ -53,6 +52,7 @@ if TYPE_CHECKING:
         InstallFromRequirementsPort,
         InstallSkillPort,
     )
+    from ritebook.features.skill_linter.application.ports import LintSkillsPort
 
 
 def run(  # noqa: PLR0913

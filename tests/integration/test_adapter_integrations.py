@@ -20,13 +20,6 @@ from ritebook.features.index_registry.application.dtos import (
     IndexSourceType,
     RegisteredIndex,
 )
-from ritebook.features.linter.adapters.outbound.filesystem import (
-    FilesystemSkillHeaderDiscovery,
-)
-from ritebook.features.linter.adapters.outbound.publisher_precheck import (
-    LinterPublisherPrecheck,
-)
-from ritebook.features.linter.application.dtos import LintSkillsResult
 from ritebook.features.publisher.adapters.outbound.filesystem import (
     FilesystemSkillDiscovery,
 )
@@ -47,10 +40,17 @@ from ritebook.features.skill_installation.application.dtos import (
     RegisteredSkillIndex,
     ResolvedSkillSource,
 )
+from ritebook.features.skill_linter.adapters.outbound.filesystem import (
+    FilesystemSkillHeaderDiscovery,
+)
+from ritebook.features.skill_linter.adapters.outbound.publisher_precheck import (
+    LinterPublisherPrecheck,
+)
+from ritebook.features.skill_linter.application.dtos import LintSkillsResult
 from ritebook.shared_kernel import SKILL_FILE_NAME
 
 if TYPE_CHECKING:
-    from ritebook.features.linter.application.dtos import LintSkillsCommand
+    from ritebook.features.skill_linter.application.dtos import LintSkillsCommand
     from tests.integration.conftest import GitRepositoryFactory, SkillWriter
 
 

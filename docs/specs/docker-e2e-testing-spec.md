@@ -5,7 +5,7 @@
 > **Spec version:** 2.1
 > **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
-> **Dependencies:** [Skill Linter](linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
+> **Dependencies:** [Skill Linter](skill-linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
 
 ## Objective

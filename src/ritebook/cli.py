@@ -22,16 +22,6 @@ from ritebook.features.index_registry.application.use_cases import (
     ListSkills,
     UpdateIndex,
 )
-from ritebook.features.linter.adapters.outbound.filesystem import (
-    FilesystemSkillHeaderDiscovery,
-)
-from ritebook.features.linter.adapters.outbound.publisher_precheck import (
-    LinterPublisherPrecheck,
-)
-from ritebook.features.linter.application.use_cases import (
-    LintSkills,
-    ValidateSkillHeaders,
-)
 from ritebook.features.publisher.adapters.outbound.filesystem import (
     FilesystemSkillDiscovery,
 )
@@ -71,6 +61,16 @@ from ritebook.features.skill_installation.adapters.outbound import (
 from ritebook.features.skill_installation.application.use_cases import (
     InstallFromRequirements,
     InstallSkill,
+)
+from ritebook.features.skill_linter.adapters.outbound.filesystem import (
+    FilesystemSkillHeaderDiscovery,
+)
+from ritebook.features.skill_linter.adapters.outbound.publisher_precheck import (
+    LinterPublisherPrecheck,
+)
+from ritebook.features.skill_linter.application.use_cases import (
+    LintSkills,
+    ValidateSkillHeaders,
 )
 
 if TYPE_CHECKING:

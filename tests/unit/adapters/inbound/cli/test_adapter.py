@@ -24,12 +24,6 @@ from ritebook.features.index_registry.application.errors import (
     InvalidPublishedIndexError,
     UnknownIndexNameError,
 )
-from ritebook.features.linter.application.dtos import (
-    LintSkillsCommand,
-    LintSkillsResult,
-    SkillValidationIssue,
-)
-from ritebook.features.linter.application.errors import LintSkillsDiscoveryError
 from ritebook.features.publisher.application.dtos import (
     PublishIndexCommand,
     PublishIndexResult,
@@ -58,6 +52,12 @@ from ritebook.features.skill_installation.application.errors import (
     GeneratedStateCommitError,
     UnknownInstallIndexError,
 )
+from ritebook.features.skill_linter.application.dtos import (
+    LintSkillsCommand,
+    LintSkillsResult,
+    SkillValidationIssue,
+)
+from ritebook.features.skill_linter.application.errors import LintSkillsDiscoveryError
 
 ARGPARSE_USAGE_ERROR = 2
 

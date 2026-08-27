@@ -5,7 +5,7 @@
 > **Spec version:** 2.1
 > **Last reviewed:** 2026-08-27
 > **Implementation state:** Implemented
-> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](linter-spec.md)
+> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
 > **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
 
 ## Objective
@@ -153,7 +153,7 @@ The implementation follows the repository's hexagonal vertical-slice direction.
   discovery, and JSON index writer adapters.
 - `tests/unit/features/publisher/`: focused tests mirroring source ownership.
 - `docs/specs/publisher-spec.md`: this specification.
-- `docs/specs/linter-spec.md`: the validation contract consumed by publisher.
+- `docs/specs/skill-linter-spec.md`: the validation contract consumed by publisher.
 
 ## Conventions
 

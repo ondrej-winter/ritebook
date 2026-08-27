@@ -2,9 +2,6 @@
 
 from pathlib import Path, PurePosixPath
 
-from ritebook.features.linter.application.dtos import LintSkillsCommand
-from ritebook.features.linter.application.errors import LinterError
-from ritebook.features.linter.application.ports import LintSkillsPort
 from ritebook.features.skill_contribution.application.dtos import (
     ContributionLockfileEntry,
     ContributionSkillReference,
@@ -14,6 +11,9 @@ from ritebook.features.skill_contribution.application.errors import (
     SkillContributionValidationError,
 )
 from ritebook.features.skill_contribution.application.ports import SkillValidatorPort
+from ritebook.features.skill_linter.application.dtos import LintSkillsCommand
+from ritebook.features.skill_linter.application.errors import LinterError
+from ritebook.features.skill_linter.application.ports import LintSkillsPort
 
 
 class LinterSkillValidatorAdapter(SkillValidatorPort):

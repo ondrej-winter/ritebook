@@ -33,8 +33,8 @@ uv run pre-commit run --all-files
 ```
 
 Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
-linting, and ty type checking. It complements, but does not replace, the full
-local quality gate.
+linting, ty type checking, Import Linter architecture contracts, and tests. It
+complements, but does not replace, the full local quality gate.
 
 Run local quality checks:
 
@@ -42,6 +42,7 @@ Run local quality checks:
 uv run ruff format .
 uv run ruff check .
 uv run ty check src/ritebook
+uv run lint-imports
 uv run pytest -m "not e2e"
 ```
 

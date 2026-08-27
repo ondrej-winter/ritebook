@@ -1,41 +1,48 @@
 default_language_version:
-  python: python3
+  python: python3.13
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-      - id: check-ast
-      - id: check-builtin-literals
       - id: check-case-conflict
-      - id: check-docstring-first
-      - id: check-json
       - id: check-merge-conflict
-      - id: check-symlinks
       - id: check-toml
-      - id: check-vcs-permalinks
       - id: check-yaml
-      - id: debug-statements
-      - id: destroyed-symlinks
-      - id: detect-private-key
       - id: end-of-file-fixer
       - id: mixed-line-ending
         args: ["--fix=lf"]
       - id: trailing-whitespace
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.20
-    hooks:
-      - id: ruff-check
-      - id: ruff-format
-
   - repo: local
     hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check . --fix
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format .
+        language: system
+        types: [python]
+        pass_filenames: false
       - id: ty
         name: ty
-        entry: uv run ty check
-        args: ["src/ritebook"]
+        entry: uv run ty check src tests
+        language: system
+        types: [python]
+        pass_filenames: false
+      - id: import-linter
+        name: import-linter
+        entry: uv run lint-imports
         language: system
         pass_filenames: false
-        types_or: [python, pyi]
+      - id: pytest
+        name: pytest
+        entry: uv run pytest
+        language: system
+        types: [python]
+        pass_filenames: false

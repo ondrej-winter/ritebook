@@ -77,10 +77,14 @@ def test_discover_headers_reports_invalid_and_over_deep_paths_deterministically(
 
     assert [header.skill_file for header in result.headers] == ["valid/SKILL.md"]
     assert [issue.format() for issue in result.issues] == [
-        "BadCollection/skill/SKILL.md: Catalog path contains a non-canonical "
-        "identifier segment: 'BadCollection/skill'.",
-        "collection/nested/skill/SKILL.md: Catalog path must contain one or two "
-        "segments: 'collection/nested/skill'.",
+        (
+            "BadCollection/skill/SKILL.md: Catalog path contains a non-canonical "
+            "identifier segment: 'BadCollection/skill'."
+        ),
+        (
+            "collection/nested/skill/SKILL.md: Catalog path must contain one or two "
+            "segments: 'collection/nested/skill'."
+        ),
     ]
 
 
@@ -101,10 +105,14 @@ def test_discover_headers_reports_every_mixed_skill_collection_child(
 
     assert [header.skill_file for header in result.headers] == ["quality/SKILL.md"]
     assert [issue.format() for issue in result.issues] == [
-        "quality/alpha/SKILL.md: Catalog node cannot be both a root skill and a "
-        "collection: 'quality' conflicts with 'quality/alpha'.",
-        "quality/zeta/SKILL.md: Catalog node cannot be both a root skill and a "
-        "collection: 'quality' conflicts with 'quality/zeta'.",
+        (
+            "quality/alpha/SKILL.md: Catalog node cannot be both a root skill and a "
+            "collection: 'quality' conflicts with 'quality/alpha'."
+        ),
+        (
+            "quality/zeta/SKILL.md: Catalog node cannot be both a root skill and a "
+            "collection: 'quality' conflicts with 'quality/zeta'."
+        ),
     ]
 
 

@@ -36,7 +36,7 @@ pre-commit: ## Run all configured pre-commit hooks
 	uv run pre-commit run --all-files
 
 commit: ## Commit staged changes with Fabrica
-	uvx fabrica $(FABRICA_GLOBAL_OPTIONS) commit \
+	uv run fabrica $(FABRICA_GLOBAL_OPTIONS) commit \
 	  --skill conventional-commits \
 	  --skill-root .agents/skills \
 	  --model gpt-5.6-luna \

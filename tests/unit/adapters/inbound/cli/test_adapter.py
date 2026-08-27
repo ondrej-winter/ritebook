@@ -83,7 +83,7 @@ def run(
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
     return run_cli(
-        argv,
+        _canonical_argv(argv),
         linter=linter,
         publisher=publisher,
         add_index=add_index or FakeAddIndex(),
@@ -97,6 +97,28 @@ def run(
         stdout=stdout,
         stderr=stderr,
     )
+
+
+def _canonical_argv(argv: list[str]) -> list[str]:
+    commands = {
+        "lint-skills": ["skills", "lint"],
+        "publish-index": ["indexes", "publish"],
+        "add-index": ["indexes", "add"],
+        "list-indexes": ["indexes", "list"],
+        "list-skills": ["skills", "list"],
+        "update-index": ["indexes", "update"],
+        "install-skill": ["skills", "install"],
+        "install": ["skills", "sync"],
+        "publish-skill-change": ["skills", "contribute"],
+    }
+    canonical = [*commands.get(argv[0], [argv[0]]), *argv[1:]]
+    if canonical[:2] != ["indexes", "update"] or "--name" not in canonical:
+        return canonical
+
+    name_position = canonical.index("--name")
+    name = canonical[name_position + 1]
+    del canonical[name_position : name_position + 2]
+    return [*canonical[:2], name, *canonical[2:]]
 
 
 class FakePublisher:
@@ -418,6 +440,55 @@ def test_publish_skill_change_maps_default_arguments_and_prints_no_op() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_skills_contribute_maps_canonical_arguments_without_warning() -> None:
+    publish_skill_change = FakePublishSkillChange()
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["skills", "contribute", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        publish_skill_change=publish_skill_change,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert publish_skill_change.commands == [
+        PublishSkillChangeCommand(skill_reference="platform-skills/code-review"),
+    ]
+    assert stdout.getvalue() == (
+        "No local changes to publish for platform-skills/code-review\n"
+    )
+    assert stderr.getvalue() == ""
+
+
+def test_legacy_publish_skill_change_warns_with_canonical_replacement() -> None:
+    stderr = StringIO()
+
+    exit_code = run_cli(
+        ["publish-skill-change", "platform-skills/code-review"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        add_index=FakeAddIndex(),
+        list_indexes=FakeListIndexes(),
+        list_skills=FakeListSkills(),
+        update_index=FakeUpdateIndex(),
+        install_skill=FakeInstallSkill(),
+        install_from_requirements=FakeInstallFromRequirements(),
+        publish_skill_change=FakePublishSkillChange(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 0
+    assert stderr.getvalue() == (
+        "ritebook: warning: 'publish-skill-change' is deprecated; "
+        "use 'skills contribute'\n"
+    )
+
+
 def test_publish_skill_change_maps_path_overrides() -> None:
     publish_skill_change = FakePublishSkillChange()
 
@@ -595,7 +666,7 @@ def test_publish_skill_change_requires_skill_reference_with_argparse_error() -> 
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "usage: ritebook publish-skill-change" in stderr.getvalue()
+    assert "usage: ritebook skills contribute" in stderr.getvalue()
     assert "the following arguments are required: skill_reference" in stderr.getvalue()
 
 
@@ -632,6 +703,29 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
         "Published skill index with 3 skill(s) to ritebook-index.json\n"
     )
     assert stderr.getvalue() == ""
+
+
+def test_indexes_publish_maps_canonical_arguments_to_application_command() -> None:
+    publisher = FakePublisher(
+        PublishIndexResult(discovered_skill_count=3, output_path="ritebook-index.json"),
+    )
+
+    exit_code = run(
+        ["indexes", "publish", "--skills-root", "skills", "--name", "company-skills"],
+        linter=FakeLinter(),
+        publisher=publisher,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert publisher.commands == [
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=str(Path.cwd() / "skills"),
+            published_skills_root="skills",
+        ),
+    ]
 
 
 def test_publish_index_uses_canonical_output_path() -> None:
@@ -781,9 +875,9 @@ def test_subcommand_help_uses_injected_stdout() -> None:
     )
 
     assert exit_code == 0
-    assert "usage: ritebook publish-index" in stdout.getvalue()
+    assert "usage: ritebook indexes publish" in stdout.getvalue()
     assert "--skills-root" in stdout.getvalue()
-    assert "--index-name" in stdout.getvalue()
+    assert "--name" in stdout.getvalue()
     assert stderr.getvalue() == ""
 
 
@@ -799,9 +893,9 @@ def test_publish_index_requires_skills_root_with_argparse_error() -> None:
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "usage: ritebook publish-index" in stderr.getvalue()
+    assert "usage: ritebook indexes publish" in stderr.getvalue()
     assert "--skills-root" in stderr.getvalue()
-    assert "--index-name" in stderr.getvalue()
+    assert "--name" in stderr.getvalue()
 
 
 def test_publish_index_requires_index_name_with_argparse_error() -> None:
@@ -816,8 +910,8 @@ def test_publish_index_requires_index_name_with_argparse_error() -> None:
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "usage: ritebook publish-index" in stderr.getvalue()
-    assert "--index-name" in stderr.getvalue()
+    assert "usage: ritebook indexes publish" in stderr.getvalue()
+    assert "--name" in stderr.getvalue()
 
 
 def test_publish_index_translates_invalid_root_errors() -> None:
@@ -910,6 +1004,44 @@ def test_add_index_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_indexes_add_maps_canonical_arguments_to_application_command() -> None:
+    add_index = FakeAddIndex(
+        AddIndexResult(name="platform-skills", skill_count=2),
+    )
+
+    exit_code = run(
+        [
+            "indexes",
+            "add",
+            "--source",
+            "repo",
+            "--alias",
+            "platform-skills",
+            "--force",
+            "--registry-path",
+            "registry.json",
+            "--cache-root",
+            "cache",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        add_index=add_index,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert add_index.commands == [
+        AddIndexCommand(
+            source="repo",
+            alias="platform-skills",
+            force=True,
+            registry_path="registry.json",
+            cache_root="cache",
+        ),
+    ]
+
+
 def test_add_index_rejects_removed_name_override() -> None:
     stderr = StringIO()
 
@@ -981,6 +1113,40 @@ def test_update_index_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_indexes_update_maps_canonical_positional_alias_to_application_command() -> (
+    None
+):
+    update_index = FakeUpdateIndex(
+        UpdateIndexResult(name="platform-skills", skill_count=2),
+    )
+
+    exit_code = run(
+        [
+            "indexes",
+            "update",
+            "platform-skills",
+            "--registry-path",
+            "registry.json",
+            "--cache-root",
+            "cache",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        update_index=update_index,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert update_index.commands == [
+        UpdateIndexCommand(
+            name="platform-skills",
+            registry_path="registry.json",
+            cache_root="cache",
+        ),
+    ]
+
+
 def test_update_index_all_maps_arguments_to_application_command() -> None:
     update_index = FakeUpdateIndex(
         UpdateIndexResult(
@@ -1034,7 +1200,7 @@ def test_update_index_requires_name_or_all_with_argparse_error() -> None:
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "one of the arguments --name --all is required" in stderr.getvalue()
+    assert "provide exactly one of <local-alias> or --all" in stderr.getvalue()
 
 
 def test_list_indexes_maps_arguments_to_application_command() -> None:
@@ -1060,6 +1226,22 @@ def test_list_indexes_maps_arguments_to_application_command() -> None:
         "git@example.com:company/skills.git\n"
     )
     assert stderr.getvalue() == ""
+
+
+def test_indexes_list_maps_canonical_arguments_to_application_command() -> None:
+    list_indexes = FakeListIndexes()
+
+    exit_code = run(
+        ["indexes", "list", "--registry-path", "registry.json"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_indexes=list_indexes,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert list_indexes.commands == [ListIndexesCommand(registry_path="registry.json")]
 
 
 def test_list_indexes_prints_empty_registry_message() -> None:
@@ -1168,6 +1350,36 @@ def test_list_skills_maps_arguments_to_application_command() -> None:
     ]
     assert stdout.getvalue() == "Indexes\n└── company-skills\n    └── skill-a\n"
     assert stderr.getvalue() == ""
+
+
+def test_skills_list_maps_canonical_arguments_to_application_command() -> None:
+    list_skills = FakeListSkills()
+
+    exit_code = run(
+        [
+            "skills",
+            "list",
+            "--index",
+            "platform-skills",
+            "--registry-path",
+            "registry.json",
+            "--show-description",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        list_skills=list_skills,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert list_skills.commands == [
+        ListSkillsCommand(
+            index_name="platform-skills",
+            registry_path="registry.json",
+            show_description=True,
+        ),
+    ]
 
 
 def test_list_skills_prints_deterministic_tree_output() -> None:
@@ -1466,6 +1678,41 @@ def test_install_skill_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_skills_install_maps_canonical_arguments_to_application_command() -> None:
+    install_skill = FakeInstallSkill()
+
+    exit_code = run(
+        [
+            "skills",
+            "install",
+            "platform-skills/code-review",
+            "--target",
+            ".agents/skills/code-review",
+            "--force",
+            "--registry-path",
+            "registry.json",
+            "--installation-registry-path",
+            "installations.json",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_skill=install_skill,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert install_skill.commands == [
+        InstallSkillCommand(
+            skill_reference="platform-skills/code-review",
+            target=".agents/skills/code-review",
+            force=True,
+            registry_path="registry.json",
+            installation_registry_path="installations.json",
+        ),
+    ]
+
+
 def test_install_skill_requires_target_with_argparse_error() -> None:
     stderr = StringIO()
 
@@ -1478,7 +1725,7 @@ def test_install_skill_requires_target_with_argparse_error() -> None:
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "usage: ritebook install-skill" in stderr.getvalue()
+    assert "usage: ritebook skills install" in stderr.getvalue()
     assert "the following arguments are required: --target" in stderr.getvalue()
 
 
@@ -1558,6 +1805,39 @@ def test_install_maps_default_arguments_to_application_command() -> None:
     ]
     assert stdout.getvalue() == "Installed 3 skill(s) from ritebook.toml\n"
     assert stderr.getvalue() == ""
+
+
+def test_skills_sync_maps_canonical_arguments_to_application_command() -> None:
+    install_from_requirements = FakeInstallFromRequirements()
+
+    exit_code = run(
+        [
+            "skills",
+            "sync",
+            "--file",
+            "requirements.toml",
+            "--force",
+            "--registry-path",
+            "registry.json",
+            "--lockfile",
+            "ritebook.lock",
+        ],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=install_from_requirements,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert install_from_requirements.commands == [
+        InstallFromRequirementsCommand(
+            requirements_file="requirements.toml",
+            force=True,
+            registry_path="registry.json",
+            lockfile_path="ritebook.lock",
+        ),
+    ]
 
 
 def test_install_maps_overrides_to_application_command() -> None:
@@ -1667,6 +1947,21 @@ def test_lint_skills_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_skills_lint_maps_canonical_arguments_to_application_command() -> None:
+    linter = FakeLinter()
+
+    exit_code = run(
+        ["skills", "lint", "--root", "skills"],
+        linter=linter,
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert linter.commands == [LintSkillsCommand(skills_root="skills")]
+
+
 def test_lint_skills_requires_skills_root_with_argparse_error() -> None:
     stderr = StringIO()
 
@@ -1679,8 +1974,11 @@ def test_lint_skills_requires_skills_root_with_argparse_error() -> None:
     )
 
     assert exit_code == ARGPARSE_USAGE_ERROR
-    assert "usage: ritebook lint-skills" in stderr.getvalue()
-    assert "the following arguments are required: --skills-root" in stderr.getvalue()
+    assert "usage: ritebook skills lint" in stderr.getvalue()
+    assert (
+        "the following arguments are required: --root/--skills-root"
+        in stderr.getvalue()
+    )
 
 
 def test_lint_skills_prints_validation_issues_to_stderr() -> None:

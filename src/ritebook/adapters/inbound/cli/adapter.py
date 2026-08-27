@@ -35,6 +35,7 @@ from ritebook.features.skill_installation.adapters.inbound.cli import (
 )
 
 if TYPE_CHECKING:
+    import argparse
     from collections.abc import Sequence
 
     from ritebook.features.index_registry.application.ports import (
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
     )
 
 
-def run(  # noqa: C901, PLR0911, PLR0913
+def run(  # noqa: PLR0913
     argv: Sequence[str] | None,
     *,
     linter: LintSkillsPort,
@@ -80,6 +81,49 @@ def run(  # noqa: C901, PLR0911, PLR0913
     except SystemExit as err:
         return err.code if isinstance(err.code, int) else 1
 
+    target_validation_exit_code = _validate_update_target(
+        args,
+        parser=parser,
+        stderr=stderr,
+    )
+    if target_validation_exit_code is not None:
+        return target_validation_exit_code
+
+    _print_deprecation_warning(args, stderr=stderr)
+    return _dispatch(
+        args,
+        parser=parser,
+        linter=linter,
+        publisher=publisher,
+        add_index=add_index,
+        list_indexes=list_indexes,
+        list_skills=list_skills,
+        update_index=update_index,
+        install_skill=install_skill,
+        install_from_requirements=install_from_requirements,
+        publish_skill_change=publish_skill_change,
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+
+def _dispatch(  # noqa: C901, PLR0911, PLR0913
+    args: argparse.Namespace,
+    *,
+    parser: argparse.ArgumentParser,
+    linter: LintSkillsPort,
+    publisher: PublishIndexPort,
+    add_index: AddIndexPort,
+    list_indexes: ListIndexesPort,
+    list_skills: ListSkillsPort,
+    update_index: UpdateIndexPort,
+    install_skill: InstallSkillPort,
+    install_from_requirements: InstallFromRequirementsPort,
+    publish_skill_change: PublishSkillChangePort | None,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> int:
+    """Dispatch parsed command arguments to their feature-owned CLI handlers."""
     if args.command == LINT_SKILLS_COMMAND:
         return run_lint_skills(
             args,
@@ -160,3 +204,44 @@ def run(  # noqa: C901, PLR0911, PLR0913
 
     parser.print_help(file=stderr)
     return 2
+
+
+def _deprecation_warning(command: str) -> str:
+    replacements = {
+        LINT_SKILLS_COMMAND: "skills lint",
+        PUBLISH_INDEX_COMMAND: "indexes publish",
+        ADD_INDEX_COMMAND: "indexes add",
+        LIST_INDEXES_COMMAND: "indexes list",
+        LIST_SKILLS_COMMAND: "skills list",
+        UPDATE_INDEX_COMMAND: "indexes update",
+        INSTALL_SKILL_COMMAND: "skills install",
+        INSTALL_COMMAND: "skills sync",
+        PUBLISH_SKILL_CHANGE_COMMAND: "skills contribute",
+    }
+    replacement = replacements[command]
+    return f"ritebook: warning: '{command}' is deprecated; use '{replacement}'"
+
+
+def _print_deprecation_warning(args: argparse.Namespace, *, stderr: TextIO) -> None:
+    if args.deprecated_command is not None:
+        print(_deprecation_warning(args.deprecated_command), file=stderr)
+
+
+def _validate_update_target(
+    args: object,
+    *,
+    parser: argparse.ArgumentParser,
+    stderr: TextIO,
+) -> int | None:
+    if not getattr(args, "requires_update_target", False):
+        return None
+    name = getattr(args, "name", None)
+    update_all = getattr(args, "all", False)
+    if (name is not None) != update_all:
+        return None
+
+    try:
+        with redirect_stderr(stderr):
+            parser.error("provide exactly one of <local-alias> or --all")
+    except SystemExit as err:
+        return err.code if isinstance(err.code, int) else 1

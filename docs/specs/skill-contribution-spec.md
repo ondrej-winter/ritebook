@@ -54,15 +54,15 @@ user-owned local source repositories.
 
 ## Desired behavior
 
-### Publish one installed skill change
+### Contribute one installed skill change
 
 A developer can prepare a contribution for one repo-local installed skill:
 
 ```bash
-uv run ritebook publish-skill-change platform-skills/code-review
+uv run ritebook skills contribute platform-skills/code-review
 ```
 
-The command publishes a proposed change for review. It does not publish directly
+The command prepares a proposed change for review. It does not publish directly
 to the upstream default branch.
 
 Requirements:
@@ -112,13 +112,13 @@ Requirements:
 Initial command:
 
 ```bash
-uv run ritebook publish-skill-change <local-alias>/<skill-path>
+uv run ritebook skills contribute <local-alias>/<skill-path>
 ```
 
 Path overrides:
 
 ```bash
-uv run ritebook publish-skill-change <local-alias>/<skill-path> \
+uv run ritebook skills contribute <local-alias>/<skill-path> \
   --lockfile <path-to-ritebook.lock> \
   --contribution-root <path-to-ritebook-owned-contribution-checkouts>
 ```
@@ -128,9 +128,9 @@ must approve a new specification or tracked implementation plan before adding
 them; they should remain compatible with the core workflow:
 
 ```bash
-uv run ritebook publish-skill-change platform-skills/code-review --push
-uv run ritebook publish-skill-change platform-skills/code-review --open-mr
-uv run ritebook publish-skill-change platform-skills/code-review --base <branch-or-ref>
+uv run ritebook skills contribute platform-skills/code-review --push
+uv run ritebook skills contribute platform-skills/code-review --open-mr
+uv run ritebook skills contribute platform-skills/code-review --base <branch-or-ref>
 ```
 
 Success output should be concise, for example:
@@ -154,7 +154,7 @@ Error output should be clear and user-facing, for example:
 ```text
 ritebook: error: no lockfile entry found for platform-skills/code-review
 ritebook: error: installed skill target .agents/skills/code-review does not exist
-ritebook: error: lockfile skill entry at position 0 is missing verified source_revision; regenerate ritebook.lock by running ritebook install
+ritebook: error: lockfile skill entry at position 0 is missing verified source_revision; regenerate ritebook.lock by running ritebook skills sync
 ritebook: error: locked source revision is unavailable; restore the source history or reinstall the skill to regenerate ritebook.lock
 ritebook: error: upstream changed since locked revision; resolve the source changes and retry
 ritebook: error: skill validation failed; contribution commit was not created
@@ -480,7 +480,7 @@ docker run --rm --network none ritebook-e2e
 
 ## Success criteria
 
-- `uv run ritebook publish-skill-change <local-alias>/<skill-path>` reads
+- `uv run ritebook skills contribute <local-alias>/<skill-path>` reads
   `ritebook.lock` and resolves one installed repo-local skill.
 - Root and collected skills can be contributed by exact path; collection selectors
   are rejected rather than expanded.

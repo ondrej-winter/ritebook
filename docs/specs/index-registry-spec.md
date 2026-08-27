@@ -61,14 +61,14 @@ A user can register a curated skill index from either:
 Example CLI shape:
 
 ```bash
-uv run ritebook add-index --source git@github.com:company/internal-skills.git
-uv run ritebook add-index --source ./internal-skills
+uv run ritebook indexes add --source git@github.com:company/internal-skills.git
+uv run ritebook indexes add --source ./internal-skills
 ```
 
 Optional local alias:
 
 ```bash
-uv run ritebook add-index \
+uv run ritebook indexes add \
   --source git@github.com:company/internal-skills.git \
   --alias platform-skills
 ```
@@ -130,7 +130,7 @@ Requirements:
 Recommended duplicate replacement flag:
 
 ```bash
-uv run ritebook add-index --source <git-source> --alias <alias> --force
+uv run ritebook indexes add --source <git-source> --alias <alias> --force
 ```
 
 ### List indexes
@@ -140,7 +140,7 @@ A user can list locally registered indexes.
 Example CLI shape:
 
 ```bash
-uv run ritebook list-indexes
+uv run ritebook indexes list
 ```
 
 Requirements:
@@ -159,11 +159,11 @@ A user can browse all cached skills or filter by one local alias without network
 access:
 
 ```bash
-uv run ritebook list-skills
-uv run ritebook list-skills --index-name platform-skills
-uv run ritebook list-skills --show-description
-uv run ritebook list-skills --registry-path /tmp/indexes.json
-uv run ritebook list-skills --index-name platform-skills --registry-path /tmp/indexes.json
+uv run ritebook skills list
+uv run ritebook skills list --index platform-skills
+uv run ritebook skills list --show-description
+uv run ritebook skills list --registry-path /tmp/indexes.json
+uv run ritebook skills list --index platform-skills --registry-path /tmp/indexes.json
 ```
 
 Requirements:
@@ -176,7 +176,7 @@ Requirements:
 - Apply the shared schema-v1 catalog validation before displaying any entry.
 - List all indexes in deterministic local-alias order and skills in catalog-path
   order. Duplicate names at distinct paths remain valid.
-- Treat `--index-name` as a local-alias filter. Unknown aliases fail clearly.
+- Treat `--index` as a local-alias filter. Unknown aliases fail clearly.
 - Render non-empty output as a tree rooted at `Indexes`, with local aliases as
   first-level nodes and catalog paths as second-level nodes.
 - Show descriptions only with `--show-description`; default output remains paths
@@ -205,15 +205,14 @@ A user can refresh an existing registered index from its remembered Git source.
 Example CLI shape:
 
 ```bash
-uv run ritebook update-index --name platform-skills
-uv run ritebook update-index --all
+uv run ritebook indexes update platform-skills
+uv run ritebook indexes update --all
 ```
 
 Requirements:
 
-- Ritebook looks up the registered index by local alias. The existing
-  `update-index --name` option selects that alias; it does not refer to the
-  publisher-owned name.
+- Ritebook looks up the registered index by the positional local alias. It does not
+  refer to the publisher-owned name.
 - For a Git URL source, Ritebook fetches, pulls, or reclones as needed in its
   managed cache.
 - For a local Git repository source, Ritebook reads the repository at the
@@ -232,8 +231,7 @@ Requirements:
   previously registered cache, revision, digest, and metadata.
 - If the published name inside the refreshed `ritebook-index.json` changes,
   Ritebook keeps the local alias and records the refreshed published name.
-- `update-index` requires exactly one target mode: `--name <local-alias>` or
-  `--all`.
+- `indexes update` requires exactly one target mode: `<local-alias>` or `--all`.
 - `update-index --all` refreshes all registered indexes in deterministic
   local-alias order.
 - If one index fails during `--all`, Ritebook continues updating the remaining
@@ -413,35 +411,34 @@ Registry schema-v1 provenance requirements follow
 Registry commands:
 
 ```bash
-uv run ritebook add-index --source <git-url-or-local-git-repo> [--alias <local-alias>] [--force]
-uv run ritebook update-index --name <local-alias>
-uv run ritebook update-index --all
-uv run ritebook list-indexes
+uv run ritebook indexes add --source <git-url-or-local-git-repo> [--alias <local-alias>] [--force]
+uv run ritebook indexes update <local-alias>
+uv run ritebook indexes update --all
+uv run ritebook indexes list
 ```
 
 Potential test/automation path overrides:
 
 ```bash
-uv run ritebook add-index \
+uv run ritebook indexes add \
   --source <source> \
   --registry-path <path> \
   --cache-root <path>
 
-uv run ritebook update-index \
-  --name <local-alias> \
+uv run ritebook indexes update <local-alias> \
   --registry-path <path> \
   --cache-root <path>
 
-uv run ritebook update-index \
+uv run ritebook indexes update \
   --all \
   --registry-path <path> \
   --cache-root <path>
 
-uv run ritebook list-indexes \
+uv run ritebook indexes list \
   --registry-path <path>
 
-uv run ritebook list-skills \
-  [--index-name <local-alias>] \
+uv run ritebook skills list \
+  [--index <local-alias>] \
   [--show-description] \
   --registry-path <path>
 ```

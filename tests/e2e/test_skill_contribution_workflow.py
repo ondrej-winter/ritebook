@@ -146,7 +146,8 @@ def test_publish_skill_change_rejects_collection_only_reference_before_checkout(
 
     result = run_cli(
         [
-            "publish-skill-change",
+            "skills",
+            "contribute",
             "company-skills/software-development",
             "--lockfile",
             str(installed.lockfile),
@@ -237,10 +238,11 @@ def _install_contribution_skill(
 
     publish_result = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             "skills",
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         cwd=source_repository.path,
@@ -250,7 +252,8 @@ def _install_contribution_skill(
 
     add_result = run_cli(
         [
-            "add-index",
+            "indexes",
+            "add",
             "--source",
             source_repository.path.as_uri(),
             "--registry-path",
@@ -279,7 +282,8 @@ target = "agents"
     )
     install_result = run_cli(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             str(requirements_file),
             "--registry-path",
@@ -305,7 +309,8 @@ def _publish_skill_change(
 ) -> CliResult:
     return run_cli(
         [
-            "publish-skill-change",
+            "skills",
+            "contribute",
             SKILL_REFERENCE,
             "--lockfile",
             str(installed.lockfile),

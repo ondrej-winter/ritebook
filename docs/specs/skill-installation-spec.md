@@ -61,7 +61,7 @@ for reviewable repo-local install state.
 A user can install one skill by fully qualified local index alias and skill path:
 
 ```bash
-uv run ritebook install-skill platform-skills/code-review --target .claude/skills/code-review
+uv run ritebook skills install platform-skills/code-review --target .claude/skills/code-review
 ```
 
 Requirements:
@@ -78,13 +78,13 @@ Requirements:
 - Ritebook resolves only exact cached relative paths and never falls back to
   `skills[].name`. A root skill path such as `code-review` remains valid when that
   exact path exists.
-- `install-skill` installs exactly one skill. A collection selector is not a valid
+- `skills install` installs exactly one skill. A collection selector is not a valid
   direct-install target and is never expanded by this command.
 - Duplicate skill names may coexist within one index when their relative paths
   differ; each is selected by its full path.
-- `install-skill` requires a direct `--target <path>` and also accepts `--force`,
+- `skills install` requires a direct `--target <path>` and also accepts `--force`,
   `--registry-path`, and `--installation-registry-path`.
-- `install-skill` does not accept target aliases, target kinds, or inferred
+- `skills install` does not accept target aliases, target kinds, or inferred
   default destinations.
 - Ritebook reads the existing local consumer registry.
 - Ritebook reads the selected registry entry's cached `ritebook-index.json`.
@@ -120,7 +120,7 @@ Requirements:
 Example with overwrite:
 
 ```bash
-uv run ritebook install-skill platform-skills/code-review \
+uv run ritebook skills install platform-skills/code-review \
   --target .claude/skills/code-review \
   --force
 ```
@@ -128,7 +128,7 @@ uv run ritebook install-skill platform-skills/code-review \
 Example for a skill published under a subfolder:
 
 ```bash
-uv run ritebook install-skill platform-skills/browser/runtime-verification \
+uv run ritebook skills install platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
 
@@ -167,25 +167,25 @@ target = "shared"
 A user can install all declared skills:
 
 ```bash
-uv run ritebook install
+uv run ritebook skills sync
 ```
 
 The default requirements file is `ritebook.toml` in the current working
 directory. A user can provide another file explicitly:
 
 ```bash
-uv run ritebook install --file path/to/ritebook.toml
+uv run ritebook skills sync --file path/to/ritebook.toml
 ```
 
 Requirements:
 
-- `install` reads the TOML requirements file.
-- `install` resolves each `[[skills]]` entry against existing cached registered
+- `skills sync` reads the TOML requirements file.
+- `skills sync` resolves each `[[skills]]` entry against existing cached registered
   indexes.
-- For each selected registry entry, `install` verifies that both the exact cached
+- For each selected registry entry, `skills sync` verifies that both the exact cached
   index bytes and root `ritebook-index.json` read from the bound commit match the
   same `index_digest`.
-- `install` parses and resolves requirements from the verified cached-byte
+- `skills sync` parses and resolves requirements from the verified cached-byte
   snapshot and materializes each selected skill directory from that bound commit
   into the resolved target path.
 - Before the first copy, `install` asks the filesystem adapter to canonicalize and
@@ -237,7 +237,7 @@ attempting application-level deletion after a successful copy:
 Example with overwrite:
 
 ```bash
-uv run ritebook install --force
+uv run ritebook skills sync --force
 ```
 
 ### `ritebook.toml` format
@@ -534,19 +534,19 @@ Requirements:
 Initial commands:
 
 ```bash
-uv run ritebook install-skill <local-alias>/<skill-path> --target <path> [--force]
-uv run ritebook install [--file ritebook.toml] [--force]
+uv run ritebook skills install <local-alias>/<skill-path> --target <path> [--force]
+uv run ritebook skills sync [--file ritebook.toml] [--force]
 ```
 
 Potential test/automation path overrides:
 
 ```bash
-uv run ritebook install-skill <local-alias>/<skill-path> \
+uv run ritebook skills install <local-alias>/<skill-path> \
   --target <path> \
   --registry-path <path-to-indexes.json> \
   --installation-registry-path <path-to-installations.json>
 
-uv run ritebook install \
+uv run ritebook skills sync \
   --file <path-to-ritebook.toml> \
   --registry-path <path-to-indexes.json> \
   --lockfile <path-to-ritebook.lock>
@@ -829,12 +829,12 @@ docker run --rm --network none ritebook-e2e
 
 ## Success criteria
 
-- `uv run ritebook install-skill <local-alias>/<skill-path> --target <path>`
+- `uv run ritebook skills install <local-alias>/<skill-path> --target <path>`
   installs the selected skill directory into the explicit target path.
-- `install-skill` refuses existing targets unless `--force` is provided.
-- Direct `install-skill` writes deterministic user installation state under
+- `skills install` refuses existing targets unless `--force` is provided.
+- Direct `skills install` writes deterministic user installation state under
   Ritebook's config directory.
-- `uv run ritebook install` reads `ritebook.toml`, resolves `[targets]` nicknames
+- `uv run ritebook skills sync` reads `ritebook.toml`, resolves `[targets]` nicknames
   and `target_path` entries, expands declared collections to their immediate child
   skills, installs all resolved skills, and writes `ritebook.lock`.
 - Direct installation resolves only exact root or collected skill paths; collection

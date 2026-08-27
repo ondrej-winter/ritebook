@@ -39,13 +39,13 @@ unit-test fakes under the explicit state, permission, and network contract below
   package build steps directly on `ubuntu-latest` in a separate mandatory job.
 - The highest-value workflow verified end to end is the publisher-to-consumer
   path across these commands:
-  - `lint-skills`
-  - `publish-index`
-  - `add-index`
-  - `list-skills`
-  - `update-index`
-  - `install-skill`
-  - `install`
+  - `skills lint`
+  - `indexes publish`
+  - `indexes add`
+  - `skills list`
+  - `indexes update`
+  - `skills install`
+  - `skills sync`
 
 ## Assumptions
 
@@ -62,22 +62,22 @@ repository and runs black-box CLI tests inside Docker.
 The primary E2E scenario focuses on the publisher-to-consumer workflow:
 
 1. Create temporary valid skill fixtures.
-2. Run `ritebook lint-skills --skills-root <skills-root>`.
-3. Run `ritebook publish-index --skills-root <skills-root> --index-name
+2. Run `ritebook skills lint --root <skills-root>`.
+3. Run `ritebook indexes publish --skills-root <skills-root> --name
    <published-name>`.
 4. Initialize and commit a local Git repository containing the generated
    `ritebook-index.json`.
-5. Run `ritebook add-index --source <local-git-repo> --registry-path <path>
+5. Run `ritebook indexes add --source <local-git-repo> --registry-path <path>
    --cache-root <path>`.
 6. Verify the registry binds the cached index to the source's full commit object
    ID and the exact index digest required by
    [ADR 0001](../adr/0001-source-provenance-and-trust.md).
-7. Run `ritebook list-skills --registry-path <path> --show-description`.
+7. Run `ritebook skills list --registry-path <path> --show-description`.
 8. Modify the source skills, regenerate the publisher index, and commit the
    repository update.
-9. Run `ritebook update-index --name <local-alias> --registry-path <path>
+9. Run `ritebook indexes update <local-alias> --registry-path <path>
    --cache-root <path>`.
-10. Run `ritebook list-skills --registry-path <path> --show-description` again
+10. Run `ritebook skills list --registry-path <path> --show-description` again
     and verify the output reflects the newly bound commit and cached index.
 
 Additional E2E scenarios cover direct and requirements-file installation and the

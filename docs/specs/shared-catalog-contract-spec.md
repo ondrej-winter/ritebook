@@ -143,9 +143,9 @@ unsafe, duplicate, over-deep, or mixed-node schema-v1 data before using it.
 The following schema and CLI names remain unchanged in version 1 even where their
 names are less specific than their semantics:
 
-- Publisher `index.name` and `publish-index --index-name` carry the published name.
-- Consumer `indexes.json` field `name`, `update-index --name`, and
-  `list-skills --index-name` carry or select the local alias.
+- Publisher `index.name` and `indexes publish --name` carry the published name.
+- Consumer `indexes.json` field `name`, `indexes update <local-alias>`, and
+  `skills list --index` carry or select the local alias.
 - Generated `ritebook.lock` and `installations.json` field `index_name` carries the
   local alias from the corresponding qualified skill reference.
 - Generated `ritebook.lock` fields `skill_path` and `skill_file` are safe paths

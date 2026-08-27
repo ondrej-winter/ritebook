@@ -150,7 +150,8 @@ def _required_str(
         if field_name in {"source_revision", "index_digest"}:
             msg = (
                 f"lockfile skill entry at position {position} is missing verified "
-                f"{field_name}; regenerate ritebook.lock by running ritebook install"
+                f"{field_name}; regenerate ritebook.lock by running "
+                "ritebook skills sync"
             )
             raise ContributionLockfileReadError(msg)
         msg = f"lockfile skill entry at position {position} must include {field_name}"

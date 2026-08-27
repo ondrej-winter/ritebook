@@ -25,150 +25,220 @@ def build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    commands = parser.add_subparsers(dest="command", required=True)
+    _add_canonical_commands(commands)
+    _add_legacy_commands(commands)
+    return parser
 
-    lint_skills = subparsers.add_parser(
-        LINT_SKILLS_COMMAND,
-        help="Validate discovered skill headers without writing an index.",
+
+def _add_canonical_commands(commands: argparse._SubParsersAction) -> None:
+    skills = commands.add_parser("skills", help="Manage skills and skill workflows.")
+    skill_commands = skills.add_subparsers(dest="skill_command", required=True)
+    _add_lint_skills_parser(skill_commands, name="lint", canonical=True)
+    _add_list_skills_parser(skill_commands, name="list", canonical=True)
+    _add_install_skill_parser(skill_commands, name="install", canonical=True)
+    _add_install_parser(skill_commands, name="sync", canonical=True)
+    _add_publish_skill_change_parser(skill_commands, name="contribute", canonical=True)
+
+    indexes = commands.add_parser("indexes", help="Manage published skill indexes.")
+    index_commands = indexes.add_subparsers(dest="index_command", required=True)
+    _add_publish_index_parser(index_commands, name="publish", canonical=True)
+    _add_add_index_parser(index_commands, name="add", canonical=True)
+    _add_list_indexes_parser(index_commands, name="list", canonical=True)
+    _add_update_index_parser(index_commands, name="update", canonical=True)
+
+
+def _add_legacy_commands(commands: argparse._SubParsersAction) -> None:
+    _add_lint_skills_parser(commands, name=LINT_SKILLS_COMMAND, canonical=False)
+    _add_publish_index_parser(commands, name=PUBLISH_INDEX_COMMAND, canonical=False)
+    _add_add_index_parser(commands, name=ADD_INDEX_COMMAND, canonical=False)
+    _add_list_indexes_parser(commands, name=LIST_INDEXES_COMMAND, canonical=False)
+    _add_list_skills_parser(commands, name=LIST_SKILLS_COMMAND, canonical=False)
+    _add_update_index_parser(commands, name=UPDATE_INDEX_COMMAND, canonical=False)
+    _add_install_skill_parser(commands, name=INSTALL_SKILL_COMMAND, canonical=False)
+    _add_install_parser(commands, name=INSTALL_COMMAND, canonical=False)
+    _add_publish_skill_change_parser(
+        commands,
+        name=PUBLISH_SKILL_CHANGE_COMMAND,
+        canonical=False,
     )
-    lint_skills.add_argument(
-        "--skills-root",
+
+
+def _add_lint_skills_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Validate skill headers.")
+    _set_command_defaults(parser, LINT_SKILLS_COMMAND, canonical=canonical)
+    option_names = ("--root", "--skills-root") if canonical else ("--skills-root",)
+    parser.add_argument(
+        *option_names,
+        dest="skills_root",
         required=True,
         help="Explicit root directory to scan for SKILL.md files.",
     )
 
-    publish_index = subparsers.add_parser(
-        PUBLISH_INDEX_COMMAND,
-        help="Generate a publisher skill index.",
-    )
-    publish_index.add_argument(
+
+def _add_publish_index_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Generate a publisher skill index.")
+    _set_command_defaults(parser, PUBLISH_INDEX_COMMAND, canonical=canonical)
+    parser.add_argument(
         "--skills-root",
         required=True,
-        help=(
-            "Root directory to scan for SKILL.md files; must be inside the current "
-            "directory where ritebook-index.json is written."
-        ),
+        help="Root directory to scan; it must be inside the output directory.",
     )
-    publish_index.add_argument(
-        "--index-name",
+    option_names = ("--name", "--index-name") if canonical else ("--index-name",)
+    parser.add_argument(
+        *option_names,
+        dest="index_name",
         required=True,
-        help="Stable kebab-case name to publish in ritebook-index.json metadata.",
+        help="Stable kebab-case name for ritebook-index.json metadata.",
     )
 
-    add_index = subparsers.add_parser(
-        ADD_INDEX_COMMAND,
-        help="Register a Git-backed skill index.",
-    )
-    add_index.add_argument("--source", required=True, help="Git URL or local Git repo.")
-    add_index.add_argument(
-        "--alias",
-        help="Local index namespace; defaults to the published index name.",
-    )
-    add_index.add_argument(
+
+def _add_add_index_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Register a Git-backed skill index.")
+    _set_command_defaults(parser, ADD_INDEX_COMMAND, canonical=canonical)
+    parser.add_argument("--source", required=True, help="Git URL or local Git repo.")
+    parser.add_argument("--alias", help="Local index namespace.")
+    parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing index with the same local alias.",
+        help="Replace an existing alias.",
     )
-    add_index.add_argument("--registry-path", help="Path to indexes.json registry.")
-    add_index.add_argument(
-        "--cache-root",
-        help="Root directory for Ritebook cache files.",
-    )
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
+    parser.add_argument("--cache-root", help="Root directory for Ritebook cache files.")
 
-    list_indexes = subparsers.add_parser(
-        LIST_INDEXES_COMMAND,
-        help="List registered skill indexes.",
-    )
-    list_indexes.add_argument("--registry-path", help="Path to indexes.json registry.")
 
-    list_skills = subparsers.add_parser(
-        LIST_SKILLS_COMMAND,
-        help="List skills from registered cached indexes.",
-    )
-    list_skills.add_argument("--index-name", help="Local index alias to list.")
-    list_skills.add_argument("--registry-path", help="Path to indexes.json registry.")
-    list_skills.add_argument(
-        "--show-description",
-        action="store_true",
-        help="Show skill descriptions when cached index metadata includes them.",
-    )
+def _add_list_indexes_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="List registered skill indexes.")
+    _set_command_defaults(parser, LIST_INDEXES_COMMAND, canonical=canonical)
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
 
-    update_index = subparsers.add_parser(
-        UPDATE_INDEX_COMMAND,
-        help="Refresh a registered skill index.",
-    )
-    update_target = update_index.add_mutually_exclusive_group(required=True)
-    update_target.add_argument("--name", help="Local index alias.")
-    update_target.add_argument(
-        "--all",
-        action="store_true",
-        help="Refresh all registered indexes and continue after per-index failures.",
-    )
-    update_index.add_argument("--registry-path", help="Path to indexes.json registry.")
-    update_index.add_argument(
-        "--cache-root",
-        help="Root directory for Ritebook cache files.",
-    )
 
-    install_skill = subparsers.add_parser(
-        INSTALL_SKILL_COMMAND,
-        help="Install one cached skill into an explicit target path.",
-    )
-    install_skill.add_argument(
-        "skill_reference",
-        help="Fully qualified skill reference as <local-alias>/<skill-path>.",
-    )
-    install_skill.add_argument(
-        "--target",
-        required=True,
-        help="Explicit target path where the skill directory will be installed.",
-    )
-    install_skill.add_argument(
+def _add_list_skills_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="List skills from cached indexes.")
+    _set_command_defaults(parser, LIST_SKILLS_COMMAND, canonical=canonical)
+    option_names = ("--index", "--index-name") if canonical else ("--index-name",)
+    parser.add_argument(*option_names, dest="index_name")
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
+    parser.add_argument("--show-description", action="store_true")
+
+
+def _add_update_index_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Refresh registered skill indexes.")
+    _set_command_defaults(parser, UPDATE_INDEX_COMMAND, canonical=canonical)
+    if canonical:
+        parser.set_defaults(requires_update_target=True)
+        parser.add_argument("name", nargs="?", help="Local index alias.")
+        parser.add_argument("--name", help=argparse.SUPPRESS)
+        parser.add_argument(
+            "--all",
+            action="store_true",
+            help="Refresh all registered indexes.",
+        )
+    else:
+        target = parser.add_mutually_exclusive_group(required=True)
+        target.add_argument("--name", help="Local index alias.")
+        target.add_argument(
+            "--all",
+            action="store_true",
+            help="Refresh all registered indexes.",
+        )
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
+    parser.add_argument("--cache-root", help="Root directory for Ritebook cache files.")
+
+
+def _add_install_skill_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Install one cached skill.")
+    _set_command_defaults(parser, INSTALL_SKILL_COMMAND, canonical=canonical)
+    parser.add_argument("skill_reference", help="Fully qualified skill reference.")
+    parser.add_argument("--target", required=True, help="Target skill directory.")
+    parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing target path and recorded installation entry.",
+        help="Replace an existing target.",
     )
-    install_skill.add_argument("--registry-path", help="Path to indexes.json registry.")
-    install_skill.add_argument(
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
+    parser.add_argument(
         "--installation-registry-path",
-        help="Path to generated direct-install installations.json state.",
+        help="Path to installations.json state.",
     )
 
-    install = subparsers.add_parser(
-        INSTALL_COMMAND,
-        help="Install skills declared in a ritebook.toml requirements file.",
-    )
-    install.add_argument(
-        "--file",
-        default="ritebook.toml",
-        dest="requirements_file",
-        help="Path to the requirements TOML file. Defaults to ritebook.toml.",
-    )
-    install.add_argument(
+
+def _add_install_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(name, help="Install skills declared in ritebook.toml.")
+    _set_command_defaults(parser, INSTALL_COMMAND, canonical=canonical)
+    parser.add_argument("--file", default="ritebook.toml", dest="requirements_file")
+    parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace existing target paths during requirements installation.",
+        help="Replace existing targets.",
     )
-    install.add_argument("--registry-path", help="Path to indexes.json registry.")
-    install.add_argument(
-        "--lockfile",
-        help="Path to generated ritebook.lock state.",
-    )
+    parser.add_argument("--registry-path", help="Path to indexes.json registry.")
+    parser.add_argument("--lockfile", help="Path to generated ritebook.lock state.")
 
-    publish_skill_change = subparsers.add_parser(
-        PUBLISH_SKILL_CHANGE_COMMAND,
-        help="Prepare one installed skill change for upstream review.",
+
+def _add_publish_skill_change_parser(
+    commands: argparse._SubParsersAction,
+    *,
+    name: str,
+    canonical: bool,
+) -> None:
+    parser = commands.add_parser(
+        name,
+        help="Prepare one installed skill change for review.",
     )
-    publish_skill_change.add_argument(
-        "skill_reference",
-        help="Fully qualified skill reference as <local-alias>/<skill-path>.",
+    _set_command_defaults(parser, PUBLISH_SKILL_CHANGE_COMMAND, canonical=canonical)
+    parser.add_argument("skill_reference", help="Fully qualified skill reference.")
+    parser.add_argument("--lockfile", help="Path to ritebook.lock.")
+    parser.add_argument("--contribution-root", help="Root for contribution checkouts.")
+
+
+def _set_command_defaults(
+    parser: argparse.ArgumentParser,
+    command: str,
+    *,
+    canonical: bool,
+) -> None:
+    parser.set_defaults(
+        command=command,
+        deprecated_command=None if canonical else command,
     )
-    publish_skill_change.add_argument(
-        "--lockfile",
-        help="Path to ritebook.lock. Defaults to ritebook.lock.",
-    )
-    publish_skill_change.add_argument(
-        "--contribution-root",
-        help="Root for Ritebook-owned isolated contribution checkouts.",
-    )
-    return parser

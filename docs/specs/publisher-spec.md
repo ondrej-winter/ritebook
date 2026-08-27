@@ -116,7 +116,7 @@ skills repository.
 The CLI is simple and explicit:
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --index-name <published-name>
+uv run ritebook indexes publish --skills-root <path> --name <published-name>
 ```
 
 Requirements:
@@ -126,14 +126,14 @@ Requirements:
 - Require `--skills-root` to resolve to that root or one of its descendants.
 - Normalize relative and absolute `--skills-root` inputs to the same portable
   repository-relative `skills_root` value.
-- Require an explicit stable kebab-case `--index-name` for `publish-index`.
+- Require an explicit stable kebab-case `--name` for `indexes publish`.
 - Support one skills root per command invocation; multiple roots are out of scope
   for the MVP.
 - Always write the canonical `ritebook-index.json` in the invocation working
   directory; no output argument is needed.
 - Overwrite an existing generated index only when the command is explicitly run;
   no background or implicit updates.
-- `publish-index` must reuse the skill-header validation flow as a hard
+- `indexes publish` must reuse the skill-header validation flow as a hard
   precondition and must not write or overwrite the index when validation fails.
 - Emit concise success output that includes discovered skill count and output
   path.

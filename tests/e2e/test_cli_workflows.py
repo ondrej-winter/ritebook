@@ -35,7 +35,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         encoding="utf-8",
     )
 
-    lint_result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
+    lint_result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
     lint_result.assert_success()
     assert lint_result.stdout == "Validated 2 skill(s)\n"
 
@@ -43,10 +43,11 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     _copy_skill_directories_to_repository(skills_root, published_skills_root)
     publish_result = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(published_skills_root),
-            "--index-name",
+            "--name",
             index_name,
         ],
         cwd=published_repo.path,
@@ -63,7 +64,8 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
 
     add_result = run_cli(
         [
-            "add-index",
+            "indexes",
+            "add",
             "--source",
             str(published_repo.path),
             "--registry-path",
@@ -76,7 +78,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     assert add_result.stdout == "Added index company-skills with 2 skill(s)\n"
 
     initial_list = run_cli(
-        ["list-skills", "--registry-path", str(registry_path), "--show-description"],
+        ["skills", "list", "--registry-path", str(registry_path), "--show-description"],
     )
     initial_list.assert_success()
     assert initial_list.stdout == (
@@ -90,10 +92,11 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     _copy_skill_directories_to_repository(skills_root, published_skills_root)
     republish_result = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(published_skills_root),
-            "--index-name",
+            "--name",
             index_name,
         ],
         cwd=published_repo.path,
@@ -106,8 +109,8 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
 
     update_result = run_cli(
         [
-            "update-index",
-            "--name",
+            "indexes",
+            "update",
             index_name,
             "--registry-path",
             str(registry_path),
@@ -119,7 +122,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     assert update_result.stdout == "Updated index company-skills with 3 skill(s)\n"
 
     updated_list = run_cli(
-        ["list-skills", "--registry-path", str(registry_path), "--show-description"],
+        ["skills", "list", "--registry-path", str(registry_path), "--show-description"],
     )
     updated_list.assert_success()
     assert updated_list.stdout == (
@@ -135,8 +138,8 @@ def test_empty_registry_browsing_commands_report_empty_state(
     run_cli: CliRunner,
     registry_path: Path,
 ) -> None:
-    list_indexes = run_cli(["list-indexes", "--registry-path", str(registry_path)])
-    list_skills = run_cli(["list-skills", "--registry-path", str(registry_path)])
+    list_indexes = run_cli(["indexes", "list", "--registry-path", str(registry_path)])
+    list_skills = run_cli(["skills", "list", "--registry-path", str(registry_path)])
 
     list_indexes.assert_success()
     assert list_indexes.stdout == "No indexes registered\n"
@@ -168,11 +171,12 @@ def test_registry_browsing_supports_index_listing_and_filtered_skill_listing(
         cache_root=cache_root,
     )
 
-    list_indexes = run_cli(["list-indexes", "--registry-path", str(registry_path)])
+    list_indexes = run_cli(["indexes", "list", "--registry-path", str(registry_path)])
     list_skills = run_cli(
         [
-            "list-skills",
-            "--index-name",
+            "skills",
+            "list",
+            "--index",
             "company-skills",
             "--registry-path",
             str(registry_path),
@@ -224,10 +228,11 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     _copy_skill_directories_to_repository(skills_root, data_skills_root)
     publish_data = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(data_skills_root),
-            "--index-name",
+            "--name",
             "data-skills",
         ],
         cwd=data_repo.path,
@@ -237,7 +242,8 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
 
     replace_result = run_cli(
         [
-            "add-index",
+            "indexes",
+            "add",
             "--source",
             str(data_repo.path),
             "--alias",
@@ -256,10 +262,11 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     _copy_skill_directories_to_repository(skills_root, data_skills_root)
     republish_data = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(data_skills_root),
-            "--index-name",
+            "--name",
             "data-skills",
         ],
         cwd=data_repo.path,
@@ -269,7 +276,8 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
 
     update_all = run_cli(
         [
-            "update-index",
+            "indexes",
+            "update",
             "--all",
             "--registry-path",
             str(registry_path),
@@ -282,7 +290,7 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     assert update_all.stdout == "Updated 1 index(es) with 3 total skill(s)\n"
     assert update_all.stderr == ""
     listed = run_cli(
-        ["list-skills", "--registry-path", str(registry_path), "--show-description"],
+        ["skills", "list", "--registry-path", str(registry_path), "--show-description"],
     )
     listed.assert_success()
     assert listed.stdout == (
@@ -301,7 +309,7 @@ def test_lint_skills_reports_invalid_metadata_failure(
 ) -> None:
     write_invalid_skill("missing-description")
 
-    result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
+    result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
 
     result.assert_failure()
     assert result.stdout == ""
@@ -321,7 +329,7 @@ def test_catalog_commands_reject_over_deep_and_mixed_skill_nodes(
         encoding="utf-8",
     )
 
-    lint_result = run_cli(["lint-skills", "--skills-root", str(skills_root)])
+    lint_result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
 
     lint_result.assert_failure()
     assert lint_result.stdout == ""
@@ -347,10 +355,11 @@ def test_catalog_commands_reject_over_deep_and_mixed_skill_nodes(
 
     publish_result = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(published_skills_root),
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         cwd=published_repo.path,
@@ -403,8 +412,8 @@ def test_update_index_preserves_cached_catalog_after_invalid_candidate(
 
     update_result = run_cli(
         [
-            "update-index",
-            "--name",
+            "indexes",
+            "update",
             "company-skills",
             "--registry-path",
             str(registry_path),
@@ -420,7 +429,7 @@ def test_update_index_preserves_cached_catalog_after_invalid_candidate(
     )
     assert registry_path.read_bytes() == before_registry
     assert cached_index.read_bytes() == before_cache
-    listed = run_cli(["list-skills", "--registry-path", str(registry_path)])
+    listed = run_cli(["skills", "list", "--registry-path", str(registry_path)])
     listed.assert_success()
     assert listed.stdout == "Indexes\n└── company-skills\n    └── code-review\n"
 
@@ -455,7 +464,8 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
 
     result = run_cli(
         [
-            "install-skill",
+            "skills",
+            "install",
             "company-skills/code-review",
             "--target",
             str(target),
@@ -525,7 +535,8 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
 
     result = run_cli(
         [
-            "install-skill",
+            "skills",
+            "install",
             "company-skills/skills/code-review",
             "--target",
             str(target),
@@ -580,7 +591,8 @@ def test_install_skill_refuses_existing_target_without_force(
 
     result = run_cli(
         [
-            "install-skill",
+            "skills",
+            "install",
             "company-skills/code-review",
             "--target",
             str(target),
@@ -631,7 +643,8 @@ def test_install_skill_force_replaces_existing_target_and_recorded_state(
 
     result = run_cli(
         [
-            "install-skill",
+            "skills",
+            "install",
             "company-skills/code-review",
             "--target",
             str(target),
@@ -699,7 +712,8 @@ target_path = ".agents/skills/tdd"
 
     result = run_cli(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             str(requirements_file),
             "--registry-path",
@@ -791,7 +805,8 @@ target = "agents"
 
     install_result = run_cli(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             str(requirements_file),
             "--registry-path",
@@ -818,7 +833,8 @@ target = "agents"
 
     direct_result = run_cli(
         [
-            "install-skill",
+            "skills",
+            "install",
             "company-skills/browser",
             "--target",
             str(direct_target),
@@ -878,7 +894,8 @@ target = "claude"
 
     result = run_cli(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             str(requirements_file),
             "--registry-path",
@@ -946,7 +963,7 @@ target = "claude"
     )
 
     result = run_cli(
-        ["install", "--force", "--registry-path", str(registry_path)],
+        ["skills", "sync", "--force", "--registry-path", str(registry_path)],
         cwd=consumer_repo,
     )
 
@@ -998,7 +1015,8 @@ target = "claude"
 
     result = run_cli(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             str(requirements_file),
             "--registry-path",
@@ -1034,10 +1052,11 @@ def _publish_and_register_index(
     _copy_skill_directories_to_repository(skills_root, published_skills_root)
     publish_result = run_cli(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(published_skills_root),
-            "--index-name",
+            "--name",
             index_name,
         ],
         cwd=published_repo.path,
@@ -1046,7 +1065,8 @@ def _publish_and_register_index(
     published_repo.commit_all("Publish skill index")
 
     add_arguments = [
-        "add-index",
+        "indexes",
+        "add",
         "--source",
         published_repo.path.as_uri() if portable_source else str(published_repo.path),
     ]

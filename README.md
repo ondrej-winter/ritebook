@@ -87,16 +87,40 @@ Print the installed Ritebook version:
 uv run ritebook --version
 ```
 
+## CLI command structure
+
+Ritebook groups operations by resource:
+
+```text
+ritebook skills <lint|list|install|sync|contribute> ...
+ritebook indexes <publish|add|list|update> ...
+```
+
+The previous flat commands remain available during the migration window and emit
+a warning on standard error. Use the nested forms in scripts and documentation:
+
+| Deprecated | Canonical |
+| --- | --- |
+| `lint-skills` | `skills lint` |
+| `list-skills` | `skills list` |
+| `install-skill` | `skills install` |
+| `install` | `skills sync` |
+| `publish-skill-change` | `skills contribute` |
+| `publish-index` | `indexes publish` |
+| `add-index` | `indexes add` |
+| `list-indexes` | `indexes list` |
+| `update-index` | `indexes update` |
+
 ## Publisher skill index generation
 
 Maintainers can validate skill headers and generate a reviewable skill catalog
 index from an explicit skills root:
 
 ```bash
-uv run ritebook lint-skills --skills-root <path>
+uv run ritebook skills lint --root <path>
 ```
 
-The `lint-skills` command recursively finds `SKILL.md` candidates so invalid
+The `skills lint` command recursively finds `SKILL.md` candidates so invalid
 nested declarations are reported, then enforces the schema-v1 catalog layout.
 A skill must be either `<skill>/SKILL.md` at the catalog root or
 `<collection>/<skill>/SKILL.md` one level below an implicit collection. Every
@@ -106,20 +130,20 @@ invalid. The command validates required Agent Skill headers without writing an
 index file.
 
 ```bash
-uv run ritebook publish-index --skills-root <path> --index-name <published-name>
+uv run ritebook indexes publish --skills-root <path> --name <published-name>
 ```
 
-Run `publish-index` from the repository directory that will contain the generated
+Run `indexes publish` from the repository directory that will contain the generated
 index. Ritebook always writes `ritebook-index.json` in that current directory.
 The required `--skills-root` may be relative or absolute, but it must resolve to
 that directory or one of its descendants. Ritebook serializes it as a portable
 repository-relative `skills_root`; equivalent relative and absolute inputs
-produce the same index paths. The `--index-name` option is required and must be a
+produce the same index paths. The `--name` option is required and must be a
 stable single-segment kebab-case identifier such as `company-skills`; slashes are
 not allowed because skill references use `<local-alias>/<skill-path>`. This
 published name is written to `ritebook-index.json` as `index.name` and becomes the
 default consumer local alias.
-The `publish-index` command reuses the same validation flow as `lint-skills` and
+The `indexes publish` command reuses the same validation flow as `skills lint` and
 refuses to write or overwrite `ritebook-index.json` when any discovered skill is
 invalid. When validation succeeds, the success message reports the canonical
 output path `ritebook-index.json` relative to the invocation directory.
@@ -135,7 +159,7 @@ skill indexes.
 Register a Git URL source:
 
 ```bash
-uv run ritebook add-index --source git@github.com:company/internal-skills.git
+uv run ritebook indexes add --source git@github.com:company/internal-skills.git
 ```
 
 Use SSH configuration, a Git credential helper, or another Git-managed
@@ -147,14 +171,14 @@ supported.
 Register an already-cloned local Git repository without Ritebook mutating it:
 
 ```bash
-uv run ritebook add-index --source ./internal-skills
+uv run ritebook indexes add --source ./internal-skills
 ```
 
 Assign a local alias to resolve a published-name collision, or replace an
 existing registration with the same alias:
 
 ```bash
-uv run ritebook add-index \
+uv run ritebook indexes add \
   --source git@github.com:company/internal-skills.git \
   --alias platform-skills \
   --force
@@ -170,28 +194,28 @@ CI must register the source with the same alias.
 Refresh a registered index from its remembered Git source:
 
 ```bash
-uv run ritebook update-index --name platform-skills
+uv run ritebook indexes update platform-skills
 ```
 
 List skills from all locally cached registered indexes:
 
 ```bash
-uv run ritebook list-skills
+uv run ritebook skills list
 ```
 
 List skills from one local index alias:
 
 ```bash
-uv run ritebook list-skills --index-name platform-skills
+uv run ritebook skills list --index platform-skills
 ```
 
 Show cached skill descriptions when available:
 
 ```bash
-uv run ritebook list-skills --show-description
+uv run ritebook skills list --show-description
 ```
 
-The `list-skills` command is offline-first: it reads the local registry and each
+The `skills list` command is offline-first: it reads the local registry and each
 selected registry entry's cached `ritebook-index.json` file only. It does not
 clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
 files.
@@ -239,7 +263,7 @@ cached index and managed Git clone before installing.
 Install one fully qualified skill into an explicit target path:
 
 ```bash
-uv run ritebook install-skill platform-skills/code-review \
+uv run ritebook skills install platform-skills/code-review \
   --target .claude/skills/code-review
 ```
 
@@ -247,7 +271,7 @@ For skills published in a first-level collection, use the relative skill path
 shown by `list-skills` after the local alias:
 
 ```bash
-uv run ritebook install-skill platform-skills/browser/runtime-verification \
+uv run ritebook skills install platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
 
@@ -261,7 +285,7 @@ directories, and refuses to overwrite an existing target unless `--force` is
 provided:
 
 ```bash
-uv run ritebook install-skill platform-skills/code-review \
+uv run ritebook skills install platform-skills/code-review \
   --target .claude/skills/code-review \
   --force
 ```
@@ -281,7 +305,7 @@ Tests and automation can override both the index registry and direct-install
 state paths:
 
 ```bash
-uv run ritebook install-skill platform-skills/code-review \
+uv run ritebook skills install platform-skills/code-review \
   --target .claude/skills/code-review \
   --registry-path <path-to-indexes.json> \
   --installation-registry-path <path-to-installations.json>
@@ -311,7 +335,7 @@ Install all declared skills from the default `ritebook.toml` in the current
 working directory:
 
 ```bash
-uv run ritebook install
+uv run ritebook skills sync
 ```
 
 Use `--file` to read a different requirements file, `--force` to replace existing
@@ -319,7 +343,7 @@ target directories, and `--lockfile` to choose where generated lock state is
 written:
 
 ```bash
-uv run ritebook install \
+uv run ritebook skills sync \
   --file path/to/ritebook.toml \
   --force \
   --registry-path <path-to-indexes.json> \
@@ -354,10 +378,10 @@ and include the published `skills_root`, such as
 
 Shared `ritebook.lock` entries require indexes registered from portable Git URLs.
 An index registered from a local repository path remains available for browsing
-and direct `install-skill`, but `ritebook install` rejects it before copying because
+and direct `install-skill`, but `ritebook skills sync` rejects it before copying because
 relative, absolute, missing, or moved machine-local paths are not commit-safe. To
 migrate, register the same published index from its Git URL (using the same local
-alias when applicable), then rerun `ritebook install` to regenerate the lockfile.
+alias when applicable), then rerun `ritebook skills sync` to regenerate the lockfile.
 
 ## Contributing installed skill changes upstream
 
@@ -365,7 +389,7 @@ After editing a repo-local skill installed from `ritebook.toml`, prepare one
 reviewable upstream contribution from its `ritebook.lock` provenance:
 
 ```bash
-uv run ritebook publish-skill-change platform-skills/code-review
+uv run ritebook skills contribute platform-skills/code-review
 ```
 
 The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
@@ -376,7 +400,7 @@ Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
 automation can override both paths:
 
 ```bash
-uv run ritebook publish-skill-change platform-skills/code-review \
+uv run ritebook skills contribute platform-skills/code-review \
   --lockfile <path-to-ritebook.lock> \
   --contribution-root <checkout-root>
 ```
@@ -432,21 +456,20 @@ new generation only after the complete cache file has been synchronized.
 Tests and automation can override these locations:
 
 ```bash
-uv run ritebook add-index \
+uv run ritebook indexes add \
   --source <git-url-or-local-git-repo> \
   --registry-path <path-to-indexes.json> \
   --cache-root <cache-directory>
 
-uv run ritebook update-index \
-  --name <local-alias> \
+uv run ritebook indexes update <local-alias> \
   --registry-path <path-to-indexes.json> \
   --cache-root <cache-directory>
 
-uv run ritebook list-skills \
+uv run ritebook skills list \
   --registry-path <path-to-indexes.json>
 
-uv run ritebook list-skills \
-  --index-name <local-alias> \
+uv run ritebook skills list \
+  --index <local-alias> \
   --registry-path <path-to-indexes.json>
 ```
 

@@ -18,7 +18,7 @@ modifying publisher or consumer state.
 ## Current context
 
 - The linter is implemented as the `src/ritebook/features/linter/` vertical slice.
-- The `lint-skills` command exposes the validation use case directly.
+- The `skills lint` command exposes the validation use case directly.
 - The publisher calls the linter through an application boundary as a hard
   precondition for index generation.
 - Filesystem discovery and YAML parsing remain in outbound adapters.
@@ -33,10 +33,10 @@ modifying publisher or consumer state.
 ## Desired behavior
 
 ```bash
-uv run ritebook lint-skills --skills-root <path>
+uv run ritebook skills lint --root <path>
 ```
 
-- Require an explicit `--skills-root`.
+- Require an explicit `--root`.
 - Discover candidate skill directories using the catalog structure defined by the
   shared catalog contract.
 - Validate every discovered `SKILL.md` against the required Agent Skill header.
@@ -107,7 +107,7 @@ conventional-commits/SKILL.md: metadata.dependencies.skills must be a list.
 
 - Test: `uv run pytest tests/unit/features/linter`
 - Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
-- Manual verification: `uv run ritebook lint-skills --skills-root <path>`
+- Manual verification: `uv run ritebook skills lint --root <path>`
 
 ## Project structure
 

@@ -639,7 +639,7 @@ wheels = [
 
 [[package]]
 name = "ritebook"
-version = "0.1.45"
+version = "0.1.46"
 source = { editable = "." }
 dependencies = [
     { name = "pyyaml" },

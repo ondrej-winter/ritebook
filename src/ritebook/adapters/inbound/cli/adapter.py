@@ -89,7 +89,6 @@ def run(  # noqa: PLR0913
     if target_validation_exit_code is not None:
         return target_validation_exit_code
 
-    _print_deprecation_warning(args, stderr=stderr)
     return _dispatch(
         args,
         parser=parser,
@@ -204,27 +203,6 @@ def _dispatch(  # noqa: C901, PLR0911, PLR0913
 
     parser.print_help(file=stderr)
     return 2
-
-
-def _deprecation_warning(command: str) -> str:
-    replacements = {
-        LINT_SKILLS_COMMAND: "skills lint",
-        PUBLISH_INDEX_COMMAND: "indexes publish",
-        ADD_INDEX_COMMAND: "indexes add",
-        LIST_INDEXES_COMMAND: "indexes list",
-        LIST_SKILLS_COMMAND: "skills list",
-        UPDATE_INDEX_COMMAND: "indexes update",
-        INSTALL_SKILL_COMMAND: "skills install",
-        INSTALL_COMMAND: "skills sync",
-        PUBLISH_SKILL_CHANGE_COMMAND: "skills contribute",
-    }
-    replacement = replacements[command]
-    return f"ritebook: warning: '{command}' is deprecated; use '{replacement}'"
-
-
-def _print_deprecation_warning(args: argparse.Namespace, *, stderr: TextIO) -> None:
-    if args.deprecated_command is not None:
-        print(_deprecation_warning(args.deprecated_command), file=stderr)
 
 
 def _validate_update_target(

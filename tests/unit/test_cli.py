@@ -42,14 +42,14 @@ def test_main_wires_skill_contribution_with_existing_application_ports(
         argv: Sequence[str] | None,
         **ports: object,
     ) -> int:
-        assert argv == ["publish-skill-change", "company-skills/code-review"]
+        assert argv == ["skills", "contribute", "company-skills/code-review"]
         captured_ports.update(ports)
         return 17
 
     monkeypatch.setattr(cli_module, "run", capture_run)
 
     exit_code = cli_module.main(
-        ["publish-skill-change", "company-skills/code-review"],
+        ["skills", "contribute", "company-skills/code-review"],
     )
 
     assert exit_code == 17

@@ -17,22 +17,22 @@ repositories.
 The workflow lets a user add a Git-backed Ritebook skill index, cache the current
 root `ritebook-index.json` locally, list registered indexes, and update one or
 all cached copies later from their remembered Git sources. The registry is the
-consumer-side catalog foundation used by the implemented `list-skills`,
-`install-skill`, and requirements-file `install` workflows.
+consumer-side catalog foundation used by the implemented `skills list`,
+`skills install`, and requirements-file `skills sync` workflows.
 
 ## Current context
 
 - Ritebook already supports publisher-side skill index generation through
-  `publish-index`.
+  `indexes publish`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
 - Publisher schema v1 includes index metadata and skill entries with required
   `name`, `path`, `skill_file`, and non-empty `description`.
 - Schema-v1 parsing validates literal catalog paths, one-or-two-segment depth,
   canonical segments, duplicate paths, and mixed nodes before candidate cache or
   registry mutation.
-- The registry supports `add-index`, `list-indexes`, `list-skills`, and
-  `update-index`. The `skill_installation` slice consumes registered cached
-  indexes for `install-skill` and `install`.
+- The registry supports `indexes add`, `indexes list`, `skills list`, and
+  `indexes update`. The `skill_installation` slice consumes registered cached
+  indexes for `skills install` and `skills sync`.
 - The current registry schema persists a full source revision and exact-index
   digest and points to an immutable content-addressed cache generation.
 - [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the implemented
@@ -100,7 +100,7 @@ Requirements:
 - An index must not contain both a root skill path `<name>` and any collected skill
   path beginning `<name>/`. That path set would make the first segment both a skill
   and a collection and is invalid schema-v1 metadata.
-- `add-index`, including forced replacement, must reject a structurally invalid
+- `indexes add`, including forced replacement, must reject a structurally invalid
   schema-v1 index before committing cache or registry state and direct the user to
   reorganize and republish the source catalog.
 - Ritebook must select the source's full Git commit object ID and read the index
@@ -145,7 +145,7 @@ uv run ritebook indexes list
 
 Requirements:
 
-- Ritebook reads the same local registry used by `add-index` and `update-index`.
+- Ritebook reads the same local registry used by `indexes add` and `indexes update`.
 - Output is deterministic and sorted by local alias.
 - Empty registries produce concise output: `No indexes registered`.
 - Non-empty output includes the local alias, skill count, source type,
@@ -221,8 +221,8 @@ Requirements:
   the source and reads root `ritebook-index.json` from that commit.
 - Ritebook validates and hashes those exact bytes before replacing the locally
   cached copy.
-- `update-index` applies the same one-or-two-segment schema-v1 skill-path
-  validation as `add-index`.
+- `indexes update` applies the same one-or-two-segment schema-v1 skill-path
+  validation as `indexes add`.
 - The cached bytes, `source_revision`, `index_digest`, and registry metadata form
   one coherent logical state.
 - If refresh, revision lookup, index read, validation, hashing, or persistence
@@ -323,7 +323,7 @@ Registry schema-v1 provenance requirements follow
 - Cached indexes are immutable, content-addressed generations. The directory name
   is the lowercase SHA-256 hex from `index_digest`; the adapter verifies the exact
   bytes again before writing that generation.
-- `add-index --force` and `update-index` preserve the generation referenced by the
+- `add-index --force` and `indexes update` preserve the generation referenced by the
   current registry entry while writing and synchronizing the candidate generation.
 - The deterministic registry file is the commit record. Ritebook writes and
   synchronizes a uniquely named same-directory temporary registry file, then
@@ -372,8 +372,8 @@ Registry schema-v1 provenance requirements follow
 ### Git URL sources
 
 - Ritebook manages its own cached clone.
-- `add-index` clones the repository into Ritebook's cache area.
-- `update-index` refreshes that managed clone from the remote.
+- `indexes add` clones the repository into Ritebook's cache area.
+- `indexes update` refreshes that managed clone from the remote.
 - Advancing mutable refs in the managed clone does not replace the previous
   registry/cache binding until the candidate commit and index are validated and
   persisted coherently.
@@ -397,7 +397,7 @@ Registry schema-v1 provenance requirements follow
 
 - Ritebook validates that the path appears to be a Git repository.
 - Ritebook does not own or mutate the local repository.
-- `add-index` and `update-index` reject staged, unstaged, or untracked changes and
+- `indexes add` and `indexes update` reject staged, unstaged, or untracked changes and
   provide guidance to commit or discard them.
 - Ritebook reads root `ritebook-index.json` from the selected commit object without
   checking out, resetting, or cleaning the user-owned repository.
@@ -613,16 +613,16 @@ tests/unit/features/index_registry/
 
 ### CLI tests
 
-- `add-index` maps CLI args into application command DTOs.
-- `update-index` maps CLI args into application command DTOs.
+- `indexes add` maps CLI args into application command DTOs.
+- `indexes update` maps CLI args into application command DTOs.
 - `update-index --all` maps CLI args into application command DTOs.
-- `update-index` rejects missing or conflicting target modes.
-- `list-indexes` maps CLI args into application command DTOs.
-- `list-skills` maps filtering, registry-path, and description flags into its
+- `indexes update` rejects missing or conflicting target modes.
+- `indexes list` maps CLI args into application command DTOs.
+- `skills list` maps filtering, registry-path, and description flags into its
   application command DTO.
-- `list-indexes` prints deterministic non-empty output and a concise empty
+- `indexes list` prints deterministic non-empty output and a concise empty
   registry message.
-- `list-indexes` defensively removes URL user-info from displayed sources.
+- `indexes list` defensively removes URL user-info from displayed sources.
 - Success output includes local alias and skill count.
 - Error output is concise and user-facing.
 
@@ -644,9 +644,9 @@ docker run --rm --network none ritebook-e2e
 
 ### Always
 
-- Support `add-index` and `update-index` for index registration and refresh.
-- Support `list-indexes` for registered index metadata.
-- Support offline `list-skills` browsing from verified cached indexes.
+- Support `indexes add` and `indexes update` for index registration and refresh.
+- Support `indexes list` for registered index metadata.
+- Support offline `skills list` browsing from verified cached indexes.
 - Support both Git URLs and local Git repository paths.
 - Require root-level `ritebook-index.json`.
 - Cache the current index contents locally.
@@ -659,7 +659,7 @@ docker run --rm --network none ritebook-e2e
 - Namespace skills by local alias and relative skill path.
 - Validate that every cached schema-v1 skill path has the form `<skill>` or
   `<collection>/<skill>` at add, update, and cached-index read boundaries.
-- Preserve the previous cached index when `update-index` fails validation.
+- Preserve the previous cached index when `indexes update` fails validation.
 - Reject dirty local Git repositories before binding an index.
 - Continue after per-index failures during `update-index --all`.
 
@@ -683,7 +683,7 @@ docker run --rm --network none ritebook-e2e
   listing skills.
 - Read raw `SKILL.md` contents while listing skills.
 - Add installation side effects, live refresh, script-oriented output formats, or
-  search behavior to `list-skills` without an approved specification change.
+  search behavior to `skills list` without an approved specification change.
 
 ## Success criteria
 

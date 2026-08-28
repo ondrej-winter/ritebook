@@ -96,21 +96,6 @@ ritebook skills <lint|list|install|sync|contribute> ...
 ritebook indexes <publish|add|list|update> ...
 ```
 
-The previous flat commands remain available during the migration window and emit
-a warning on standard error. Use the nested forms in scripts and documentation:
-
-| Deprecated | Canonical |
-| --- | --- |
-| `lint-skills` | `skills lint` |
-| `list-skills` | `skills list` |
-| `install-skill` | `skills install` |
-| `install` | `skills sync` |
-| `publish-skill-change` | `skills contribute` |
-| `publish-index` | `indexes publish` |
-| `add-index` | `indexes add` |
-| `list-indexes` | `indexes list` |
-| `update-index` | `indexes update` |
-
 ## Publisher skill index generation
 
 Maintainers can validate skill headers and generate a reviewable skill catalog
@@ -232,7 +217,7 @@ Indexes
 ```
 
 By default, the tree shows each skill's cached relative path, which can be copied
-after the local alias into `install-skill`. With `--show-description`, Ritebook
+after the local alias into `skills install`. With `--show-description`, Ritebook
 appends descriptions cached from publisher indexes when that metadata is present:
 
 ```text
@@ -257,7 +242,7 @@ Ritebook installs skills from already registered and cached indexes. Installatio
 commands are offline-first: they read the local registry and cached
 `ritebook-index.json` files, then copy skill directories from the remembered
 source repository path or managed local clone. They do not clone, fetch, pull, or
-mutate source repositories. Run `update-index` first when you want to refresh the
+mutate source repositories. Run `indexes update` first when you want to refresh the
 cached index and managed Git clone before installing.
 
 Install one fully qualified skill into an explicit target path:
@@ -268,14 +253,14 @@ uv run ritebook skills install platform-skills/code-review \
 ```
 
 For skills published in a first-level collection, use the relative skill path
-shown by `list-skills` after the local alias:
+shown by `skills list` after the local alias:
 
 ```bash
 uv run ritebook skills install platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
 
-`install-skill` resolves that path exactly and never expands a collection. A
+`skills install` resolves that path exactly and never expands a collection. A
 shorthand such as
 `platform-skills/runtime-verification` does not select
 `platform-skills/browser/runtime-verification`.
@@ -290,7 +275,7 @@ uv run ritebook skills install platform-skills/code-review \
   --force
 ```
 
-Direct `install-skill` runs write generated user-level installation state to:
+Direct `skills install` runs write generated user-level installation state to:
 
 ```text
 ~/.config/ritebook/installations.json
@@ -298,7 +283,7 @@ Direct `install-skill` runs write generated user-level installation state to:
 
 On POSIX platforms, Ritebook writes both `indexes.json` and `installations.json`
 with mode `0600`. Persisted source values never include standard-URL user-info, and
-`list-indexes` defensively removes such user-info from displayed sources. Existing
+`indexes list` defensively removes such user-info from displayed sources. Existing
 unsafe generated state is rejected and must be removed and regenerated.
 
 Tests and automation can override both the index registry and direct-install
@@ -359,8 +344,8 @@ first-level collection. For example, `platform-skills/browser` expands to the
 indexed immediate children `browser/<skill>` in deterministic catalog-path order.
 A collection requirement must use `target`, so each child is installed below the
 target base by its final skill name; it cannot use `target_path`. Expansion never
-matches deeper descendants or searches by `skills[].name`. Direct `install-skill`
-and `publish-skill-change` commands remain exact-only and never expand collections.
+matches deeper descendants or searches by `skills[].name`. Direct `skills install`
+and `skills contribute` commands remain exact-only and never expand collections.
 
 After a successful requirements install, Ritebook writes deterministic generated
 state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
@@ -378,7 +363,7 @@ and include the published `skills_root`, such as
 
 Shared `ritebook.lock` entries require indexes registered from portable Git URLs.
 An index registered from a local repository path remains available for browsing
-and direct `install-skill`, but `ritebook skills sync` rejects it before copying because
+and direct `skills install`, but `ritebook skills sync` rejects it before copying because
 relative, absolute, missing, or moved machine-local paths are not commit-safe. To
 migrate, register the same published index from its Git URL (using the same local
 alias when applicable), then rerun `ritebook skills sync` to regenerate the lockfile.

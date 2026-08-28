@@ -83,7 +83,7 @@ def run(
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
     return run_cli(
-        _canonical_argv(argv),
+        argv,
         linter=linter,
         publisher=publisher,
         add_index=add_index or FakeAddIndex(),
@@ -97,28 +97,6 @@ def run(
         stdout=stdout,
         stderr=stderr,
     )
-
-
-def _canonical_argv(argv: list[str]) -> list[str]:
-    commands = {
-        "lint-skills": ["skills", "lint"],
-        "publish-index": ["indexes", "publish"],
-        "add-index": ["indexes", "add"],
-        "list-indexes": ["indexes", "list"],
-        "list-skills": ["skills", "list"],
-        "update-index": ["indexes", "update"],
-        "install-skill": ["skills", "install"],
-        "install": ["skills", "sync"],
-        "publish-skill-change": ["skills", "contribute"],
-    }
-    canonical = [*commands.get(argv[0], [argv[0]]), *argv[1:]]
-    if canonical[:2] != ["indexes", "update"] or "--name" not in canonical:
-        return canonical
-
-    name_position = canonical.index("--name")
-    name = canonical[name_position + 1]
-    del canonical[name_position : name_position + 2]
-    return [*canonical[:2], name, *canonical[2:]]
 
 
 class FakePublisher:
@@ -422,7 +400,7 @@ def test_publish_skill_change_maps_default_arguments_and_prints_no_op() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-skill-change", "platform-skills/code-review"],
+        ["skills", "contribute", "platform-skills/code-review"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         publish_skill_change=publish_skill_change,
@@ -464,7 +442,7 @@ def test_skills_contribute_maps_canonical_arguments_without_warning() -> None:
     assert stderr.getvalue() == ""
 
 
-def test_legacy_publish_skill_change_warns_with_canonical_replacement() -> None:
+def test_removed_flat_command_is_rejected() -> None:
     stderr = StringIO()
 
     exit_code = run_cli(
@@ -482,11 +460,8 @@ def test_legacy_publish_skill_change_warns_with_canonical_replacement() -> None:
         stderr=stderr,
     )
 
-    assert exit_code == 0
-    assert stderr.getvalue() == (
-        "ritebook: warning: 'publish-skill-change' is deprecated; "
-        "use 'skills contribute'\n"
-    )
+    assert exit_code == ARGPARSE_USAGE_ERROR
+    assert "invalid choice: 'publish-skill-change'" in stderr.getvalue()
 
 
 def test_publish_skill_change_maps_path_overrides() -> None:
@@ -494,7 +469,8 @@ def test_publish_skill_change_maps_path_overrides() -> None:
 
     exit_code = run(
         [
-            "publish-skill-change",
+            "skills",
+            "contribute",
             "platform-skills/code-review",
             "--lockfile",
             "/tmp/repo/ritebook.lock",
@@ -533,7 +509,7 @@ def test_publish_skill_change_prints_prepared_contribution_with_push_step() -> N
     stdout = StringIO()
 
     exit_code = run(
-        ["publish-skill-change", "platform-skills/code-review"],
+        ["skills", "contribute", "platform-skills/code-review"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         publish_skill_change=FakePublishSkillChange(result),
@@ -566,7 +542,7 @@ def test_publish_skill_change_prints_manual_guidance_without_origin() -> None:
     stdout = StringIO()
 
     exit_code = run(
-        ["publish-skill-change", "platform-skills/code-review"],
+        ["skills", "contribute", "platform-skills/code-review"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         publish_skill_change=FakePublishSkillChange(result),
@@ -590,7 +566,7 @@ def test_publish_skill_change_translates_application_errors() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-skill-change", "platform-skills/missing"],
+        ["skills", "contribute", "platform-skills/missing"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         publish_skill_change=FailingPublishSkillChange(
@@ -612,23 +588,23 @@ def test_cli_error_boundaries_escape_controls_without_forging_lines() -> None:
     unsafe_error = ValueError("unsafe\n\x1b[31mforged")
     scenarios = (
         (
-            ["add-index", "--source", "git@example.com:company/skills.git"],
+            ["indexes", "add", "--source", "git@example.com:company/skills.git"],
             {"add_index": FailingAddIndex(unsafe_error)},
         ),
         (
-            ["install-skill", "platform-skills/code-review", "--target", "target"],
+            ["skills", "install", "platform-skills/code-review", "--target", "target"],
             {"install_skill": FailingInstallSkill(unsafe_error)},
         ),
         (
-            ["publish-skill-change", "platform-skills/code-review"],
+            ["skills", "contribute", "platform-skills/code-review"],
             {"publish_skill_change": FailingPublishSkillChange(unsafe_error)},
         ),
         (
-            ["publish-index", "--skills-root", ".", "--index-name", "skills"],
+            ["indexes", "publish", "--skills-root", ".", "--name", "skills"],
             {"publisher": FailingPublisher(unsafe_error)},
         ),
         (
-            ["lint-skills", "--skills-root", "."],
+            ["skills", "lint", "--root", "."],
             {"linter": FailingLinter(unsafe_error)},
         ),
     )
@@ -658,7 +634,7 @@ def test_publish_skill_change_requires_skill_reference_with_argparse_error() -> 
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-skill-change"],
+        ["skills", "contribute"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -667,7 +643,7 @@ def test_publish_skill_change_requires_skill_reference_with_argparse_error() -> 
 
     assert exit_code == ARGPARSE_USAGE_ERROR
     assert "usage: ritebook skills contribute" in stderr.getvalue()
-    assert "the following arguments are required: skill_reference" in stderr.getvalue()
+    assert "the following arguments are required: SKILL" in stderr.getvalue()
 
 
 def test_publish_index_maps_arguments_to_application_command() -> None:
@@ -679,10 +655,11 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             "skills",
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         linter=FakeLinter(),
@@ -732,7 +709,7 @@ def test_publish_index_uses_canonical_output_path() -> None:
     publisher = FakePublisher()
 
     exit_code = run(
-        ["publish-index", "--skills-root", ".", "--index-name", "company-skills"],
+        ["indexes", "publish", "--skills-root", ".", "--name", "company-skills"],
         linter=FakeLinter(),
         publisher=publisher,
         stdout=StringIO(),
@@ -755,10 +732,11 @@ def test_publish_index_normalizes_absolute_nested_root() -> None:
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(skills_root),
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         linter=FakeLinter(),
@@ -785,10 +763,11 @@ def test_publish_index_rejects_skills_root_outside_output_directory(
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             str(tmp_path),
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         linter=FakeLinter(),
@@ -809,10 +788,11 @@ def test_publish_index_rejects_output_argument_with_argparse_error() -> None:
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             "skills",
-            "--index-name",
+            "--name",
             "company-skills",
             "--output",
             "custom-index.json",
@@ -841,7 +821,10 @@ def test_top_level_help_uses_injected_stdout() -> None:
 
     assert exit_code == 0
     assert "usage: ritebook" in stdout.getvalue()
-    assert "publish-index" in stdout.getvalue()
+    assert "Manage Agent Skills and published skill indexes." in stdout.getvalue()
+    assert "skills" in stdout.getvalue()
+    assert "indexes" in stdout.getvalue()
+    assert "publish-index" not in stdout.getvalue()
     assert stderr.getvalue() == ""
 
 
@@ -867,7 +850,7 @@ def test_subcommand_help_uses_injected_stdout() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-index", "--help"],
+        ["indexes", "publish", "--help"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=stdout,
@@ -881,11 +864,52 @@ def test_subcommand_help_uses_injected_stdout() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_command_group_help_describes_available_workflows() -> None:
+    stdout = StringIO()
+
+    exit_code = run(
+        ["skills", "--help"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=stdout,
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert "Validate, browse, install, synchronize, and contribute skills." in (
+        stdout.getvalue()
+    )
+    assert "{lint,list,install,sync,contribute}" in stdout.getvalue()
+
+
+def test_removed_canonical_option_aliases_are_rejected() -> None:
+    scenarios = (
+        ["skills", "lint", "--skills-root", "skills"],
+        ["indexes", "publish", "--skills-root", "skills", "--index-name", "name"],
+        ["skills", "list", "--index-name", "platform-skills"],
+        ["indexes", "update", "--name", "platform-skills"],
+    )
+
+    for argv in scenarios:
+        stderr = StringIO()
+
+        exit_code = run(
+            argv,
+            linter=FakeLinter(),
+            publisher=FakePublisher(),
+            stdout=StringIO(),
+            stderr=stderr,
+        )
+
+        assert exit_code == ARGPARSE_USAGE_ERROR
+        assert "error:" in stderr.getvalue()
+
+
 def test_publish_index_requires_skills_root_with_argparse_error() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-index"],
+        ["indexes", "publish"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -902,7 +926,7 @@ def test_publish_index_requires_index_name_with_argparse_error() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["publish-index", "--skills-root", "skills"],
+        ["indexes", "publish", "--skills-root", "skills"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -919,10 +943,11 @@ def test_publish_index_translates_invalid_root_errors() -> None:
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             "missing",
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         linter=FakeLinter(),
@@ -940,10 +965,11 @@ def test_publish_index_prints_validation_issues_to_stderr() -> None:
 
     exit_code = run(
         [
-            "publish-index",
+            "indexes",
+            "publish",
             "--skills-root",
             "skills",
-            "--index-name",
+            "--name",
             "company-skills",
         ],
         linter=FakeLinter(),
@@ -972,7 +998,8 @@ def test_add_index_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "add-index",
+            "indexes",
+            "add",
             "--source",
             "git@example.com:company/skills.git",
             "--alias",
@@ -1046,7 +1073,7 @@ def test_add_index_rejects_removed_name_override() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["add-index", "--source", "repo", "--name", "platform-skills"],
+        ["indexes", "add", "--source", "repo", "--name", "platform-skills"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -1061,7 +1088,7 @@ def test_add_index_translates_duplicate_name_errors() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["add-index", "--source", "repo"],
+        ["indexes", "add", "--source", "repo"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         add_index=FailingAddIndex(DuplicateIndexNameError("company-skills")),
@@ -1085,8 +1112,8 @@ def test_update_index_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "update-index",
-            "--name",
+            "indexes",
+            "update",
             "platform-skills",
             "--registry-path",
             "/tmp/indexes.json",
@@ -1161,7 +1188,8 @@ def test_update_index_all_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "update-index",
+            "indexes",
+            "update",
             "--all",
             "--registry-path",
             "/tmp/indexes.json",
@@ -1192,7 +1220,7 @@ def test_update_index_requires_name_or_all_with_argparse_error() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["update-index"],
+        ["indexes", "update"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -1209,7 +1237,7 @@ def test_list_indexes_maps_arguments_to_application_command() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["list-indexes", "--registry-path", "/tmp/indexes.json"],
+        ["indexes", "list", "--registry-path", "/tmp/indexes.json"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_indexes=list_indexes,
@@ -1248,7 +1276,7 @@ def test_list_indexes_prints_empty_registry_message() -> None:
     stdout = StringIO()
 
     exit_code = run(
-        ["list-indexes"],
+        ["indexes", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_indexes=FakeListIndexes(ListIndexesResult(indexes=())),
@@ -1277,7 +1305,7 @@ def test_list_indexes_redacts_url_user_info_defensively() -> None:
     )
 
     exit_code = run(
-        ["list-indexes"],
+        ["indexes", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_indexes=FakeListIndexes(result),
@@ -1306,7 +1334,7 @@ def test_list_indexes_escapes_source_controls_without_forging_lines() -> None:
     )
 
     exit_code = run(
-        ["list-indexes"],
+        ["indexes", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_indexes=FakeListIndexes(result),
@@ -1327,8 +1355,9 @@ def test_list_skills_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "list-skills",
-            "--index-name",
+            "skills",
+            "list",
+            "--index",
             "platform-skills",
             "--registry-path",
             "/tmp/indexes.json",
@@ -1418,7 +1447,7 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
     )
 
     exit_code = run(
-        ["list-skills"],
+        ["skills", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(result),
@@ -1456,7 +1485,7 @@ def test_list_skills_prints_nested_skill_paths() -> None:
     )
 
     exit_code = run(
-        ["list-skills"],
+        ["skills", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(result),
@@ -1474,7 +1503,7 @@ def test_list_skills_maps_show_description_to_application_command() -> None:
     list_skills = FakeListSkills()
 
     exit_code = run(
-        ["list-skills", "--show-description"],
+        ["skills", "list", "--show-description"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=list_skills,
@@ -1511,7 +1540,7 @@ def test_list_skills_prints_descriptions_when_requested() -> None:
     )
 
     exit_code = run(
-        ["list-skills", "--show-description"],
+        ["skills", "list", "--show-description"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(result),
@@ -1547,7 +1576,7 @@ def test_list_skills_escapes_description_controls_and_preserves_unicode() -> Non
     )
 
     exit_code = run(
-        ["list-skills", "--show-description"],
+        ["skills", "list", "--show-description"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(result),
@@ -1566,7 +1595,7 @@ def test_list_skills_prints_empty_result_message() -> None:
     stdout = StringIO()
 
     exit_code = run(
-        ["list-skills"],
+        ["skills", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(ListSkillsResult(indexes=())),
@@ -1585,7 +1614,7 @@ def test_list_skills_prints_empty_selected_index_message() -> None:
     )
 
     exit_code = run(
-        ["list-skills", "--index-name", "platform-skills"],
+        ["skills", "list", "--index", "platform-skills"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FakeListSkills(result),
@@ -1601,7 +1630,7 @@ def test_list_skills_translates_application_errors() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["list-skills", "--index-name", "missing-skills"],
+        ["skills", "list", "--index", "missing-skills"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FailingListSkills(UnknownIndexNameError("missing-skills")),
@@ -1623,7 +1652,7 @@ def test_list_skills_reports_invalid_catalog_republish_guidance() -> None:
     )
 
     exit_code = run(
-        ["list-skills"],
+        ["skills", "list"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         list_skills=FailingListSkills(error),
@@ -1645,7 +1674,8 @@ def test_install_skill_maps_arguments_to_application_command() -> None:
 
     exit_code = run(
         [
-            "install-skill",
+            "skills",
+            "install",
             "platform-skills/code-review",
             "--target",
             ".claude/skills/code-review",
@@ -1717,7 +1747,7 @@ def test_install_skill_requires_target_with_argparse_error() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["install-skill", "platform-skills/code-review"],
+        ["skills", "install", "platform-skills/code-review"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -1734,7 +1764,8 @@ def test_install_skill_translates_application_errors() -> None:
 
     exit_code = run(
         [
-            "install-skill",
+            "skills",
+            "install",
             "platform-skills/code-review",
             "--target",
             ".claude/skills/code-review",
@@ -1760,7 +1791,8 @@ def test_install_skill_reports_retained_target_after_state_commit_failure() -> N
 
     exit_code = run(
         [
-            "install-skill",
+            "skills",
+            "install",
             "platform-skills/code-review",
             "--target",
             ".claude/skills/code-review",
@@ -1791,7 +1823,7 @@ def test_install_maps_default_arguments_to_application_command() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["install"],
+        ["skills", "sync"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         install_from_requirements=install_from_requirements,
@@ -1853,7 +1885,8 @@ def test_install_maps_overrides_to_application_command() -> None:
 
     exit_code = run(
         [
-            "install",
+            "skills",
+            "sync",
             "--file",
             "config/ritebook.toml",
             "--force",
@@ -1886,7 +1919,7 @@ def test_install_translates_application_errors() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["install", "--file", "config/ritebook.toml"],
+        ["skills", "sync", "--file", "config/ritebook.toml"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         install_from_requirements=FailingInstallFromRequirements(
@@ -1906,7 +1939,7 @@ def test_install_reports_retained_targets_after_lockfile_commit_failure() -> Non
     stderr = StringIO()
 
     exit_code = run(
-        ["install", "--file", "ritebook.toml"],
+        ["skills", "sync", "--file", "ritebook.toml"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         install_from_requirements=FailingInstallFromRequirements(
@@ -1934,7 +1967,7 @@ def test_lint_skills_maps_arguments_to_application_command() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["lint-skills", "--skills-root", "skills"],
+        ["skills", "lint", "--root", "skills"],
         linter=linter,
         publisher=FakePublisher(),
         stdout=stdout,
@@ -1966,7 +1999,7 @@ def test_lint_skills_requires_skills_root_with_argparse_error() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["lint-skills"],
+        ["skills", "lint"],
         linter=FakeLinter(),
         publisher=FakePublisher(),
         stdout=StringIO(),
@@ -1975,17 +2008,14 @@ def test_lint_skills_requires_skills_root_with_argparse_error() -> None:
 
     assert exit_code == ARGPARSE_USAGE_ERROR
     assert "usage: ritebook skills lint" in stderr.getvalue()
-    assert (
-        "the following arguments are required: --root/--skills-root"
-        in stderr.getvalue()
-    )
+    assert "the following arguments are required: --root" in stderr.getvalue()
 
 
 def test_lint_skills_prints_validation_issues_to_stderr() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["lint-skills", "--skills-root", "skills"],
+        ["skills", "lint", "--root", "skills"],
         linter=FakeLinter(
             LintSkillsResult.create(
                 validated_skill_count=1,
@@ -2010,7 +2040,7 @@ def test_lint_skills_escapes_controls_in_diagnostics() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["lint-skills", "--skills-root", "skills"],
+        ["skills", "lint", "--root", "skills"],
         linter=FakeLinter(
             LintSkillsResult.create(
                 validated_skill_count=1,
@@ -2039,7 +2069,7 @@ def test_lint_skills_translates_invalid_root_errors() -> None:
     stderr = StringIO()
 
     exit_code = run(
-        ["lint-skills", "--skills-root", "missing"],
+        ["skills", "lint", "--root", "missing"],
         linter=FailingLinter(LintSkillsDiscoveryError("Skills root missing")),
         publisher=FakePublisher(),
         stdout=StringIO(),

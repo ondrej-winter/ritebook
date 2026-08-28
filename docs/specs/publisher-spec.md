@@ -185,7 +185,7 @@ The MVP should be covered primarily with fast, deterministic unit tests.
   duplicate names at distinct paths, and basic invariants.
 - Application tests use fakes for skill discovery, skill validation, and index
   writing ports.
-- Application tests verify `publish-index` does not call the writer when skill
+- Application tests verify `indexes publish` does not call the writer when skill
   validation fails.
 - Filesystem adapter tests use temporary directories to verify recursive
   `SKILL.md` candidate discovery, valid root and collected skill paths, ignored
@@ -218,7 +218,7 @@ network access.
 - Always allow duplicate skill names at distinct relative paths in one index.
 - Always pretty-print generated JSON with two-space indentation.
 - Mandatory `SKILL.md` header validation is in scope for this milestone and must
-  be shared by `lint-skills` and `publish-index`.
+  be shared by `skills lint` and `indexes publish`.
 
 ### Ask first
 
@@ -244,7 +244,7 @@ network access.
   containing `SKILL.md`.
 - Root skills and immediate collection-child skills are indexed, while over-deep
   candidates and mixed skill/collection nodes fail with path-scoped errors.
-- `publish-index` reuses the same validation flow and refuses to write or
+- `indexes publish` reuses the same validation flow and refuses to write or
   overwrite `ritebook-index.json` when validation fails.
 - The generated index is deterministic for unchanged input except for the
   documented generation timestamp.

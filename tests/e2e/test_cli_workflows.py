@@ -35,7 +35,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         encoding="utf-8",
     )
 
-    lint_result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
+    lint_result = run_cli(["skills", "lint", "--root", str(skills_root)])
     lint_result.assert_success()
     assert lint_result.stdout == "Validated 2 skill(s)\n"
 
@@ -309,7 +309,7 @@ def test_lint_skills_reports_invalid_metadata_failure(
 ) -> None:
     write_invalid_skill("missing-description")
 
-    result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
+    result = run_cli(["skills", "lint", "--root", str(skills_root)])
 
     result.assert_failure()
     assert result.stdout == ""
@@ -329,7 +329,7 @@ def test_catalog_commands_reject_over_deep_and_mixed_skill_nodes(
         encoding="utf-8",
     )
 
-    lint_result = run_cli(["skills", "lint", "--skills-root", str(skills_root)])
+    lint_result = run_cli(["skills", "lint", "--root", str(skills_root)])
 
     lint_result.assert_failure()
     assert lint_result.stdout == ""

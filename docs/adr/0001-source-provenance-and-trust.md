@@ -175,14 +175,14 @@ schema changes require an explicit version and migration decision.
 
 ## Alternatives considered
 
-| Option | Reason rejected |
-| ------ | --------------- |
-| Mutable source locator plus installation-time `HEAD` | Does not bind validated metadata to installed content and is the failure this decision closes. |
-| Git revision without an index digest | Identifies repository state but cannot independently detect a corrupted or incorrectly paired cached index. |
-| Ritebook-owned snapshot for every source | Preserves availability but duplicates Git storage and lifecycle semantics; unnecessary for the current Git-only product. |
-| Full content hashes without a Git revision | Can prove selected bytes but does not provide the repository base needed by contribution workflows. |
-| Publisher-embedded per-skill hashes | Expands publisher schema and hashing policy without replacing the need for a Git contribution base. |
-| Signed indexes or commits | Addresses publisher authenticity, which is distinct from binding locally validated metadata to installed bytes. |
+| Option                                               | Reason rejected                                                                                                          |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Mutable source locator plus installation-time `HEAD` | Does not bind validated metadata to installed content and is the failure this decision closes.                           |
+| Git revision without an index digest                 | Identifies repository state but cannot independently detect a corrupted or incorrectly paired cached index.              |
+| Ritebook-owned snapshot for every source             | Preserves availability but duplicates Git storage and lifecycle semantics; unnecessary for the current Git-only product. |
+| Full content hashes without a Git revision           | Can prove selected bytes but does not provide the repository base needed by contribution workflows.                      |
+| Publisher-embedded per-skill hashes                  | Expands publisher schema and hashing policy without replacing the need for a Git contribution base.                      |
+| Signed indexes or commits                            | Addresses publisher authenticity, which is distinct from binding locally validated metadata to installed bytes.          |
 
 ## Related specifications
 

@@ -11,7 +11,7 @@
 ## Objective
 
 Ritebook provides consumer-facing skill installation workflows for users who have
-already registered one or more Git-backed skill indexes with `add-index`.
+already registered one or more Git-backed skill indexes with `indexes add`.
 
 The workflow lets a user install one exact cached skill into an explicit target
 path, and lets a repository declare exact skills or first-level collections in
@@ -22,17 +22,17 @@ for reviewable repo-local install state.
 ## Current context
 
 - Ritebook already supports publisher-side index generation through
-  `publish-index`.
+  `indexes publish`.
 - Publisher indexes are root-level `ritebook-index.json` files with schema
   version `1`.
 - Publisher schema v1 includes index metadata and skill entries with required
   `name`, `path`, `skill_file`, and non-empty `description`.
 - Consumer registry functionality already exists in
   `src/ritebook/features/index_registry/`:
-  - `add-index` registers a Git URL or local Git repository source.
-  - `update-index` refreshes cached index contents.
-  - `list-indexes` lists registered index metadata.
-  - `list-skills` lists skills from locally cached registered indexes.
+  - `indexes add` registers a Git URL or local Git repository source.
+  - `indexes update` refreshes cached index contents.
+  - `indexes list` lists registered index metadata.
+  - `skills list` lists skills from locally cached registered indexes.
 - Registry entries already store each index's local alias, remembered
   source, source type, source cache path for Git URL sources, and cached index
   path.
@@ -188,19 +188,19 @@ Requirements:
 - `skills sync` parses and resolves requirements from the verified cached-byte
   snapshot and materializes each selected skill directory from that bound commit
   into the resolved target path.
-- Before the first copy, `install` asks the filesystem adapter to canonicalize and
+- Before the first copy, `skills sync` asks the filesystem adapter to canonicalize and
   validate every target without creating directories or otherwise mutating the
   filesystem. It rejects equivalent and parent-child target destinations as one
   conflicting plan.
-- `install` writes or updates `ritebook.lock` after successful installation.
-- `install` refuses existing target paths unless `--force` is provided.
-- `install` fails without partially updating `ritebook.lock` when any declared
+- `skills sync` writes or updates `ritebook.lock` after successful installation.
+- `skills sync` refuses existing target paths unless `--force` is provided.
+- `skills sync` fails without partially updating `ritebook.lock` when any declared
   install cannot be resolved, validated, or copied.
-- `install` may leave already-copied target directories in place if a later copy
+- `skills sync` may leave already-copied target directories in place if a later copy
   fails; rollback is out of scope for v1 and the error must make that clear.
-- Before the first copy, `install` constructs all timestamped lockfile entries and
+- Before the first copy, `skills sync` constructs all timestamped lockfile entries and
   validates the complete candidate lockfile without filesystem mutation.
-- If final atomic lockfile replacement fails after all copies, `install` reports
+- If final atomic lockfile replacement fails after all copies, `skills sync` reports
   failure rather than success, leaves copied targets in place, states that
   `ritebook.lock` was not updated, and directs the user to inspect the targets and
   retry.
@@ -356,7 +356,7 @@ Example schema v1:
 Lockfile requirements:
 
 - `schema_version` is required and must be `1` for v1.
-- `requirements_file` records the requirements file path used by `install`.
+- `requirements_file` records the requirements file path used by `skills sync`.
 - `skills` are sorted deterministically by `index_name`, then skill path.
 - `requirement` stores the exact qualified catalog selector
   `<local-alias>/<skill>` or `<local-alias>/<collection>/<skill>` resolved for the
@@ -382,7 +382,7 @@ Lockfile requirements:
 - `source` must be the safe persisted locator propagated from the registry. A
   standard URL containing authority user-info is rejected before lockfile writing.
 - Shared lockfiles support `source_type = "git_url"` only. A registration backed by
-  `local_git_repo` is valid for browsing and direct `install-skill`, but
+  `local_git_repo` is valid for browsing and direct `skills install`, but
   requirements installation rejects it during candidate lockfile validation before
   copying any target. Register the same index from a portable Git URL and rerun
   installation to generate commit-safe lock state.
@@ -400,7 +400,7 @@ Lockfile requirements:
 
 ### User-level ad hoc installation state
 
-When `install-skill` is used directly, Ritebook records generated user-level
+When `skills install` is used directly, Ritebook records generated user-level
 installation state under Ritebook's own config directory instead of writing a
 lockfile into arbitrary target directories:
 
@@ -461,8 +461,8 @@ Requirements:
 For a registered Git URL source:
 
 - Ritebook uses the managed Git clone already associated with the registry entry.
-- `install-skill` and `install` do not fetch or pull by default.
-- Users should run `update-index` first when they want to refresh cached index
+- `skills install` and `skills sync` do not fetch or pull by default.
+- Users should run `indexes update` first when they want to refresh cached index
   contents and the managed clone.
 - Ritebook verifies that the bound commit is available and reads the selected
   skill from that commit, even if the managed clone's current checkout has moved.
@@ -482,7 +482,7 @@ For a registered local Git repository source:
 - Ritebook does not create an owned snapshot. If the repository or bound commit is
   unavailable, installation fails before copying and directs the user to restore
   it or explicitly refresh and reinstall.
-- This source kind supports direct `install-skill` only. Requirements installation
+- This source kind supports direct `skills install` only. Requirements installation
   cannot generate the shared `ritebook.lock` contract from a machine-local path and
   fails before copying with guidance to register a Git URL.
 
@@ -721,8 +721,8 @@ Cover:
 - Writes deterministic `ritebook.lock` JSON.
 - Requires and persists full `source_revision` and `index_digest` provenance.
 - Preserves no stale entries for skills removed from `ritebook.toml` when running
-  `install`.
-- Writes deterministic `installations.json` for direct `install-skill` usage.
+  `skills sync`.
+- Writes deterministic `installations.json` for direct `skills install` usage.
 - Rejects credential-bearing source URLs in existing or candidate generated state
   without leaking the credential value.
 - Writes replacement `installations.json` with POSIX mode `0600` where supported,
@@ -734,11 +734,11 @@ Cover:
 
 Cover:
 
-- `install-skill` maps CLI args into application command DTOs.
-- `install-skill` requires `--target`.
-- `install-skill` exposes `--force`.
-- `install` uses default `ritebook.toml`.
-- `install` maps `--file`, `--force`, `--registry-path`, and `--lockfile`.
+- `skills install` maps CLI args into application command DTOs.
+- `skills install` requires `--target`.
+- `skills install` exposes `--force`.
+- `skills sync` uses default `ritebook.toml`.
+- `skills sync` maps `--file`, `--force`, `--registry-path`, and `--lockfile`.
 - Success output is concise and deterministic.
 - Application and adapter errors are rendered as concise
   `ritebook: error: ...` messages.
@@ -764,7 +764,7 @@ docker run --rm --network none ritebook-e2e
 
 ### Implementation evidence
 
-- Direct `install-skill` and requirements-file `install` are implemented in the
+- Direct `skills install` and requirements-file `skills sync` are implemented in the
   `features/skill_installation` vertical slice.
 - CLI E2E coverage exercises local-Git-backed registration, direct installation,
   requirements-file installation, copied directory contents, generated
@@ -780,7 +780,7 @@ docker run --rm --network none ritebook-e2e
 ### Always
 
 - Support direct `install-skill <local-alias>/<skill-path> --target <path>`.
-- Support `install` from `ritebook.toml`.
+- Support `skills sync` from `ritebook.toml`.
 - Support TOML `[targets]` nicknames for requirements-file installs only.
 - Require fully qualified `<local-alias>/<skill-path>` skill references.
 - Resolve direct installs only by exact relative skill path.
@@ -794,15 +794,15 @@ docker run --rm --network none ritebook-e2e
   [ADR 0001](../adr/0001-source-provenance-and-trust.md).
 - Copy the whole skill directory.
 - Refuse overwrites unless `--force` is provided.
-- Write deterministic `ritebook.lock` for `install`.
+- Write deterministic `ritebook.lock` for `skills sync`.
 - Write user installation state under `~/.config/ritebook/installations.json` for
-  direct `install-skill`.
+  direct `skills install`.
 - Never report installation success unless the corresponding generated-state file
   has been committed.
 
 ### Ask first
 
-- Adding target aliases or target kinds to `install-skill`.
+- Adding target aliases or target kinds to `skills install`.
 - Adding default install destinations.
 - Adding `sync`, `restore`, `update-skill`, or `uninstall-skill`.
 - Installing directly from unregistered Git URLs.

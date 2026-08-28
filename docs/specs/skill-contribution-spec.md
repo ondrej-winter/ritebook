@@ -15,7 +15,7 @@ repo-local installed skills and want to propose those changes back to the
 original curated skill repository.
 
 The first workflow is a platform-neutral Git contribution core exposed through a
-`publish-skill-change` command. It prepares a reviewable branch and local commit
+`skills contribute` command. It prepares a reviewable branch and local commit
 in a Ritebook-owned isolated checkout. It prints a suggested `git push` command
 when a usable origin exists, or manual inspection guidance otherwise. It must not
 directly mutate canonical source branches, managed index cache clones, or
@@ -24,9 +24,9 @@ user-owned local source repositories.
 ## Current context
 
 - Ritebook already supports Git-backed index registration and updates through
-  `add-index`, `update-index`, and `list-indexes`.
-- Ritebook already supports skill installation through direct `install-skill` and
-  requirements-file `install` workflows.
+  `indexes add`, `indexes update`, and `indexes list`.
+- Ritebook already supports skill installation through direct `skills install` and
+  requirements-file `skills sync` workflows.
 - `ritebook.toml` can declare desired repo-local installed skills.
 - Generated `ritebook.lock` records installed-skill provenance, including
   `requirement`, `index_name`, `target`, `source`, `source_type`,
@@ -409,8 +409,8 @@ Cover:
 
 Cover:
 
-- `publish-skill-change` maps CLI args into application command DTOs.
-- `publish-skill-change` accepts `--lockfile` and `--contribution-root` test
+- `skills contribute` maps CLI args into application command DTOs.
+- `skills contribute` accepts `--lockfile` and `--contribution-root` test
   overrides.
 - Success output includes the skill reference, branch, commit, checkout, and next
   step.
@@ -462,7 +462,7 @@ docker run --rm --network none ritebook-e2e
 - Adding provider-specific `gh`, `glab`, GitHub, GitLab, or Gitea adapters.
 - Adding `--base <branch-or-ref>`.
 - Supporting batch contributions.
-- Supporting ad hoc direct `install-skill` installs without `ritebook.lock`.
+- Supporting ad hoc direct `skills install` installs without `ritebook.lock`.
 - Changing lockfile schema or installation provenance.
 - Adding cleanup, pruning, or automatic deletion of contribution checkouts.
 
@@ -512,7 +512,7 @@ and each requires an approved specification or tracked implementation plan befor
 implementation:
 
 - What validation evidence should Ritebook include in a future MR body?
-- Should `publish-skill-change` eventually support `--base <branch-or-ref>` for
+- Should `skills contribute` eventually support `--base <branch-or-ref>` for
   teams that do not want to target the source repository's default branch?
 - Should `--open-mr` support GitHub first, GitLab first, or detect `gh` and
   `glab` based on the source remote?

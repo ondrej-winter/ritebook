@@ -57,7 +57,7 @@ and provenance requirements defined below rather than redefining them locally.
   child directories are skills. It is not itself a skill or index entry.
 - A **collection selector** is `<local-alias>/<collection>` in `ritebook.toml`. It
   resolves only the collection's immediate child skills and is not accepted by
-  exact-skill commands such as `install-skill` or `publish-skill-change`.
+  exact-skill commands such as `skills install` or `skills contribute`.
 - A **repository-relative skill path** includes the published `skills_root` before
   the catalog skill path. It may therefore contain more segments than a catalog
   selector while remaining a safe relative path.

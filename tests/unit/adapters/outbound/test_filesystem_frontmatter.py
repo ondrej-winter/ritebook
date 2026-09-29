@@ -64,3 +64,19 @@ def test_parse_yaml_frontmatter_does_not_parse_beyond_frontmatter_bound(
 
     assert isinstance(frontmatter, FrontmatterParseError)
     assert frontmatter.message == "frontmatter must include a closing --- delimiter."
+
+
+def test_parse_yaml_frontmatter_rejects_malformed_yaml_without_source_details(
+    tmp_path: Path,
+) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text(
+        "---\nsecret-field: [unterminated\n---\n# Body\n",
+        encoding="utf-8",
+    )
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, FrontmatterParseError)
+    assert frontmatter.message == "frontmatter must be valid YAML."
+    assert "secret-field" not in frontmatter.message

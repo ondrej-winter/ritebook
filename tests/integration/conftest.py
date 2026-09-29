@@ -71,11 +71,6 @@ def valid_skill_content(name: str, description: str) -> str:
     return f"""---
 name: {name}
 description: {description}
-metadata:
-  version: "1.0.0"
-  dependencies:
-    tools: []
-    skills: []
 ---
 # {name}
 """

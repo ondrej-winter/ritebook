@@ -20,6 +20,7 @@ def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> Non
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 2
     assert result.issues == ()
     assert [(header.skill_file, header.expected_name) for header in result.headers] == [
         ("group/alpha/SKILL.md", "alpha"),
@@ -28,19 +29,6 @@ def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> Non
     assert result.headers[0].frontmatter == {
         "name": "alpha",
         "description": "Alpha skill.",
-        "metadata": {
-            "version": "1.0.0",
-            "dependencies": {
-                "tools": [
-                    {
-                        "name": "git",
-                        "purpose": "Inspect version-control state.",
-                        "required": True,
-                    },
-                ],
-                "skills": [],
-            },
-        },
     }
 
 
@@ -51,6 +39,7 @@ def test_discover_headers_reports_zero_segment_candidate_before_frontmatter(
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 1
     assert result.headers == ()
     assert [issue.format() for issue in result.issues] == [
         "SKILL.md: Catalog path is not a literal relative POSIX path: '.'.",
@@ -75,6 +64,7 @@ def test_discover_headers_reports_invalid_and_over_deep_paths_deterministically(
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 3
     assert [header.skill_file for header in result.headers] == ["valid/SKILL.md"]
     assert [issue.format() for issue in result.issues] == [
         (
@@ -103,6 +93,7 @@ def test_discover_headers_reports_every_mixed_skill_collection_child(
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 3
     assert [header.skill_file for header in result.headers] == ["quality/SKILL.md"]
     assert [issue.format() for issue in result.issues] == [
         (
@@ -126,6 +117,7 @@ def test_discover_headers_skips_hidden_directories(tmp_path: Path) -> None:
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 1
     assert [header.skill_file for header in result.headers] == ["visible/SKILL.md"]
     assert result.issues == ()
 
@@ -137,6 +129,7 @@ def test_discover_headers_rejects_skill_file_directly_at_skills_root(
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 1
     assert result.headers == ()
     assert [issue.format() for issue in result.issues] == [
         "SKILL.md: Catalog path is not a literal relative POSIX path: '.'.",
@@ -154,7 +147,7 @@ def test_discover_headers_rejects_skill_file_directly_at_skills_root(
             "---\nname: alpha\n# Missing close\n",
             "frontmatter must include a closing --- delimiter.",
         ),
-        ("---\nname: [unterminated\n---\n", "frontmatter must be valid YAML"),
+        ("---\nname: [unterminated\n---\n", "frontmatter must be valid YAML."),
     ],
 )
 def test_discover_headers_reports_frontmatter_parse_issues(
@@ -166,10 +159,55 @@ def test_discover_headers_reports_frontmatter_parse_issues(
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 1
     assert result.headers == ()
-    assert len(result.issues) == 1
-    assert result.issues[0].skill_file == "alpha/SKILL.md"
-    assert result.issues[0].message.startswith(expected_message)
+    assert [issue.format() for issue in result.issues] == [
+        f"alpha/SKILL.md: {expected_message}",
+    ]
+
+
+def test_discover_headers_reports_invalid_utf8_and_continues(
+    tmp_path: Path,
+) -> None:
+    write_skill(tmp_path / "alpha" / "SKILL.md", frontmatter(name="alpha"))
+    invalid_file = tmp_path / "beta" / "SKILL.md"
+    invalid_file.parent.mkdir(parents=True)
+    invalid_file.write_bytes(b"---\nname: beta\ndescription: \xff\n---\n")
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert result.discovered_skill_count == 2
+    assert [header.skill_file for header in result.headers] == ["alpha/SKILL.md"]
+    assert [issue.format() for issue in result.issues] == [
+        "beta/SKILL.md: skill file must be readable UTF-8 text.",
+    ]
+
+
+def test_discover_headers_reports_read_failure_and_continues(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readable_file = tmp_path / "alpha" / "SKILL.md"
+    unreadable_file = tmp_path / "beta" / "SKILL.md"
+    write_skill(readable_file, frontmatter(name="alpha"))
+    write_skill(unreadable_file, frontmatter(name="beta"))
+    original_open = Path.open
+
+    def fail_selected_file(path: Path, *args: object, **kwargs: object) -> object:
+        if path == unreadable_file:
+            message = "private filesystem detail"
+            raise OSError(message)
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", fail_selected_file)
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert result.discovered_skill_count == 2
+    assert [header.skill_file for header in result.headers] == ["alpha/SKILL.md"]
+    assert [issue.format() for issue in result.issues] == [
+        "beta/SKILL.md: skill file must be readable UTF-8 text.",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -188,6 +226,7 @@ def test_discover_headers_returns_non_mapping_frontmatter_for_application_valida
 
     result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
 
+    assert result.discovered_skill_count == 1
     assert result.issues == ()
     assert result.headers[0].frontmatter == expected_frontmatter
 
@@ -218,14 +257,6 @@ def frontmatter(name: str, description: str = "A visible skill.") -> str:
     return f"""---
 name: {name}
 description: {description}
-metadata:
-  version: "1.0.0"
-  dependencies:
-    tools:
-      - name: git
-        purpose: Inspect version-control state.
-        required: true
-    skills: []
 ---
 # {name}
 """

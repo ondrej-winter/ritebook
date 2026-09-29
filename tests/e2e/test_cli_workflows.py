@@ -31,13 +31,16 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
     collected_skill = skills_root / "browser" / "beta" / "SKILL.md"
     collected_skill.parent.mkdir(parents=True)
     collected_skill.write_text(
-        _valid_skill_content("beta", "Helps with beta workflows."),
+        _skill_content_with_optional_fields(
+            "beta",
+            "Helps with beta workflows.",
+        ),
         encoding="utf-8",
     )
 
     lint_result = run_cli(["skills", "lint", "--root", str(skills_root)])
     lint_result.assert_success()
-    assert lint_result.stdout == "Validated 2 skill(s)\n"
+    assert lint_result.stdout == "Checked 2 skill(s)\n"
 
     published_skills_root = published_repo.path / "skills"
     _copy_skill_directories_to_repository(skills_root, published_skills_root)
@@ -302,7 +305,7 @@ def test_add_index_alias_force_replace_and_update_all_happy_path(
     )
 
 
-def test_lint_skills_reports_invalid_metadata_failure(
+def test_lint_skills_reports_missing_description(
     run_cli: CliRunner,
     skills_root: Path,
     write_invalid_skill: InvalidSkillWriter,
@@ -314,6 +317,45 @@ def test_lint_skills_reports_invalid_metadata_failure(
     result.assert_failure()
     assert result.stdout == ""
     assert result.stderr == ("missing-description/SKILL.md: description is required.\n")
+
+
+def test_publish_rejects_nested_metadata_without_writing_index(
+    tmp_path: Path,
+    run_cli: CliRunner,
+    git_repository: GitRepositoryFactory,
+) -> None:
+    published_repo = git_repository(tmp_path / "published-index")
+    skill_file = published_repo.path / "skills" / "legacy" / "SKILL.md"
+    skill_file.parent.mkdir(parents=True)
+    skill_file.write_text(
+        """---
+name: legacy
+description: Demonstrates invalid nested metadata.
+metadata:
+  dependencies:
+    tools: []
+---
+# legacy
+""",
+        encoding="utf-8",
+    )
+
+    result = run_cli(
+        [
+            "indexes",
+            "publish",
+            "--skills-root",
+            str(skill_file.parents[1]),
+            "--name",
+            "company-skills",
+        ],
+        cwd=published_repo.path,
+    )
+
+    result.assert_failure()
+    assert result.stdout == ""
+    assert result.stderr == ("legacy/SKILL.md: metadata values must be strings.\n")
+    assert not (published_repo.path / "ritebook-index.json").exists()
 
 
 def test_catalog_commands_reject_over_deep_and_mixed_skill_nodes(
@@ -1103,14 +1145,21 @@ def _valid_skill_content(name: str, description: str) -> str:
     return f"""---
 name: {name}
 description: {description}
+---
+# {name}
+"""
+
+
+def _skill_content_with_optional_fields(name: str, description: str) -> str:
+    return f"""---
+name: {name}
+description: {description}
+license: MIT
+compatibility: Requires Git.
 metadata:
+  author: ritebook
   version: "1.0.0"
-  dependencies:
-    tools:
-      - name: git
-        purpose: Inspect version-control state.
-        required: true
-    skills: []
+allowed-tools: Bash(git:*) Read
 ---
 # {name}
 """

@@ -257,15 +257,19 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
     writer = FakeIndexWriter()
     precheck = FakePrecheck(
         SkillPrecheckResult.create(
-            checked_skill_count=2,
+            checked_skill_count=3,
             issues=[
                 SkillPrecheckIssue(
                     skill_file="alpha/SKILL.md",
-                    message="description is required.",
+                    message="frontmatter contains unsupported fields.",
                 ),
                 SkillPrecheckIssue(
                     skill_file="beta/SKILL.md",
-                    message="frontmatter must be valid YAML.",
+                    message="compatibility must not be blank.",
+                ),
+                SkillPrecheckIssue(
+                    skill_file="gamma/SKILL.md",
+                    message="metadata values must be strings.",
                 ),
             ],
         ),
@@ -287,8 +291,9 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
         )
 
     assert [issue.format() for issue in err.value.issues] == [
-        "alpha/SKILL.md: description is required.",
-        "beta/SKILL.md: frontmatter must be valid YAML.",
+        "alpha/SKILL.md: frontmatter contains unsupported fields.",
+        "beta/SKILL.md: compatibility must not be blank.",
+        "gamma/SKILL.md: metadata values must be strings.",
     ]
     assert discovery.discovered_roots == []
     assert writer.written_catalogs == []

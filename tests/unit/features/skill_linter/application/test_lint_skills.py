@@ -2,6 +2,7 @@ import pytest
 
 from ritebook.features.skill_linter.application.dtos import (
     LintSkillsCommand,
+    LintSkillsResult,
     ParsedSkillHeader,
     SkillHeaderDiscoveryResult,
     SkillValidationIssue,
@@ -11,7 +12,7 @@ from ritebook.features.skill_linter.application.use_cases import (
     ValidateSkillHeaders,
 )
 
-VALID_DISCOVERED_HEADER_COUNT = 2
+DISCOVERED_SKILL_COUNT = 2
 
 
 class FakeHeaderDiscovery:
@@ -31,6 +32,7 @@ class FakeHeaderDiscovery:
 def test_lint_skills_validates_discovered_headers_successfully() -> None:
     discovery = FakeHeaderDiscovery(
         SkillHeaderDiscoveryResult.create(
+            discovered_skill_count=DISCOVERED_SKILL_COUNT,
             headers=[_valid_header("alpha"), _valid_header("zeta")],
             issues=[],
         ),
@@ -44,14 +46,18 @@ def test_lint_skills_validates_discovered_headers_successfully() -> None:
 
     assert discovery.discovered_roots == ["skills"]
     assert result.succeeded
-    assert result.validated_skill_count == VALID_DISCOVERED_HEADER_COUNT
+    assert result.discovered_skill_count == DISCOVERED_SKILL_COUNT
     assert result.issues == ()
 
 
 def test_lint_skills_succeeds_with_zero_discovered_headers() -> None:
     use_case = LintSkills(
         header_discovery=FakeHeaderDiscovery(
-            SkillHeaderDiscoveryResult.create(headers=[], issues=[]),
+            SkillHeaderDiscoveryResult.create(
+                discovered_skill_count=0,
+                headers=[],
+                issues=[],
+            ),
         ),
         header_validator=ValidateSkillHeaders(),
     )
@@ -59,12 +65,13 @@ def test_lint_skills_succeeds_with_zero_discovered_headers() -> None:
     result = use_case.execute(LintSkillsCommand(skills_root="empty"))
 
     assert result.succeeded
-    assert result.validated_skill_count == 0
+    assert result.discovered_skill_count == 0
 
 
 def test_lint_skills_returns_adapter_and_validation_issues_deterministically() -> None:
     discovery = FakeHeaderDiscovery(
         SkillHeaderDiscoveryResult.create(
+            discovered_skill_count=3,
             headers=[_valid_header("zeta"), _invalid_header("alpha")],
             issues=[
                 SkillValidationIssue(
@@ -82,7 +89,7 @@ def test_lint_skills_returns_adapter_and_validation_issues_deterministically() -
     result = use_case.execute(LintSkillsCommand(skills_root="skills"))
 
     assert not result.succeeded
-    assert result.validated_skill_count == VALID_DISCOVERED_HEADER_COUNT
+    assert result.discovered_skill_count == 3
     assert [issue.format() for issue in result.issues] == [
         "alpha/SKILL.md: description is required.",
         "beta/SKILL.md: frontmatter must be valid YAML.",
@@ -94,6 +101,14 @@ def test_lint_skills_command_rejects_empty_root() -> None:
         LintSkillsCommand(skills_root="")
 
 
+def test_lint_result_and_discovery_result_reject_negative_counts() -> None:
+    with pytest.raises(ValueError, match="Discovered skill count"):
+        SkillHeaderDiscoveryResult(discovered_skill_count=-1)
+
+    with pytest.raises(ValueError, match="Discovered skill count"):
+        LintSkillsResult(discovered_skill_count=-1)
+
+
 def _valid_header(name: str) -> ParsedSkillHeader:
     return ParsedSkillHeader(
         skill_file=f"{name}/SKILL.md",
@@ -101,10 +116,6 @@ def _valid_header(name: str) -> ParsedSkillHeader:
         frontmatter={
             "name": name,
             "description": f"{name} skill.",
-            "metadata": {
-                "version": "1.0.0",
-                "dependencies": {"tools": [], "skills": []},
-            },
         },
     )
 
@@ -115,9 +126,5 @@ def _invalid_header(name: str) -> ParsedSkillHeader:
         expected_name=name,
         frontmatter={
             "name": name,
-            "metadata": {
-                "version": "1.0.0",
-                "dependencies": {"tools": [], "skills": []},
-            },
         },
     )

@@ -38,7 +38,7 @@ def run_lint_skills(
         return 1
 
     print(
-        f"Validated {result.validated_skill_count} skill(s)",
+        f"Checked {result.discovered_skill_count} skill(s)",
         file=stdout,
     )
     return 0

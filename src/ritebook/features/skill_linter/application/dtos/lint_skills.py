@@ -24,19 +24,19 @@ class LintSkillsCommand:
 class LintSkillsResult:
     """Result returned after validating discovered skill headers."""
 
-    validated_skill_count: int
+    discovered_skill_count: int
     issues: tuple[SkillValidationIssue, ...] = field(default_factory=tuple)
 
     @classmethod
     def create(
         cls,
         *,
-        validated_skill_count: int,
+        discovered_skill_count: int,
         issues: list[SkillValidationIssue] | tuple[SkillValidationIssue, ...],
     ) -> "LintSkillsResult":
         """Create a lint result with deterministic issue ordering."""
         return cls(
-            validated_skill_count=validated_skill_count,
+            discovered_skill_count=discovered_skill_count,
             issues=tuple(sorted(issues)),
         )
 
@@ -47,7 +47,7 @@ class LintSkillsResult:
 
     def __post_init__(self) -> None:
         """Validate result shape after dataclass initialization."""
-        if self.validated_skill_count < 0:
-            msg = "Validated skill count must not be negative."
+        if self.discovered_skill_count < 0:
+            msg = "Discovered skill count must not be negative."
             raise ValueError(msg)
         object.__setattr__(self, "issues", tuple(sorted(self.issues)))

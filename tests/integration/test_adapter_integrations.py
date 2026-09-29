@@ -80,6 +80,7 @@ def test_filesystem_discovery_adapters_read_real_skill_files(
         "alpha",
         "zeta",
     ]
+    assert linter_result.discovered_skill_count == 2
     assert linter_result.issues == ()
 
 
@@ -291,7 +292,7 @@ def test_linter_publisher_precheck_adapter_maps_real_linter_result() -> None:
     precheck = LinterPublisherPrecheck(
         linter=_FakeLinter(
             LintSkillsResult.create(
-                validated_skill_count=1,
+                discovered_skill_count=1,
                 issues=[],
             ),
         ),

@@ -159,10 +159,5 @@ def skill_content(*, name: str) -> str:
     return f"""---
 name: {name}
 description: Example skill
-metadata:
-  version: "1.0.0"
-  dependencies:
-    tools: []
-    skills: []
 ---
 """

@@ -38,8 +38,8 @@ def parse_yaml_frontmatter(skill_file: Path) -> object | FrontmatterParseError:
         frontmatter: object = yaml.safe_load(
             "\n".join(lines[FRONTMATTER_CONTENT_START_LINE_INDEX:closing_index]),
         )
-    except yaml.YAMLError as err:
-        return FrontmatterParseError(f"frontmatter must be valid YAML: {err}")
+    except yaml.YAMLError:
+        return FrontmatterParseError("frontmatter must be valid YAML.")
     return frontmatter
 
 

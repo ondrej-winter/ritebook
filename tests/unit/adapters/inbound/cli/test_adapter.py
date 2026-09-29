@@ -121,7 +121,7 @@ class FakeLinter:
 
     def __init__(self, result: LintSkillsResult | None = None) -> None:
         """Store the result to return and commands received by the CLI."""
-        self.result = result or LintSkillsResult(validated_skill_count=2)
+        self.result = result or LintSkillsResult(discovered_skill_count=2)
         self.commands: list[LintSkillsCommand] = []
 
     def execute(self, command: LintSkillsCommand) -> LintSkillsResult:
@@ -1962,7 +1962,7 @@ def test_install_reports_retained_targets_after_lockfile_commit_failure() -> Non
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:
-    linter = FakeLinter(LintSkillsResult(validated_skill_count=3))
+    linter = FakeLinter(LintSkillsResult(discovered_skill_count=3))
     stdout = StringIO()
     stderr = StringIO()
 
@@ -1976,7 +1976,7 @@ def test_lint_skills_maps_arguments_to_application_command() -> None:
 
     assert exit_code == 0
     assert linter.commands == [LintSkillsCommand(skills_root="skills")]
-    assert stdout.getvalue() == "Validated 3 skill(s)\n"
+    assert stdout.getvalue() == "Checked 3 skill(s)\n"
     assert stderr.getvalue() == ""
 
 
@@ -2018,7 +2018,7 @@ def test_lint_skills_prints_validation_issues_to_stderr() -> None:
         ["skills", "lint", "--root", "skills"],
         linter=FakeLinter(
             LintSkillsResult.create(
-                validated_skill_count=1,
+                discovered_skill_count=1,
                 issues=[
                     SkillValidationIssue(
                         skill_file="alpha/SKILL.md",
@@ -2043,7 +2043,7 @@ def test_lint_skills_escapes_controls_in_diagnostics() -> None:
         ["skills", "lint", "--root", "skills"],
         linter=FakeLinter(
             LintSkillsResult.create(
-                validated_skill_count=1,
+                discovered_skill_count=1,
                 issues=[
                     SkillValidationIssue(
                         skill_file="alpha\nforged/SKILL.md",

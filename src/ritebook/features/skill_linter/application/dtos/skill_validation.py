@@ -79,6 +79,7 @@ class SkillValidationReport:
 class SkillHeaderDiscoveryResult:
     """Parsed skill headers and adapter-level issues from header discovery."""
 
+    discovered_skill_count: int
     headers: tuple[ParsedSkillHeader, ...] = field(default_factory=tuple)
     issues: tuple[SkillValidationIssue, ...] = field(default_factory=tuple)
 
@@ -86,14 +87,22 @@ class SkillHeaderDiscoveryResult:
     def create(
         cls,
         *,
+        discovered_skill_count: int,
         headers: list[ParsedSkillHeader] | tuple[ParsedSkillHeader, ...],
         issues: list[SkillValidationIssue] | tuple[SkillValidationIssue, ...],
     ) -> SkillHeaderDiscoveryResult:
         """Create a deterministic header discovery result."""
-        return cls(headers=tuple(headers), issues=tuple(issues))
+        return cls(
+            discovered_skill_count=discovered_skill_count,
+            headers=tuple(headers),
+            issues=tuple(issues),
+        )
 
     def __post_init__(self) -> None:
         """Normalize discovery output ordering after initialization."""
+        if self.discovered_skill_count < 0:
+            msg = "Discovered skill count must not be negative."
+            raise ValueError(msg)
         object.__setattr__(
             self,
             "headers",
@@ -102,7 +111,7 @@ class SkillHeaderDiscoveryResult:
         object.__setattr__(self, "issues", tuple(sorted(self.issues)))
 
 
-FrontmatterMapping = Mapping[str, object]
+FrontmatterMapping = Mapping[object, object]
 
 
 def _require_non_empty_text(value: str, *, field_name: str) -> None:

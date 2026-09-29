@@ -161,7 +161,7 @@ def write_valid_skill(skills_root: Path) -> SkillWriter:
 
 @pytest.fixture
 def write_invalid_skill(skills_root: Path) -> InvalidSkillWriter:
-    """Return a helper that writes a skill with one stable metadata failure."""
+    """Return a helper that writes a skill with one stable header failure."""
 
     def write(name: str) -> Path:
         skill_file = skills_root / name / "SKILL.md"
@@ -191,14 +191,6 @@ def valid_skill_content(name: str, description: str) -> str:
     return f"""---
 name: {name}
 description: {description}
-metadata:
-  version: "1.0.0"
-  dependencies:
-    tools:
-      - name: git
-        purpose: Inspect version-control state.
-        required: true
-    skills: []
 ---
 # {name}
 """
@@ -208,11 +200,6 @@ def invalid_skill_content(name: str) -> str:
     """Build Agent Skill markdown with a stable missing-description failure."""
     return f"""---
 name: {name}
-metadata:
-  version: "1.0.0"
-  dependencies:
-    tools: []
-    skills: []
 ---
 # {name}
 """

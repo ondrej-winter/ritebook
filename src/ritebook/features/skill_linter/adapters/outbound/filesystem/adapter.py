@@ -5,6 +5,7 @@ from pathlib import Path
 from ritebook.adapters.outbound.filesystem import (
     DiscoveredNamedFile,
     FilesystemSkillDiscoveryError,
+    SkillFileReadError,
     discover_named_files,
 )
 from ritebook.features.skill_linter.adapters.outbound.filesystem.frontmatter import (
@@ -31,7 +32,6 @@ class FilesystemSkillHeaderDiscovery:
 
     def discover_headers(self, skills_root: str) -> SkillHeaderDiscoveryResult:
         """Discover non-hidden skill headers below the explicit skills root."""
-        headers: list[ParsedSkillHeader] = []
         issues: list[SkillValidationIssue] = []
         try:
             discovered_files = discover_named_files(
@@ -75,15 +75,38 @@ class FilesystemSkillHeaderDiscovery:
                     ),
                 )
 
-        for discovered in parse_candidates:
+        headers, parse_issues = _parse_candidates(parse_candidates)
+        issues.extend(parse_issues)
+
+        return SkillHeaderDiscoveryResult.create(
+            discovered_skill_count=len(discovered_files),
+            headers=headers,
+            issues=issues,
+        )
+
+
+def _parse_candidates(
+    candidates: list[DiscoveredNamedFile],
+) -> tuple[list[ParsedSkillHeader], list[SkillValidationIssue]]:
+    headers: list[ParsedSkillHeader] = []
+    issues: list[SkillValidationIssue] = []
+    for discovered in candidates:
+        try:
             parsed = parse_skill_header(
                 discovered.path,
                 relative_skill_file=discovered.relative_file,
                 expected_name=discovered.directory_name,
             )
-            if isinstance(parsed, SkillValidationIssue):
-                issues.append(parsed)
-            else:
-                headers.append(parsed)
-
-        return SkillHeaderDiscoveryResult.create(headers=headers, issues=issues)
+        except SkillFileReadError:
+            issues.append(
+                SkillValidationIssue(
+                    skill_file=discovered.relative_file,
+                    message="skill file must be readable UTF-8 text.",
+                ),
+            )
+            continue
+        if isinstance(parsed, SkillValidationIssue):
+            issues.append(parsed)
+        else:
+            headers.append(parsed)
+    return headers, issues

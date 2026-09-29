@@ -19,7 +19,7 @@ class LinterPublisherPrecheck:
         """Run linter validation and map its report to publisher precheck DTOs."""
         result = self._linter.execute(LintSkillsCommand(skills_root=skills_root))
         return SkillPrecheckResult.create(
-            checked_skill_count=result.validated_skill_count,
+            checked_skill_count=result.discovered_skill_count,
             issues=[
                 SkillPrecheckIssue(
                     skill_file=issue.skill_file,

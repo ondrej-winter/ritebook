@@ -7,7 +7,7 @@ from ritebook.features.skill_linter.application.dtos import (
     SkillValidationIssue,
 )
 
-VALIDATED_SKILL_COUNT = 2
+DISCOVERED_SKILL_COUNT = 2
 
 
 class FakeLinter:
@@ -25,20 +25,22 @@ class FakeLinter:
 
 
 def test_linter_publisher_precheck_maps_successful_lint_result() -> None:
-    linter = FakeLinter(LintSkillsResult(validated_skill_count=VALIDATED_SKILL_COUNT))
+    linter = FakeLinter(
+        LintSkillsResult(discovered_skill_count=DISCOVERED_SKILL_COUNT),
+    )
 
     result = LinterPublisherPrecheck(linter=linter).run_prechecks("skills")
 
     assert linter.commands == [LintSkillsCommand(skills_root="skills")]
     assert result.succeeded
-    assert result.checked_skill_count == VALIDATED_SKILL_COUNT
+    assert result.checked_skill_count == DISCOVERED_SKILL_COUNT
     assert result.issues == ()
 
 
 def test_linter_publisher_precheck_maps_lint_issues() -> None:
     linter = FakeLinter(
         LintSkillsResult.create(
-            validated_skill_count=1,
+            discovered_skill_count=1,
             issues=[
                 SkillValidationIssue(
                     skill_file="alpha/SKILL.md",

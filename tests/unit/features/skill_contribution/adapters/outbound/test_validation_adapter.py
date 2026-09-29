@@ -25,7 +25,7 @@ class FakeLinter:
         result: LintSkillsResult | None = None,
         failure: Exception | None = None,
     ) -> None:
-        self.result = result or LintSkillsResult(validated_skill_count=1)
+        self.result = result or LintSkillsResult(discovered_skill_count=1)
         self.failure = failure
         self.commands: list[LintSkillsCommand] = []
 
@@ -57,7 +57,7 @@ def test_validation_adapter_converts_lint_issues_without_exposing_issue_details(
     )
     linter = FakeLinter(
         result=LintSkillsResult.create(
-            validated_skill_count=1,
+            discovered_skill_count=1,
             issues=[
                 SkillValidationIssue(
                     skill_file="skills/code-review/SKILL.md",

@@ -2,13 +2,8 @@
 name: frontend-ui-engineering
 description: Build, review, or refine browser-facing user interfaces so they are accessible, responsive, performant, visually coherent, and aligned with the project design system.
 metadata:
-  version: "1.2.0"
-  dependencies:
-    tools: []
-    skills:
-      - name: browser-runtime-verification
-        purpose: Verify browser-facing rendering, interaction, focus, accessibility, network behavior, and visual layout.
-        required: false
+  version: "1.3.3"
+  last-verified: "2026-10-01T09:34:17+02:00"
 ---
 
 # Frontend UI Engineering
@@ -21,6 +16,14 @@ template-driven.
 This skill is intentionally frontend-specific. Keep browser, UI, accessibility,
 responsive layout, and interaction guidance, but avoid assuming a particular
 framework, component library, styling system, or state-management tool.
+
+A completed UI implementation requires repository access plus evidence from a
+real browser runtime, gathered manually or through browser automation, for the
+changed rendering, interaction, responsive, and accessibility behavior. If that
+execution is unavailable, return a UI design or code review only when it is
+independently useful, label it design- or review-only and runtime-unverified, and
+do not apply or report a UI change as complete. If implementation was requested,
+report the workflow as blocked.
 
 ## When to use this skill
 
@@ -206,4 +209,6 @@ instead of claiming improvement from code inspection alone.
 - responsive behavior was checked at representative sizes
 - loading, empty, error, and success states are handled
 - user-facing performance risks were checked and measured when relevant
-- browser runtime verification was run or skipped with a reason
+- browser runtime verification was run for implemented UI work
+- any design- or review-only result is labeled runtime-unverified; unavailable
+  required browser evidence leaves implementation blocked rather than complete

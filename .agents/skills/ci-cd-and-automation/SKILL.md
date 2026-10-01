@@ -2,10 +2,8 @@
 name: ci-cd-and-automation
 description: Design, review, or improve CI/CD and automation workflows for quality gates, deployment safety, rollback readiness, secrets handling, and feedback loops across any technology stack.
 metadata:
-  version: "1.5.0"
-  dependencies:
-    tools: []
-    skills: []
+  version: "1.6.3"
+  last-verified: "2026-10-01T09:34:17+02:00"
 ---
 
 # CI/CD and Automation
@@ -17,6 +15,17 @@ verification repeatable, failures actionable, and releases reversible.
 CI/CD should enforce the project’s quality expectations without assuming a
 specific language, package manager, repository host, CI provider, deployment
 platform, or test framework.
+
+## Execution boundary
+
+A design-only automation artifact may define triggers, jobs, commands,
+permissions, failure handling, and recovery without provider access. Label that
+result design-only and runtime-unverified, and keep unknown commands or provider
+details as explicit placeholders. Fully implemented automation requires editing
+the canonical configuration and validating syntax plus intended behavior in the
+applicable project or provider environment. If the request requires working
+automation and that execution is unavailable, report the workflow as blocked;
+do not claim that a proposed or merely parsed workflow runs correctly.
 
 ## When to use this skill
 
@@ -84,11 +93,11 @@ Common gates include:
 
 Order fast deterministic checks before slower or environment-heavy checks.
 
-For Python type-checking gates, use the project's configured `ty` command when
-present. If the target project has not selected a type checker and the workflow
-must introduce one, prefer `ty` rather than `mypy`. Run it through the project's
-declared dependency and command mechanism so local and CI execution use the same
-version; do not assume a globally installed executable. Treat replacement of an
+Use the project's configured type, schema, or contract checker. Run it through
+the project's declared dependency and command mechanism so local and CI execution
+use the same version; do not assume a globally installed executable. If a required
+checker has not been selected, require an explicit project- or technology-specific
+tooling decision before making the gate executable. Treat replacement of an
 established checker as an explicit migration rather than incidental CI cleanup.
 
 ### 3. Keep provider configuration portable
@@ -243,3 +252,5 @@ Confirm:
 - deployment workflows include health checks and rollback guidance
 - maintenance automation has review and recovery paths
 - validation was run or skipped validation is documented
+- the result is labeled implemented and verified, design-only and
+  runtime-unverified, or blocked; a design is not reported as working automation

@@ -1,0 +1,29 @@
+# Project instructions
+
+## Repository orientation
+
+{{Essential verified purpose and module boundaries; omit an unnecessary full tree.}}
+
+## Development and validation
+
+{{Supported command entry points with working directories and material prerequisites.}}
+{{Point to authoritative executable definitions instead of duplicating their settings.}}
+
+## Constraints
+
+{{Non-obvious shared obligations supported by project decisions or existing policy.}}
+
+## Git and external actions
+
+Local inspection, editing, and validation are allowed within the current task.
+Require explicit user authorization before creating commits, pushing, publishing,
+mutating remote systems, or running destructive commands. Preserve any stricter
+existing project policy.
+
+## Required context
+
+{{Conditional reading obligations: before changing X, read the existing source Y.}}
+
+## Completion
+
+{{Existing expectations for checks, regression evidence, and reporting unverified work.}}

@@ -2,16 +2,8 @@
 name: update-project-docs
 description: Update project-facing documentation after a reader-visible behavior, configuration, operation, or developer workflow change.
 metadata:
-  version: "1.2.2"
-  dependencies:
-    tools: []
-    skills:
-      - name: documentation-and-adrs
-        purpose: Decide whether a change needs an ADR, project documentation, interface documentation, runbook, or no durable documentation.
-        required: false
-      - name: write-adr
-        purpose: Record durable architectural, product, data, security, or workflow decisions when documentation updates require an ADR.
-        required: false
+  version: "1.3.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Update Project Docs

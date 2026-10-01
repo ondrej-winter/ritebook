@@ -1,275 +1,261 @@
 ---
 name: api-and-interface-design
-description: Design stable APIs, module contracts, schemas, component boundaries, command interfaces, or other public integration surfaces that are predictable, documented, and hard to misuse.
+description: Design or review stable APIs and interfaces that are explicit, compatible, and hard to misuse. Use when creating or changing HTTP, event, library, module, CLI, component, schema, configuration, plugin, or other durable integration contracts.
 metadata:
-  version: "1.1.4"
-  dependencies:
-    tools: []
-    skills:
-      - name: deprecation-and-migration
-        purpose: Plan breaking interface changes, consumer migration, and removal.
-        required: false
+  version: "1.3.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # API and Interface Design
 
-Use this skill when designing or changing a surface that another caller,
-component, service, team, user, or automated process depends on. The goal is to
-make the interface explicit, stable, observable enough to verify, and difficult
-to misuse.
+Use this skill for a boundary that another caller, component, service, team, user,
+or automated process depends on. The goal is a contract that consumers can
+understand, providers can verify, and maintainers can evolve without accidental
+breakage.
 
-This applies to HTTP APIs, message contracts, library interfaces, module
-boundaries, plugin hooks, command-line interfaces, component inputs, schemas,
-configuration surfaces, and any other boundary where one part of a system talks
-to another.
+The expected output is a contract proposal or change review that identifies the
+boundary and consumers, defines observable behavior, classifies compatibility,
+records unresolved decisions, and names consumer-facing verification.
 
-## When to use this skill
+Do not use this skill to standardize private helper shapes with no durable
+consumer or independently observable behavior.
 
-Use this skill when you need to:
+## Design rules
 
-- design a new public or cross-boundary interface
-- change an existing interface without surprising consumers
-- define input, output, error, or event contracts
-- choose compatibility, versioning, pagination, or naming conventions
-- review whether an interface is predictable and hard to misuse
-
-Do not use this skill to standardize internal helper shapes that have no durable
-consumer or observable boundary.
-
-## Principles
-
-### Hyrum's Law
-
-With a sufficient number of users of an API, all observable behaviors of your
-system will be depended on by somebody, regardless of what you promise in the
-contract.
-
-Treat observable behavior as a commitment. This includes response shape, error
-codes, message text, ordering, timing, default values, side effects, and
-undocumented quirks.
-
-Design implications:
-
-- expose only behavior you are willing to support
-- avoid leaking implementation details through names, errors, timing, or data
-  shape
-- plan deprecation before consumers depend on the old behavior
-- remember that tests cannot prove a change is safe for undocumented consumer
-  dependencies
-
-### One-version rule
-
-Avoid forcing consumers to choose between multiple active versions of the same
-interface or dependency. Multiple versions increase maintenance cost and create
-compatibility problems when different consumers need different versions at the
-same time.
-
-Prefer extending one stable interface over forking it. If multiple versions are
-unavoidable, document the support window, migration path, and removal criteria.
+- Start from consumer tasks and failure recovery, not provider internals.
+- Treat observable behavior as a compatibility surface, including defaults,
+  errors, ordering, side effects, and documented timing or limits.
+- Follow the boundary's established domain language and local conventions before
+  introducing a new style.
+- Prefer one evolvable contract over indefinitely maintained parallel versions.
+- Make correct use obvious and incorrect use difficult or invalid.
+- Validate untrusted data once at the boundary, then use trusted internal forms.
+- Do not claim compatibility without evidence about affected consumers.
 
 ## Steps
 
-### 1. Identify the boundary and consumers
+### 1. Inspect the existing boundary before designing
 
-State what boundary is being designed and who or what consumes it.
+Read the request and the smallest relevant set of current contracts, schemas,
+code, tests, examples, generated clients, call sites, documentation, and runtime
+evidence. Determine which artifact is authoritative and whether any file is
+generated or synchronized from another source.
 
-Capture:
+Separate what you find into:
 
-- consumer types, such as users, services, modules, plugins, clients, scripts, or
-  operators
-- whether the interface is public, internal but cross-team, or private to one
-  implementation
-- expected stability and compatibility requirements
-- inputs, outputs, side effects, errors, and ordering guarantees
-- operational constraints such as latency, rate limits, retries, or idempotency
+- **Observed:** current behavior supported by code, tests, traffic, or consumer use.
+- **Required:** behavior mandated by the request, accepted decisions, or an
+  existing contract.
+- **Proposed:** a design choice not yet established.
+- **Unknown:** a fact or consumer expectation that still needs evidence.
 
-The more durable or widely consumed the interface is, the more explicit the
-contract should be.
+Existing implementation proves current behavior, not that the behavior is
+intentional or desirable. If an unknown changes compatibility, security,
+correctness, or consumer work, surface it instead of guessing.
 
-### 2. Define the contract before implementation
+### 2. Write a boundary brief
 
-Describe the interface before building the implementation. Use the contract
-format that fits the project, such as an OpenAPI document, schema file,
-protocol definition, type definition, command help text, ADR, README section, or
-test fixture.
-
-At minimum, define:
-
-- operation names and responsibilities
-- required and optional inputs
-- output shape and generated fields
-- default values and side effects
-- error shape and retry semantics
-- compatibility expectations
-- examples for common and edge cases
-
-For example, a neutral resource contract might state:
+Record enough context to constrain the design:
 
 ```md
-Operation: create item
-Input: required name, optional description
-Output: item identifier, name, description, creation timestamp
-Errors: validation failed, duplicate name, unauthorized
-Compatibility: future optional fields may be added to output
+Boundary: <name and kind>
+Purpose: <one responsibility>
+Consumers: <types, owners, and known versions or capabilities>
+Stability: <private, internal cross-team, partner, or public>
+Trust boundary: <trusted and untrusted sides>
+Current source of truth: <schema, type, help text, docs, tests, or implementation>
+Constraints: <latency, scale, availability, ordering, retries, rate limits, or none>
 ```
 
-### 3. Choose consistent error semantics
+Name the consumer tasks and recovery paths the interface must support. Keep the
+boundary cohesive; split unrelated responsibilities rather than creating a
+single convenience interface.
 
-Pick one error strategy for the boundary and apply it consistently.
+### 3. Define the smallest complete contract
 
-Define:
+Use the project's established contract format, such as a type definition,
+OpenAPI document, schema, protocol definition, command help text, component API,
+ADR, README section, or executable fixture.
 
-- how callers detect success or failure
-- whether errors are returned, raised, emitted, logged, or encoded as status
-  values
-- machine-readable error identifiers
-- human-readable messages
-- which details are safe to expose
-- whether an operation can be retried
+For each operation, message, command, or interaction, define:
 
-For request-response APIs, this might be a status code plus a structured error
-body. For libraries, it might be typed exceptions or result values. For command
-interfaces, it might be exit codes plus structured output.
+- intent and preconditions
+- required, optional, nullable, and mutually exclusive inputs
+- output shape, generated fields, and ownership of values
+- invariants, defaults, units, formats, and identifier semantics
+- side effects, atomicity, concurrency, and ordering guarantees
+- failure, timeout, cancellation, and retry behavior
+- authorization or capability requirements when observable to the caller
+- common, edge, and failure examples
 
-Do not mix patterns at the same boundary without a documented reason. If some
-operations return empty values, some raise errors, and others return structured
-errors, consumers cannot reliably predict behavior.
+A compact neutral record is often enough:
 
-### 4. Validate at trust boundaries
+```md
+Operation: <intent-oriented name>
+Input: <fields, constraints, omission/null semantics>
+Output: <result and system-owned fields>
+Effects: <state changes, atomicity, ordering>
+Failures: <stable code, condition, retryability, recovery>
+Compatibility: <what consumers may ignore or must handle>
+Examples: <success and representative failure>
+```
 
-Validate external or less-trusted data where it enters the system. After
-validation, keep internal code focused on domain behavior instead of repeatedly
-revalidating the same already-trusted data.
+Keep creation input, update input, returned output, and internal representation
+separate when they have different ownership or constraints. Do not require
+callers to send generated identifiers, timestamps, audit fields, or computed
+values owned by the provider.
 
-Validate data from:
+### 4. Make the contract predictable and hard to misuse
 
-- user input
-- network requests
-- files and configuration
-- environment variables
-- message queues or events
-- third-party service responses
-- generated or model-produced content
+Use domain names rather than storage, framework, transport, or vendor terms.
+Apply one convention for casing, tense, units, identifiers, booleans, operations,
+and status values within the boundary.
 
-Treat third-party responses as untrusted. Validate their shape and content before
-using them in logic, rendering, persistence, or security decisions.
+Prefer designs that encode valid choices directly:
 
-Avoid scattering duplicate validation between internal functions that share the
-same trusted contract.
+- use constrained domain values instead of loosely related flags
+- distinguish absent, empty, null, zero, and default when their meanings differ
+- avoid parameters whose meaning changes based on another hidden condition
+- use safe defaults and require explicit opt-in for destructive behavior
+- avoid exposing persistence models, SDK objects, framework responses, or mutable
+  internals as public contract types
+- define how consumers handle unknown fields, values, operations, or event types
 
-### 5. Prefer additive compatible changes
+Do not make consumers reconstruct domain meaning from message text or several
+weakly related fields.
 
-Extend interfaces without breaking existing consumers.
+### 5. Define failures, retries, and side effects together
 
-Usually compatible:
+Choose one error strategy per boundary and apply it consistently. It may use
+status plus a structured body, typed errors or result values, exit codes plus
+output, rejected events, or another locally established mechanism.
 
-- adding optional input fields
-- adding output fields consumers can ignore
-- adding new operations without changing existing ones
-- adding new enum or status values only when consumers are expected to handle
-  unknown values
-- relaxing overly strict validation when it does not create ambiguity
+For every caller-actionable failure, define:
 
-Usually breaking:
+- a stable machine-readable identifier
+- the condition that produces it
+- safe human-readable context
+- whether retry is allowed and under what conditions
+- whether work may already have completed or partially completed
+- the caller's recovery action
 
-- removing fields, operations, status values, or error codes
-- changing field meaning, type, units, default values, or ordering
-- making optional fields required
-- narrowing accepted input values
-- changing idempotency, side effects, or authorization semantics
+Human-readable messages may change and should not be the only machine contract.
+Do not expose secrets, stack traces, queries, paths, or provider internals.
 
-When a breaking change is unavoidable, use a deprecation and migration workflow
-to plan communication, migration, compatibility support, and removal timing. If
-the `deprecation-and-migration` skill is available, use it for that follow-up
-planning.
+If callers can retry a state-changing operation, define idempotency, deduplication,
+or conflict behavior. A timeout or lost response does not prove that the provider
+made no change.
 
-### 6. Make naming predictable
+### 6. Specify collections, updates, and concurrency
 
-Use names that match the existing interface style and domain language. Prefer
-one convention per boundary over mixing styles.
+For list, search, stream, or batch operations, define limits, pagination or
+streaming, filtering, sorting, empty results, stable ordering, page-token rules,
+and consistency when data changes during iteration.
 
-Check names for:
+For updates, define:
 
-- resource or concept names that reflect the domain rather than implementation
-  details
-- operation names that describe intent without duplicating transport mechanics
-- field names that use consistent casing, tense, and units
-- boolean names that read clearly as true or false
-- status values that are stable, documented, and safe for unknown-value handling
-- identifiers that are hard to confuse across entity types
+- replacement versus partial-update semantics
+- omitted versus explicit empty or null values
+- which fields are caller-owned or system-owned
+- idempotency and validation behavior
+- conflict detection, version tokens, or last-write behavior
+- atomicity across multiple changed fields or items
 
-Do not import a naming convention from another language, framework, or transport
-unless it is already the project convention or required by consumers.
+Do not promise a stable order, snapshot, or exactly-once effect unless the
+implementation and verification can support it.
 
-### 7. Design collections and partial updates explicitly
+### 7. Assess compatibility from each consumer's perspective
 
-For list or search operations, define:
+Compare current and proposed observable behavior. Use a table when more than one
+surface or consumer is affected:
 
-- pagination or streaming behavior
-- filtering and sorting options
-- default limits and maximum limits
-- result ordering stability
-- empty result behavior
-- consistency expectations when data changes during iteration
+```md
+| Surface | Current | Proposed | Affected consumers | Classification | Evidence or mitigation |
+| --- | --- | --- | --- | --- | --- |
+| <surface> | <behavior> | <behavior> | <who> | <classification> | <proof or action> |
+```
 
-For partial updates, define:
+Use these classifications:
 
-- how omitted fields differ from explicit empty or null values
-- whether updates are idempotent
-- how conflicts are detected
-- whether generated fields can be changed by consumers
+- **Compatible:** known supported consumers continue to work without changes.
+- **Conditional:** safe only when a stated consumer behavior or capability holds.
+- **Breaking:** a supported consumer must change or observable semantics regress.
+- **Unknown:** evidence is insufficient; do not market the change as compatible.
 
-### 8. Separate caller input from system output
+Check names, types, meanings, units, requiredness, defaults, validation, errors,
+ordering, side effects, idempotency, authorization, limits, and promised timing.
+An additive change is not automatically compatible: strict decoders may reject
+new fields, exhaustive consumers may fail on new enum values, and scripts may
+parse human-readable CLI output.
 
-Do not require callers to provide fields that the system owns, such as generated
-identifiers, creation timestamps, computed values, or audit fields.
+Prefer additive evolution only when the consumer contract permits it. Do not use
+versioning as the first response to an unclear design, or maintain parallel
+versions without support windows and removal criteria. When a breaking change is
+necessary, use `deprecation-and-migration` if available to plan migration and
+removal.
 
-Keep separate shapes for:
+### 8. Check concerns specific to the boundary kind
 
-- creation input
-- update input
-- persisted or returned output
-- internal representation when it differs from the public contract
+Read only the relevant section of `references/boundary-checklist.md` for HTTP or
+RPC, messages and events, libraries and plugins, CLI, UI components, or schemas
+and configuration. Local project and protocol conventions take precedence over
+generic examples.
 
-This separation keeps callers from depending on implementation details and makes
-future changes easier.
+### 9. Verify from the consumer side
 
-### 9. Verify the interface from the consumer perspective
+Use the narrowest checks that prove the promised contract:
 
-Validate the design and implementation with consumer-facing checks.
+- schema, type, protocol, or command-help validation
+- provider contract tests for success and failure behavior
+- consumer or compatibility tests against supported clients
+- negative tests for malformed, unauthorized, conflicting, and out-of-range input
+- retry, idempotency, timeout, duplicate, ordering, and pagination tests when relevant
+- executable examples or fixtures that match actual behavior
+- generated-client or downstream build checks when the contract drives them
+- documentation review against the implemented surface
 
-Useful verification includes:
+Test observable behavior rather than private implementation structure. If this is
+a design-only task, provide a concrete verification plan and identify evidence
+that cannot yet exist.
 
-- contract tests or schema validation
-- examples that can be executed or copied safely
-- compatibility tests for old and new consumers
-- negative tests for validation and error behavior
-- documentation review against actual behavior
-- migration tests when changing an existing interface
+### 10. Hand off the contract and decisions
 
-Verification should prove the contract is understandable and stable from the
-consumer's point of view, not only that the provider implementation works.
+Return or update the canonical contract artifact and summarize:
+
+```md
+Boundary: <name>
+Contract artifact: <path or proposed format>
+Compatibility: <compatible, conditional, breaking, or unknown>
+Key decisions: <settled semantics and rationale>
+Unresolved: <question, impact, owner or evidence needed>
+Verification: <checks passed or planned>
+Migration: <none, or link/next step>
+```
+
+Do not hide unresolved compatibility behind vague wording. State what is known,
+what is assumed, and what blocks implementation or release.
 
 ## Red flags
 
-- observable behavior is undocumented but likely to be consumed
-- operations at the same boundary use inconsistent error shapes
-- input validation is missing at external boundaries
-- third-party responses are trusted without validation or sanitization
-- fields expose storage, framework, or implementation details unnecessarily
-- collection operations have no pagination, streaming, or limit strategy
-- partial updates do not define omitted, empty, and null value behavior
-- compatibility impact is unclear for changed fields or status values
-- examples require a specific framework even though the skill is meant to be
-  reusable
+- the contract was inferred from provider code alone without checking consumers
+- a generated or synchronized artifact is edited instead of its source
+- inputs, outputs, errors, defaults, or side effects remain implicit
+- error messages are parsed because no stable error identifier exists
+- transport, framework, persistence, or vendor types leak across the boundary
+- absence, empty, null, default, duplicate, or retry semantics are ambiguous
+- collection results have no limit, pagination, streaming, or ordering strategy
+- an additive change is called safe without checking consumer tolerance
+- versioning creates permanent forks without migration and removal criteria
+- examples and documentation disagree with executable behavior
 
-## Output checklist
+## Verification checklist
 
-- boundary and consumers are explicit
-- contract is documented before or alongside implementation
-- input, output, error, and side-effect semantics are consistent
-- validation happens at trust boundaries
-- changes are additive or have a migration plan
-- naming follows the local interface convention
-- collection and partial-update behavior is defined when relevant
-- consumer-facing tests, examples, or documentation verify the contract
+- [ ] The boundary, purpose, consumers, stability, and source of truth are explicit.
+- [ ] Observed, required, proposed, and unknown behavior are distinguishable.
+- [ ] Inputs, outputs, ownership, effects, errors, and recovery are documented.
+- [ ] Names, defaults, nullability, units, identifiers, and unknown-value behavior are clear.
+- [ ] Collections, updates, concurrency, retries, and idempotency are covered when relevant.
+- [ ] Compatibility is classified per affected consumer with evidence or mitigation.
+- [ ] Breaking changes have a migration path rather than only a new version label.
+- [ ] Consumer-facing tests, examples, schemas, or a concrete verification plan cover the contract.
+- [ ] The handoff records unresolved decisions and does not overstate certainty.

@@ -2,16 +2,8 @@
 name: write-adr
 description: Create an Architecture Decision Record with the next sequential number, a clear title, and documented consequences when asked to record an architectural decision.
 metadata:
-  version: "1.1.5"
-  dependencies:
-    tools: []
-    skills:
-      - name: documentation-and-adrs
-        purpose: Decide whether an ADR is the right documentation artifact for the change.
-        required: false
-      - name: update-project-docs
-        purpose: Update related project-facing documentation after recording the decision.
-        required: false
+  version: "1.2.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Write an Architecture Decision Record (ADR)

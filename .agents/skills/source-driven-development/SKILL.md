@@ -2,10 +2,8 @@
 name: source-driven-development
 description: Grounds implementation decisions in authoritative sources. Use when building with external APIs, libraries, frameworks, platforms, standards, or tools where current documented behavior matters.
 metadata:
-  version: "1.1.1"
-  dependencies:
-    tools: []
-    skills: []
+  version: "1.2.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Source-Driven Development

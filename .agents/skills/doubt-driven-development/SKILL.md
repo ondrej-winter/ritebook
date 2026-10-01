@@ -2,10 +2,8 @@
 name: doubt-driven-development
 description: Cross-examine non-trivial decisions with a fresh, adversarial review loop before they stand, especially when correctness, safety, migration risk, or unfamiliar code makes overconfidence costly.
 metadata:
-  version: "1.1.2"
-  dependencies:
-    tools: []
-    skills: []
+  version: "1.2.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Doubt-Driven Development
@@ -40,8 +38,8 @@ not recursively spawn more reviewers.
 
 For orchestration details, see `references/orchestration-patterns.md`.
 
-If fresh-context review is unavailable, use a degraded self-review fallback only
-when necessary and label it as degraded.
+If the optional `independent-review` capability is unavailable, use a degraded
+self-review fallback only when necessary and label it as degraded.
 
 ## Steps
 

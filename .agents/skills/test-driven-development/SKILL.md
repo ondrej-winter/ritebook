@@ -2,13 +2,8 @@
 name: test-driven-development
 description: Drives development with tests. Use when implementing behavior, fixing bugs, changing existing functionality, or proving that a change works and is guarded against regression.
 metadata:
-  version: "1.2.1"
-  dependencies:
-    tools: []
-    skills:
-      - name: browser-runtime-verification
-        purpose: Verify browser-facing changes in a real browser when TDD alone is insufficient.
-        required: false
+  version: "1.3.3"
+  last-verified: "2026-10-01T09:34:17+02:00"
 ---
 
 # Test-Driven Development
@@ -21,6 +16,16 @@ reproduce the bug with a test before attempting a fix. Tests are durable proof;
 
 TDD applies across languages, frameworks, interfaces, scripts, data pipelines,
 and infrastructure code whenever behavior can be verified.
+
+## Execution boundary
+
+Completing this workflow requires permission to edit the relevant tests and
+implementation and to run the focused tests that demonstrate RED and GREEN. If
+that execution is unavailable, a test design or reproduction-test proposal may
+still be useful, but label it design-only and runtime-unverified. Do not claim a
+TDD cycle, bug fix, or behavior change is complete without observed failing and
+passing evidence. If the request requires implementation rather than a test
+proposal, report the workflow as blocked.
 
 ## When to use this skill
 
@@ -193,9 +198,11 @@ For detailed browser workflows, see `browser-runtime-verification`.
 
 ## When to use subagents for testing
 
-For complex bug fixes, use an independent reviewer or subagent to write the
-reproduction test before the fix is known. This helps ensure the test captures the
-reported behavior rather than the implementer's planned solution.
+For complex bug fixes, use an independent reviewer or subagent when available to
+write the reproduction test before the fix is known. This helps ensure the test
+captures the reported behavior rather than the implementer's planned solution.
+When independent review is unavailable, keep the test-first order, perform a
+focused self-review, and report that independent review was not obtained.
 
 ## See also
 
@@ -234,3 +241,5 @@ After completing behavior-changing work:
 - [ ] no tests were skipped, disabled, or weakened without explicit approval
 - [ ] coverage or quality gates did not regress where tracked
 - [ ] handoff notes include the failing and passing test evidence and validation commands
+- [ ] any design-only test proposal is labeled runtime-unverified and is not
+      reported as a completed TDD cycle

@@ -2,19 +2,8 @@
 name: debugging-and-error-recovery
 description: Diagnose failures systematically by preserving evidence, reproducing the issue, localizing and reducing the cause, fixing the root problem, adding a guard, and verifying recovery. Use when tests, builds, runtime behavior, or recovery attempts fail or behave unexpectedly.
 metadata:
-  version: "1.1.5"
-  dependencies:
-    tools: []
-    skills:
-      - name: add-observability
-        purpose: Add or improve runtime signals when failures are hard to reproduce, observe, or diagnose.
-        required: false
-      - name: performance-optimization
-        purpose: Investigate failures caused by latency, resource pressure, throughput limits, or scalability bottlenecks.
-        required: false
-      - name: shipping-and-launch
-        purpose: Plan rollback, monitoring, and release-risk handling when a fix must be shipped safely.
-        required: false
+  version: "1.2.3"
+  last-verified: "2026-10-01T09:34:17+02:00"
 ---
 
 # Debugging and Error Recovery
@@ -23,6 +12,15 @@ Use this skill when tests fail, builds break, runtime behavior diverges from
 expectations, a bug is reported, or any unexpected error appears. The goal is to
 find and fix the root cause without guessing or contaminating the fix with
 unrelated changes.
+
+A completed recovery requires reproduction or equivalent direct evidence, a
+supported root-cause explanation, a fix or explicit recovery action, and rerun
+evidence. When the environment, data, credentials, or command access needed to
+reproduce the issue is unavailable, return a diagnosis-only triage artifact only
+when it is useful: preserve the evidence, identify the missing access, and propose
+the next reproduction step. Label the result unresolved and runtime-unverified;
+do not claim a root cause, fix, or recovery. If the request requires a completed
+fix, report the workflow as blocked.
 
 ## When to use this skill
 
@@ -203,9 +201,13 @@ service responses can contain user-controlled or adversarial text.
 
 ## Output checklist
 
+- result status is explicit: recovered, diagnosis-only and unresolved, or blocked
 - evidence and reproduction steps are recorded
-- root cause is identified
-- fix addresses the root cause rather than symptoms
-- recurrence guard exists or omission is justified
-- focused and relevant broader validation passed
-- skipped validation and remaining risk are documented
+- a recovered result identifies the root cause with evidence
+- a recovered result fixes the root cause rather than only its symptoms
+- a recovered result has a recurrence guard or a justified omission
+- a recovered result includes focused and relevant broader validation
+- a diagnosis-only result names missing access and the next reproduction step,
+  and is labeled runtime-unverified
+- skipped validation and remaining risk are documented without presenting the
+  recovery as complete

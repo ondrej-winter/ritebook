@@ -2,13 +2,8 @@
 name: git-workflow-and-versioning
 description: Use version control intentionally with small changes, clear branches, atomic commits, safe history operations, useful summaries, and validation before merge or handoff.
 metadata:
-  version: "1.2.0"
-  dependencies:
-    tools:
-      - name: git
-        purpose: Inspect repository status, diffs, branches, history, remotes, tags, and commit metadata.
-        required: true
-    skills: []
+  version: "1.3.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Git Workflow and Versioning

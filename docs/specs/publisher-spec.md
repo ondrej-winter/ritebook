@@ -1,14 +1,19 @@
-# Spec: Publisher
+# Specification: Publisher
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 2.1
-> **Last reviewed:** 2026-08-27
-> **Implementation state:** Implemented
-> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
-> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 2.1
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-08-27
+- Implementation state: Implemented
+- Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: None
+
+## Objective and Context
 
 Ritebook provides a publisher-side workflow for corporate skill maintainers
 to generate a deterministic index of approved internal agent skills from a
@@ -20,7 +25,7 @@ The primary user is a skill maintainer or curator inside a company. The workflow
 supports controlled internal skill curation and downstream developer
 installation.
 
-## Current context
+### Current-state evidence
 
 - Publisher and linter capabilities are implemented as separate vertical feature
   slices under `src/ritebook/features/`.
@@ -30,20 +35,25 @@ installation.
   candidate, validates its header, and enforces schema-v1 depth, canonical
   segments, duplicate-path, and mixed-node constraints before publication.
 
-## Assumptions
+## Scope
 
-- Publisher-maintained skills repositories are Git repositories with a reviewable
-  root `ritebook-index.json` artifact.
-- Schema version `1` and the shared catalog contract remain the compatibility
-  baseline.
-- Unresolved assumptions: None.
+- In scope: Publishing one deterministic schema-v1
+  `ritebook-index.json` from an explicit skills root, shared lint validation,
+  catalog discovery, safe atomic output, and the publisher CLI contract.
+- Out of scope: Consumer registration, listing, installation, synchronization,
+  publisher-embedded provenance hashes or signatures, and implicit whole-repository
+  or multiple-root discovery.
 
-## Desired behavior
+## Requirements
+
+The following requirement groups preserve the normative publisher contract of revision 2.1.
 
 Ritebook generates or updates a JSON index file for a maintainer-controlled
 skills repository.
 
-### Publisher workflow
+### R1 — Publisher workflow
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 1. A maintainer runs a Ritebook publisher command from the repository root that
    will contain `ritebook-index.json`, with an explicit skills root path at or
@@ -61,7 +71,9 @@ skills repository.
 7. The maintainer reviews and commits the generated index to the private skills
    repository through the normal pull request workflow.
 
-### Skill discovery
+### R2 — Skill discovery
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - Discovery applies the catalog structure and canonical identifier rules from the
   shared catalog contract.
@@ -80,7 +92,9 @@ skills repository.
 - Catalog-structure failures must identify the offending path and whether it is
   over-deep or combines skill and collection roles.
 
-### Index output
+### R3 — Index output
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - The canonical output filename is `ritebook-index.json`.
 - The index must be valid JSON.
@@ -111,7 +125,9 @@ skills repository.
 - The consumer-owned digest is registry provenance; it does not change the
   publisher index schema or authenticate the publisher.
 
-## CLI and workflow requirements
+### R4 — CLI and workflow requirements
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 The CLI is simple and explicit:
 
@@ -142,7 +158,9 @@ Requirements:
 - Keep YAML/frontmatter parsing in adapters; pass parsed plain data into
   application/domain validation.
 
-## Project structure
+## Implementation and Verification Evidence
+
+### Project structure
 
 The implementation follows the repository's hexagonal vertical-slice direction.
 
@@ -155,13 +173,13 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 - `docs/specs/publisher-spec.md`: this specification.
 - `docs/specs/skill-linter-spec.md`: the validation contract consumed by publisher.
 
-## Conventions
+### Conventions
 
 - Keep discovery, filesystem writes, and JSON serialization in adapters.
 - Keep publisher orchestration independent of CLI and filesystem details.
 - Render path-scoped diagnostics without logging raw skill-file contents.
 
-## Commands and validation
+### Commands and validation
 
 When changing this workflow, use focused checks first, then the full local
 quality gate before handoff.
@@ -177,7 +195,7 @@ quality gate before handoff.
 Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
 `uv.lock`.
 
-## Testing strategy
+### Testing strategy
 
 The MVP should be covered primarily with fast, deterministic unit tests.
 
@@ -201,9 +219,9 @@ The MVP should be covered primarily with fast, deterministic unit tests.
 Default tests must not rely on live external services, global developer state, or
 network access.
 
-## Boundaries
+## Constraints and Execution Boundaries
 
-### Always
+### Binding constraints
 
 - Always keep business rules and catalog concepts independent of CLI, filesystem,
   and JSON serialization details.
@@ -220,15 +238,15 @@ network access.
 - Mandatory `SKILL.md` header validation is in scope for this milestone and must
   be shared by `skills lint` and `indexes publish`.
 
-### Ask first
+### Changes requiring specification approval
 
-- Ask before adding consumer install, sync, or list commands to this milestone.
-- Ask before adding content hashes, signatures, policy enforcement, or trust-chain
+- Adding consumer install, sync, or list behavior to the publisher slice.
+- Adding content hashes, signatures, policy enforcement, or trust-chain
   behavior to the publisher artifact. The consumer-owned exact-index digest
   required by [ADR 0001](../adr/0001-source-provenance-and-trust.md) is not a
   publisher field.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Never scan a whole repository implicitly in the first MVP; require an explicit
   skills root.
@@ -236,32 +254,34 @@ network access.
 - Never scan hidden directories by default in the MVP.
 - Never log or print skill file contents by default.
 
-## Success criteria
+## Acceptance Checks
 
-- A maintainer can run a publisher workflow against an explicit skills root and
-  produce `ritebook-index.json`.
-- The generated index lists every structurally valid discovered directory
-  containing `SKILL.md`.
-- Root skills and immediate collection-child skills are indexed, while over-deep
-  candidates and mixed skill/collection nodes fail with path-scoped errors.
-- `indexes publish` reuses the same validation flow and refuses to write or
-  overwrite `ritebook-index.json` when validation fails.
-- The generated index is deterministic for unchanged input except for the
-  documented generation timestamp.
-- The generated index uses schema version `1` and includes the fields documented
-  in the shared catalog contract.
-- The generated index remains compatible with consumer-side binding to its
-  committed Git revision and exact-byte digest without embedding provenance
-  fields in the publisher artifact.
-- Missing or invalid input paths produce clear user-facing errors.
-- Implementation follows the project's vertical-slice hexagonal architecture
-  direction.
-- Relevant unit tests cover discovery, index generation, JSON output, and CLI
-  argument mapping.
-- `uv run ruff format --check .`, `uv run ruff check .`,
-  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
-  network-disabled Docker E2E gate pass before handoff.
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | A maintainer publishes from an explicit valid or invalid skills root. | A valid root produces `ritebook-index.json`; validation failure exits non-zero and does not create or overwrite the prior index. | Publisher use-case and CLI tests. |
+| AC2 | R2 | Discovery encounters root skills, collection children, duplicate names at distinct paths, hidden directories, over-deep candidates, or mixed nodes. | Valid catalog paths are indexed deterministically; hidden directories are skipped; over-deep and mixed structures fail with path-scoped errors. | Discovery adapter and application tests. |
+| AC3 | R3 | Ritebook serializes and replaces an index, including simulated write, flush, sync, replacement, or unsafe-symlink failures. | Schema-v1 fields and required descriptions are emitted with two-space deterministic JSON; failures preserve prior content and clean owned temporary files; no publisher provenance fields are embedded. | JSON writer and schema tests. |
+| AC4 | R4 | Invoke `indexes publish` with valid arguments, missing or invalid roots, and validation failures. | Arguments map to one explicit skills root and published name, success output is concise, and errors are actionable without exposing skill contents. | CLI adapter tests. |
+| AC5 | R1-R4 | Review source ownership and execute focused publisher tests. | The implementation follows vertical-slice hexagonal boundaries and covers discovery, generation, output, and CLI behavior. | Import-boundary checks and `uv run pytest tests/unit/features/publisher`. |
+| AC6 | R1-R4 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
-## Open questions
+## Assumptions
 
-None for the current specification version.
+- Publisher-maintained skills repositories are Git repositories with a reviewable
+  root `ritebook-index.json` artifact.
+- Schema version `1` and the shared catalog contract remain the compatibility
+  baseline.
+- Material unresolved assumptions: None.
+
+## Open Questions
+
+None.
+
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 2.1 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- Next authorized step: Treat this Active revision as canonical. Consumer
+  workflows or publisher artifact trust fields require their owning specification
+  or an approved revision before implementation.

@@ -1,14 +1,19 @@
-# Spec: Shared Catalog Contract
+# Specification: Shared Catalog Contract
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 1.1
-> **Last reviewed:** 2026-08-27
-> **Implementation state:** Implemented
-> **Dependencies:** None
-> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 1.1
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-08-27
+- Implementation state: Implemented
+- Dependencies: None
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: None
+
+## Objective and Context
 
 This specification defines the catalog identity, schema-v1 path model, source
 provenance, and trust-boundary rules shared by Ritebook's publisher, index
@@ -18,7 +23,7 @@ Feature specifications depend on this contract instead of redefining its terms.
 They remain responsible for workflow-specific orchestration, persistence,
 diagnostics, and recovery behavior.
 
-## Current context
+### Current-state evidence
 
 - Shared identifier and catalog-path rules are implemented under
   `src/ritebook/shared_kernel/`.
@@ -29,18 +34,24 @@ diagnostics, and recovery behavior.
 - Feature-specific adapters add stricter filesystem and mutation checks where
   their workflows require them.
 
-## Assumptions
+## Scope
 
-- Schema version `1` remains the supported publisher-index compatibility target.
-- Git-backed sources remain the supported provenance model for consumer workflows.
-- Unresolved assumptions: None.
+- In scope: Shared catalog terminology, canonical identifiers, schema-v1
+  catalog structure and publisher index fields, compatibility-sensitive names,
+  source provenance, and common trust and path rules consumed by multiple slices.
+- Out of scope: Feature-specific orchestration, persistence formats, mutation
+  recovery, transport integration, and generic architecture or tooling policy.
 
-## Desired behavior
+## Requirements
+
+The following requirement groups preserve the normative shared contract of revision 1.1.
 
 All consuming slices use the terminology, catalog structure, compatibility rules,
 and provenance requirements defined below rather than redefining them locally.
 
-## Shared terminology and identity
+### R1 — Shared terminology and identity
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - A **published name** is the publisher-owned stable identifier stored as
   `index.name` in `ritebook-index.json`. Application code may call this value
@@ -62,7 +73,9 @@ and provenance requirements defined below rather than redefining them locally.
   the catalog skill path. It may therefore contain more segments than a catalog
   selector while remaining a safe relative path.
 
-## Canonical identifiers
+### R2 — Canonical identifiers
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Published names, local aliases, skill directory names, and collection directory
 names must use the canonical Ritebook identifier form:
@@ -75,7 +88,9 @@ names must use the canonical Ritebook identifier form:
 Feature adapters must reject invalid external identifiers before invoking an
 application use case.
 
-## Catalog structure
+### R3 — Catalog structure
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - A skill is a directory containing `SKILL.md`.
 - A catalog skill path contains exactly one or two non-empty safe POSIX segments:
@@ -96,7 +111,9 @@ The one-or-two-segment rule applies to catalog paths and selectors. It does not
 limit safe repository-relative paths formed by prefixing a catalog path with
 `skills_root`.
 
-## Publisher index schema v1
+### R4 — Publisher index schema v1
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 The canonical publisher artifact is the repository-root
 `ritebook-index.json`:
@@ -138,7 +155,9 @@ Field requirements:
 Publisher and consumer readers must reject missing, unsupported, malformed,
 unsafe, duplicate, over-deep, or mixed-node schema-v1 data before using it.
 
-## Compatibility-sensitive names
+### R5 — Compatibility-sensitive names
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 The following schema and CLI names remain unchanged in version 1 even where their
 names are less specific than their semantics:
@@ -154,7 +173,9 @@ names are less specific than their semantics:
 A rename requires an explicitly versioned migration. Documentation and
 diagnostics must state the semantic role of these fields in the meantime.
 
-## Source provenance contract
+### R6 — Source provenance contract
+
+**Basis:** Existing active Ritebook contract and ADR 0001.
 
 - A consumer registry entry must bind cached index bytes to both a full Git commit
   in `source_revision` and a digest of the exact index bytes in `index_digest`.
@@ -170,7 +191,9 @@ diagnostics must state the semantic role of these fields in the meantime.
 - The consumer-owned digest does not alter the publisher schema and does not by
   itself authenticate the publisher.
 
-## Shared trust and path rules
+### R7 — Shared trust and path rules
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - Treat publisher indexes, registry files, lockfiles, and installation manifests
   as untrusted external input at their reader boundaries.
@@ -188,14 +211,16 @@ diagnostics must state the semantic role of these fields in the meantime.
 - A mutating feature must define its own symlink, atomic-write, rollback, and
   recovery semantics in its owning specification.
 
-## Commands and validation
+## Implementation and Verification Evidence
+
+### Commands and validation
 
 - Test: `uv run pytest tests/unit/shared_kernel tests/unit/features/index_registry`
 - Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
 - Manual verification: inspect a generated schema-v1 `ritebook-index.json` and
   verify consumers reject invalid catalog paths and provenance.
 
-## Project structure
+### Project structure
 
 - Spec: `docs/specs/shared-catalog-contract-spec.md`
 - `src/ritebook/shared_kernel/`: shared pure identifiers, catalog paths, and
@@ -203,21 +228,21 @@ diagnostics must state the semantic role of these fields in the meantime.
 - `tests/unit/shared_kernel/`: shared-contract unit coverage.
 - Consuming feature slices: enforce their workflow-specific boundaries.
 
-## Conventions
+### Conventions
 
 - Use exact terms defined by this contract rather than overloaded aliases.
 - Keep transport, filesystem, Git, and persistence concerns in owning adapters.
 
-## Testing strategy
+### Testing strategy
 
 - Shared-kernel tests cover identifiers, catalog paths, and unsafe-input handling.
 - Publisher and consumer adapter tests verify schema-v1 parsing and provenance at
   their boundaries.
 - E2E tests verify the binding survives the publisher-to-consumer workflow.
 
-## Boundaries
+## Constraints and Execution Boundaries
 
-### Always
+### Binding constraints
 
 - Shared kernel code may own pure identifiers, path policies, and immutable
   boundary concepts used by multiple slices.
@@ -228,28 +253,44 @@ diagnostics must state the semantic role of these fields in the meantime.
 - A schema change requires an explicitly versioned specification update and a
   compatibility or migration decision.
 
-### Ask first
+### Changes requiring specification approval
 
 - Adding a shared concept that fewer than two feature slices consume.
 - Changing schema-v1 compatibility or the provenance binding.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Let the shared contract become a generic architecture, tooling, or CLI policy
   catch-all.
 - Treat mutable source state as a substitute for required provenance.
 
-## Success criteria
+## Acceptance Checks
 
-- Publisher and consumer features use one catalog vocabulary and path model.
-- Every schema-v1 reader rejects structurally invalid catalog metadata before use.
-- Published names and local aliases retain distinct ownership and semantics.
-- Catalog-relative and repository-relative paths are not conflated.
-- Cached and generated consumer state preserves the commit-and-digest provenance
-  binding required by ADR 0001.
-- Feature specifications depend on this contract and document only their stricter
-  or workflow-specific behavior.
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | Publisher and consumer features exchange catalog identifiers and references. | Published names, local aliases, catalog paths, selectors, and repository-relative paths retain the distinct meanings defined by this specification. | Shared-kernel and consuming-slice contract tests. |
+| AC2 | R2 | A boundary receives valid and invalid identifier values. | Canonical identifiers are accepted; invalid length, character, edge-hyphen, or consecutive-hyphen forms are rejected before application orchestration. | Shared-kernel identifier tests and adapter tests. |
+| AC3 | R3 | A catalog contains root skills, collection children, duplicates at distinct paths, mixed nodes, or over-deep candidates. | Only valid one- or two-segment catalog paths are accepted; valid duplicate names remain distinct by path; mixed and over-deep structures fail deterministically. | Catalog-path unit tests and publisher/consumer adapter tests. |
+| AC4 | R4 | A publisher index is generated or read by a schema-v1 consumer. | Required fields and deterministic ordering are preserved, while missing, malformed, unsafe, duplicate, over-deep, or mixed-node data is rejected before use. | Publisher JSON tests and consumer index-reader tests. |
+| AC5 | R5 | Schema-v1 compatibility-sensitive fields and CLI options are rendered or consumed. | Each field retains its documented semantic role, and no rename occurs without a versioned migration. | Schema and CLI contract review plus focused tests. |
+| AC6 | R6 | Registry, installation, or contribution code trusts cached or committed index data. | The exact bytes are bound to and verified against both a full Git commit and SHA-256 digest; mutable source state is never substituted. | Provenance unit tests and publisher-to-consumer E2E coverage. |
+| AC7 | R7 | Untrusted paths, metadata, diagnostics, or mutating workflows cross a boundary. | Unsafe paths and controls are rejected or visibly escaped, ordinary Unicode is preserved, secrets and raw contents are not exposed, and each mutating feature supplies its own recovery contract. | Shared safety tests, adapter tests, and manual diagnostic review. |
 
-## Open questions
+## Assumptions
 
-None for the current specification version.
+- Schema version `1` remains the supported publisher-index compatibility target.
+- Git-backed sources remain the supported provenance model for consumer workflows.
+- Material unresolved assumptions: None.
+
+## Open Questions
+
+None.
+
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 1.1 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- Next authorized step: Treat this Active revision as the canonical shared
+  contract. Any schema, compatibility, or provenance change requires a revised
+  specification and, where durable architecture changes, an ADR.

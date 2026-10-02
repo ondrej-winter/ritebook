@@ -1,14 +1,19 @@
-# Spec: Skill Contribution
+# Specification: Skill Contribution
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 2.1
-> **Last reviewed:** 2026-08-27
-> **Implementation state:** Implemented
-> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 2.1
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-08-27
+- Implementation state: Implemented
+- Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: None
+
+## Objective and Context
 
 Ritebook provides a safe contribution workflow for developers who improve
 repo-local installed skills and want to propose those changes back to the
@@ -21,7 +26,7 @@ when a usable origin exists, or manual inspection guidance otherwise. It must no
 directly mutate canonical source branches, managed index cache clones, or
 user-owned local source repositories.
 
-## Current context
+### Current-state evidence
 
 - Ritebook already supports Git-backed index registration and updates through
   `indexes add`, `indexes update`, and `indexes list`.
@@ -44,17 +49,23 @@ user-owned local source repositories.
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
-## Assumptions
+## Scope
 
-- Contributions originate from requirements-file installs recorded in
-  `ritebook.lock`, not ad hoc direct installations.
-- Git remains the supported contribution transport and ADR 0001's provenance
-  binding remains required.
-- Unresolved assumptions: None.
+- In scope: Preparing one changed, lockfile-backed repo-local skill in a
+  Ritebook-owned isolated checkout, verifying installed provenance and upstream
+  divergence, validating and regenerating the index, creating a local branch and
+  commit, and printing review or push guidance.
+- Out of scope: Automatic push or MR/PR creation, provider-specific integrations,
+  batch or collection contributions, automatic conflict resolution, contributions
+  from ad hoc direct installs, and automatic checkout cleanup.
 
-## Desired behavior
+## Requirements
 
-### Contribute one installed skill change
+The following requirement groups preserve the normative contribution contract of revision 2.1.
+
+### R1 — Contribute one installed skill change
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A developer can prepare a contribution for one repo-local installed skill:
 
@@ -107,7 +118,9 @@ Requirements:
 - Ritebook prints the contribution checkout path, branch name, commit hash, and
   either suggested push instructions or manual inspection guidance.
 
-### CLI shape
+### R2 — CLI shape
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Initial command:
 
@@ -160,7 +173,9 @@ ritebook: error: upstream changed since locked revision; resolve the source chan
 ritebook: error: skill validation failed; contribution commit was not created
 ```
 
-### Contribution checkout behavior
+### R3 — Contribution checkout behavior
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Ritebook must prepare the change in an isolated checkout it owns.
 
@@ -190,7 +205,9 @@ those marked clones before preparing another contribution. The default root is
 `~/.cache/ritebook/contributions`; `--contribution-root` overrides it for tests
 and automation.
 
-### Upstream comparison behavior
+### R4 — Upstream comparison behavior
+
+**Basis:** Existing active Ritebook contract and ADR 0001.
 
 The locked `source_revision` is the verified installed baseline. Ritebook may
 compare and contribute against the current upstream base only after proving the
@@ -212,7 +229,9 @@ Requirements:
   the skill or manually reconcile the upstream change without dumping raw skill
   contents.
 
-### Commit behavior
+### R5 — Commit behavior
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Ritebook creates a normal Git commit in the isolated contribution checkout.
 
@@ -233,7 +252,9 @@ Example generated commit message:
 Update code-review skill from Ritebook contribution
 ```
 
-## Data and provenance requirements
+### R6 — Data and provenance requirements
+
+**Basis:** Existing active Ritebook contract, the installation lockfile contract, and ADR 0001.
 
 The MVP depends on the end-to-end provenance contract in
 [ADR 0001](../adr/0001-source-provenance-and-trust.md) and on lockfile provenance
@@ -274,7 +295,9 @@ rejected at lockfile ingestion before contribution workspace or Git operations.
 The diagnostic does not echo the machine-local path and directs the user to
 register the index from a Git URL and reinstall to regenerate `ritebook.lock`.
 
-## Project structure
+## Implementation and Verification Evidence
+
+### Project structure
 
 The implementation uses the `skill_contribution` vertical feature slice:
 
@@ -332,7 +355,7 @@ tests/unit/features/skill_contribution/
     └── test_validation_adapter.py
 ```
 
-## Conventions
+### Conventions
 
 - Keep application logic independent of Git commands, filesystem copying, JSON
   parsing, and CLI output formatting.
@@ -347,9 +370,9 @@ tests/unit/features/skill_contribution/
 - Keep generated branch names, output paths, and commit messages deterministic
   enough for tests and review.
 
-## Testing strategy
+### Testing strategy
 
-### Application tests
+#### Application tests
 
 Cover:
 
@@ -365,7 +388,7 @@ Cover:
 - Refuses or warns clearly when upstream changed since `source_revision`.
 - Includes contribution checkout path, branch name, and commit hash in the result.
 
-### Lockfile reader tests
+#### Lockfile reader tests
 
 Cover:
 
@@ -379,7 +402,7 @@ Cover:
   `<collection>/<skill>`.
 - Allows duplicate skill names at distinct lockfile paths.
 
-### Contribution checkout and Git adapter tests
+#### Contribution checkout and Git adapter tests
 
 Cover:
 
@@ -395,7 +418,7 @@ Cover:
   the publisher, while preserving external symlink targets.
 - Reports Git failures without leaking credentials.
 
-### Skill directory tests
+#### Skill directory tests
 
 Cover:
 
@@ -405,7 +428,7 @@ Cover:
 - Rejects target paths that are missing or unsafe.
 - Avoids following symlinks in a way that writes outside intended directories.
 
-### CLI tests
+#### CLI tests
 
 Cover:
 
@@ -422,7 +445,7 @@ Default tests must not rely on live external services, global developer state, o
 network access. Git behavior should use temporary local repositories or fakes in
 the default suite.
 
-## Commands and validation
+### Commands and validation
 
 When changing this workflow, use focused tests first, then the full quality gate:
 
@@ -439,9 +462,9 @@ docker build -f Dockerfile.e2e -t ritebook-e2e .
 docker run --rm --network none ritebook-e2e
 ```
 
-## Boundaries
+## Constraints and Execution Boundaries
 
-### Always
+### Binding constraints
 
 - Support one skill contribution per command.
 - Require `ritebook.lock` provenance for the MVP.
@@ -455,7 +478,7 @@ docker run --rm --network none ritebook-e2e
 - Create a reviewable local Git branch and commit.
 - Print clear next steps for inspecting and optionally pushing the contribution.
 
-### Ask first
+### Changes requiring specification approval
 
 - Adding `--push` behavior.
 - Adding `--open-mr` behavior.
@@ -466,7 +489,7 @@ docker run --rm --network none ritebook-e2e
 - Changing lockfile schema or installation provenance.
 - Adding cleanup, pruning, or automatic deletion of contribution checkouts.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Directly mutate the source default branch.
 - Mutate the managed index cache clone as a contribution workspace.
@@ -478,41 +501,41 @@ docker run --rm --network none ritebook-e2e
 - Attempt automatic conflict resolution in the MVP.
 - Print secrets, Git credentials, raw skill contents, or raw index contents.
 
-## Success criteria
+## Acceptance Checks
 
-- `uv run ritebook skills contribute <local-alias>/<skill-path>` reads
-  `ritebook.lock` and resolves one installed repo-local skill.
-- Root and collected skills can be contributed by exact path; collection selectors
-  are rejected rather than expanded.
-- The command fails clearly when the lockfile, selected entry, installed target,
-  or required provenance is missing.
-- The command detects and reports when there are no local skill changes to
-  publish.
-- The command prepares changed skill contents in a Ritebook-owned isolated
-  checkout rather than mutating source branches, managed cache clones, or
-  user-owned source repositories.
-- The command warns or fails clearly when upstream source content changed since
-  the locked install revision.
-- The command fails safely when the locked commit is unavailable or its root index
-  does not match the locked digest.
-- The command runs skill validation and refuses to commit invalid skill content.
-- The command regenerates `ritebook-index.json` and creates a local Git commit
-  when validation succeeds.
-- The command prints branch, commit, checkout, and next-step instructions for the
-  developer.
-- Application, adapter, and CLI unit tests cover the behavior.
-- `uv run ruff format --check .`, `uv run ruff check .`,
-  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
-  network-disabled Docker E2E gate pass before implementation handoff.
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | Contribute an exact lockfile-backed root or collected skill, with missing state, malformed references, or no local changes. | Exactly one qualified requirement resolves; collection selectors and fallbacks are rejected; missing provenance fails clearly; unchanged content returns a concise no-op. | Contribution application and lockfile-reader tests. |
+| AC2 | R2 | Invoke the supported command and path overrides. | Arguments map to the contribution use case, output identifies checkout, branch, commit, and safe next steps, and unsupported push/MR/base options remain unimplemented. | CLI parser and adapter tests. |
+| AC3 | R3 | Prepare or reuse a contribution workspace, including unmarked, symlinked, dirty, and failure cases. | Only marked Ritebook-owned checkouts are reset or cleaned; source branches, managed index caches, user-owned repositories, and external symlink targets are not mutated. | Contribution-checkout and Git adapter tests. |
+| AC4 | R4 | Compare installed content with the locked revision and current upstream base, including changed-upstream, unavailable-commit, and digest-mismatch cases. | Contributions proceed only when the bound baseline is verified and the selected upstream path has not diverged; conflicts and unavailable provenance fail without copying or committing. | Application and Git workspace tests. |
+| AC5 | R5 | Prepare changed valid and invalid skill content. | Valid content is copied, linted, re-indexed, and committed on a deterministic review branch; validation or regeneration failure creates no commit; no push occurs by default. | Validation, regeneration, Git, and application tests. |
+| AC6 | R6 | Read portable and legacy lock entries and resolve repository-relative source paths. | Required provenance fields are enforced, local-machine source entries and missing bindings are rejected without disclosure, and catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
+| AC7 | R1-R6 | Run the documented implementation handoff gates. | Application, adapter, CLI, formatting, linting, type, non-E2E, build, and network-disabled Docker E2E checks all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
-## Open questions
+## Assumptions
 
-These questions are not commitments. Ritebook maintainers own their disposition,
-and each requires an approved specification or tracked implementation plan before
-implementation:
+- Contributions originate from requirements-file installs recorded in
+  `ritebook.lock`, not ad hoc direct installations.
+- Git remains the supported contribution transport and ADR 0001's provenance
+  binding remains required.
+- Material unresolved assumptions: None.
 
-- What validation evidence should Ritebook include in a future MR body?
-- Should `skills contribute` eventually support `--base <branch-or-ref>` for
-  teams that do not want to target the source repository's default branch?
-- Should `--open-mr` support GitHub first, GitLab first, or detect `gh` and
-  `glab` based on the source remote?
+## Open Questions
+
+| Question | Impact / affected requirement or work | Blocks | Owner or evidence needed | Resolution / needed by |
+| --- | --- | --- | --- | --- |
+| OQ1: What validation evidence should a future MR body include? | Future extension of R2 and R5 for automated MR creation. | Non-blocking for the current local-commit workflow. | Ritebook maintainers and provider workflow requirements. | Resolve in an approved `--open-mr` specification before implementation. |
+| OQ2: Should a future command support `--base <branch-or-ref>`? | Future extension of R2 and R4 for repositories that do not use the detected default branch. | Non-blocking for the current detected-base workflow. | Ritebook maintainers and user workflow evidence. | Resolve before adding the option. |
+| OQ3: Which provider integration should a future `--open-mr` workflow support? | Future provider adapter and CLI scope. | Non-blocking for the platform-neutral Git core. | Ritebook maintainers, provider demand, and available CLI/API contracts. | Resolve in the provider-specific specification before implementation. |
+
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 2.1 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,
+  MR/PR, base-selection, or provider-specific implementation.
+- Next authorized step: Treat this Active revision as canonical for the local
+  contribution workflow. Resolve the relevant open question in a revised
+  specification before implementing a future extension.

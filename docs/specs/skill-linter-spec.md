@@ -1,21 +1,26 @@
-# Spec: Skill Linter
+# Specification: Skill Linter
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 1.3
-> **Last reviewed:** 2026-10-02
-> **Implementation state:** Implemented
-> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
-> **Associated ADRs:** [ADR 0002](../adr/0002-adopt-agent-skills-as-canonical-skill-schema.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 1.3
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-10-02
+- Implementation state: Implemented
+- Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
+- Associated ADRs: [ADR 0002](../adr/0002-adopt-agent-skills-as-canonical-skill-schema.md)
+- Supersedes: None
+
+## Objective and Context
 
 Ritebook provides a validation-only workflow for skill authors, maintainers, CI,
 and the publisher slice. It discovers catalog candidates, validates each
 `SKILL.md` header, and emits deterministic path-scoped diagnostics without
 modifying publisher or consumer state.
 
-## Current context
+### Current-state evidence
 
 - The linter is implemented as the `src/ritebook/features/skill_linter/` vertical slice.
 - The `skills lint` command exposes the validation use case directly.
@@ -31,21 +36,21 @@ modifying publisher or consumer state.
 - Standalone lint, publisher prechecks, and contribution validation reuse the same
   linter application boundary.
 
-## Assumptions
+## Scope
 
-- Ritebook supports Python 3.13 or newer and uses `uv` for command execution.
-- The shared catalog contract remains the source of truth for identifiers and
-  catalog paths.
-- The [Agent Skills specification](https://agentskills.io/specification) and its
-  [`skills-ref` reference validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
-  define the canonical external header compatibility baseline reviewed on
-  2026-10-02.
-- Ritebook catalog path constraints remain separate from header compatibility and
-  may be stricter where the shared catalog contract requires canonical ASCII
-  identifiers.
-- Unresolved assumptions: None.
+- In scope: Explicit-root skill discovery, Agent Skills-compatible header
+  validation, deterministic diagnostics and exit behavior, and reuse of the same
+  validation application boundary by publisher and contribution workflows.
+- Out of scope: Mutating skill files or consumer state, changing catalog path
+  semantics, and accepting header fields outside the adopted Agent Skills schema.
 
-## Desired behavior
+## Requirements
+
+The following requirement groups preserve the normative linter contract of revision 1.3.
+
+### R1 — Validation workflow
+
+**Basis:** Existing active Ritebook contract, the Shared Catalog Contract, and ADR 0002.
 
 ```bash
 uv run ritebook skills lint --root <path>
@@ -70,7 +75,9 @@ uv run ritebook skills lint --root <path>
 - Expose the same validation behavior to the publisher so lint and publication
   rules cannot drift.
 
-## Skill header contract
+### R2 — Skill header contract
+
+**Basis:** Existing active Ritebook contract and ADR 0002.
 
 Every discovered `SKILL.md` must begin with YAML frontmatter. The minimal Agent
 Skills-compliant header is:
@@ -140,7 +147,9 @@ Validation requirements:
 - The Markdown body after the frontmatter is outside the header schema and has no
   additional format restrictions.
 
-## Diagnostics
+### R3 — Diagnostics
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - Validation output identifies the skill file path and violated rule without
   printing the file contents.
@@ -162,13 +171,15 @@ Example:
 conventional-commits/SKILL.md: metadata values must be strings.
 ```
 
-## Commands and validation
+## Implementation and Verification Evidence
+
+### Commands and validation
 
 - Test: `uv run pytest tests/unit/features/skill_linter`
 - Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
 - Manual verification: `uv run ritebook skills lint --root <path>`
 
-## Project structure
+### Project structure
 
 - `src/ritebook/features/skill_linter/application/`: validation use cases, DTOs, ports,
   and application errors.
@@ -181,14 +192,14 @@ conventional-commits/SKILL.md: metadata values must be strings.
   passed to field validation, and publisher prechecks map the raw count to their
   existing `checked_skill_count` field.
 
-## Conventions
+### Conventions
 
 - Keep filesystem and YAML parsing in outbound adapters and CLI rendering in the
   inbound adapter.
 - Render diagnostics deterministically without raw skill-file contents or terminal
   control bytes.
 
-## Testing strategy
+### Testing strategy
 
 - Application tests cover the minimal two-field header, every supported optional
   field, missing or malformed frontmatter, unexpected top-level fields, invalid
@@ -203,9 +214,9 @@ conventional-commits/SKILL.md: metadata values must be strings.
 - Tests use temporary directories and do not depend on global state or network
   access.
 
-## Boundaries
+## Constraints and Execution Boundaries
 
-### Always
+### Binding constraints
 
 - Keep YAML parsing and filesystem traversal in adapters.
 - Keep validation orchestration independent of the publisher and CLI.
@@ -216,34 +227,50 @@ conventional-commits/SKILL.md: metadata values must be strings.
 - Changes to catalog depth, identifiers, or path semantics belong in the shared
   catalog contract.
 
-### Ask first
+### Changes requiring specification approval
 
 - Expanding the accepted header beyond fields defined by the Agent Skills
   specification or changing the catalog path model.
 - Adding mutation behavior to the validation-only workflow.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Mutate skill files, publisher indexes, registry state, or install state.
 - Log or print raw skill contents.
 
-## Success criteria
+## Acceptance Checks
 
-- Authors and CI can validate an explicit skills root without generating an index.
-- The minimal Agent Skills header with only `name` and `description` passes.
-- Standard optional header fields pass when their values satisfy the Agent Skills
-  specification.
-- Compatible flat string metadata, including reasonably unique local keys, passes
-  without becoming required for portable validity.
-- Unknown top-level fields, invalid optional-field values, and nested metadata
-  values fail with deterministic path-scoped diagnostics.
-- Ritebook does not require non-standard metadata for header validity.
-- Catalog identifier and path checks remain enforced independently through the
-  shared catalog contract.
-- Publisher index generation uses the same validation use case and cannot write an
-  index after validation failure.
-- Unit tests cover application, adapter, and CLI behavior.
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | Run `skills lint` with an explicit valid, invalid, or unreadable root. | Every visible non-symlinked candidate is counted; valid roots exit `0`; invalid candidates or root inspection failures exit non-zero; no publisher or consumer state is written. | Application, discovery-adapter, and CLI tests. |
+| AC2 | R2 | Validate minimal headers, supported optional fields, flat string metadata, unknown fields, malformed values, and catalog/path mismatches. | Agent Skills-compatible values pass without Ritebook-only metadata; unsupported, malformed, nested, or mismatched values fail with path-scoped findings. | Header-validator and frontmatter-adapter tests. |
+| AC3 | R3 | Render multiple validation, parse, read, UTF-8, and control-character failures. | Findings use stable path/code/message ordering, controls are visible ASCII escapes, ordinary Unicode is preserved, and raw skill contents are not emitted. | Application ordering and CLI rendering tests. |
+| AC4 | R1, R2 | Publisher or contribution validation invokes the linter application boundary and receives a failure. | The same validation rules apply and the caller cannot publish or commit invalid skill content. | Publisher and contribution adapter tests. |
+| AC5 | R1-R3 | Execute the focused linter unit suite. | Application, adapter, and CLI behaviors represented by this specification pass without live network or global-state dependencies. | `uv run pytest tests/unit/features/skill_linter`. |
 
-## Open questions
+## Assumptions
 
-None for the current specification version.
+- Ritebook supports Python 3.13 or newer and uses `uv` for command execution.
+- The shared catalog contract remains the source of truth for identifiers and
+  catalog paths.
+- The [Agent Skills specification](https://agentskills.io/specification) and its
+  [`skills-ref` reference validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
+  define the canonical external header compatibility baseline reviewed on
+  2026-10-02.
+- Ritebook catalog path constraints remain separate from header compatibility and
+  may be stricter where the shared catalog contract requires canonical ASCII
+  identifiers.
+- Material unresolved assumptions: None.
+
+## Open Questions
+
+None.
+
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 1.3 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- Next authorized step: Treat this Active revision as canonical. Changes to the
+  adopted header schema or catalog model require specification and ADR review as
+  described above.

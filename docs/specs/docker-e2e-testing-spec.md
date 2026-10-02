@@ -1,14 +1,19 @@
-# Spec: Docker E2E Testing
+# Specification: Docker E2E Testing
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 2.1
-> **Last reviewed:** 2026-08-27
-> **Implementation state:** Implemented
-> **Dependencies:** [Skill Linter](skill-linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
-> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 2.1
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-08-27
+- Implementation state: Implemented
+- Dependencies: [Skill Linter](skill-linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: None
+
+## Objective and Context
 
 Provide Docker-based end-to-end integration testing for Ritebook so maintainers
 can catch real workflow regressions across the CLI, Git operations, registry and
@@ -18,7 +23,7 @@ The implementation provides an isolated test runner rather than broad
 infrastructure. Docker proves the workflow outside local developer state and
 unit-test fakes under the explicit state, permission, and network contract below.
 
-## Current context
+### Current-state evidence
 
 - Ritebook is a Python 3.13 CLI package managed with `uv`.
 - The package exposes the console script `ritebook = "ritebook.cli:main"`.
@@ -47,14 +52,23 @@ unit-test fakes under the explicit state, permission, and network contract below
   - `skills install`
   - `skills sync`
 
-## Assumptions
+## Scope
 
-- Docker is available to maintainers and CI for the isolated E2E gate.
-- Runtime networking remains disabled and E2E fixtures remain local and
-  deterministic.
-- Unresolved assumptions: None.
+- In scope: A Docker-based black-box CLI test runner, local temporary Git
+  workflow fixtures, publisher-to-consumer plus installation and contribution
+  scenarios, unprivileged and network-disabled runtime isolation, and the blocking
+  CI gate.
+- Out of scope: Production runtime packaging, Docker Compose or service
+  containers, live remote repositories, external services, VM-grade isolation,
+  reproducible mutable base images, and replacement of unit-level coverage.
 
-## Desired behavior
+## Requirements
+
+The following requirement groups preserve the normative Docker E2E contract of revision 2.1.
+
+### R1 — Containerized workflow coverage
+
+**Basis:** Existing active Ritebook contract and the five dependent feature specifications recorded in the Status section.
 
 The implementation includes a containerized E2E test runner that builds from the
 repository and runs black-box CLI tests inside Docker.
@@ -90,7 +104,33 @@ Installation scenarios must prove the full binding: the cached index and root
 the copied skill bytes come from that commit. A digest mismatch on either side
 must fail before content is copied.
 
-## Commands and validation
+### R2 — CI gate
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+
+Docker E2E is a mandatory quality gate in the main CI/CD workflow. The Docker E2E
+job runs independently from the standard formatting, linting, type-checking,
+non-E2E pytest, and build job so both jobs can execute in parallel on GitHub
+Actions runners.
+
+Releases require both the standard quality-check job and the Docker E2E job to
+pass. Maintainers can rerun the Docker E2E job from the main workflow when
+investigating a failure.
+
+### R3 — Runtime isolation contract
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+
+The Docker E2E boundary isolates dependencies and Ritebook process state from the
+developer environment, exercises realistic unprivileged filesystem permissions,
+and prevents runtime network access. Build-time public network access remains
+required. The boundary does not promise a reproducible operating-system image,
+separate kernel, production packaging, or protection against a malicious test
+process with container-escape capabilities.
+
+## Implementation and Verification Evidence
+
+### Commands and validation
 
 Target local Docker workflow:
 
@@ -115,7 +155,7 @@ uv run pytest -m "not e2e"
 uv build
 ```
 
-## Project structure
+### Project structure
 
 Implemented files:
 
@@ -131,7 +171,7 @@ Implemented files:
 - `.github/workflows/ci-cd.yaml`: mandatory Docker E2E gate in the main CI/CD
   workflow.
 
-## Conventions
+### Conventions
 
 - Keep E2E tests black-box from the perspective of Ritebook behavior: execute the
   real CLI rather than importing application services directly.
@@ -154,7 +194,7 @@ Implemented files:
 - Do not introduce Docker Compose for the first milestone.
 - Do not add production Docker image requirements to this testing spec.
 
-## Testing strategy
+### Testing strategy
 
 The Docker E2E suite optimizes for reliability first.
 
@@ -184,20 +224,9 @@ writable home and XDG directories, and absence of non-loopback IPv4 routes.
 Direct host execution skips this container-specific assertion while running the
 same black-box workflow tests.
 
-## CI stance
+## Constraints and Execution Boundaries
 
-Docker E2E is a mandatory quality gate in the main CI/CD workflow. The Docker E2E
-job runs independently from the standard formatting, linting, type-checking,
-non-E2E pytest, and build job so both jobs can execute in parallel on GitHub
-Actions runners.
-
-Releases require both the standard quality-check job and the Docker E2E job to
-pass. Maintainers can rerun the Docker E2E job from the main workflow when
-investigating a failure.
-
-## Boundaries
-
-### Always
+### Binding constraints
 
 - Use local temporary Git repositories for the first milestone.
 - Pass explicit `--registry-path` and `--cache-root` values in E2E tests.
@@ -209,13 +238,13 @@ investigating a failure.
 - Treat Docker as an isolated test runner, not as product runtime packaging.
 - Prefer deterministic fixtures and fewer assertions over broad fragile checks.
 
-### Ask first
+### Changes requiring specification approval
 
 - Adding Docker Compose or service containers.
 - Requiring live remote Git repositories or network-dependent test scenarios.
 - Adding new runtime dependencies only to support E2E tests.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Touch real user registry or cache paths in E2E tests.
 - Depend on private repositories, credentials, or external services.
@@ -228,33 +257,30 @@ investigating a failure.
 - Replace unit tests with Docker E2E tests.
 - Use Docker E2E to justify broad production code rewrites.
 
-## Success criteria
+## Acceptance Checks
 
-For the implementation:
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | Build the E2E image and run it with runtime networking disabled. | The real Ritebook CLI completes publisher-to-consumer, update, installation, synchronization, and contribution scenarios against local temporary Git repositories; explicit temporary registry/cache paths and ADR 0001 provenance are verified. | `docker build -f Dockerfile.e2e -t ritebook-e2e .` and `docker run --rm --network none ritebook-e2e`. |
+| AC2 | R2 | Execute the main CI/CD workflow and release gates. | Docker E2E runs as an independent blocking job alongside the standard quality job, and release or publishing cannot proceed unless both succeed; README documents the local command. | Workflow configuration review and CI execution. |
+| AC3 | R3 | Run the focused container-environment test inside and outside the E2E image. | Inside Docker, the process uses UID 10001, controlled writable home/XDG paths, no host credential or filesystem mounts, and no non-loopback IPv4 route; direct host execution skips only container-specific assertions. | `tests/e2e/test_docker_environment.py` and container runtime inspection. |
 
-- `docker build -f Dockerfile.e2e -t ritebook-e2e .` succeeds.
-- `docker run --rm --network none ritebook-e2e` exits with status `0` when the E2E
-  workflow is healthy.
-- The focused environment test proves non-root execution, controlled writable
-  home and XDG state, and absence of non-loopback IPv4 routes.
-- The E2E suite executes the real Ritebook CLI rather than direct application
-  imports.
-- The publisher-to-consumer workflow verifies generated index creation,
-  local-Git-backed registration, cached skill listing, source update, cache
-  refresh, updated listing, and the provenance binding selected by ADR 0001.
-- The tests use explicit temporary registry and cache paths.
-- README documents the local Docker E2E workflow.
-- CI/CD runs Docker E2E as a blocking gate before release and publishing.
+## Assumptions
 
-## Isolation contract
+- Docker is available to maintainers and CI for the isolated E2E gate.
+- Runtime networking remains disabled and E2E fixtures remain local and
+  deterministic.
+- Material unresolved assumptions: None.
 
-The Docker E2E boundary isolates dependencies and Ritebook process state from the
-developer environment, exercises realistic unprivileged filesystem permissions,
-and prevents runtime network access. Build-time public network access remains
-required. The boundary does not promise a reproducible operating-system image,
-separate kernel, production packaging, or protection against a malicious test
-process with container-escape capabilities.
+## Open Questions
 
-## Open questions
+None.
 
-None for the current specification version.
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 2.1 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- Next authorized step: Treat this Active revision as canonical for the isolated
+  Docker quality gate. Network-dependent scenarios, service containers, or new
+  E2E-only runtime dependencies require an approved specification revision.

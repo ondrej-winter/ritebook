@@ -59,40 +59,65 @@ specification. Update both when adding, retiring, or superseding a specification
 
 ## Required metadata
 
-Every specification must declare these fields immediately after its title:
+Every specification must declare a `Status` section immediately after its title
+with these fields:
 
 | Field | Meaning |
 | --- | --- |
-| `Status` | Lifecycle state of the specification. |
+| `State` | Lifecycle state of the specification. |
+| `Revision` | Version of the specification contract, independent of file-format schema versions. |
+| `Acceptance basis` | Recorded instruction, decision, prior accepted state, or delegated authority that settles the requirements. |
+| `Accepted by / on` | Accepting person or role and date when known; unknown historical details must not be invented. |
 | `Owner` | Role accountable for review and follow-up. |
-| `Spec version` | Version of the document contract, independent of file-format schema versions. |
 | `Last reviewed` | Date the specification was checked against the repository, in `YYYY-MM-DD` format. |
 | `Implementation state` | Current implementation coverage of the normative behavior. |
 | `Dependencies` | Specifications whose contracts this workflow consumes, or `None`. |
 | `Associated ADRs` | Architecture decisions governing the specification, or `None`. |
+| `Supersedes` | Replaced specification or revision, or `None`. |
 
 All specifications must use the exact field names above and link dependencies
-and ADRs with repository-relative Markdown links.
+and ADRs with repository-relative Markdown links. Acceptance of requirements is
+separate from implementation readiness, verified completion, and authorization
+for external actions.
 
 ## Required specification structure
 
 Every feature, shared-contract, and quality specification must use the
-spec-driven-development template headings: `Objective`, `Current context`,
-`Assumptions`, `Desired behavior`, `Commands and validation`, `Project
-structure`, `Conventions`, `Testing strategy`, `Boundaries`, `Success criteria`,
-and `Open questions`.
+spec-driven-development template headings in this order:
 
-Feature-specific normative sections may appear between `Desired behavior` and
-`Commands and validation` when they make a contract easier to review, such as a
-schema, provenance, path-safety, or isolation contract. An implemented
-specification may record confirmed compatibility and operating foundations under
-`Assumptions`; it must state `None` when no unresolved assumptions remain.
-Likewise, use `None` under `Open questions` when the current specification
-version has no decision awaiting maintainer input.
+1. `Status`
+2. `Objective and Context`
+3. `Scope`
+4. `Requirements`
+5. `Implementation and Verification Evidence` when implementation evidence is
+   useful
+6. `Constraints and Execution Boundaries`
+7. `Acceptance Checks`
+8. `Assumptions`
+9. `Open Questions`
+10. `Revision and Handoff Notes`
+
+Feature-specific normative subsections may appear under `Requirements` when they
+make a contract easier to review, such as a schema, provenance, path-safety, or
+isolation contract. Requirement groups must use stable IDs when acceptance checks
+or downstream work reference them, and each group must state its basis.
+
+Acceptance checks must map to requirement IDs and state an observable pass
+condition plus a verification method. They must cover relevant failure,
+compatibility, and boundary behavior rather than merely requiring that tests
+exist or pass.
+
+Commands, source locations, test coverage, and other current-tree facts belong
+under `Implementation and Verification Evidence`; they do not redefine the
+requirements. Confirmed operating foundations may be recorded under
+`Assumptions`, which must state `None` when no material assumption remains.
+Likewise, use `None` under `Open Questions` when the current revision has no
+decision awaiting maintainer input. Every material question must identify its
+impact, blocking status, owner or needed evidence, and resolution condition.
 
 ## Allowed lifecycle values
 
-`Status` must be one of:
+`State` must be one of:
 
 - `Draft`: under review and not yet authoritative.
 - `Active`: authoritative for current development and maintenance.
@@ -113,11 +138,14 @@ specification may describe behavior that remains in the tree during migration.
 
 ## Content classification
 
-- Normative requirements belong in sections such as `Desired behavior`,
-  `Boundaries`, and `Success criteria` and use requirement language such as
-  **must**, **must not**, or an unambiguous imperative.
-- Current-state notes belong under `Current context`. They describe evidence
-  in the current tree and are not additional requirements.
+- Normative requirements belong under `Requirements` and `Constraints and
+  Execution Boundaries` and use requirement language such as **must**, **must
+  not**, or an unambiguous imperative.
+- Current-state notes belong under `Objective and Context` or `Implementation and
+  Verification Evidence`. They describe evidence in the current tree and are not
+  additional requirements.
+- `Acceptance Checks` assess observable requirements; implementation mechanics
+  and detailed test construction remain evidence or derived planning material.
 - Deferred behavior must name its owner or link to a tracked follow-up.
 - Future ideas that are not commitments must be labeled as such and require a new
   approved specification or plan item before implementation.
@@ -142,7 +170,7 @@ When behavior, dependencies, or architecture decisions change:
 
 1. Update the specification and its implementation evidence together.
 2. Recheck dependency and ADR links.
-3. Update `Spec version` when normative behavior, compatibility, data format, or
+3. Update `Revision` when normative behavior, compatibility, data format, or
    an externally visible workflow changes materially. Editorial-only corrections
    do not require a version increase.
 4. Set `Last reviewed` only after comparing the document with the current tree,

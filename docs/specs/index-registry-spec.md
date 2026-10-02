@@ -1,14 +1,19 @@
-# Spec: Index Registry
+# Specification: Index Registry
 
-> **Status:** Active
-> **Owner:** Ritebook maintainers
-> **Spec version:** 2.1
-> **Last reviewed:** 2026-08-27
-> **Implementation state:** Implemented
-> **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
-> **Associated ADRs:** [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+## Status
 
-## Objective
+- State: Active
+- Revision: 2.1
+- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
+- Accepted by / on: Original accepting person and date were not recorded.
+- Owner: Ritebook maintainers
+- Last reviewed: 2026-08-27
+- Implementation state: Implemented
+- Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: None
+
+## Objective and Context
 
 Ritebook provides a consumer-facing index registry workflow for end
 users who consume curated internal Agent Skills from company-maintained Git
@@ -20,7 +25,7 @@ all cached copies later from their remembered Git sources. The registry is the
 consumer-side catalog foundation used by the implemented `skills list`,
 `skills install`, and requirements-file `skills sync` workflows.
 
-## Current context
+### Current-state evidence
 
 - Ritebook already supports publisher-side skill index generation through
   `indexes publish`.
@@ -42,16 +47,22 @@ consumer-side catalog foundation used by the implemented `skills list`,
 - The project follows hexagonal architecture with vertical feature slices under
   `src/ritebook/features/`.
 
-## Assumptions
+## Scope
 
-- Git URLs and clean local Git repositories remain the supported index sources.
-- Schema version `1` and ADR 0001's commit-and-digest binding remain the
-  compatibility baseline.
-- Unresolved assumptions: None.
+- In scope: Adding and updating Git-backed publisher indexes, maintaining
+  coherent registry and content-addressed cache state, listing indexes and cached
+  skills offline, alias semantics, and Git source safety.
+- Out of scope: Skill installation side effects, non-Git remote indexes, live
+  source refresh while listing, search or script-oriented listing formats, trust
+  signatures, and publisher schema changes.
 
-## Desired behavior
+## Requirements
 
-### Add index
+The following requirement groups preserve the normative index-registry contract of revision 2.1.
+
+### R1 — Add index
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can register a curated skill index from either:
 
@@ -133,7 +144,9 @@ Recommended duplicate replacement flag:
 uv run ritebook indexes add --source <git-source> --alias <alias> --force
 ```
 
-### List indexes
+### R2 — List indexes
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can list locally registered indexes.
 
@@ -153,7 +166,9 @@ Requirements:
 - Remembered sources are rendered through a defensive display form that removes
   standard-URL user-info and never prints embedded credentials.
 
-### List skills
+### R3 — List cached skills
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can browse all cached skills or filter by one local alias without network
 access:
@@ -198,7 +213,9 @@ Indexes
     └── skill-a
 ```
 
-### Update index
+### R4 — Update index
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can refresh an existing registered index from its remembered Git source.
 
@@ -238,7 +255,9 @@ Requirements:
   indexes, reports failed local aliases to stderr, and returns a non-zero exit
   code after the batch completes.
 
-## Publisher index metadata
+### R5 — Publisher index metadata
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 The publisher index schema, published-name contract, and catalog path model are
 defined by the shared catalog contract. The registry validates that complete
@@ -246,7 +265,9 @@ contract when adding, updating, or reading a cached index. It uses `index.name`
 as the default local alias while preserving the publisher-owned value separately
 when the consumer chooses `--alias`.
 
-## Local registry and cache
+### R6 — Local registry and cache
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Ritebook maintains a local consumer registry and cached index contents.
 
@@ -318,7 +339,7 @@ Registry schema-v1 provenance requirements follow
   guidance to regenerate the registration. Ritebook does not infer provenance
   from the source's current `HEAD` or silently migrate on first use.
 
-### Registry/cache commit protocol
+#### Registry/cache commit protocol
 
 - Cached indexes are immutable, content-addressed generations. The directory name
   is the lowercase SHA-256 hex from `index_digest`; the adapter verifies the exact
@@ -345,7 +366,9 @@ Registry schema-v1 provenance requirements follow
   content-addressed alias directory. Such paths remain readable until a successful
   registration or update switches the registry to a generated path.
 
-## Duplicate behavior
+### R7 — Duplicate behavior
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - Duplicate skill names are allowed across different indexes.
 - Duplicate skill names are also allowed within one index when their relative
@@ -367,9 +390,11 @@ Registry schema-v1 provenance requirements follow
   replaces the existing registration.
 - Local `--alias` exists primarily to resolve published-name collisions.
 
-## Git source behavior
+### R8 — Git source behavior
 
-### Git URL sources
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+
+#### Git URL sources
 
 - Ritebook manages its own cached clone.
 - `indexes add` clones the repository into Ritebook's cache area.
@@ -393,7 +418,7 @@ Registry schema-v1 provenance requirements follow
 - Ritebook surfaces a stable, generic Git failure without exposing raw subprocess
   stdout or stderr, which may contain credentials.
 
-### Local Git repository sources
+#### Local Git repository sources
 
 - Ritebook validates that the path appears to be a Git repository.
 - Ritebook does not own or mutate the local repository.
@@ -406,7 +431,9 @@ Registry schema-v1 provenance requirements follow
   commit fails safely and requires the user to restore it or explicitly refresh
   the registration from a new clean committed state.
 
-## CLI and workflow requirements
+### R9 — CLI and workflow requirements
+
+**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Registry commands:
 
@@ -462,7 +489,9 @@ ritebook: error: unsupported index schema_version: 2
 Failed to update 1 index(es): platform-skills
 ```
 
-## Project structure
+## Implementation and Verification Evidence
+
+### Project structure
 
 The implementation uses the `index_registry` vertical feature slice:
 
@@ -527,7 +556,7 @@ tests/unit/features/index_registry/
     └── test_json_index_reader.py
 ```
 
-## Conventions
+### Conventions
 
 - Keep Git operations, filesystem access, JSON parsing, and user config/cache
   paths in adapters or composition root.
@@ -540,15 +569,15 @@ tests/unit/features/index_registry/
 - Use deterministic JSON output for registry/cache files.
 - Use injected clocks for timestamps in tests.
 
-## Testing strategy
+### Testing strategy
 
-### Publisher index metadata tests
+#### Publisher index metadata tests
 
 - Publisher output includes index metadata with a valid published name.
 - Generated JSON remains deterministic except for timestamp.
 - Missing or invalid published names are rejected where appropriate.
 
-### Add index application tests
+#### Add index application tests
 
 - Adds a Git URL source and caches validated index contents.
 - Adds a local Git repository source and caches validated index contents.
@@ -559,7 +588,7 @@ tests/unit/features/index_registry/
 - Refuses duplicate local aliases without `force`.
 - Replaces duplicate local aliases with `force`.
 
-### Update index application tests
+#### Update index application tests
 
 - Refreshes a registered Git URL source.
 - Refreshes a registered local Git repository source.
@@ -572,12 +601,12 @@ tests/unit/features/index_registry/
 - Continues after per-index failures during all-index updates and reports failed
   local aliases.
 
-### List indexes application tests
+#### List indexes application tests
 
 - Lists registered index summaries in deterministic local-alias order.
 - Returns an empty result for an empty registry.
 
-### List skills tests
+#### List skills tests
 
 - Application tests cover all-index and filtered listing, deterministic ordering,
   duplicate names at distinct paths, empty results, unknown aliases, provenance
@@ -587,7 +616,7 @@ tests/unit/features/index_registry/
 - CLI tests cover argument mapping, stable tree output, opt-in descriptions,
   visible control escapes, empty output, and concise errors.
 
-### Adapter tests
+#### Adapter tests
 
 - JSON index reader rejects invalid JSON, missing root metadata, unsupported schema
   versions, missing `skills`, malformed entries, absolute paths, and `..`
@@ -611,7 +640,7 @@ tests/unit/features/index_registry/
 - Registry persistence rejects unsafe source values and writes replacement state
   with POSIX mode `0600` where supported.
 
-### CLI tests
+#### CLI tests
 
 - `indexes add` maps CLI args into application command DTOs.
 - `indexes update` maps CLI args into application command DTOs.
@@ -626,7 +655,7 @@ tests/unit/features/index_registry/
 - Success output includes local alias and skill count.
 - Error output is concise and user-facing.
 
-## Commands and validation
+### Commands and validation
 
 When changing this workflow, use focused tests first, then the full quality gate:
 
@@ -640,9 +669,9 @@ docker build -f Dockerfile.e2e -t ritebook-e2e .
 docker run --rm --network none ritebook-e2e
 ```
 
-## Boundaries
+## Constraints and Execution Boundaries
 
-### Always
+### Binding constraints
 
 - Support `indexes add` and `indexes update` for index registration and refresh.
 - Support `indexes list` for registered index metadata.
@@ -663,14 +692,15 @@ docker run --rm --network none ritebook-e2e
 - Reject dirty local Git repositories before binding an index.
 - Continue after per-index failures during `update-index --all`.
 
-### Ask first
+### Changes requiring specification approval
 
-- Skill installation is specified in `skill-installation-spec.md`.
+- Adding installation behavior to the registry slice; installation remains
+  governed by `skill-installation-spec.md`.
 - Adding remote non-Git HTTP indexes.
 - Adding trust signatures, approvals, lockfiles, or policy enforcement.
 - Changing install path conventions.
 
-### Never
+### Exclusions and prohibited behavior
 
 - Assume an index file outside the repository root for this milestone.
 - Mutate user-owned local repositories during add/update.
@@ -685,36 +715,38 @@ docker run --rm --network none ritebook-e2e
 - Add installation side effects, live refresh, script-oriented output formats, or
   search behavior to `skills list` without an approved specification change.
 
-## Success criteria
+## Acceptance Checks
 
-- Publisher-generated `ritebook-index.json` includes an index name metadata field.
-- A user can add an index from a Git repository URL.
-- A user can add an index from an existing local Git repository.
-- Ritebook caches the current root `ritebook-index.json` locally when adding an
-  index.
-- Every cached index is bound to a required full `source_revision` and verified
-  `index_digest`.
-- A user can update a registered index and refresh the cached index contents.
-- Failed updates do not destroy the previous cached index.
-- Dirty local repositories and pre-release schema-v1 entries without provenance
-  fail with actionable regeneration guidance.
-- Schema-v1 indexes with over-deep skill paths fail with actionable guidance to
-  reorganize and republish the source catalog, without replacing valid cached
-  state.
-- The local alias defaults from published index metadata and can be set with
-  `--alias` without changing the published name.
-- Duplicate skill names across different local aliases and at distinct paths within
-  one index are allowed.
-- Duplicate local aliases are refused unless explicitly replaced.
-- A user can browse all or one index's verified cached skills in deterministic
-  tree output without network access.
-- Empty skill listings print `No skills found`, and descriptions remain opt-in.
-- Relevant unit tests cover application behavior, JSON validation, registry/cache
-  persistence, Git source handling, and CLI argument mapping.
-- `uv run ruff format --check .`, `uv run ruff check .`,
-  `uv run ty check src/ritebook`, `uv run pytest -m "not e2e"`, `uv build`, and the
-  network-disabled Docker E2E gate pass before handoff.
+| ID | Requirement | Conditions and action | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1 | Add a valid Git URL or clean local Git repository with a root schema-v1 index. | Ritebook validates committed index bytes, records the full commit and digest, writes an immutable cached generation, and commits one coherent registry entry. | Add-index application, Git adapter, cache, registry, and JSON-reader tests. |
+| AC2 | R1 | Add an invalid, dirty, unsafe-credential, duplicate-alias, or over-deep source, with and without `--force`. | Invalid sources fail before coherent state changes; duplicate aliases require explicit replacement; published names remain unchanged by local aliases. | Boundary and failure-path tests. |
+| AC3 | R2 | List an empty or populated registry. | Output is deterministic by local alias, includes remembered metadata, and prints the documented empty result without source mutation. | List-index application and CLI tests. |
+| AC4 | R3 | List all or one cached index, with and without descriptions, while sources are offline. | Verified cached skills render in deterministic tree order; unknown aliases fail; descriptions are opt-in; empty results print `No skills found`; no Git or raw `SKILL.md` reads occur. | List-skills application, cached-reader, and CLI tests. |
+| AC5 | R4 | Update one or all indexes with successful and failing refresh, validation, or persistence paths. | Successful updates atomically replace the binding; failures preserve the previous coherent state; `--all` continues deterministically and returns non-zero after reporting failures. | Update-index application and adapter tests. |
+| AC6 | R5 | Add, update, or read publisher schema-v1 metadata. | The complete shared catalog contract is validated, publisher `index.name` is preserved, and local alias selection remains consumer-owned. | Publisher metadata and JSON-reader tests. |
+| AC7 | R6 | Write a candidate cache generation and registry replacement, including simulated failures and concurrent readers. | Cache generations remain immutable and content-addressed; the synchronized registry file is the atomic commit record; failed candidates do not invalidate referenced state. | Filesystem registry and index-cache tests. |
+| AC8 | R7 | Register duplicate published names or skill names at distinct aliases or paths. | Distinct local aliases and catalog paths remain valid; only duplicate local aliases require refusal or explicit replacement. | Application and reader duplicate tests. |
+| AC9 | R8 | Use Git URL and local repository sources, including dirty, missing, detached, unavailable, or credential-bearing cases. | Ritebook uses committed objects without mutating user repositories, rejects unsafe or unavailable state, and never infers required provenance from mutable refs. | Git-source adapter tests. |
+| AC10 | R9 | Invoke each documented registry and skill-list command and path override. | Arguments map to the owning use case and produce concise documented success or actionable error output. | CLI parser and adapter tests. |
+| AC11 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
-## Open questions
+## Assumptions
 
-None for the current specification version.
+- Git URLs and clean local Git repositories remain the supported index sources.
+- Schema version `1` and ADR 0001's commit-and-digest binding remain the
+  compatibility baseline.
+- Material unresolved assumptions: None.
+
+## Open Questions
+
+None.
+
+## Revision and Handoff Notes
+
+- October 2, 2026: Reformatted revision 2.1 to the current
+  spec-driven-development template under the user's instruction. Requirement
+  meaning, lifecycle state, and revision number were preserved.
+- Next authorized step: Treat this Active revision as canonical. Installation,
+  non-Git sources, listing side effects, or trust-policy additions require their
+  owning specification or an approved revision.

@@ -4,3 +4,7 @@ agents = ".agents/skills"
 [[skills]]
 name = "ondrej-winter-ritebook-shelf/agnostic-software-development"
 target = "agents"
+
+[[skills]]
+name = "ondrej-winter-ritebook-shelf/writing-and-editing"
+target = "agents"

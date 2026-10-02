@@ -111,14 +111,20 @@ A skill must be either `<skill>/SKILL.md` at the catalog root or
 `<collection>/<skill>/SKILL.md` one level below an implicit collection. Every
 catalog segment must be a canonical kebab-case identifier. A node cannot be both
 a root skill and a collection, and a `SKILL.md` directly at the skills root is
-invalid. The minimal accepted Agent Skills header contains only `name` and
-`description`; Ritebook also supports the standard optional `license`,
-`compatibility`, `metadata`, and `allowed-tools` fields. Ritebook-specific nested
-metadata is not required, and `metadata` values must be strings. Successful lint
+invalid. The [Agent Skills specification](https://agentskills.io/specification) is
+the canonical baseline for portable skill headers. The minimal accepted header
+contains only `name` and `description`; Ritebook also supports the standard
+optional `license`, `compatibility`, `metadata`, and `allowed-tools` fields.
+Compatible collection profiles may require standard optional flat metadata, but
+nested metadata is invalid and every `metadata` value must be a string. Successful lint
 runs report `Checked N skill(s)` using the raw discovered candidate count without
 writing an index file. See the
 [`Skill Linter` specification](docs/specs/skill-linter-spec.md) for the complete
 header and diagnostic contract.
+
+The repository's `.agents/skills` directory contains skills sourced from other
+repositories. Their owning collections validate them, so Ritebook's local and CI
+quality gates do not lint that directory.
 
 ```bash
 uv run ritebook indexes publish --skills-root <path> --name <published-name>

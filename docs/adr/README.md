@@ -3,3 +3,4 @@
 | ADR | Title | Date | Status |
 | --- | --- | --- | --- |
 | [0001](./0001-source-provenance-and-trust.md) | Bind Cached Indexes and Installed Skills to Git Commits | 2026-07-21 | Accepted |
+| [0002](./0002-adopt-agent-skills-as-canonical-skill-schema.md) | Adopt Agent Skills as the Canonical Skill Schema | 2026-10-02 | Accepted |

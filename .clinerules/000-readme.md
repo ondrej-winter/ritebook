@@ -75,6 +75,7 @@
 - `011-tooling-and-ci.md`: dependency-group, local quality gate, and CI policy; command sequencing belongs in quality-gate skills
 - `012-documentation-standards.md`: in-code documentation policy; drafting mechanics belong in `write-python-docstrings`
 - `013-logging-conventions.md`: logging implementation mechanics and privacy-safe logging details
+- `015-agent-skill-schema.md`: canonical Agent Skills schema, compatible extensions, and validator enforcement
 - `999-command-execution-safety.md`: atomic command execution and process safety rule shared across rulesets
 
 ## Active modules
@@ -93,6 +94,7 @@
 - `012-documentation-standards.md` - Clear, concise docstrings and comments policy
 - `013-logging-conventions.md` - Module-level logger standard, structured context, and safe redaction practices
 - `014-project-tooling-override.md` - Ritebook-specific `ty` type-checking policy overriding the reusable `mypy` default
+- `015-agent-skill-schema.md` - Agent Skills canonical schema and compatible-extension policy
 - `999-command-execution-safety.md` - Hard ban on inline interpreter heredocs; require file-based helper scripts and non-interactive version-control usage
 
 ## Workflows
@@ -163,6 +165,7 @@ Interpret enforcement labels as follows:
 | Configuration and secrets                           | Review-enforced against `008-configuration-and-secrets.md`                         | Startup validation and focused config tests  |
 | Docs/ADR/changelog updates                          | Review-enforced via PR checklist                                                   | Release checklist                            |
 | Logging conventions                                 | Review-enforced against `013-logging-conventions.md`                               | Runtime log sampling                         |
+| Agent Skill schema                                  | `uv run pytest tests/unit/features/skill_linter`                                   | Review against `015-agent-skill-schema.md`   |
 | Command execution safety                            | Process-enforced (no `python - <<'PY'` patterns; git `--no-pager`/non-interactive) | PR review                                    |
 
 ## Rules-to-enforcement alignment

@@ -94,6 +94,18 @@ def test_validate_skill_headers_accepts_all_optional_fields_together() -> None:
     assert report.succeeded
 
 
+def test_validate_skill_headers_accepts_compatible_flat_namespaced_metadata() -> None:
+    frontmatter = _valid_frontmatter()
+    frontmatter["metadata"] = {
+        "ritebook.schema-profile": "shelf-v1",
+        "version": "1.0.0",
+    }
+
+    report = _validate(frontmatter)
+
+    assert report.succeeded
+
+
 def test_validate_skill_headers_accepts_unicode_description() -> None:
     report = _validate(
         _valid_frontmatter(

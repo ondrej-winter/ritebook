@@ -2,11 +2,11 @@
 
 > **Status:** Active
 > **Owner:** Ritebook maintainers
-> **Spec version:** 1.2
-> **Last reviewed:** 2026-09-29
+> **Spec version:** 1.3
+> **Last reviewed:** 2026-10-02
 > **Implementation state:** Implemented
 > **Dependencies:** [Shared Catalog Contract](shared-catalog-contract-spec.md)
-> **Associated ADRs:** None
+> **Associated ADRs:** [ADR 0002](../adr/0002-adopt-agent-skills-as-canonical-skill-schema.md)
 
 ## Objective
 
@@ -38,7 +38,8 @@ modifying publisher or consumer state.
   catalog paths.
 - The [Agent Skills specification](https://agentskills.io/specification) and its
   [`skills-ref` reference validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
-  define the external header compatibility baseline reviewed on 2026-09-29.
+  define the canonical external header compatibility baseline reviewed on
+  2026-10-02.
 - Ritebook catalog path constraints remain separate from header compatibility and
   may be stricter where the shared catalog contract requires canonical ASCII
   identifiers.
@@ -60,6 +61,8 @@ uv run ritebook skills lint --root <path>
 - Accept the minimal standard header containing only `name` and `description`.
 - Validate standard optional fields when they are present without requiring
   Ritebook-specific metadata.
+- Accept compatible profiles and extensions only when they remain valid under the
+  canonical Agent Skills schema.
 - Emit deterministic, path-scoped validation output suitable for CI logs.
 - Exit with status code `0` only when every discovered skill is valid.
 - Exit non-zero when a skill is invalid or the skills root cannot be inspected.
@@ -118,6 +121,9 @@ Validation requirements:
 - `metadata` is optional. When present, it is a flat mapping from string keys to
   string values. Numeric, boolean, null, sequence, and nested mapping values are
   invalid.
+- Compatible local metadata keys, including reasonably unique or namespaced keys,
+  are accepted when their values are strings. Ritebook treats them as opaque
+  metadata and does not require them for portable validity.
 - Values such as versions that YAML could interpret as another scalar type must
   be quoted to remain strings.
 - Structured tool and environment requirements belong in `compatibility`.
@@ -126,7 +132,11 @@ Validation requirements:
   pre-approved tools. Support remains agent-dependent because the field is
   experimental in the Agent Skills specification.
 - Ritebook-specific nested values such as `metadata.dependencies` are not part of
-  the Agent Skills header schema and must not be required for a skill to pass.
+  the Agent Skills header schema and are invalid.
+- Compatible extensions use canonical optional fields, Markdown body content, or
+  optional supporting files. Ritebook does not add custom top-level fields.
+- Upstream specification changes require a reviewed specification and test update;
+  remote documentation changes do not silently alter released behavior.
 - The Markdown body after the frontmatter is outside the header schema and has no
   additional format restrictions.
 
@@ -223,6 +233,8 @@ conventional-commits/SKILL.md: metadata values must be strings.
 - The minimal Agent Skills header with only `name` and `description` passes.
 - Standard optional header fields pass when their values satisfy the Agent Skills
   specification.
+- Compatible flat string metadata, including reasonably unique local keys, passes
+  without becoming required for portable validity.
 - Unknown top-level fields, invalid optional-field values, and nested metadata
   values fail with deterministic path-scoped diagnostics.
 - Ritebook does not require non-standard metadata for header validity.

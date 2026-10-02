@@ -39,7 +39,7 @@ commit: ## Commit staged changes with Fabrica
 	uv run fabrica $(FABRICA_GLOBAL_OPTIONS) commit \
 	  --skill conventional-commits \
 	  --skill-root .agents/skills \
-	  --model gpt-5.6-luna \
+	  --model gpt-6-luna \
 	  --reasoning-effort low
 
 deps-tree: ## Show the full dependency tree

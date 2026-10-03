@@ -52,7 +52,7 @@ infrastructure.
 
 | Specification | Area | Status | Implementation | Purpose |
 | --- | --- | --- | --- | --- |
-| [Docker E2E Testing](docker-e2e-testing-spec.md) | Cross-feature quality gate | Active | Implemented | Hermetic container validation of supported CLI workflows. |
+| [Docker E2E Testing](docker-e2e-testing-spec.md) | Cross-feature quality gate | Active | Implemented | Clean installed-wheel validation of release-critical CLI workflows. |
 
 The catalog is the navigation index, not a replacement for metadata in each
 specification. Update both when adding, retiring, or superseding a specification.

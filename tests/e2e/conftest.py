@@ -50,9 +50,6 @@ class GitRepository:
         run_git(self.path, "commit", "--message", message)
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-
 class CliRunner(Protocol):
     """Callable contract for invoking the real Ritebook CLI."""
 
@@ -70,13 +67,6 @@ InvalidSkillWriter = Callable[[str], Path]
 GitRepositoryFactory = Callable[[Path], GitRepository]
 
 
-def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
-    """Mark all tests collected from this package as E2E tests."""
-    for item in items:
-        if "tests/e2e" in item.path.as_posix():
-            item.add_marker(pytest.mark.e2e)
-
-
 @pytest.fixture
 def registry_path(tmp_path: Path) -> Path:
     """Return an explicit temporary Ritebook registry path."""
@@ -91,12 +81,18 @@ def cache_root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def run_cli(tmp_path: Path) -> CliRunner:
-    """Return a helper that invokes the real Ritebook CLI through uv."""
+    """Return a helper that invokes the wheel-installed Ritebook executable."""
     home = tmp_path / "home"
     config_home = tmp_path / "config-home"
     cache_home = tmp_path / "cache-home"
     home.mkdir()
+    ritebook = which("ritebook")
+    if ritebook is None:
+        message = "installed ritebook executable is required for E2E tests"
+        raise RuntimeError(message)
+
     environment = os.environ.copy()
+    environment.pop("PYTHONPATH", None)
     environment.update(
         {
             "GIT_CONFIG_COUNT": "2",
@@ -112,16 +108,7 @@ def run_cli(tmp_path: Path) -> CliRunner:
     )
 
     def run(arguments: Sequence[str], *, cwd: Path | None = None) -> CliResult:
-        command = (
-            "uv",
-            "run",
-            "--frozen",
-            "--no-sync",
-            "--project",
-            str(PROJECT_ROOT),
-            "ritebook",
-            *arguments,
-        )
+        command = (ritebook, *arguments)
         completed = subprocess.run(  # noqa: S603 - E2E tests intentionally drive the local CLI.
             command,
             check=False,

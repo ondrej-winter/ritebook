@@ -663,10 +663,10 @@ When changing this workflow, use focused tests first, then the full quality gate
 uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest -m "not e2e"
+uv run pytest
 uv build
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm --network none ritebook-e2e
+docker run --rm ritebook-e2e
 ```
 
 ## Constraints and Execution Boundaries

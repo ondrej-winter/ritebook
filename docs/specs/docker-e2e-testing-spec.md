@@ -3,273 +3,350 @@
 ## Status
 
 - State: Active
-- Revision: 2.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 3.1
+- Acceptance basis: User-approved Docker E2E stress-test interview completed on
+  October 3, 2026.
+- Accepted by / on: User / 2026-10-03
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-03
 - Implementation state: Implemented
-- Dependencies: [Skill Linter](skill-linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
-- Supersedes: None
+- Dependencies: [Skill Linter](skill-linter-spec.md),
+  [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md),
+  [Skill Installation](skill-installation-spec.md), and
+  [Skill Contribution](skill-contribution-spec.md)
+- Associated ADRs:
+  [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Supersedes: Revision 3.0 of this specification
 
 ## Objective and Context
 
-Provide Docker-based end-to-end integration testing for Ritebook so maintainers
-can catch real workflow regressions across the CLI, Git operations, registry and
-cache files, and generated publisher indexes.
+Provide a mandatory Docker end-to-end quality gate that proves Ritebook's
+release-critical CLI workflows through a clean, consumer-style installation of a
+wheel built from the commit under test.
 
-The implementation provides an isolated test runner rather than broad
-infrastructure. Docker proves the workflow outside local developer state and
-unit-test fakes under the explicit state, permission, and network contract below.
+The gate exists to catch failures that source-based tests can miss, including
+wheel-content omissions, invalid console-script packaging, incomplete runtime
+dependency declarations, and regressions across real CLI, filesystem, Git,
+registry, cache, installation, lockfile, and publisher boundaries. Docker is the
+only supported E2E execution path; unit and integration tests provide faster
+source-based feedback outside this boundary.
+
+The Docker image is test infrastructure, not a production runtime image. Its
+evidence is intentionally bounded to the Python version, operating system, and
+CPU architecture used by the mandatory CI job.
 
 ### Current-state evidence
 
-- Ritebook is a Python 3.13 CLI package managed with `uv`.
-- The package exposes the console script `ritebook = "ritebook.cli:main"`.
-- Current automated tests include unit tests under `tests/unit/` and black-box
-  CLI E2E tests under `tests/e2e/`.
-- The existing test suite covers domain, application, adapter, and CLI behavior
-  through direct Python tests and fakes.
-- `Dockerfile.e2e` provides an isolated Docker test runner for E2E pytest.
-- The image runs tests as the fixed unprivileged `ritebook` user with effective
-  UID `10001` and controlled writable `HOME`, `XDG_CONFIG_HOME`, and
-  `XDG_CACHE_HOME` paths below `/home/ritebook`.
-- Docker runtime networking is disabled. The container has no non-loopback IPv4
-  route, and the E2E suite uses local temporary Git repositories without external
-  services.
-- `.github/workflows/ci-cd.yaml` runs Docker E2E as a mandatory gate in parallel
-  with the non-E2E quality-check job.
-- GitHub Actions runs formatting, linting, type checking, non-E2E pytest, and
-  package build steps directly on `ubuntu-latest` in a separate mandatory job.
-- The highest-value workflow verified end to end is the publisher-to-consumer
-  path across these commands:
-  - `skills lint`
-  - `indexes publish`
-  - `indexes add`
-  - `skills list`
-  - `indexes update`
-  - `skills install`
-  - `skills sync`
+- Ritebook is a Python package with a `ritebook = "ritebook.cli:main"` console
+  script and a declared minimum Python version of 3.13.
+- `Dockerfile.e2e` builds the wheel, prepares separate test and consumer Python
+  environments, and runs `tests/e2e/` without copying the project source or
+  project metadata into the final stage.
+- The E2E harness invokes the installed `ritebook` executable directly.
+- The existing E2E scenarios use temporary local Git repositories to validate
+  publisher, registry, listing, update, installation, synchronization, and
+  contribution workflows.
+- `.github/workflows/ci-cd.yaml` runs Docker E2E as an independent job and makes
+  the repository-controlled release job depend on its success.
+- Existing repository configuration treats the Docker E2E check as required for
+  pull-request merges.
 
 ## Scope
 
-- In scope: A Docker-based black-box CLI test runner, local temporary Git
-  workflow fixtures, publisher-to-consumer plus installation and contribution
-  scenarios, unprivileged and network-disabled runtime isolation, and the blocking
-  CI gate.
-- Out of scope: Production runtime packaging, Docker Compose or service
-  containers, live remote repositories, external services, VM-grade isolation,
-  reproducible mutable base images, and replacement of unit-level coverage.
+- In scope: Building a same-commit wheel, installing it as a consumer would,
+  running black-box release-critical workflows inside Docker, separate locked
+  test tooling, unprivileged execution, controlled user state, local Git fixtures,
+  normal anonymous network access, parallel pytest execution, and merge- and
+  release-blocking CI behavior.
+- Out of scope: Testing the exact bytes later published to PyPI, installing or
+  executing the source distribution, production container packaging, native
+  macOS or Windows E2E, Python-version or CPU-architecture matrices, required
+  live-service scenarios, scheduled dependency-drift checks, immutable base-image
+  digests, retained failure artifacts, and duration budgets.
 
 ## Requirements
 
-The following requirement groups preserve the normative Docker E2E contract of revision 2.1.
+### R1 — Clean wheel build and consumer installation
 
-### R1 — Containerized workflow coverage
+**Basis:** User-approved October 3, 2026 stress-test decision.
 
-**Basis:** Existing active Ritebook contract and the five dependent feature specifications recorded in the Status section.
+The Docker build must create a Ritebook wheel from the repository commit under
+test with `uv build --wheel`. Only the built wheel may cross from the package
+build stage into the consumer installation stage. Docker E2E does not need to
+build or validate an sdist; the standard quality job remains responsible for
+building the configured distribution formats.
 
-The implementation includes a containerized E2E test runner that builds from the
-repository and runs black-box CLI tests inside Docker.
+The consumer environment must install the wheel non-editably and resolve runtime
+dependencies from the wheel's declared package metadata. `uv.lock` must not pin
+the consumer environment's runtime dependency versions. This intentionally makes
+the gate sensitive to incomplete or incompatible runtime dependency declarations
+and to current compatible dependency resolution.
 
-The primary E2E scenario focuses on the publisher-to-consumer workflow:
+The wheel tested by Docker E2E may be independently built from the same commit.
+It does not have to be byte-identical to the versioned distributions rebuilt by
+the later release job.
 
-1. Create temporary valid skill fixtures.
-2. Run `ritebook skills lint --root <skills-root>`.
-3. Run `ritebook indexes publish --skills-root <skills-root> --name
-   <published-name>`.
-4. Initialize and commit a local Git repository containing the generated
-   `ritebook-index.json`.
-5. Run `ritebook indexes add --source <local-git-repo> --registry-path <path>
-   --cache-root <path>`.
-6. Verify the registry binds the cached index to the source's full commit object
-   ID and the exact index digest required by
-   [ADR 0001](../adr/0001-source-provenance-and-trust.md).
-7. Run `ritebook skills list --registry-path <path> --show-description`.
-8. Modify the source skills, regenerate the publisher index, and commit the
-   repository update.
-9. Run `ritebook indexes update <local-alias> --registry-path <path>
-   --cache-root <path>`.
-10. Run `ritebook skills list --registry-path <path> --show-description` again
-    and verify the output reflects the newly bound commit and cached index.
+### R2 — Separate test-tool and consumer environments
 
-Additional E2E scenarios cover direct and requirements-file installation and the
-upstream skill-contribution workflow. The tests prefer stable, high-signal
-assertions over exhaustive coverage and do not duplicate all unit-level edge
-cases.
+**Basis:** User-approved October 3, 2026 stress-test decision.
 
-Installation scenarios must prove the full binding: the cached index and root
-`ritebook-index.json` at the selected commit both match the persisted digest, and
-the copied skill bytes come from that commit. A digest mismatch on either side
-must fail before content is copied.
+The image must use separate Python environments for test tooling and the Ritebook
+consumer installation.
 
-### R2 — CI gate
+- The test-tool environment must install the repository's complete locked `dev`
+  dependency group without installing the Ritebook project. The equivalent
+  command is `uv sync --frozen --only-group dev --no-install-project`.
+- The consumer environment must contain the built Ritebook wheel and dependencies
+  resolved from the wheel metadata.
+- Pytest must execute from the test-tool environment while the `ritebook`
+  executable resolves from the consumer environment.
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+The final test stage must not contain `src/`, `pyproject.toml`, `uv.lock`, or
+another repository path that could import or execute Ritebook from the source
+checkout. The E2E environment test must positively verify that the test-tool
+Python cannot import Ritebook, the console script belongs to the consumer
+environment, and the installed Ritebook module resolves below that consumer
+environment.
 
-Docker E2E is a mandatory quality gate in the main CI/CD workflow. The Docker E2E
-job runs independently from the standard formatting, linting, type-checking,
-non-E2E pytest, and build job so both jobs can execute in parallel on GitHub
-Actions runners.
+### R3 — Release-critical black-box workflow coverage
 
-Releases require both the standard quality-check job and the Docker E2E job to
-pass. Maintainers can rerun the Docker E2E job from the main workflow when
-investigating a failure.
+**Basis:** Existing feature contracts retained under the approved clean-wheel
+boundary.
 
-### R3 — Runtime isolation contract
+E2E tests must invoke the installed `ritebook` console script as an external
+process rather than importing Ritebook application or domain services. The
+required baseline covers:
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+1. validating skills with `skills lint`;
+2. generating an index with `indexes publish`;
+3. registering a Git-backed index with `indexes add`;
+4. browsing cached skills with `skills list`;
+5. updating a registered index with `indexes update`;
+6. direct skill installation with `skills install`;
+7. requirements-file installation and synchronization with `skills sync`; and
+8. preparing an upstream skill change with `skills contribute`.
 
-The Docker E2E boundary isolates dependencies and Ritebook process state from the
-developer environment, exercises realistic unprivileged filesystem permissions,
-and prevents runtime network access. Build-time public network access remains
-required. The boundary does not promise a reproducible operating-system image,
-separate kernel, production packaging, or protection against a malicious test
-process with container-escape capabilities.
+The workflows must exercise real local filesystem and Git process boundaries.
+They must verify the commit and digest provenance required by
+[ADR 0001](../adr/0001-source-provenance-and-trust.md), including that installed
+content comes from the validated commit and mismatched bindings fail before
+content is copied.
+
+The currently required scenarios must use temporary local Git repositories.
+Future scenarios may use anonymous public services, but revision 3.0 does not
+require a live-service test.
+
+### R4 — Risk-based coverage growth
+
+**Basis:** User-approved October 3, 2026 stress-test decision.
+
+A change must add or update Docker E2E coverage when it introduces or materially
+alters a release-critical CLI workflow spanning multiple real boundaries, such as
+CLI parsing, filesystem state, Git, generated metadata, package installation, or
+subprocess behavior.
+
+Docker E2E must remain a curated high-signal suite rather than duplicate every
+command variant or edge case. Narrow validation rules, exhaustive error matrices,
+and ordinary edge cases belong primarily in unit or integration tests.
+
+### R5 — Container user and state boundary
+
+**Basis:** User-approved October 3, 2026 stress-test decision.
+
+The final test stage must run as a non-root user. `HOME`, `XDG_CONFIG_HOME`, and
+`XDG_CACHE_HOME` must identify controlled, writable, image-owned directories.
+The username, numeric UID, and exact absolute paths are implementation details,
+not portable requirements.
+
+E2E workflow fixtures must use explicit temporary registry and cache paths and
+must not read or write developer-local Ritebook state. The image must not receive
+host filesystem mounts, environment files, credential-helper state, tokens, SSH
+keys, private repository access, or other service credentials.
+
+### R6 — Network policy
+
+**Basis:** User-approved October 3, 2026 stress-test decision.
+
+Docker E2E runs with normal container networking. Image construction and runtime
+may access public dependency indexes, public Git repositories, or other anonymous
+public services. Tests requiring credentials or private services are prohibited.
+
+There is no suite-wide retry, skip, timeout, or outage-classification policy for
+future live-service scenarios. Each scenario may define its own behavior. The
+gate also has no E2E-specific subprocess timeout, job timeout, or duration budget;
+platform and tool defaults apply unless an individual test chooses a narrower
+limit.
+
+### R7 — Explicit opt-in, parallel, and isolated test execution
+
+**Basis:** User-approved October 3, 2026 stress-test decision.
+
+Repository-level pytest configuration must classify tests collected from
+`tests/e2e/` as `e2e` and deselect them unless `--run-e2e` is present. This makes
+plain `pytest` the standard non-E2E command without relying on repeated negative
+marker expressions.
+
+The final image must identify itself with the Docker-only
+`RITEBOOK_DOCKER_E2E=1` environment signal and invoke pytest with explicit
+`--run-e2e -m e2e -n auto` options. Explicit `--run-e2e` use without that signal
+must fail with usage guidance for the supported Docker build and run commands.
+
+Tests must not depend on execution order or shared mutable workflow state. Each
+scenario must use isolated temporary paths and repositories.
+
+Failure diagnostics must be readable from pytest and captured CLI or Git output
+in the CI console. JUnit uploads, retained temporary repositories, container
+workspace archives, and other failure artifacts are not required.
+
+### R8 — Mandatory CI gate
+
+**Basis:** User-approved October 3, 2026 stress-test decision and existing
+repository configuration.
+
+The main CI/CD workflow must run a stably named `Docker E2E` job for pull requests
+and pushes to the release branch. It may run independently and in parallel with
+the standard quality job.
+
+A failed Docker E2E check must block pull-request merge through existing
+repository configuration. The repository-controlled release job must declare a
+workflow dependency on both the standard quality job and Docker E2E so it cannot
+continue after either fails. Automated proof or auditing of the external GitHub
+ruleset is not required by this specification.
+
+### R9 — Evidence and portability boundaries
+
+**Basis:** User-approved October 3, 2026 stress-test decision.
+
+The mandatory gate runs on Python 3.13 in a Linux container on the CI runner's
+CPU architecture, currently expected to be `amd64`. Passing the gate warrants
+only that evidenced environment.
+
+Ritebook remains expected to work on later supported Python versions, other
+operating systems, and other CPU architectures. Platform-specific failures are
+product bugs, but this Docker gate alone does not warrant those environments.
+
+The Dockerfile may use practical version-oriented pins, including named Python
+3.13 slim images and a versioned `uv` image. Mutable base-image contents, current
+OS package versions, and consumer-resolved runtime dependency versions are
+accepted. The image is not bit-reproducible and need not pin base images by
+digest.
 
 ## Implementation and Verification Evidence
 
 ### Commands and validation
 
-Target local Docker workflow:
+The only supported E2E execution path is:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm --network none ritebook-e2e
+docker run --rm ritebook-e2e
 ```
 
-The container's default command runs the E2E suite:
+Plain host pytest commands deselect tests under `tests/e2e/`. Direct host opt-in
+with `--run-e2e` must be rejected because it does not establish the clean
+installed-wheel boundary.
+
+The final image's default command must run the equivalent of:
 
 ```bash
-uv run --frozen --no-sync pytest tests/e2e
+/opt/test-venv/bin/pytest -n auto --run-e2e -m e2e tests/e2e
 ```
 
-Existing project validation remains:
+The standard quality and packaging checks remain separate; plain pytest
+automatically excludes Docker E2E:
 
 ```bash
 uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
-uv run pytest -m "not e2e"
+uv run lint-imports
+uv run pytest
 uv build
 ```
 
 ### Project structure
 
-Implemented files:
-
-- Spec: `docs/specs/docker-e2e-testing-spec.md`
-- `Dockerfile.e2e`: dedicated Docker E2E test-runner image.
-- `.dockerignore`: keep Docker build context small and avoid copying local caches
-  and generated artifacts.
-- `tests/e2e/`: black-box E2E pytest suite.
-- `tests/e2e/conftest.py`: shared fixtures for subprocess execution, temporary
-  skills, local Git repositories, registry paths, and cache roots when useful.
-- `tests/e2e/test_cli_workflows.py`: publisher-to-consumer workflow tests.
-- `README.md`: local Docker E2E usage documentation.
-- `.github/workflows/ci-cd.yaml`: mandatory Docker E2E gate in the main CI/CD
-  workflow.
-
-### Conventions
-
-- Keep E2E tests black-box from the perspective of Ritebook behavior: execute the
-  real CLI rather than importing application services directly.
-- Use `pytest` for E2E tests to stay aligned with existing tooling.
-- Use `uv` for dependency installation and command execution inside the test
-  runner.
-- Install locked dependencies while building the image, then use
-  `uv run --frozen --no-sync` so runtime execution never resolves or installs
-  dependencies.
-- Use temporary paths for all registry and cache files.
-- Run container tests as the fixed unprivileged image user rather than root.
-- Set `HOME`, `XDG_CONFIG_HOME`, and `XDG_CACHE_HOME` to writable image-owned
-  paths rather than inheriting host state.
-- Disable Docker runtime networking. Image construction may use public network
-  access to obtain the pinned base image, system package metadata, and the exact
-  dependencies selected by `uv.lock`.
-- Configure local Git repositories deterministically in test setup, including
-  author name and email needed for commits.
-- Keep helper code small, explicit, and focused on test orchestration.
-- Do not introduce Docker Compose for the first milestone.
-- Do not add production Docker image requirements to this testing spec.
-
-### Testing strategy
-
-The Docker E2E suite optimizes for reliability first.
-
-Primary scenario:
-
-- A publisher-to-consumer happy path that exercises real CLI commands, real local
-  Git commits, generated `ritebook-index.json`, explicit registry path, explicit
-  cache root, verified commit/index bindings, and cached skill listing before and
-  after an update.
-
-Provenance regression scenarios prove that uncommitted local source changes are
-rejected and that changing source content after registration cannot silently
-change installed bytes.
-
-Secondary validation scenario:
-
-- One invalid skill metadata path that proves validation failure is visible
-  through the real CLI with a non-zero exit code and stable diagnostic output.
-
-The E2E tests should not depend on live external services, real remote Git
-repositories, wall-clock-sensitive assertions, developer home directories, or
-test order.
-
-The focused container-environment scenario runs only when the image sets
-`RITEBOOK_DOCKER_E2E=1`. It verifies the non-root effective UID, controlled
-writable home and XDG directories, and absence of non-loopback IPv4 routes.
-Direct host execution skips this container-specific assertion while running the
-same black-box workflow tests.
+- `Dockerfile.e2e`: wheel build, locked test-tool environment, consumer install,
+  and final non-root E2E image.
+- `conftest.py`: repository-level E2E classification, default deselection, and
+  Docker-only `--run-e2e` enforcement.
+- `.dockerignore`: excludes developer state, credentials, caches, and generated
+  artifacts from the Docker build context.
+- `tests/e2e/conftest.py`: installed-CLI runner, temporary paths, and local Git
+  fixtures.
+- `tests/e2e/test_container_environment.py`: executable evidence for the
+  non-root, controlled-state, separate-environment, no-source boundary.
+- `tests/e2e/test_cli_workflows.py`: publisher, registry, installation, and
+  synchronization workflows.
+- `tests/e2e/test_skill_contribution_workflow.py`: contribution workflow.
+- `.github/workflows/ci-cd.yaml`: mandatory Docker E2E and release dependency.
+- `README.md` and `AGENTS.md`: canonical local validation commands and concise
+  operator guidance.
 
 ## Constraints and Execution Boundaries
 
 ### Binding constraints
 
-- Use local temporary Git repositories for the first milestone.
-- Pass explicit `--registry-path` and `--cache-root` values in E2E tests.
-- Keep Docker E2E tests isolated from real `~/.config/ritebook` and
-  `~/.cache/ritebook` state.
-- Build without host credential mounts, environment-file injection, or host
-  filesystem mounts.
-- Run with `--network none` as the unprivileged image user and controlled home.
-- Treat Docker as an isolated test runner, not as product runtime packaging.
-- Prefer deterministic fixtures and fewer assertions over broad fragile checks.
+- Build a wheel with `uv build --wheel`; do not install Ritebook from source.
+- Keep test tooling and the consumer installation in separate environments.
+- Keep source code and project metadata out of the final stage.
+- Invoke the installed `ritebook` executable directly.
+- Run only inside Docker as a non-root user with controlled writable state.
+- Use explicit temporary registry and cache locations in workflow tests.
+- Keep the current required scenarios on local temporary Git repositories.
+- Allow only anonymous access to public external services.
+- Deselect E2E tests from plain pytest execution.
+- Require Docker-only `--run-e2e -m e2e -n auto` execution for the E2E suite.
+- Keep Docker E2E independent from the standard quality job and blocking for
+  merge and release.
 
 ### Changes requiring specification approval
 
-- Adding Docker Compose or service containers.
-- Requiring live remote Git repositories or network-dependent test scenarios.
-- Adding new runtime dependencies only to support E2E tests.
+- Testing the exact final release artifact instead of an independently built
+  same-commit wheel.
+- Making sdist installation part of Docker E2E.
+- Installing or invoking Ritebook from the source checkout.
+- Supporting direct-host E2E as an equivalent acceptance path.
+- Adding credentials, private repositories, or secret-backed services.
+- Adding Docker Compose or service containers as required infrastructure.
+- Adding a Python, operating-system, or CPU-architecture matrix.
 
 ### Exclusions and prohibited behavior
 
-- Touch real user registry or cache paths in E2E tests.
-- Depend on private repositories, credentials, or external services.
-- Claim that image construction is network-independent; it resolves public image,
-  system-package, and locked Python dependency sources.
-- Claim VM-grade isolation, host-kernel isolation, reproducible mutable base-image
-  contents, or production-runtime equivalence.
-- Put business workflow assertions only in shell scripts without pytest-level
-  assertions.
-- Replace unit tests with Docker E2E tests.
-- Use Docker E2E to justify broad production code rewrites.
+- Do not copy `src/`, `pyproject.toml`, or `uv.lock` into the final test stage.
+- Do not let the test-tool environment install or shadow Ritebook.
+- Do not mount host credentials, developer home directories, or Ritebook state.
+- Do not claim validation of exact PyPI artifact bytes, sdists, production
+  packaging, non-Linux platforms, later Python versions, or non-runner CPU
+  architectures.
+- Do not replace focused unit and integration coverage with Docker E2E.
+- Do not require uploaded reports, retained workspaces, scheduled runs, or a
+  performance budget under this revision.
 
 ## Acceptance Checks
 
 | ID | Requirement | Conditions and action | Expected observable result | Verification method |
 | --- | --- | --- | --- | --- |
-| AC1 | R1 | Build the E2E image and run it with runtime networking disabled. | The real Ritebook CLI completes publisher-to-consumer, update, installation, synchronization, and contribution scenarios against local temporary Git repositories; explicit temporary registry/cache paths and ADR 0001 provenance are verified. | `docker build -f Dockerfile.e2e -t ritebook-e2e .` and `docker run --rm --network none ritebook-e2e`. |
-| AC2 | R2 | Execute the main CI/CD workflow and release gates. | Docker E2E runs as an independent blocking job alongside the standard quality job, and release or publishing cannot proceed unless both succeed; README documents the local command. | Workflow configuration review and CI execution. |
-| AC3 | R3 | Run the focused container-environment test inside and outside the E2E image. | Inside Docker, the process uses UID 10001, controlled writable home/XDG paths, no host credential or filesystem mounts, and no non-loopback IPv4 route; direct host execution skips only container-specific assertions. | `tests/e2e/test_docker_environment.py` and container runtime inspection. |
+| AC1 | R1-R2 | Build `Dockerfile.e2e` from a clean repository context. | The build creates only a wheel for Ritebook, creates a locked test-tool environment without Ritebook, installs the wheel and metadata-resolved runtime dependencies into a separate consumer environment, and constructs the final stage without source or project metadata. | `docker build -f Dockerfile.e2e -t ritebook-e2e .` plus Dockerfile review. |
+| AC2 | R2, R5 | Run the container environment test in the final image. | The process is non-root; home and XDG paths are controlled and writable; test Python cannot import Ritebook; the `ritebook` script and imported package resolve from the consumer environment; `src/`, `pyproject.toml`, and `uv.lock` are absent. | `tests/e2e/test_container_environment.py` through `docker run --rm ritebook-e2e`. |
+| AC3 | R3-R4 | Run the full E2E suite against local temporary Git fixtures. | The installed CLI completes the required publisher, registry, listing, update, install, sync, and contribution workflows and verifies ADR 0001 commit/digest binding behavior. | `docker run --rm ritebook-e2e`. |
+| AC4 | R6 | Build and run with ordinary Docker networking and no credential injection. | The suite does not require `--network none`, credentials, private repositories, host mounts, or environment files; the currently required tests remain local-fixture based. | Docker/CI command review and E2E execution. |
+| AC5 | R7 | Run plain host pytest commands, attempt explicit host opt-in, and run the final image's default command. | Plain host pytest deselects E2E; host `--run-e2e` fails with Docker usage guidance; the image supplies its Docker-only signal and executes E2E with `--run-e2e -m e2e -n auto`; isolated tests pass without order or shared-state dependence; failures include readable command diagnostics in console output. | `uv run pytest`, `uv run pytest tests/e2e`, `uv run pytest --run-e2e -m e2e tests/e2e`, image command review, and `docker run --rm ritebook-e2e`. |
+| AC6 | R8 | Review and execute the main CI/CD workflow. | The stable `Docker E2E` job runs on PRs and release-branch pushes; release depends on both quality and Docker E2E; existing repository configuration blocks merge when the check fails. | Workflow review and CI execution; external ruleset proof is not required. |
+| AC7 | R9 | Review the image and documentation claims. | Commands and documentation describe Python 3.13/Linux/runner-architecture evidence, practical pins, and the explicit package/platform warranty boundaries without claiming reproducible or cross-platform proof. | Dockerfile, README, AGENTS, and specification review. |
 
 ## Assumptions
 
-- Docker is available to maintainers and CI for the isolated E2E gate.
-- Runtime networking remains disabled and E2E fixtures remain local and
-  deterministic.
+- Docker is available to maintainers and CI.
+- Existing repository configuration requires the stably named Docker E2E check
+  before pull-request merge.
+- GitHub-hosted `ubuntu-latest` Docker execution currently provides the expected
+  Linux `amd64` evidence.
+- Consumer dependency drift is evaluated only when configured pull-request, push,
+  or release-related workflows run; no scheduled run is required.
+- Public-service outages may block a future live-service scenario according to
+  that test's chosen behavior.
+- Platform/default timeouts and console diagnostics are sufficient for this gate.
 - Material unresolved assumptions: None.
 
 ## Open Questions
@@ -278,9 +355,17 @@ None.
 
 ## Revision and Handoff Notes
 
-- October 2, 2026: Reformatted revision 2.1 to the current
-  spec-driven-development template under the user's instruction. Requirement
-  meaning, lifecycle state, and revision number were preserved.
-- Next authorized step: Treat this Active revision as canonical for the isolated
-  Docker quality gate. Network-dependent scenarios, service containers, or new
-  E2E-only runtime dependencies require an approved specification revision.
+- October 3, 2026: Revision 3.1 made Docker E2E an affirmative pytest opt-in;
+  plain pytest now deselects E2E automatically, while the final image provides a
+  Docker-only environment signal and invokes `--run-e2e -m e2e -n auto`.
+- October 3, 2026: Revision 3.0 replaced source-project execution with a clean
+  installed-wheel boundary; separated locked test tooling from consumer-resolved
+  runtime dependencies; made Docker the only supported E2E path; allowed normal
+  anonymous networking; removed fixed UID and offline-route requirements; and
+  recorded merge, release, portability, diagnostics, timeout, and coverage-growth
+  decisions from the approved stress-test interview.
+- October 2, 2026: Revision 2.1 was normalized to the repository specification
+  template without changing its then-current behavior.
+- Next authorized step: Maintain the implementation and dependent documentation
+  against this Active revision. Material changes listed under specification
+  approval require a new accepted revision.

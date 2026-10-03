@@ -1,35 +1,70 @@
 # syntax=docker/dockerfile:1
 
-# Dedicated clean-room test runner for Docker E2E checks.
+# Dedicated clean-wheel test runner for Docker E2E checks.
 # This image is intentionally not production runtime packaging.
 FROM ghcr.io/astral-sh/uv:0.9.5 AS uv
 
-FROM python:3.13-slim
+FROM python:3.13-slim AS wheel-builder
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+
+WORKDIR /build
+
+COPY pyproject.toml uv.lock README.md ./
+COPY src/ ./src/
+
+RUN uv build --wheel --out-dir /dist
+
+FROM python:3.13-slim AS test-tools-builder
 
 COPY --from=uv /uv /uvx /usr/local/bin/
 
 ENV UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/app/.venv \
-    HOME=/home/ritebook \
+    UV_PROJECT_ENVIRONMENT=/opt/test-venv
+
+WORKDIR /build
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen --only-group dev --no-install-project
+
+FROM python:3.13-slim AS consumer-builder
+
+COPY --from=uv /uv /uvx /usr/local/bin/
+COPY --from=wheel-builder /dist/ /dist/
+
+ENV UV_LINK_MODE=copy
+
+RUN uv venv /opt/ritebook-venv \
+    && uv pip install \
+        --python /opt/ritebook-venv/bin/python \
+        /dist/ritebook-*.whl
+
+FROM python:3.13-slim
+
+ENV HOME=/home/ritebook \
     XDG_CACHE_HOME=/home/ritebook/.cache \
     XDG_CONFIG_HOME=/home/ritebook/.config \
-    RITEBOOK_DOCKER_E2E=1
+    RITEBOOK_DOCKER_E2E=1 \
+    RITEBOOK_E2E_CONSUMER_VENV=/opt/ritebook-venv \
+    RITEBOOK_E2E_TEST_VENV=/opt/test-venv \
+    PATH=/opt/ritebook-venv/bin:/opt/test-venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 
 WORKDIR /app
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 10001 --shell /usr/sbin/nologin ritebook \
-    && mkdir --parents "${XDG_CACHE_HOME}" "${XDG_CONFIG_HOME}" \
+    && useradd --create-home --shell /usr/sbin/nologin ritebook \
+    && mkdir --parents "${XDG_CACHE_HOME}" "${XDG_CONFIG_HOME}" /app/tests/e2e \
     && chown --recursive ritebook:ritebook /app "${HOME}"
 
-COPY --chown=ritebook:ritebook pyproject.toml uv.lock README.md ./
-COPY --chown=ritebook:ritebook src/ ./src/
-COPY --chown=ritebook:ritebook tests/ ./tests/
+COPY --from=test-tools-builder /opt/test-venv/ /opt/test-venv/
+COPY --from=consumer-builder /opt/ritebook-venv/ /opt/ritebook-venv/
+COPY --chown=ritebook:ritebook conftest.py ./conftest.py
+COPY --chown=ritebook:ritebook tests/__init__.py ./tests/__init__.py
+COPY --chown=ritebook:ritebook tests/e2e/ ./tests/e2e/
 
 USER ritebook
 
-RUN uv sync --frozen --group dev
-
-CMD ["uv", "run", "--frozen", "--no-sync", "pytest", "tests/e2e"]
+CMD ["/opt/test-venv/bin/pytest", "-n", "auto", "--run-e2e", "-m", "e2e", "tests/e2e"]

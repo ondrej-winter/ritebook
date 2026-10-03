@@ -50,30 +50,32 @@ uv run ruff format .
 uv run ruff check .
 uv run ty check src/ritebook
 uv run lint-imports
-uv run pytest -m "not e2e"
+uv run pytest
 ```
 
-Run E2E tests directly when iterating on the black-box CLI workflow:
+Plain pytest execution deselects Docker E2E tests by default. The Docker image
+explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
+because it cannot establish the clean installed-wheel boundary.
 
-```bash
-uv run pytest tests/e2e -q
-```
-
-Run the mandatory isolated Docker E2E gate before handoff:
+Run the mandatory Docker E2E gate before handoff:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm --network none ritebook-e2e
+docker run --rm ritebook-e2e
 ```
 
-`Dockerfile.e2e` is an isolated end-to-end test boundary, not production
-packaging. Image construction uses the network to obtain the pinned base image
-and locked dependencies. Runtime tests execute as an unprivileged user with a
-controlled writable home and no non-loopback IPv4 route. Tests use local Git
-repositories, explicit registry files, and explicit cache directories. The image
-does not receive host credentials or developer-local Ritebook state. CI/CD uses
-the same build and run commands as this local workflow and runs Docker E2E as a
-mandatory quality gate in parallel with the non-E2E quality checks.
+`Dockerfile.e2e` is a clean installed-wheel test boundary, not production
+packaging. It builds a wheel from the current source, installs that wheel and its
+declared runtime dependencies into a consumer environment, and runs the E2E suite
+from a separate locked test-tool environment. The final image contains the E2E
+harness but not the project source, `pyproject.toml`, or `uv.lock`, so the tests
+invoke the installed `ritebook` console script directly. Tests run as an
+unprivileged user with a controlled writable home and use local Git repositories,
+explicit registry files, and explicit cache directories. Normal container
+networking is allowed, but the image receives no credentials or developer-local
+Ritebook state. Docker is the only supported E2E execution path. CI/CD uses the
+same build and run commands and runs Docker E2E as a mandatory quality gate in
+parallel with the non-E2E quality checks.
 
 Build the package distributions:
 

@@ -220,20 +220,23 @@ uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/ritebook
 uv run lint-imports
-uv run pytest -m "not e2e"
+uv run pytest
 ```
+
+Plain pytest execution deselects Docker E2E tests. Only the clean Docker runner
+may opt in with `--run-e2e -m e2e`.
 
 Ritebook uses `ty` as its required static type checker; do not add a parallel
 `mypy` requirement without a documented decision. Keep type-check scope aligned
 when changing `pyproject.toml`, pre-commit, CI, README, or specifications.
 
 Run focused tests first while iterating. For code, CLI behavior, dependency,
-packaging, or test-infrastructure changes, also run the isolated Docker E2E gate
-before handoff when Docker is available:
+packaging, or test-infrastructure changes, also run the clean installed-wheel
+Docker E2E gate before handoff when Docker is available:
 
 ```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm --network none ritebook-e2e
+docker run --rm ritebook-e2e
 ```
 
 - `uv run pre-commit run --all-files` provides useful repository-wide feedback but

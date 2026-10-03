@@ -187,10 +187,10 @@ quality gate before handoff.
 - Format check: `uv run ruff format --check .`
 - Lint: `uv run ruff check .`
 - Type check: `uv run ty check src/ritebook`
-- Non-E2E tests: `uv run pytest -m "not e2e"`
+- Default tests: `uv run pytest` (Docker E2E is deselected unless explicitly enabled)
 - Build: `uv build`
 - Docker E2E: `docker build -f Dockerfile.e2e -t ritebook-e2e .` then
-  `docker run --rm --network none ritebook-e2e`
+  `docker run --rm ritebook-e2e`
 
 Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
 `uv.lock`.

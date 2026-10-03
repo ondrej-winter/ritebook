@@ -9,7 +9,7 @@ help: ## Show available targets
 	@echo "  make format         Format Python code with Ruff"
 	@echo "  make lint           Run Ruff lint checks"
 	@echo "  make type           Run ty type checking"
-	@echo "  make test           Run the default non-E2E test suite"
+	@echo "  make test           Run default tests (Docker E2E excluded)"
 	@echo "  make quality        Run the local quality gate"
 	@echo "  make pre-commit     Run all configured pre-commit hooks"
 	@echo "  make commit         Commit staged changes with Fabrica"
@@ -26,8 +26,8 @@ lint: ## Run Ruff lint checks
 type: ## Run ty type checking
 	uv run ty check src/ritebook
 
-test: ## Run the default non-E2E test suite
-	uv run pytest -m "not e2e"
+test: ## Run the default test suite; Docker E2E requires explicit opt-in
+	uv run pytest
 
 quality: lint type test ## Run the local quality gate
 	uv run ruff format . --check

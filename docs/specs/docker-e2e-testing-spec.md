@@ -8,7 +8,7 @@
   October 3, 2026.
 - Accepted by / on: User / 2026-10-03
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-03
+- Last reviewed: 2026-10-05
 - Implementation state: Implemented
 - Dependencies: [Skill Linter](skill-linter-spec.md),
   [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md),
@@ -278,6 +278,8 @@ uv build
   non-root, controlled-state, separate-environment, no-source boundary.
 - `tests/e2e/test_cli_workflows.py`: publisher, registry, installation, and
   synchronization workflows.
+- `tests/e2e/test_installation_provenance_workflow.py`: bound-commit installation
+  and pre-copy provenance mismatch rejection.
 - `tests/e2e/test_skill_contribution_workflow.py`: contribution workflow.
 - `.github/workflows/ci-cd.yaml`: mandatory Docker E2E and release dependency.
 - `README.md` and `AGENTS.md`: canonical local validation commands and concise
@@ -355,6 +357,15 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 5, 2026: Corrected the active default-branch ruleset and operator
+  guidance to retain the explicit repository-owner bypass required by the current
+  solo-maintainer direct-push workflow. Required checks remain active for other
+  actors, and the release job still depends on both checks.
+- October 4, 2026: Implementation evidence added explicit Docker black-box
+  coverage for installation from the validated commit and for cached-index and
+  bound-commit digest mismatches failing before content is copied. The active
+  default-branch ruleset now requires the stable `Quality checks` and `Docker E2E`
+  checks.
 - October 3, 2026: Revision 3.1 made Docker E2E an affirmative pytest opt-in;
   plain pytest now deselects E2E automatically, while the final image provides a
   Docker-only environment signal and invokes `--run-e2e -m e2e -n auto`.

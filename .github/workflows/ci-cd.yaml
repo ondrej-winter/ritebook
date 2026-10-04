@@ -76,7 +76,7 @@ jobs:
 
   patch-release:
     name: Create patch release and publish to PyPI
-    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    if: github.event_name == 'push'
     needs: [quality, docker-e2e]
     runs-on: ubuntu-latest
     environment:
@@ -111,10 +111,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Create patch release
+      - name: Create patch release commit and tag
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: uv run semantic-release version --patch --no-changelog
+        run: |
+          uv run semantic-release version \
+            --patch \
+            --no-changelog \
+            --no-push \
+            --no-vcs-release
+          echo "tag=$(git describe --tags --exact-match HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Push release tag
+        run: git push origin "refs/tags/${{ steps.release.outputs.tag }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          gh release create "${{ steps.release.outputs.tag }}" dist/*
+          --verify-tag
+          --title "${{ steps.release.outputs.tag }}"
+          --notes ""
 
       - name: Publish distribution packages to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

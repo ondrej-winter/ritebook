@@ -484,25 +484,30 @@ releases, and PyPI publishing. Docker E2E runs as a separate mandatory job in
 parallel with the main quality-check job, and releases require both jobs to pass.
 
 During the early project lifecycle, releases stay on the `0.1.x` line and every
-non-bot push to `master` increments the patch version. The CI/CD workflow uses
+accepted push to `master` increments the patch version. The CI/CD workflow uses
 Python Semantic Release to:
 
 1. run the quality gate,
 2. bump `pyproject.toml` from `0.1.x` to the next patch version,
 3. update `uv.lock` to the same package version,
-4. commit both version files together,
-5. create the matching `v0.1.x` tag,
+4. commit both version files together in a release commit,
+5. retain that release commit under the matching `v0.1.x` tag without pushing
+   the generated commit to protected `master`,
 6. publish a GitHub release without maintaining a changelog, and
 7. publish the built distributions to PyPI in the same workflow run.
 
-The release job skips commits authored by `github-actions[bot]` so the automated
-version-bump commit does not trigger another release. When the project is ready
-to move beyond patch-only `0.1.x` releases, the same Semantic Release tooling can
-be used for normal commit-derived SemVer releases.
+The version tag identifies the exact generated source commit used for the GitHub
+and PyPI release, while `master` remains on the already-tested change commit.
+When the project is ready to move beyond patch-only `0.1.x` releases, the same
+Semantic Release tooling can be used for normal commit-derived SemVer releases.
 
-For the current solo-maintainer workflow, `master` can allow direct pushes and
-CI/CD verifies changes after each push. Repository rules should allow GitHub
-Actions to write release bump commits and tags.
+The default branch requires the stable `Quality checks` and `Docker E2E` status
+checks. The repository owner retains an explicit ruleset bypass for the current
+solo-maintainer direct-push workflow; CI verifies each accepted push, and the
+release job still waits for both checks to pass. Other actors and pull requests
+remain subject to the required checks. The release workflow pushes only the
+generated version tag after both prerequisite jobs succeed, so it does not need
+to update the protected branch.
 
 Publishing uses PyPI Trusted Publishing through GitHub Actions OIDC. Before the
 first release, configure a trusted publisher for this repository in the PyPI

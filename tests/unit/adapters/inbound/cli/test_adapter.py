@@ -56,6 +56,7 @@ from ritebook.features.skill_linter.application.dtos import (
     LintSkillsCommand,
     LintSkillsResult,
     SkillValidationIssue,
+    ValidatedSkill,
 )
 from ritebook.features.skill_linter.application.errors import LintSkillsDiscoveryError
 
@@ -116,12 +117,28 @@ class FakePublisher:
         return self.result
 
 
+def _validated_skill(name: str) -> ValidatedSkill:
+    return ValidatedSkill(
+        path=name,
+        name=name,
+        skill_file=f"{name}/SKILL.md",
+        description=f"{name} skill.",
+    )
+
+
 class FakeLinter:
     """Test double for the lint-skills inbound application port."""
 
     def __init__(self, result: LintSkillsResult | None = None) -> None:
         """Store the result to return and commands received by the CLI."""
-        self.result = result or LintSkillsResult(discovered_skill_count=2)
+        self.result = result or LintSkillsResult.create(
+            discovered_skill_count=2,
+            issues=[],
+            validated_skills=[
+                _validated_skill("alpha"),
+                _validated_skill("zeta"),
+            ],
+        )
         self.commands: list[LintSkillsCommand] = []
 
     def execute(self, command: LintSkillsCommand) -> LintSkillsResult:
@@ -1962,7 +1979,17 @@ def test_install_reports_retained_targets_after_lockfile_commit_failure() -> Non
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:
-    linter = FakeLinter(LintSkillsResult(discovered_skill_count=3))
+    linter = FakeLinter(
+        LintSkillsResult.create(
+            discovered_skill_count=3,
+            issues=[],
+            validated_skills=[
+                _validated_skill("alpha"),
+                _validated_skill("beta"),
+                _validated_skill("zeta"),
+            ],
+        ),
+    )
     stdout = StringIO()
     stderr = StringIO()
 

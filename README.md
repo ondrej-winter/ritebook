@@ -107,8 +107,10 @@ index from an explicit skills root:
 uv run ritebook skills lint --root <path>
 ```
 
-The `skills lint` command recursively finds `SKILL.md` candidates so invalid
-nested declarations are reported, then enforces the schema-v1 catalog layout.
+The `skills lint` command iteratively finds visible `SKILL.md` candidates so
+invalid nested declarations are reported, then enforces the schema-v1 catalog
+layout. It does not follow symlinked skill directories or files; visible
+symlinked candidates are reported as validation issues.
 A skill must be either `<skill>/SKILL.md` at the catalog root or
 `<collection>/<skill>/SKILL.md` one level below an implicit collection. Every
 catalog segment must be a canonical kebab-case identifier. A node cannot be both
@@ -118,9 +120,11 @@ the canonical baseline for portable skill headers. The minimal accepted header
 contains only `name` and `description`; Ritebook also supports the standard
 optional `license`, `compatibility`, `metadata`, and `allowed-tools` fields.
 Compatible collection profiles may require standard optional flat metadata, but
-nested metadata is invalid and every `metadata` value must be a string. Successful lint
-runs report `Checked N skill(s)` using the raw discovered candidate count without
-writing an index file. See the
+nested metadata is invalid and every `metadata` value must be a string. YAML
+mapping keys must be unique. Frontmatter may span any number of lines but must be
+valid UTF-8 and at most 65,536 bytes including its delimiters and line endings.
+An empty catalog is valid. Successful lint runs report `Checked N skill(s)` using
+the regular-file candidate count without writing an index file. See the
 [`Skill Linter` specification](docs/specs/skill-linter-spec.md) for the complete
 header and diagnostic contract.
 
@@ -144,8 +148,10 @@ published name is written to `ritebook-index.json` as `index.name` and becomes t
 default consumer local alias.
 The `indexes publish` command reuses the same validation flow as `skills lint` and
 refuses to write or overwrite `ritebook-index.json` when any discovered skill is
-invalid. When validation succeeds, the success message reports the canonical
-output path `ritebook-index.json` relative to the invocation directory.
+invalid. When validation succeeds, publication consumes the exact immutable
+snapshot produced by that validation pass; it does not rescan skill files or
+reparse frontmatter. The success message reports the canonical output path
+`ritebook-index.json` relative to the invocation directory.
 
 Review the generated `ritebook-index.json` before committing it with the related
 skill changes.

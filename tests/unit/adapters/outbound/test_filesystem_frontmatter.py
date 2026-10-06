@@ -5,7 +5,7 @@ from ritebook.adapters.outbound.filesystem import (
     parse_yaml_frontmatter,
 )
 from ritebook.adapters.outbound.filesystem.frontmatter import (
-    MAX_FRONTMATTER_LINE_COUNT,
+    MAX_FRONTMATTER_BYTE_COUNT,
 )
 
 
@@ -36,14 +36,31 @@ def test_parse_yaml_frontmatter_rejects_missing_opening_delimiter(
     assert frontmatter.message == "frontmatter must start on the first line with ---."
 
 
+def test_parse_yaml_frontmatter_accepts_more_than_two_hundred_lines(
+    tmp_path: Path,
+) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    metadata = "\n".join(f"  key-{index}: value" for index in range(250))
+    skill_file.write_text(
+        (
+            "---\nname: code-review\n"
+            "description: Helps review code.\nmetadata:\n"
+            f"{metadata}\n---\n# Body\n"
+        ),
+        encoding="utf-8",
+    )
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, dict)
+    assert frontmatter["name"] == "code-review"
+
+
 def test_parse_yaml_frontmatter_rejects_missing_closing_delimiter_within_bound(
     tmp_path: Path,
 ) -> None:
     skill_file = tmp_path / "SKILL.md"
-    content = "---\n" + "\n".join(
-        f"line_{index}: value" for index in range(MAX_FRONTMATTER_LINE_COUNT)
-    )
-    skill_file.write_text(content, encoding="utf-8")
+    skill_file.write_text("---\nname: code-review\n", encoding="utf-8")
 
     frontmatter = parse_yaml_frontmatter(skill_file)
 
@@ -51,19 +68,83 @@ def test_parse_yaml_frontmatter_rejects_missing_closing_delimiter_within_bound(
     assert frontmatter.message == "frontmatter must include a closing --- delimiter."
 
 
-def test_parse_yaml_frontmatter_does_not_parse_beyond_frontmatter_bound(
+def test_parse_yaml_frontmatter_accepts_exact_byte_limit(tmp_path: Path) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    prefix = b"---\nname: code-review\ndescription: "
+    suffix = b"\n---\n"
+    value = b"x" * (MAX_FRONTMATTER_BYTE_COUNT - len(prefix) - len(suffix))
+    skill_file.write_bytes(prefix + value + suffix + b"# Body\n")
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, dict)
+    assert len(frontmatter["description"]) == len(value)
+
+
+def test_parse_yaml_frontmatter_counts_utf8_bytes_at_limit(tmp_path: Path) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    prefix = b"---\nname: code-review\ndescription: "
+    suffix = b"\n---\n"
+    remaining = MAX_FRONTMATTER_BYTE_COUNT - len(prefix) - len(suffix)
+    value = "é" * (remaining // 2)
+    skill_file.write_text(
+        f"---\nname: code-review\ndescription: {value}x\n---\n",
+        encoding="utf-8",
+    )
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, FrontmatterParseError)
+    assert frontmatter.message == "frontmatter must be at most 65536 UTF-8 bytes."
+
+
+def test_parse_yaml_frontmatter_rejects_frontmatter_over_byte_limit(
     tmp_path: Path,
 ) -> None:
     skill_file = tmp_path / "SKILL.md"
-    content = "---\n" + "\n".join(
-        f"line_{index}: value" for index in range(MAX_FRONTMATTER_LINE_COUNT + 1)
+    oversized_value = "x" * MAX_FRONTMATTER_BYTE_COUNT
+    skill_file.write_text(
+        f"---\nname: code-review\ndescription: {oversized_value}\n---\n",
+        encoding="utf-8",
     )
-    skill_file.write_text(content, encoding="utf-8")
 
     frontmatter = parse_yaml_frontmatter(skill_file)
 
     assert isinstance(frontmatter, FrontmatterParseError)
-    assert frontmatter.message == "frontmatter must include a closing --- delimiter."
+    assert frontmatter.message == "frontmatter must be at most 65536 UTF-8 bytes."
+
+
+def test_parse_yaml_frontmatter_rejects_duplicate_mapping_keys(
+    tmp_path: Path,
+) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text(
+        "---\nname: code-review\nname: other\ndescription: Helps review code.\n---\n",
+        encoding="utf-8",
+    )
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, FrontmatterParseError)
+    assert frontmatter.message == "frontmatter must not contain duplicate mapping keys."
+
+
+def test_parse_yaml_frontmatter_rejects_nested_duplicate_mapping_keys(
+    tmp_path: Path,
+) -> None:
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text(
+        (
+            "---\nname: code-review\ndescription: Helps review code.\n"
+            "metadata:\n  author: first\n  author: second\n---\n"
+        ),
+        encoding="utf-8",
+    )
+
+    frontmatter = parse_yaml_frontmatter(skill_file)
+
+    assert isinstance(frontmatter, FrontmatterParseError)
+    assert frontmatter.message == "frontmatter must not contain duplicate mapping keys."
 
 
 def test_parse_yaml_frontmatter_rejects_malformed_yaml_without_source_details(

@@ -4,6 +4,7 @@ from ritebook.features.publisher.application.dtos import (
     SkillPrecheckIssue,
     SkillPrecheckResult,
 )
+from ritebook.features.publisher.domain import SkillEntry
 from ritebook.features.skill_linter.application.dtos import LintSkillsCommand
 from ritebook.features.skill_linter.application.ports import LintSkillsPort
 
@@ -20,6 +21,15 @@ class LinterPublisherPrecheck:
         result = self._linter.execute(LintSkillsCommand(skills_root=skills_root))
         return SkillPrecheckResult.create(
             checked_skill_count=result.discovered_skill_count,
+            skills=[
+                SkillEntry(
+                    path=skill.path,
+                    name=skill.name,
+                    skill_file=skill.skill_file,
+                    description=skill.description,
+                )
+                for skill in result.validated_skills
+            ],
             issues=[
                 SkillPrecheckIssue(
                     skill_file=issue.skill_file,

@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 2.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 2.2
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6, 2026 validated-snapshot publication decision.
+- Accepted by / on: User / 2026-10-06
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-06
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -61,7 +61,7 @@ user-owned local source repositories.
 
 ## Requirements
 
-The following requirement groups preserve the normative contribution contract of revision 2.1.
+The following requirement groups define the normative contribution contract of revision 2.2.
 
 ### R1 — Contribute one installed skill change
 
@@ -110,6 +110,8 @@ Requirements:
   skill directory inside the isolated checkout.
 - Ritebook runs existing skill validation before creating a commit.
 - Ritebook regenerates `ritebook-index.json` before creating a commit.
+- Index regeneration uses the publisher's exact successful validation snapshot;
+  it must not rediscover or reparse skill files after validation.
 - Before reading or regenerating the index, Ritebook rejects a symlinked
   `ritebook-index.json` or any symlink component in the contribution checkout
   path. Rejection occurs before publisher execution and must not modify an
@@ -414,6 +416,8 @@ Cover:
 - Resolves the full locked commit and verifies its exact index digest.
 - Creates safe branch names.
 - Creates commits only after validation and index regeneration succeed.
+- Regenerates the index from the exact successful validation snapshot and does not
+  perform a second discovery or frontmatter parse.
 - Rejects symlinked index files and symlinked checkout ancestors before invoking
   the publisher, while preserving external symlink targets.
 - Reports Git failures without leaking credentials.
@@ -509,7 +513,7 @@ docker run --rm ritebook-e2e
 | AC2 | R2 | Invoke the supported command and path overrides. | Arguments map to the contribution use case, output identifies checkout, branch, commit, and safe next steps, and unsupported push/MR/base options remain unimplemented. | CLI parser and adapter tests. |
 | AC3 | R3 | Prepare or reuse a contribution workspace, including unmarked, symlinked, dirty, and failure cases. | Only marked Ritebook-owned checkouts are reset or cleaned; source branches, managed index caches, user-owned repositories, and external symlink targets are not mutated. | Contribution-checkout and Git adapter tests. |
 | AC4 | R4 | Compare installed content with the locked revision and current upstream base, including changed-upstream, unavailable-commit, and digest-mismatch cases. | Contributions proceed only when the bound baseline is verified and the selected upstream path has not diverged; conflicts and unavailable provenance fail without copying or committing. | Application and Git workspace tests. |
-| AC5 | R5 | Prepare changed valid and invalid skill content. | Valid content is copied, linted, re-indexed, and committed on a deterministic review branch; validation or regeneration failure creates no commit; no push occurs by default. | Validation, regeneration, Git, and application tests. |
+| AC5 | R5 | Prepare changed valid and invalid skill content. | Valid content is copied, linted, re-indexed from the exact successful snapshot, and committed on a deterministic review branch; validation or regeneration failure creates no commit; no second discovery or parse and no push occurs. | Validation, regeneration, Git, and application tests. |
 | AC6 | R6 | Read portable and legacy lock entries and resolve repository-relative source paths. | Required provenance fields are enforced, local-machine source entries and missing bindings are rejected without disclosure, and catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
 | AC7 | R1-R6 | Run the documented implementation handoff gates. | Application, adapter, CLI, formatting, linting, type, non-E2E, build, and network-disabled Docker E2E checks all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
@@ -534,6 +538,8 @@ docker run --rm ritebook-e2e
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.
+- October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
+  publisher's exact validated-snapshot contract from ADR 0003.
 - OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,
   MR/PR, base-selection, or provider-specific implementation.
 - Next authorized step: Treat this Active revision as canonical for the local

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+from ritebook.features.publisher.domain import SkillEntry
 from ritebook.shared_kernel import require_index_name
 
 CANONICAL_INDEX_FILENAME = "ritebook-index.json"
@@ -66,6 +67,7 @@ class SkillPrecheckResult:
 
     checked_skill_count: int
     issues: tuple[SkillPrecheckIssue, ...] = field(default_factory=tuple)
+    skills: tuple[SkillEntry, ...] = field(default_factory=tuple)
 
     @classmethod
     def create(
@@ -73,11 +75,13 @@ class SkillPrecheckResult:
         *,
         checked_skill_count: int,
         issues: list[SkillPrecheckIssue] | tuple[SkillPrecheckIssue, ...],
+        skills: list[SkillEntry] | tuple[SkillEntry, ...] = (),
     ) -> "SkillPrecheckResult":
         """Create a precheck result with deterministic issue ordering."""
         return cls(
             checked_skill_count=checked_skill_count,
             issues=tuple(sorted(issues)),
+            skills=tuple(sorted(skills, key=lambda skill: skill.path)),
         )
 
     @property
@@ -90,7 +94,18 @@ class SkillPrecheckResult:
         if self.checked_skill_count < 0:
             msg = "Checked skill count must not be negative."
             raise ValueError(msg)
+        if self.issues and self.skills:
+            msg = "Failed publisher prechecks must not expose validated skills."
+            raise ValueError(msg)
+        if not self.issues and self.checked_skill_count != len(self.skills):
+            msg = "Successful publisher precheck count must match validated skills."
+            raise ValueError(msg)
         object.__setattr__(self, "issues", tuple(sorted(self.issues)))
+        object.__setattr__(
+            self,
+            "skills",
+            tuple(sorted(self.skills, key=lambda skill: skill.path)),
+        )
 
 
 class PublishIndexValidationError(ValueError):

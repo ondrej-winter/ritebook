@@ -22,9 +22,6 @@ from ritebook.features.index_registry.application.use_cases import (
     ListSkills,
     UpdateIndex,
 )
-from ritebook.features.publisher.adapters.outbound.filesystem import (
-    FilesystemSkillDiscovery,
-)
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.application.use_cases import PublishIndex
 from ritebook.features.skill_contribution.adapters.outbound import (
@@ -84,7 +81,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         header_validator=ValidateSkillHeaders(),
     )
     publisher = PublishIndex(
-        skill_discovery=FilesystemSkillDiscovery(),
         precheck=LinterPublisherPrecheck(linter=linter),
         index_writer=JsonIndexWriter(),
         clock=lambda: datetime.now(UTC),

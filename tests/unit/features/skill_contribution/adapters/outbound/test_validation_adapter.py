@@ -14,6 +14,7 @@ from ritebook.features.skill_linter.application.dtos import (
     LintSkillsCommand,
     LintSkillsResult,
     SkillValidationIssue,
+    ValidatedSkill,
 )
 from ritebook.features.skill_linter.application.errors import LintSkillsDiscoveryError
 
@@ -25,7 +26,18 @@ class FakeLinter:
         result: LintSkillsResult | None = None,
         failure: Exception | None = None,
     ) -> None:
-        self.result = result or LintSkillsResult(discovered_skill_count=1)
+        self.result = result or LintSkillsResult.create(
+            discovered_skill_count=1,
+            issues=[],
+            validated_skills=[
+                ValidatedSkill(
+                    path="code-review",
+                    name="code-review",
+                    skill_file="code-review/SKILL.md",
+                    description="Helps review code.",
+                ),
+            ],
+        )
         self.failure = failure
         self.commands: list[LintSkillsCommand] = []
 

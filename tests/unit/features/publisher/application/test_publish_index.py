@@ -16,20 +16,6 @@ from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
 DISCOVERED_SKILL_COUNT = 2
 
 
-class FakeSkillDiscovery:
-    """Test double for the skill discovery outbound port."""
-
-    def __init__(self, skills: tuple[SkillEntry, ...]) -> None:
-        """Store skills to return and calls made by the use case."""
-        self.skills = skills
-        self.discovered_roots: list[str] = []
-
-    def discover_skills(self, skills_root: str) -> tuple[SkillEntry, ...]:
-        """Record the requested root and return configured skills."""
-        self.discovered_roots.append(skills_root)
-        return self.skills
-
-
 class FakeIndexWriter:
     """Test double for the skill index writer outbound port."""
 
@@ -58,28 +44,30 @@ class FakePrecheck:
         return self.result
 
 
-def test_publish_index_discovers_writes_and_returns_result() -> None:
+def test_publish_index_writes_exact_validated_snapshot_and_returns_result() -> None:
     generated_at = datetime(2026, 7, 4, 18, 49, tzinfo=UTC)
-    discovery = FakeSkillDiscovery(
-        skills=(
-            SkillEntry(
-                name="zeta",
-                path="zeta",
-                skill_file="zeta/SKILL.md",
-                description="Zeta skill.",
-            ),
-            SkillEntry(
-                name="alpha",
-                path="alpha",
-                skill_file="alpha/SKILL.md",
-                description="Alpha skill.",
-            ),
+    validated_skills = (
+        SkillEntry(
+            name="zeta",
+            path="zeta",
+            skill_file="zeta/SKILL.md",
+            description="Zeta skill.",
+        ),
+        SkillEntry(
+            name="alpha",
+            path="alpha",
+            skill_file="alpha/SKILL.md",
+            description="Alpha skill.",
         ),
     )
     writer = FakeIndexWriter()
-    precheck = FakePrecheck(SkillPrecheckResult(checked_skill_count=2))
+    precheck = FakePrecheck(
+        SkillPrecheckResult(
+            checked_skill_count=2,
+            skills=validated_skills,
+        ),
+    )
     use_case = PublishIndex(
-        skill_discovery=discovery,
         precheck=precheck,
         index_writer=writer,
         clock=lambda: generated_at,
@@ -94,7 +82,6 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
     )
 
     assert precheck.checked_roots == ["/repo/skills"]
-    assert discovery.discovered_roots == ["/repo/skills"]
     assert writer.output_paths == ["ritebook-index.json"]
     assert result.discovered_skill_count == DISCOVERED_SKILL_COUNT
     assert result.output_path == "ritebook-index.json"
@@ -109,7 +96,6 @@ def test_publish_index_discovers_writes_and_returns_result() -> None:
 def test_publish_index_rejects_slash_separated_index_name() -> None:
     writer = FakeIndexWriter()
     use_case = PublishIndex(
-        skill_discovery=FakeSkillDiscovery(skills=()),
         precheck=FakePrecheck(),
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
@@ -128,10 +114,8 @@ def test_publish_index_rejects_slash_separated_index_name() -> None:
 
 
 def test_publish_index_writes_empty_catalog() -> None:
-    discovery = FakeSkillDiscovery(skills=())
     writer = FakeIndexWriter()
     use_case = PublishIndex(
-        skill_discovery=discovery,
         precheck=FakePrecheck(),
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
@@ -155,7 +139,6 @@ def test_publish_index_stores_explicit_portable_catalog_root_for_absolute_scan_r
     absolute_skills_root = str(tmp_path / "skills")
     writer = FakeIndexWriter()
     use_case = PublishIndex(
-        skill_discovery=FakeSkillDiscovery(skills=()),
         precheck=FakePrecheck(),
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
@@ -174,10 +157,8 @@ def test_publish_index_stores_explicit_portable_catalog_root_for_absolute_scan_r
 
 def test_publish_index_normalizes_generated_at_to_utc() -> None:
     plus_two = timezone(timedelta(hours=2))
-    discovery = FakeSkillDiscovery(skills=())
     writer = FakeIndexWriter()
     use_case = PublishIndex(
-        skill_discovery=discovery,
         precheck=FakePrecheck(),
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 20, 49, tzinfo=plus_two),
@@ -204,7 +185,6 @@ def test_publish_index_normalizes_generated_at_to_utc() -> None:
 def test_publish_index_rejects_naive_clock_values() -> None:
     generated_at = datetime(2026, 7, 4, 18, 49, tzinfo=UTC).replace(tzinfo=None)
     use_case = PublishIndex(
-        skill_discovery=FakeSkillDiscovery(skills=()),
         precheck=FakePrecheck(),
         index_writer=FakeIndexWriter(),
         clock=lambda: generated_at,
@@ -218,6 +198,11 @@ def test_publish_index_rejects_naive_clock_values() -> None:
                 published_skills_root="skills",
             ),
         )
+
+
+def test_successful_precheck_requires_snapshot_count_to_match() -> None:
+    with pytest.raises(ValueError, match="count must match validated skills"):
+        SkillPrecheckResult(checked_skill_count=1)
 
 
 def test_publish_index_command_rejects_empty_values() -> None:
@@ -244,16 +229,6 @@ def test_publish_index_command_rejects_empty_values() -> None:
 
 
 def test_publish_index_refuses_to_write_when_validation_fails() -> None:
-    discovery = FakeSkillDiscovery(
-        skills=(
-            SkillEntry(
-                name="alpha",
-                path="alpha",
-                skill_file="alpha/SKILL.md",
-                description="Alpha skill.",
-            ),
-        ),
-    )
     writer = FakeIndexWriter()
     precheck = FakePrecheck(
         SkillPrecheckResult.create(
@@ -275,7 +250,6 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
         ),
     )
     use_case = PublishIndex(
-        skill_discovery=discovery,
         precheck=precheck,
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
@@ -295,32 +269,30 @@ def test_publish_index_refuses_to_write_when_validation_fails() -> None:
         "beta/SKILL.md: compatibility must not be blank.",
         "gamma/SKILL.md: metadata values must be strings.",
     ]
-    assert discovery.discovered_roots == []
     assert writer.written_catalogs == []
     assert writer.output_paths == []
 
 
 def test_publish_index_refuses_to_write_structurally_invalid_discovery() -> None:
-    discovery = FakeSkillDiscovery(
-        skills=(
-            SkillEntry(
-                name="quality",
-                path="quality",
-                skill_file="quality/SKILL.md",
-                description="Quality skill.",
-            ),
-            SkillEntry(
-                name="code-review",
-                path="quality/code-review",
-                skill_file="quality/code-review/SKILL.md",
-                description="Code review skill.",
-            ),
+    invalid_skills = (
+        SkillEntry(
+            name="quality",
+            path="quality",
+            skill_file="quality/SKILL.md",
+            description="Quality skill.",
+        ),
+        SkillEntry(
+            name="code-review",
+            path="quality/code-review",
+            skill_file="quality/code-review/SKILL.md",
+            description="Code review skill.",
         ),
     )
     writer = FakeIndexWriter()
     use_case = PublishIndex(
-        skill_discovery=discovery,
-        precheck=FakePrecheck(SkillPrecheckResult(checked_skill_count=2)),
+        precheck=FakePrecheck(
+            SkillPrecheckResult(checked_skill_count=2, skills=invalid_skills),
+        ),
         index_writer=writer,
         clock=lambda: datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
     )

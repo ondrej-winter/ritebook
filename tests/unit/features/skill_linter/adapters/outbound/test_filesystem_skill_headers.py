@@ -260,3 +260,35 @@ description: {description}
 ---
 # {name}
 """
+
+
+def test_discover_headers_reports_symlinked_skill_file(tmp_path: Path) -> None:
+    target = tmp_path / "outside-SKILL.md"
+    target.write_text(frontmatter(name="alpha"), encoding="utf-8")
+    skill_file = tmp_path / "alpha" / "SKILL.md"
+    skill_file.parent.mkdir()
+    skill_file.symlink_to(target)
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(tmp_path))
+
+    assert result.discovered_skill_count == 0
+    assert result.headers == ()
+    assert [issue.format() for issue in result.issues] == [
+        "alpha/SKILL.md: skill candidates must not use symbolic links.",
+    ]
+
+
+def test_discover_headers_reports_symlinked_skill_directory(tmp_path: Path) -> None:
+    target = tmp_path / "outside"
+    write_skill(target / "SKILL.md", frontmatter(name="alpha"))
+    skills_root = tmp_path / "skills"
+    skills_root.mkdir()
+    (skills_root / "alpha").symlink_to(target, target_is_directory=True)
+
+    result = FilesystemSkillHeaderDiscovery().discover_headers(str(skills_root))
+
+    assert result.discovered_skill_count == 0
+    assert result.headers == ()
+    assert [issue.format() for issue in result.issues] == [
+        "alpha/SKILL.md: skill candidates must not use symbolic links.",
+    ]

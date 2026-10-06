@@ -17,7 +17,6 @@ from ritebook.features.publisher.application.dtos import (
 from ritebook.features.publisher.application.errors import PublishIndexDiscoveryError
 from ritebook.features.publisher.application.ports import (
     PublishIndexPort,
-    SkillDiscoveryPort,
     SkillIndexWriterPort,
     SkillPrecheckPort,
 )
@@ -31,24 +30,22 @@ class PublishIndex(PublishIndexPort):
     def __init__(
         self,
         *,
-        skill_discovery: SkillDiscoveryPort,
         precheck: SkillPrecheckPort,
         index_writer: SkillIndexWriterPort,
         clock: Callable[[], datetime],
     ) -> None:
         """Initialize the use case with outbound ports and a timestamp source."""
-        self._skill_discovery = skill_discovery
         self._precheck = precheck
         self._index_writer = index_writer
         self._clock = clock
 
     def execute(self, command: PublishIndexCommand) -> PublishIndexResult:
-        """Discover skills, write their catalog, and return publish details."""
+        """Validate skills, write their exact snapshot, and return publish details."""
         precheck_result = self._precheck.run_prechecks(command.skills_root)
         if not precheck_result.succeeded:
             raise PublishIndexValidationError(precheck_result.issues)
 
-        skills = self._skill_discovery.discover_skills(command.skills_root)
+        skills = precheck_result.skills
         try:
             catalog = SkillCatalog.create(
                 index_name=command.index_name,

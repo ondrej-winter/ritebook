@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ from ritebook.adapters.outbound.filesystem import (
     SkillFileReadError,
     SkillsRootNotDirectoryError,
     SkillsRootNotFoundError,
+    discover_named_file_candidates,
     discover_named_files,
     read_skill_file_text,
 )
@@ -104,3 +106,57 @@ def test_read_skill_file_text_wraps_read_errors(tmp_path: Path) -> None:
 def write_skill(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
+
+
+def test_discover_named_file_candidates_reports_symlinked_skill_file(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "outside-SKILL.md"
+    target.write_text("# Outside\n", encoding="utf-8")
+    skill_file = tmp_path / "alpha" / "SKILL.md"
+    skill_file.parent.mkdir()
+    skill_file.symlink_to(target)
+
+    result = discover_named_file_candidates(tmp_path, file_name=SKILL_FILE_NAME)
+
+    assert result.files == ()
+    assert [path.relative_to(tmp_path).as_posix() for path in result.symlinks] == [
+        "alpha/SKILL.md",
+    ]
+
+
+def test_discover_named_file_candidates_reports_symlinked_skill_directory(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "outside"
+    write_skill(target / "SKILL.md", "# Outside\n")
+    skills_root = tmp_path / "skills"
+    skills_root.mkdir()
+    (skills_root / "alpha").symlink_to(target, target_is_directory=True)
+
+    result = discover_named_file_candidates(skills_root, file_name=SKILL_FILE_NAME)
+
+    assert result.files == ()
+    assert [path.relative_to(skills_root).as_posix() for path in result.symlinks] == [
+        "alpha/SKILL.md",
+    ]
+
+
+def test_discover_named_files_handles_tree_deeper_than_recursion_limit(
+    tmp_path: Path,
+) -> None:
+    current = tmp_path
+    for _ in range(120):
+        current /= "a"
+        current.mkdir()
+    write_skill(current / "SKILL.md", "# Deep\n")
+    original_limit = sys.getrecursionlimit()
+
+    try:
+        sys.setrecursionlimit(100)
+        discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
+    finally:
+        sys.setrecursionlimit(original_limit)
+
+    assert len(discovered) == 1
+    assert discovered[0].path == current / "SKILL.md"

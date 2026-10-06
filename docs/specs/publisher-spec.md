@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 2.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 2.2
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6, 2026 validated-snapshot publication decision.
+- Accepted by / on: User / 2026-10-06
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-06
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -31,9 +31,8 @@ installation.
   slices under `src/ritebook/features/`.
 - Python 3.13, `uv`, `ruff`, `ty`, and `pytest` are the project tooling
   baseline.
-- Discovery recursively identifies every directory containing `SKILL.md` as a
-  candidate, validates its header, and enforces schema-v1 depth, canonical
-  segments, duplicate-path, and mixed-node constraints before publication.
+- The linter discovers candidates, validates headers and catalog paths, and
+  exposes an immutable publication snapshot only on complete success.
 
 ## Scope
 
@@ -46,7 +45,7 @@ installation.
 
 ## Requirements
 
-The following requirement groups preserve the normative publisher contract of revision 2.1.
+The following requirement groups define the normative publisher contract of revision 2.2.
 
 Ritebook generates or updates a JSON index file for a maintainer-controlled
 skills repository.
@@ -58,12 +57,12 @@ skills repository.
 1. A maintainer runs a Ritebook publisher command from the repository root that
    will contain `ritebook-index.json`, with an explicit skills root path at or
    below that root.
-2. Ritebook scans the skills root for directories containing a file named
-   `SKILL.md` and validates that each candidate is either a root skill or an
-   immediate child of one collection.
-3. Ritebook builds a deterministic catalog of discovered skills.
-4. Ritebook validates every discovered skill with the same rules used by the
-   standalone skill lint workflow.
+2. Ritebook invokes the same linter application boundary used by standalone
+   `skills lint`. That single pass discovers candidates, validates paths and
+   headers, and returns an immutable deterministic snapshot only on success.
+3. Ritebook builds the catalog from exactly that validated snapshot. It must not
+   rediscover files or reparse frontmatter after the precheck.
+4. A valid empty skills root produces an empty catalog.
 5. If validation succeeds, Ritebook writes the catalog to the canonical
    `ritebook-index.json` file.
 6. If validation fails, Ritebook reports the validation issues, exits non-zero,
@@ -71,17 +70,22 @@ skills repository.
 7. The maintainer reviews and commits the generated index to the private skills
    repository through the normal pull request workflow.
 
-### R2 — Skill discovery
+### R2 — Validated catalog input
 
 **Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
-- Discovery applies the catalog structure and canonical identifier rules from the
-  shared catalog contract.
+- Linter-owned discovery applies the catalog structure and canonical identifier
+  rules from the shared catalog contract.
 - Directories and files inside a valid skill package remain unrestricted unless
   they contain another `SKILL.md`, which would declare an invalid nested candidate
   skill.
 - Discovered skills are publishable only when the linter use case accepts every
   `SKILL.md`.
+- Publisher prechecks return publisher-owned `SkillEntry` values mapped from the
+  linter's exact successful snapshot. Failed prechecks return issues and no
+  partial entries.
+- The successful precheck count must equal the number of mapped entries, including
+  zero for a valid empty catalog.
 - The generated index uses skill-entry paths relative to the skills root and a
   `skills_root` relative to the repository root containing the index, so all
   serialized paths stay portable within the repository.
@@ -151,6 +155,8 @@ Requirements:
   no background or implicit updates.
 - `indexes publish` must reuse the skill-header validation flow as a hard
   precondition and must not write or overwrite the index when validation fails.
+- `indexes publish` must consume the exact precheck snapshot and must not perform a
+  second filesystem traversal or YAML parse.
 - Emit concise success output that includes discovered skill count and output
   path.
 - Keep process environment access, filesystem traversal, CLI parsing, and JSON
@@ -167,15 +173,16 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 - `src/ritebook/features/publisher/domain/`: pure catalog concepts and invariants.
 - `src/ritebook/features/publisher/application/`: publisher use case, ports, and
   DTOs.
-- `src/ritebook/features/publisher/adapters/`: publisher CLI command, filesystem
-  discovery, and JSON index writer adapters.
+- `src/ritebook/features/publisher/adapters/`: publisher CLI command and JSON index
+  writer adapters. Skill discovery and YAML parsing remain owned by the linter.
 - `tests/unit/features/publisher/`: focused tests mirroring source ownership.
 - `docs/specs/publisher-spec.md`: this specification.
 - `docs/specs/skill-linter-spec.md`: the validation contract consumed by publisher.
 
 ### Conventions
 
-- Keep discovery, filesystem writes, and JSON serialization in adapters.
+- Keep linter discovery and YAML parsing in linter adapters; keep publisher
+  filesystem writes and JSON serialization in publisher adapters.
 - Keep publisher orchestration independent of CLI and filesystem details.
 - Render path-scoped diagnostics without logging raw skill-file contents.
 
@@ -201,14 +208,14 @@ The MVP should be covered primarily with fast, deterministic unit tests.
 
 - Domain tests verify catalog entry creation, deterministic path ordering,
   duplicate names at distinct paths, and basic invariants.
-- Application tests use fakes for skill discovery, skill validation, and index
-  writing ports.
+- Application tests use a precheck fake carrying the exact validated snapshot and
+  an index-writing fake; there is no publisher discovery fake.
 - Application tests verify `indexes publish` does not call the writer when skill
   validation fails.
-- Filesystem adapter tests use temporary directories to verify recursive
-  `SKILL.md` candidate discovery, valid root and collected skill paths, ignored
-  non-skill directories, over-deep path rejection, mixed skill/collection node
-  rejection, frontmatter parsing, and path-scoped validation failures.
+- Linter filesystem adapter tests verify iterative `SKILL.md` candidate discovery,
+  valid root and collected skill paths, ignored non-skill directories, symlink
+  rejection, over-deep path rejection, mixed skill/collection nodes, frontmatter
+  parsing, and path-scoped validation failures.
 - JSON writer tests verify schema version, deterministic output, required
   description behavior, two-space indentation, valid JSON, atomic replacement,
   failure preservation and cleanup, permission-safe unique temporary files, and
@@ -228,6 +235,8 @@ network access.
 - Always validate external inputs at adapter boundaries before invoking the
   application use case.
 - Always validate skill headers before publishing an index.
+- Always publish from the exact successful precheck snapshot without rediscovery
+  or reparsing, and never expose partial entries on validation failure.
 - Always restrict published skill paths to `<skill>` or
   `<collection>/<skill>` relative to the explicit skills root.
 - Always reject mixed skill/collection nodes and over-deep candidate paths before
@@ -259,10 +268,10 @@ network access.
 | ID | Requirement | Conditions and action | Expected observable result | Verification method |
 | --- | --- | --- | --- | --- |
 | AC1 | R1 | A maintainer publishes from an explicit valid or invalid skills root. | A valid root produces `ritebook-index.json`; validation failure exits non-zero and does not create or overwrite the prior index. | Publisher use-case and CLI tests. |
-| AC2 | R2 | Discovery encounters root skills, collection children, duplicate names at distinct paths, hidden directories, over-deep candidates, or mixed nodes. | Valid catalog paths are indexed deterministically; hidden directories are skipped; over-deep and mixed structures fail with path-scoped errors. | Discovery adapter and application tests. |
+| AC2 | R2 | The linter encounters root skills, collection children, duplicate names at distinct paths, hidden directories, over-deep candidates, mixed nodes, symlinks, or an empty root. | Valid entries are mapped once into an exact deterministic snapshot; empty roots produce an empty catalog; invalid input exposes no partial entries; the publisher does not rediscover or reparse. | Linter adapter, precheck adapter, and publisher application tests. |
 | AC3 | R3 | Ritebook serializes and replaces an index, including simulated write, flush, sync, replacement, or unsafe-symlink failures. | Schema-v1 fields and required descriptions are emitted with two-space deterministic JSON; failures preserve prior content and clean owned temporary files; no publisher provenance fields are embedded. | JSON writer and schema tests. |
 | AC4 | R4 | Invoke `indexes publish` with valid arguments, missing or invalid roots, and validation failures. | Arguments map to one explicit skills root and published name, success output is concise, and errors are actionable without exposing skill contents. | CLI adapter tests. |
-| AC5 | R1-R4 | Review source ownership and execute focused publisher tests. | The implementation follows vertical-slice hexagonal boundaries and covers discovery, generation, output, and CLI behavior. | Import-boundary checks and `uv run pytest tests/unit/features/publisher`. |
+| AC5 | R1-R4 | Review source ownership and execute focused publisher tests. | The implementation follows vertical-slice hexagonal boundaries and covers precheck snapshot consumption, generation, output, and CLI behavior without a publisher discovery adapter. | Import-boundary checks and `uv run pytest tests/unit/features/publisher`. |
 | AC6 | R1-R4 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
 ## Assumptions
@@ -282,6 +291,9 @@ None.
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.
+- October 6, 2026: Revision 2.2 made the linter's successful immutable snapshot
+  the publisher's sole catalog input and prohibited rediscovery or reparsing after
+  validation.
 - Next authorized step: Treat this Active revision as canonical. Consumer
   workflows or publisher artifact trust fields require their owning specification
   or an approved revision before implementation.

@@ -20,9 +20,6 @@ from ritebook.features.index_registry.application.dtos import (
     IndexSourceType,
     RegisteredIndex,
 )
-from ritebook.features.publisher.adapters.outbound.filesystem import (
-    FilesystemSkillDiscovery,
-)
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.domain import SkillCatalog
 from ritebook.features.skill_installation.adapters.outbound import (
@@ -46,7 +43,14 @@ from ritebook.features.skill_linter.adapters.outbound.filesystem import (
 from ritebook.features.skill_linter.adapters.outbound.publisher_precheck import (
     LinterPublisherPrecheck,
 )
-from ritebook.features.skill_linter.application.dtos import LintSkillsResult
+from ritebook.features.skill_linter.application.dtos import (
+    LintSkillsResult,
+    ValidatedSkill,
+)
+from ritebook.features.skill_linter.application.use_cases import (
+    LintSkills,
+    ValidateSkillHeaders,
+)
 from ritebook.shared_kernel import SKILL_FILE_NAME
 
 if TYPE_CHECKING:
@@ -65,16 +69,11 @@ def test_filesystem_discovery_adapters_read_real_skill_files(
     hidden_skill.write_text("# Hidden\n", encoding="utf-8")
 
     discovered_files = discover_named_files(skills_root, file_name=SKILL_FILE_NAME)
-    publisher_entries = FilesystemSkillDiscovery().discover_skills(str(skills_root))
     linter_result = FilesystemSkillHeaderDiscovery().discover_headers(str(skills_root))
 
     assert [file.relative_file for file in discovered_files] == [
         "alpha/SKILL.md",
         "zeta/SKILL.md",
-    ]
-    assert [(entry.name, entry.description) for entry in publisher_entries] == [
-        ("alpha", "Helps with alpha workflows."),
-        ("zeta", "Helps with zeta workflows."),
     ]
     assert [header.expected_name for header in linter_result.headers] == [
         "alpha",
@@ -96,7 +95,17 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     registry_path = tmp_path / "config" / "indexes.json"
     cache_root = tmp_path / "cache"
 
-    entries = FilesystemSkillDiscovery().discover_skills(str(skills_root))
+    linter = LintSkills(
+        header_discovery=FilesystemSkillHeaderDiscovery(),
+        header_validator=ValidateSkillHeaders(),
+    )
+    entries = (
+        LinterPublisherPrecheck(linter=linter)
+        .run_prechecks(
+            str(skills_root),
+        )
+        .skills
+    )
     catalog = SkillCatalog.create(
         index_name="company-skills",
         generated_at=datetime(2026, 7, 13, 18, 0, tzinfo=UTC),
@@ -294,6 +303,14 @@ def test_linter_publisher_precheck_adapter_maps_real_linter_result() -> None:
             LintSkillsResult.create(
                 discovered_skill_count=1,
                 issues=[],
+                validated_skills=[
+                    ValidatedSkill(
+                        path="code-review",
+                        name="code-review",
+                        skill_file="code-review/SKILL.md",
+                        description="Helps review code.",
+                    ),
+                ],
             ),
         ),
     )
@@ -302,6 +319,7 @@ def test_linter_publisher_precheck_adapter_maps_real_linter_result() -> None:
 
     assert result.checked_skill_count == 1
     assert result.issues == ()
+    assert [skill.path for skill in result.skills] == ["code-review"]
 
 
 def _registered_index(

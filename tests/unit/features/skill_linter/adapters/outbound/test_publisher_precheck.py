@@ -5,6 +5,7 @@ from ritebook.features.skill_linter.application.dtos import (
     LintSkillsCommand,
     LintSkillsResult,
     SkillValidationIssue,
+    ValidatedSkill,
 )
 
 DISCOVERED_SKILL_COUNT = 2
@@ -26,7 +27,24 @@ class FakeLinter:
 
 def test_linter_publisher_precheck_maps_successful_lint_result() -> None:
     linter = FakeLinter(
-        LintSkillsResult(discovered_skill_count=DISCOVERED_SKILL_COUNT),
+        LintSkillsResult.create(
+            discovered_skill_count=DISCOVERED_SKILL_COUNT,
+            issues=[],
+            validated_skills=[
+                ValidatedSkill(
+                    path="zeta",
+                    name="zeta",
+                    skill_file="zeta/SKILL.md",
+                    description="Zeta skill.",
+                ),
+                ValidatedSkill(
+                    path="alpha",
+                    name="alpha",
+                    skill_file="alpha/SKILL.md",
+                    description="Alpha skill.",
+                ),
+            ],
+        ),
     )
 
     result = LinterPublisherPrecheck(linter=linter).run_prechecks("skills")
@@ -35,6 +53,8 @@ def test_linter_publisher_precheck_maps_successful_lint_result() -> None:
     assert result.succeeded
     assert result.checked_skill_count == DISCOVERED_SKILL_COUNT
     assert result.issues == ()
+    assert [skill.path for skill in result.skills] == ["alpha", "zeta"]
+    assert result.skills[0].description == "Alpha skill."
 
 
 def test_linter_publisher_precheck_maps_lint_issues() -> None:
@@ -53,6 +73,7 @@ def test_linter_publisher_precheck_maps_lint_issues() -> None:
     result = LinterPublisherPrecheck(linter=linter).run_prechecks("skills")
 
     assert not result.succeeded
+    assert result.skills == ()
     assert result.checked_skill_count == 1
     assert [issue.format() for issue in result.issues] == [
         "alpha/SKILL.md: description is required.",

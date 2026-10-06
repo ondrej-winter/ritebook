@@ -1,6 +1,6 @@
 """Shared filesystem mechanics for discovering named files."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from ritebook.adapters.outbound.filesystem import _discovery_helpers
@@ -9,7 +9,7 @@ from ritebook.adapters.outbound.filesystem.exceptions import SkillFileReadError
 
 @dataclass(frozen=True)
 class DiscoveredNamedFile:
-    """Filesystem facts for a discovered named file."""
+    """Filesystem facts for a discovered regular named file."""
 
     path: Path
     relative_dir: str
@@ -21,31 +21,45 @@ class DiscoveredNamedFile:
         return self.path.parent.name
 
 
+@dataclass(frozen=True)
+class NamedFileDiscoveryResult:
+    """Regular named files and visible symlinked candidate paths."""
+
+    files: tuple[DiscoveredNamedFile, ...] = field(default_factory=tuple)
+    symlinks: tuple[Path, ...] = field(default_factory=tuple)
+
+
+def discover_named_file_candidates(
+    root: Path,
+    *,
+    file_name: str,
+) -> NamedFileDiscoveryResult:
+    """Discover regular named files and visible symlinked candidates."""
+    _discovery_helpers.validate_root(root)
+    discovered_files, symlinks = _discovery_helpers.named_file_candidates(
+        root,
+        file_name=file_name,
+    )
+    return NamedFileDiscoveryResult(
+        files=tuple(
+            _discovered_named_file(
+                root=root,
+                discovered_file=discovered_file,
+                file_name=file_name,
+            )
+            for discovered_file in discovered_files
+        ),
+        symlinks=symlinks,
+    )
+
+
 def discover_named_files(
     root: Path,
     *,
     file_name: str,
 ) -> tuple[DiscoveredNamedFile, ...]:
-    """Discover non-hidden files with ``file_name`` below an explicit root."""
-    _discovery_helpers.validate_root(root)
-    return tuple(
-        DiscoveredNamedFile(
-            path=discovered_file,
-            relative_dir=_discovery_helpers.relative_file_dir(
-                root=root,
-                discovered_file=discovered_file,
-            ),
-            relative_file=_discovery_helpers.relative_file_path(
-                root=root,
-                discovered_file=discovered_file,
-                file_name=file_name,
-            ),
-        )
-        for discovered_file in _discovery_helpers.named_files(
-            root,
-            file_name=file_name,
-        )
-    )
+    """Discover non-hidden regular files with ``file_name`` below a root."""
+    return discover_named_file_candidates(root, file_name=file_name).files
 
 
 def read_skill_file_text(skill_file: Path) -> str:
@@ -55,3 +69,23 @@ def read_skill_file_text(skill_file: Path) -> str:
     except (OSError, UnicodeError) as err:
         msg = f"Unable to read discovered skill file: {skill_file}"
         raise SkillFileReadError(msg) from err
+
+
+def _discovered_named_file(
+    *,
+    root: Path,
+    discovered_file: Path,
+    file_name: str,
+) -> DiscoveredNamedFile:
+    return DiscoveredNamedFile(
+        path=discovered_file,
+        relative_dir=_discovery_helpers.relative_file_dir(
+            root=root,
+            discovered_file=discovered_file,
+        ),
+        relative_file=_discovery_helpers.relative_file_path(
+            root=root,
+            discovered_file=discovered_file,
+            file_name=file_name,
+        ),
+    )

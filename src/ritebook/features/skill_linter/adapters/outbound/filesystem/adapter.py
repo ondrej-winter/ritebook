@@ -6,7 +6,7 @@ from ritebook.adapters.outbound.filesystem import (
     DiscoveredNamedFile,
     FilesystemSkillDiscoveryError,
     SkillFileReadError,
-    discover_named_files,
+    discover_named_file_candidates,
 )
 from ritebook.features.skill_linter.adapters.outbound.filesystem.frontmatter import (
     parse_skill_header,
@@ -34,12 +34,21 @@ class FilesystemSkillHeaderDiscovery:
         """Discover non-hidden skill headers below the explicit skills root."""
         issues: list[SkillValidationIssue] = []
         try:
-            discovered_files = discover_named_files(
+            discovery = discover_named_file_candidates(
                 Path(skills_root),
                 file_name=SKILL_FILE_NAME,
             )
+            discovered_files = discovery.files
         except FilesystemSkillDiscoveryError as err:
             raise LintSkillsDiscoveryError(str(err)) from err
+
+        issues.extend(
+            SkillValidationIssue(
+                skill_file=symlink.relative_to(Path(skills_root)).as_posix(),
+                message="skill candidates must not use symbolic links.",
+            )
+            for symlink in discovery.symlinks
+        )
 
         valid_candidates: list[tuple[DiscoveredNamedFile, CatalogPath]] = []
         for discovered in discovered_files:

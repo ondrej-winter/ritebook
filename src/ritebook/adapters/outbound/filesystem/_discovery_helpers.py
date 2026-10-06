@@ -23,38 +23,78 @@ def validate_root(root: Path) -> None:
         raise FilesystemSkillDiscoveryError(msg) from err
 
 
-def named_files(root: Path, *, file_name: str) -> tuple[Path, ...]:
-    """Return non-hidden named files discovered recursively below ``root``."""
-    return collect_named_files(root, file_name=file_name)
+def named_file_candidates(
+    root: Path,
+    *,
+    file_name: str,
+) -> tuple[tuple[Path, ...], tuple[Path, ...]]:
+    """Return regular named files and visible symlinked candidate paths."""
+    discovered: list[Path] = []
+    symlinks: list[Path] = []
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        named_file, symlink = _named_file_candidate(directory, file_name=file_name)
+        if named_file is not None:
+            discovered.append(named_file)
+        if symlink is not None:
+            symlinks.append(symlink)
+        children = _directory_children(directory)
+        child_directories, child_symlinks = _visible_child_candidates(
+            children,
+            file_name=file_name,
+        )
+        pending.extend(reversed(child_directories))
+        symlinks.extend(child_symlinks)
+    return tuple(sorted(discovered)), tuple(sorted(symlinks))
 
 
-def collect_named_files(
+def _named_file_candidate(
     directory: Path,
     *,
     file_name: str,
-) -> tuple[Path, ...]:
-    """Return matching named files from ``directory`` and visible descendants."""
-    discovered: list[Path] = []
+) -> tuple[Path | None, Path | None]:
     named_file = directory / file_name
-    if named_file.is_file():
-        discovered.append(named_file)
-
     try:
-        children = sorted(directory.iterdir(), key=lambda path: path.name)
+        if named_file.is_symlink():
+            return None, named_file
+        if named_file.is_file():
+            return named_file, None
+    except OSError as err:
+        msg = f"Unable to inspect skill candidate: {named_file}"
+        raise FilesystemSkillDiscoveryError(msg) from err
+    return None, None
+
+
+def _directory_children(directory: Path) -> tuple[Path, ...]:
+    try:
+        return tuple(sorted(directory.iterdir(), key=lambda path: path.name))
     except OSError as err:
         msg = f"Unable to read directory while discovering skills: {directory}"
         raise FilesystemSkillDiscoveryError(msg) from err
 
+
+def _visible_child_candidates(
+    children: tuple[Path, ...],
+    *,
+    file_name: str,
+) -> tuple[list[Path], list[Path]]:
+    directories: list[Path] = []
+    symlinks: list[Path] = []
     for child in children:
-        if child.name.startswith(".") or child.is_symlink() or not child.is_dir():
+        if child.name.startswith("."):
             continue
-        discovered.extend(
-            collect_named_files(
-                child,
-                file_name=file_name,
-            ),
-        )
-    return tuple(discovered)
+        try:
+            if child.is_symlink():
+                linked_named_file = child / file_name
+                if linked_named_file.is_file() or linked_named_file.is_symlink():
+                    symlinks.append(linked_named_file)
+            elif child.is_dir():
+                directories.append(child)
+        except OSError as err:
+            msg = f"Unable to inspect path while discovering skills: {child}"
+            raise FilesystemSkillDiscoveryError(msg) from err
+    return directories, symlinks
 
 
 def relative_file_dir(*, root: Path, discovered_file: Path) -> str:

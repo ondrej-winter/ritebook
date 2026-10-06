@@ -3,6 +3,7 @@
 from ritebook.features.skill_linter.application.dtos.lint_skills import (
     LintSkillsCommand,
     LintSkillsResult,
+    ValidatedSkill,
 )
 from ritebook.features.skill_linter.application.dtos.skill_validation import (
     FrontmatterMapping,
@@ -20,4 +21,5 @@ __all__ = [
     "SkillHeaderDiscoveryResult",
     "SkillValidationIssue",
     "SkillValidationReport",
+    "ValidatedSkill",
 ]

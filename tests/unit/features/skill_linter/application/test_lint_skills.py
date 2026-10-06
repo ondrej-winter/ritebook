@@ -6,6 +6,7 @@ from ritebook.features.skill_linter.application.dtos import (
     ParsedSkillHeader,
     SkillHeaderDiscoveryResult,
     SkillValidationIssue,
+    ValidatedSkill,
 )
 from ritebook.features.skill_linter.application.use_cases import (
     LintSkills,
@@ -48,6 +49,20 @@ def test_lint_skills_validates_discovered_headers_successfully() -> None:
     assert result.succeeded
     assert result.discovered_skill_count == DISCOVERED_SKILL_COUNT
     assert result.issues == ()
+    assert result.validated_skills == (
+        ValidatedSkill(
+            path="alpha",
+            name="alpha",
+            skill_file="alpha/SKILL.md",
+            description="alpha skill.",
+        ),
+        ValidatedSkill(
+            path="zeta",
+            name="zeta",
+            skill_file="zeta/SKILL.md",
+            description="zeta skill.",
+        ),
+    )
 
 
 def test_lint_skills_succeeds_with_zero_discovered_headers() -> None:
@@ -66,6 +81,7 @@ def test_lint_skills_succeeds_with_zero_discovered_headers() -> None:
 
     assert result.succeeded
     assert result.discovered_skill_count == 0
+    assert result.validated_skills == ()
 
 
 def test_lint_skills_returns_adapter_and_validation_issues_deterministically() -> None:
@@ -90,6 +106,7 @@ def test_lint_skills_returns_adapter_and_validation_issues_deterministically() -
 
     assert not result.succeeded
     assert result.discovered_skill_count == 3
+    assert result.validated_skills == ()
     assert [issue.format() for issue in result.issues] == [
         "alpha/SKILL.md: description is required.",
         "beta/SKILL.md: frontmatter must be valid YAML.",
@@ -107,6 +124,11 @@ def test_lint_result_and_discovery_result_reject_negative_counts() -> None:
 
     with pytest.raises(ValueError, match="Discovered skill count"):
         LintSkillsResult(discovered_skill_count=-1)
+
+
+def test_successful_lint_result_requires_snapshot_count_to_match() -> None:
+    with pytest.raises(ValueError, match="count must match validated skills"):
+        LintSkillsResult(discovered_skill_count=1)
 
 
 def _valid_header(name: str) -> ParsedSkillHeader:

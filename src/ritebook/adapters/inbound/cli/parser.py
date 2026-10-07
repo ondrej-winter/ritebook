@@ -240,7 +240,7 @@ def _add_install_skill_parser(
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace an existing target.",
+        help="Replace an unchanged Ritebook-owned target.",
     )
     parser.add_argument(
         "--registry-path",
@@ -259,8 +259,10 @@ def _add_install_parser(
 ) -> None:
     parser = commands.add_parser(
         "sync",
-        help="Install skills declared in ritebook.toml.",
-        description="Install all skills declared in a Ritebook requirements file.",
+        help="Reconcile skills declared in ritebook.toml.",
+        description=(
+            "Exactly reconcile skills declared in a Ritebook requirements file."
+        ),
     )
     _set_command_default(parser, INSTALL_COMMAND)
     parser.add_argument(
@@ -273,7 +275,7 @@ def _add_install_parser(
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Replace existing targets.",
+        help="Rematerialize unchanged Ritebook-owned desired targets.",
     )
     parser.add_argument(
         "--registry-path",

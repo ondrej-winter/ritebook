@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -525,23 +526,28 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
         "# Review checklist\n"
     )
     installation_registry = _read_json(installation_registry_path)
-    assert installation_registry["schema_version"] == 1
-    assert installation_registry["installations"] == [
-        {
-            "requirement": "company-skills/code-review",
-            "index_name": "company-skills",
-            "skill_name": "code-review",
-            "target": str(target.resolve()),
-            "source": str(published_repo.path),
-            "source_type": "local_git_repo",
-            "source_revision": _git_head(published_repo.path),
-            "index_digest": installation_registry["installations"][0]["index_digest"],
-            "index_schema_version": 1,
-            "skill_path": "skills/code-review",
-            "skill_file": "skills/code-review/SKILL.md",
-            "installed_at": installation_registry["installations"][0]["installed_at"],
-        },
-    ]
+    assert installation_registry["schema_version"] == 2
+    installation = installation_registry["installations"][0]
+    target_digest = hashlib.sha256(str(target.resolve()).encode()).hexdigest()
+    assert installation == {
+        "requirement": "company-skills/code-review",
+        "index_name": "company-skills",
+        "skill_name": "code-review",
+        "target": str(target),
+        "target_id": f"sha256:{target_digest}",
+        "source": str(published_repo.path),
+        "source_type": "local_git_repo",
+        "source_revision": _git_head(published_repo.path),
+        "index_digest": installation["index_digest"],
+        "index_schema_version": 1,
+        "skill_path": "skills/code-review",
+        "skill_file": "skills/code-review/SKILL.md",
+        "installed_tree_digest": installation["installed_tree_digest"],
+        "desired": True,
+        "status": "materialized",
+        "workflow": "direct",
+        "canonical_target": str(target.resolve()),
+    }
 
 
 def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
@@ -607,7 +613,7 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
     )
 
 
-def test_install_skill_refuses_existing_target_without_force(
+def test_install_skill_refuses_unmanaged_existing_target(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -648,13 +654,13 @@ def test_install_skill_refuses_existing_target_without_force(
     result.assert_failure()
     assert result.stdout == ""
     expected_error = (
-        f"ritebook: error: target {target} already exists; use --force to replace it\n"
+        f"ritebook: error: target {target} exists but is not owned by Ritebook\n"
     )
     assert result.stderr == expected_error
     assert (target / "local-note.md").read_text(encoding="utf-8") == "keep me\n"
 
 
-def test_install_skill_force_replaces_existing_target_and_recorded_state(
+def test_install_skill_force_replaces_unchanged_owned_target(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -666,12 +672,9 @@ def test_install_skill_force_replaces_existing_target_and_recorded_state(
     published_repo = git_repository(tmp_path / "published-index")
     target = tmp_path / "consumer" / ".claude" / "skills" / "code-review"
     installation_registry_path = tmp_path / "config" / "installations.json"
-    target.mkdir(parents=True)
-    (target / "stale.md").write_text("remove me\n", encoding="utf-8")
-
     write_valid_skill("code-review", "Helps review code changes.")
-    (skills_root / "code-review" / "fresh.md").write_text(
-        "# Fresh content\n",
+    (skills_root / "code-review" / "stale.md").write_text(
+        "# Initial content\n",
         encoding="utf-8",
     )
     _publish_and_register_index(
@@ -682,6 +685,52 @@ def test_install_skill_force_replaces_existing_target_and_recorded_state(
         registry_path=registry_path,
         cache_root=cache_root,
     )
+
+    initial = run_cli(
+        [
+            "skills",
+            "install",
+            "company-skills/code-review",
+            "--target",
+            str(target),
+            "--registry-path",
+            str(registry_path),
+            "--installation-registry-path",
+            str(installation_registry_path),
+        ],
+    )
+
+    initial.assert_success()
+    assert (target / "stale.md").read_text(encoding="utf-8") == "# Initial content\n"
+
+    source_skill = published_repo.path / "skills" / "code-review"
+    (source_skill / "stale.md").unlink()
+    (source_skill / "fresh.md").write_text("# Fresh content\n", encoding="utf-8")
+    republish = run_cli(
+        [
+            "indexes",
+            "publish",
+            "--skills-root",
+            str(published_repo.path / "skills"),
+            "--name",
+            "company-skills",
+        ],
+        cwd=published_repo.path,
+    )
+    republish.assert_success()
+    published_repo.commit_all("Refresh installed skill")
+    update = run_cli(
+        [
+            "indexes",
+            "update",
+            "company-skills",
+            "--registry-path",
+            str(registry_path),
+            "--cache-root",
+            str(cache_root),
+        ],
+    )
+    update.assert_success()
 
     result = run_cli(
         [
@@ -767,35 +816,77 @@ target_path = ".agents/skills/tdd"
     )
 
     result.assert_success()
-    assert result.stdout == f"Installed 2 skill(s) from {requirements_file}\n"
+    assert result.stdout == (
+        f"Reconciled skills from {requirements_file}: installed 2, updated 0, "
+        "unchanged 0, pruned 0\n"
+    )
     assert (consumer_repo / ".claude" / "skills" / "code-review" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "tdd" / "notes.md").read_text(
         encoding="utf-8",
     ) == "# TDD notes\n"
     lockfile_data = _read_json(lockfile)
-    assert lockfile_data["schema_version"] == 1
-    assert lockfile_data["requirements_file"] == str(requirements_file)
-    assert [entry["requirement"] for entry in lockfile_data["skills"]] == [
+    assert lockfile_data["schema_version"] == 2
+    assert lockfile_data["requirements_file"] == "ritebook.toml"
+    assert lockfile_data["state"] == "complete"
+    assert lockfile_data["issues"] == []
+    assert {entry["requirement"] for entry in lockfile_data["skills"]} == {
         "company-skills/code-review",
         "company-skills/test-driven-development",
-    ]
-    assert lockfile_data["skills"][0] == {
+    }
+    lock_entries = {entry["requirement"]: entry for entry in lockfile_data["skills"]}
+    code_review = lock_entries["company-skills/code-review"]
+    assert code_review == {
         "requirement": "company-skills/code-review",
         "index_name": "company-skills",
         "skill_name": "code-review",
         "target": ".claude/skills/code-review",
+        "target_id": (
+            f"sha256:{hashlib.sha256(b'.claude/skills/code-review').hexdigest()}"
+        ),
         "source": published_repo.path.as_uri(),
         "source_type": "git_url",
-        "index_digest": lockfile_data["skills"][0]["index_digest"],
+        "index_digest": code_review["index_digest"],
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",
-        "locked_at": lockfile_data["skills"][0]["locked_at"],
+        "installed_tree_digest": code_review["installed_tree_digest"],
+        "desired": True,
+        "status": "materialized",
         "target_ref": "claude",
         "source_revision": _git_head(published_repo.path),
     }
-    assert lockfile_data["skills"][1]["target"] == ".agents/skills/tdd"
-    assert "target_ref" not in lockfile_data["skills"][1]
+    assert lock_entries["company-skills/test-driven-development"]["target"] == (
+        ".agents/skills/tdd"
+    )
+    assert "target_ref" not in lock_entries["company-skills/test-driven-development"]
+    ownership_path = consumer_repo / ".ritebook" / "installations.json"
+    ownership = _read_json(ownership_path)
+    assert ownership["schema_version"] == 2
+    assert len(ownership["installations"]) == 2
+
+    first_lock_bytes = lockfile.read_bytes()
+    shutil.rmtree(consumer_repo / ".ritebook")
+    second = run_cli(
+        [
+            "skills",
+            "sync",
+            "--file",
+            str(requirements_file),
+            "--registry-path",
+            str(registry_path),
+            "--lockfile",
+            str(lockfile),
+        ],
+        cwd=consumer_repo,
+    )
+
+    second.assert_success()
+    assert second.stdout == (
+        f"Reconciled skills from {requirements_file}: installed 0, updated 0, "
+        "unchanged 2, pruned 0\n"
+    )
+    assert lockfile.read_bytes() == first_lock_bytes
+    assert ownership_path.is_file()
 
 
 def test_install_expands_collection_but_install_skill_keeps_exact_selection(
@@ -860,7 +951,10 @@ target = "agents"
     )
 
     install_result.assert_success()
-    assert install_result.stdout == f"Installed 2 skill(s) from {requirements_file}\n"
+    assert install_result.stdout == (
+        f"Reconciled skills from {requirements_file}: installed 2, updated 0, "
+        "unchanged 0, pruned 0\n"
+    )
     assert (consumer_repo / ".agents" / "skills" / "alpha-tool" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "zeta-tool" / "SKILL.md").is_file()
     lockfile_data = _read_json(lockfile)
@@ -894,7 +988,7 @@ target = "agents"
     assert not installation_registry.exists()
 
 
-def test_install_retains_copied_target_when_lockfile_commit_fails(
+def test_install_rolls_back_target_when_lockfile_commit_fails(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -950,17 +1044,16 @@ target = "claude"
 
     result.assert_failure()
     assert result.stdout == ""
-    assert result.stderr == (
-        "ritebook: error: installation copied target(s) "
-        ".claude/skills/code-review, but ritebook.lock was not updated; copied "
-        "directories remain, so inspect them and retry the installation\n"
+    assert (
+        result.stderr
+        == "ritebook: error: unable to commit generated installation state\n"
     )
-    assert (target / "SKILL.md").is_file()
+    assert not target.exists()
     assert blocked_parent.read_text(encoding="utf-8") == "not a directory\n"
     assert not lockfile.exists()
 
 
-def test_install_uses_default_requirements_and_lockfile_paths_with_force(
+def test_install_preserves_unmanaged_target_even_with_force(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -1009,13 +1102,22 @@ target = "claude"
         cwd=consumer_repo,
     )
 
-    result.assert_success()
-    assert result.stdout == "Installed 1 skill(s) from ritebook.toml\n"
-    assert not (target / "stale.md").exists()
-    assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
+    result.assert_failure()
+    assert result.stdout == (
+        "Reconciled skills from ritebook.toml: installed 0, updated 0, "
+        "unchanged 0, pruned 0\n"
+    )
+    assert result.stderr == (
+        "ritebook: issue: unmanaged-target: .claude/skills/code-review: "
+        "target exists but is not owned by Ritebook\n"
+    )
+    assert (target / "stale.md").read_text(encoding="utf-8") == "remove me\n"
+    assert not (target / "guide.md").exists()
     lockfile_data = _read_json(lockfile)
     assert lockfile_data["requirements_file"] == "ritebook.toml"
-    assert lockfile_data["skills"][0]["target"] == ".claude/skills/code-review"
+    assert lockfile_data["state"] == "partial"
+    assert lockfile_data["skills"] == []
+    assert lockfile_data["issues"][0]["code"] == "unmanaged-target"
 
 
 def test_install_does_not_write_lockfile_when_requirements_are_invalid(

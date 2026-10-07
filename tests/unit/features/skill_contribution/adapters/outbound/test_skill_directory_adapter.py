@@ -216,6 +216,7 @@ def contribution_lockfile_entry(
         skill_path=skill_path,
         skill_file=skill_file,
         index_schema_version=1,
+        installed_tree_digest=f"sha256:{'c' * 64}",
     )
 
 
@@ -231,6 +232,7 @@ class UnsafeContributionEntry:
     skill_path: str
     skill_file: str
     index_schema_version: int
+    installed_tree_digest: str
 
 
 def unsafe_contribution_entry(
@@ -252,6 +254,7 @@ def unsafe_contribution_entry(
             skill_path=skill_path,
             skill_file=skill_file,
             index_schema_version=1,
+            installed_tree_digest=f"sha256:{'c' * 64}",
         ),
     )
 

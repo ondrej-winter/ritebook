@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.2
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6, 2026 validated-snapshot publication decision.
+- Revision: 2.3
+- Acceptance basis: Existing Active repository contract, the user's approved October 6, 2026 validated-snapshot publication decision, and implemented Skill Installation revision 3.0 schema-v2 state.
 - Accepted by / on: User / 2026-10-06
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-06
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md)
-- Supersedes: None
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), and [ADR 0004: Reconcile Installed Skills with Owned Transactional State](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md)
+- Supersedes: Revision 2.2 of this specification
 
 ## Objective and Context
 
@@ -34,8 +34,9 @@ user-owned local source repositories.
   requirements-file `skills sync` workflows.
 - `ritebook.toml` can declare desired repo-local installed skills.
 - Generated `ritebook.lock` records installed-skill provenance, including
+  target identity, installed-tree digest, desired/materialization status,
   `requirement`, `index_name`, `target`, `source`, `source_type`,
-  `source_revision`, `index_digest`, `skill_path`, and `skill_file` for
+  `source_revision`, `index_digest`, `skill_path`, and `skill_file` for retained
   requirements-file installs.
 - Installation persists the same commit and index-digest binding verified during
   index registration and source resolution, as required by
@@ -61,7 +62,7 @@ user-owned local source repositories.
 
 ## Requirements
 
-The following requirement groups define the normative contribution contract of revision 2.2.
+The following requirement groups define the normative contribution contract of revision 2.3.
 
 ### R1 — Contribute one installed skill change
 
@@ -267,10 +268,10 @@ Required lockfile fields for each publishable entry:
 - `requirement`: exact fully qualified catalog selector resolved during
   installation. Contribution selection compares the requested local alias and
   catalog selector to this field as one qualified value.
-- `index_name`: compatibility-sensitive schema-v1 field containing the local alias
-  from `requirement`; it is not publisher `index.name`.
+- `index_name`: local alias from `requirement`; it is not publisher `index.name`.
 - `skill_name`: resolved skill name.
 - `target`: repo-local installed skill target path.
+- `target_id`: SHA-256 identity of the portable target path.
 - `source`: portable Git URL propagated from requirements installation.
 - `source_type`: must be `git_url`; shared lockfiles do not support
   `local_git_repo` entries.
@@ -282,15 +283,21 @@ Required lockfile fields for each publishable entry:
 - `skill_path`: source skill directory path relative to the source repository.
 - `skill_file`: source `SKILL.md` path relative to the source repository.
 - `index_schema_version`: publisher index schema version used at install time.
+- `installed_tree_digest`: canonical digest of the last committed installed tree.
+- `desired`: must be `true` for contribution selection.
+- `status`: must be `materialized` or `local_changes`; retained obsolete targets
+  are not publishable baselines.
+- `target_ref`: optional requirements target nickname.
 
 Catalog depth and segment validation applies to the selector encoded in
 `requirement`, not to `skill_path` or `skill_file`. The latter include the
 published `skills_root`, may contain additional safe segments, and remain subject
 to repository-relative path validation before checkout or comparison.
 
-Pre-release schema-v1 lockfiles missing `source_revision` or `index_digest` are
-rejected with guidance to refresh registration and reinstall. Ritebook does not
-infer missing provenance from the source's current `HEAD`.
+Contribution reads strict schema-v2 lockfiles only. Schema-v1 files, unknown
+fields, issue-only entries, and non-publishable retained entries are rejected or
+ignored for selection; Ritebook does not infer missing provenance, ownership, or
+installed content from the source's current `HEAD`.
 
 Legacy or hand-written lock entries with `source_type = "local_git_repo"` are
 rejected at lockfile ingestion before contribution workspace or Git operations.
@@ -514,7 +521,7 @@ docker run --rm ritebook-e2e
 | AC3 | R3 | Prepare or reuse a contribution workspace, including unmarked, symlinked, dirty, and failure cases. | Only marked Ritebook-owned checkouts are reset or cleaned; source branches, managed index caches, user-owned repositories, and external symlink targets are not mutated. | Contribution-checkout and Git adapter tests. |
 | AC4 | R4 | Compare installed content with the locked revision and current upstream base, including changed-upstream, unavailable-commit, and digest-mismatch cases. | Contributions proceed only when the bound baseline is verified and the selected upstream path has not diverged; conflicts and unavailable provenance fail without copying or committing. | Application and Git workspace tests. |
 | AC5 | R5 | Prepare changed valid and invalid skill content. | Valid content is copied, linted, re-indexed from the exact successful snapshot, and committed on a deterministic review branch; validation or regeneration failure creates no commit; no second discovery or parse and no push occurs. | Validation, regeneration, Git, and application tests. |
-| AC6 | R6 | Read portable and legacy lock entries and resolve repository-relative source paths. | Required provenance fields are enforced, local-machine source entries and missing bindings are rejected without disclosure, and catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
+| AC6 | R6 | Read portable schema-v2, legacy, issue-only, retained, and locally sourced lock entries and resolve repository-relative source paths. | Required provenance, target identity, installed digest, desired flag, and publishable status are enforced; local-machine sources and schema-v1 state are rejected without disclosure; catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
 | AC7 | R1-R6 | Run the documented implementation handoff gates. | Application, adapter, CLI, formatting, linting, type, non-E2E, build, and network-disabled Docker E2E checks all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
 ## Assumptions
@@ -538,6 +545,11 @@ docker run --rm ritebook-e2e
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.
+- October 6, 2026: Revision 2.2 adopted validated-snapshot publication for
+  contribution index regeneration.
+- October 7, 2026: Revision 2.3 adopted strict schema-v2 installation lock state,
+  installed-tree digests, and publishable desired/status selection from Skill
+  Installation revision 3.0.
 - October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
   publisher's exact validated-snapshot contract from ADR 0003.
 - OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,

@@ -1,9 +1,11 @@
-import shutil
+import os
+import stat
 from pathlib import Path
 
 import pytest
 
 from ritebook.features.skill_installation.adapters.outbound import (
+    FilesystemSkillInstallerAdapter,
     filesystem_installer,
 )
 from ritebook.features.skill_installation.application.dtos import (
@@ -11,337 +13,312 @@ from ritebook.features.skill_installation.application.dtos import (
     ResolvedSkillSource,
 )
 from ritebook.features.skill_installation.application.errors import (
-    ExistingInstallTargetError,
     InstallationPersistenceError,
     UnsafeInstallPathError,
 )
 
-FilesystemSkillInstallerAdapter = filesystem_installer.FilesystemSkillInstallerAdapter
+
+def test_filesystem_installer_plans_canonical_target_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    planned = FilesystemSkillInstallerAdapter().plan_target(
+        "targets/nested/../code-review",
+    )
+
+    assert planned.requested_target == "targets/nested/../code-review"
+    assert planned.canonical_target == str(
+        (tmp_path / "targets" / "code-review").resolve(strict=False),
+    )
+    assert not (tmp_path / "targets").exists()
 
 
-def test_filesystem_installer_copies_directory_recursively_and_creates_parents(
+@pytest.mark.parametrize("target", ["/", "~"])
+def test_filesystem_installer_rejects_broad_absolute_targets(target: str) -> None:
+    with pytest.raises(UnsafeInstallPathError):
+        FilesystemSkillInstallerAdapter().plan_target(target)
+
+
+def test_filesystem_installer_rejects_current_working_directory_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    with pytest.raises(UnsafeInstallPathError, match="current working directory"):
+        FilesystemSkillInstallerAdapter().plan_target(".")
+
+
+def test_filesystem_installer_rejects_symlinked_target_ancestor_during_planning(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target_root = tmp_path / "targets"
+    target_root.mkdir()
+    (target_root / "linked").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(UnsafeInstallPathError, match="symlink"):
+        FilesystemSkillInstallerAdapter().plan_target(
+            str(target_root / "linked" / "code-review"),
+        )
+
+    assert list(outside.iterdir()) == []
+
+
+def test_filesystem_installer_inspects_missing_directory_and_file_targets(
+    tmp_path: Path,
+) -> None:
+    adapter = FilesystemSkillInstallerAdapter()
+    missing = adapter.plan_target(str(tmp_path / "missing"))
+    existing_directory = tmp_path / "directory"
+    existing_directory.mkdir()
+    (existing_directory / "SKILL.md").write_text("skill\n", encoding="utf-8")
+    existing_file = tmp_path / "file"
+    existing_file.write_text("not a tree\n", encoding="utf-8")
+
+    missing_result = adapter.inspect_target(missing)
+    directory_result = adapter.inspect_target(
+        adapter.plan_target(str(existing_directory)),
+    )
+    file_result = adapter.inspect_target(adapter.plan_target(str(existing_file)))
+
+    assert missing_result.exists is False
+    assert missing_result.installed_tree_digest is None
+    assert directory_result.exists is True
+    assert directory_result.installed_tree_digest == adapter.tree_digest(
+        str(existing_directory),
+    )
+    assert file_result.exists is True
+    assert file_result.installed_tree_digest is None
+
+
+def test_filesystem_installer_rejects_symlink_target_during_inspection(
+    tmp_path: Path,
+) -> None:
+    actual_target = tmp_path / "actual-target"
+    actual_target.mkdir()
+    symlink_target = tmp_path / "target-link"
+    symlink_target.symlink_to(actual_target, target_is_directory=True)
+    adapter = FilesystemSkillInstallerAdapter()
+
+    with pytest.raises(UnsafeInstallPathError, match="symlink"):
+        adapter.inspect_target(
+            adapter.plan_target(str(symlink_target.parent / "missing")).__class__(
+                requested_target=str(symlink_target),
+                canonical_target=str(symlink_target),
+            ),
+        )
+
+
+def test_filesystem_installer_stages_directory_recursively_beside_target(
     tmp_path: Path,
 ) -> None:
     repository = tmp_path / "repository"
-    skill_dir = repository / "skills" / "code-review"
-    nested_dir = skill_dir / "assets"
-    nested_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
-    (nested_dir / "checklist.md").write_text("- Check tests\n", encoding="utf-8")
+    skill_directory = repository / "skills" / "code-review"
+    (skill_directory / "assets").mkdir(parents=True)
+    (skill_directory / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
+    (skill_directory / "assets" / "checklist.md").write_text(
+        "- Check tests\n",
+        encoding="utf-8",
+    )
+    target = tmp_path / "targets" / "nested" / "code-review"
+    adapter = FilesystemSkillInstallerAdapter()
 
-    target = tmp_path / "target" / "skills" / "code-review"
-
-    FilesystemSkillInstallerAdapter().install(
+    staged = adapter.stage(
         source=resolved_source(repository),
         skill=installable_skill(),
-        target=str(target),
-        force=False,
+        target=adapter.plan_target(str(target)),
     )
 
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
-    assert (target / "assets" / "checklist.md").read_text(encoding="utf-8") == (
-        "- Check tests\n"
-    )
+    staged_path = Path(staged.staged_path)
+    cleanup_path = Path(staged.cleanup_path)
+    assert cleanup_path.parent == target.parent
+    assert staged_path.parent == cleanup_path
+    assert (staged_path / "SKILL.md").read_text(encoding="utf-8") == ("# Code review\n")
+    assert (staged_path / "assets" / "checklist.md").read_text(
+        encoding="utf-8",
+    ) == "- Check tests\n"
+    assert staged.installed_tree_digest == adapter.tree_digest(str(staged_path))
+
+    adapter.cleanup_staged(staged)
+
+    assert not cleanup_path.exists()
 
 
-def test_filesystem_installer_resolves_skills_below_published_source_root(
+def test_filesystem_installer_resolves_skill_below_published_source_root(
     tmp_path: Path,
 ) -> None:
     repository = tmp_path / "repository"
-    skill_dir = repository / "skills" / "software-development" / "code-review"
-    skill_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
-    target = tmp_path / "target" / "code-review"
+    skill_directory = repository / "skills" / "software-development" / "code-review"
+    skill_directory.mkdir(parents=True)
+    (skill_directory / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
+    adapter = FilesystemSkillInstallerAdapter()
 
-    FilesystemSkillInstallerAdapter().install(
+    staged = adapter.stage(
         source=resolved_source(repository),
         skill=installable_skill(
             path="software-development/code-review",
             skill_file="software-development/code-review/SKILL.md",
             source_root="skills",
         ),
-        target=str(target),
-        force=False,
+        target=adapter.plan_target(str(tmp_path / "target" / "code-review")),
     )
-
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
-
-
-def test_filesystem_installer_refuses_existing_target_without_force(
-    tmp_path: Path,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-    target = tmp_path / "target" / "code-review"
-    target.mkdir(parents=True)
-
-    with pytest.raises(ExistingInstallTargetError, match="already exists"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(target),
-            force=False,
+    try:
+        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == (
+            "# Code review\n"
         )
-
-    assert target.is_dir()
-
-
-def test_filesystem_installer_replaces_only_target_with_force(tmp_path: Path) -> None:
-    repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
-    sibling = target_parent / "keep.md"
-    sibling.write_text("keep", encoding="utf-8")
-
-    FilesystemSkillInstallerAdapter().install(
-        source=resolved_source(repository),
-        skill=installable_skill(),
-        target=str(target),
-        force=True,
-    )
-
-    assert not (target / "old.md").exists()
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
-    assert sibling.read_text(encoding="utf-8") == "keep"
+    finally:
+        adapter.cleanup_staged(staged)
 
 
-def test_filesystem_installer_replaces_existing_file_target_with_force(
-    tmp_path: Path,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target_parent.mkdir()
-    target.write_text("old", encoding="utf-8")
-    sibling = target_parent / "keep.md"
-    sibling.write_text("keep", encoding="utf-8")
-
-    FilesystemSkillInstallerAdapter().install(
-        source=resolved_source(repository),
-        skill=installable_skill(),
-        target=str(target),
-        force=True,
-    )
-
-    assert target.is_dir()
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
-    assert sibling.read_text(encoding="utf-8") == "keep"
-
-
-def test_forced_install_stage_failure_preserves_existing_target(
+def test_filesystem_installer_stage_failure_removes_partial_candidate(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
+    target_parent = tmp_path / "targets"
     target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
 
     def fail_copy(*_args: object, **_kwargs: object) -> None:
         message = "injected stage failure"
         raise OSError(message)
 
-    monkeypatch.setattr(shutil, "copytree", fail_copy)
+    monkeypatch.setattr(filesystem_installer.adapter, "_copy_directory", fail_copy)
 
     with pytest.raises(InstallationPersistenceError, match="stage replacement"):
-        FilesystemSkillInstallerAdapter().install(
+        FilesystemSkillInstallerAdapter().stage(
             source=resolved_source(repository),
             skill=installable_skill(),
-            target=str(target),
-            force=True,
+            target=FilesystemSkillInstallerAdapter().plan_target(str(target)),
         )
 
-    assert (target / "old.md").read_text(encoding="utf-8") == "old"
-    assert list(target_parent.iterdir()) == [target]
+    assert target_parent.is_dir()
+    assert list(target_parent.iterdir()) == []
 
 
-def test_forced_install_backup_failure_preserves_existing_target(
+def test_filesystem_installer_stage_rejects_symlink_ancestor_race(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
+    target_root = tmp_path / "targets"
+    target_parent = target_root / "skills"
+    target_parent.mkdir(parents=True)
+    displaced_root = tmp_path / "displaced-targets"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    adapter = FilesystemSkillInstallerAdapter()
+    planned = adapter.plan_target(str(target_parent / "code-review"))
+    require_no_overlap = (
+        filesystem_installer.adapter._require_no_source_target_overlap  # noqa: SLF001
+    )
 
-    def fail_replace(_source: Path, _destination: Path) -> None:
-        message = "injected backup failure"
-        raise OSError(message)
+    def replace_ancestor_after_validation(
+        source_directory: Path,
+        target_path: Path,
+    ) -> None:
+        require_no_overlap(source_directory, target_path)
+        target_root.rename(displaced_root)
+        target_root.symlink_to(outside, target_is_directory=True)
 
-    monkeypatch.setattr(Path, "replace", fail_replace)
+    monkeypatch.setattr(
+        filesystem_installer.adapter,
+        "_require_no_source_target_overlap",
+        replace_ancestor_after_validation,
+    )
 
-    with pytest.raises(InstallationPersistenceError, match="preserved"):
-        FilesystemSkillInstallerAdapter().install(
+    with pytest.raises(UnsafeInstallPathError, match=r"symlink|safely"):
+        adapter.stage(
             source=resolved_source(repository),
             skill=installable_skill(),
-            target=str(target),
-            force=True,
+            target=planned,
         )
 
-    assert (target / "old.md").read_text(encoding="utf-8") == "old"
-    assert list(target_parent.iterdir()) == [target]
+    assert list(outside.iterdir()) == []
+    assert list(displaced_root.joinpath("skills").iterdir()) == []
 
 
-def test_forced_install_swap_failure_restores_existing_target(
+def test_filesystem_installer_cleanup_rejects_symlink_ancestor_race(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
-    real_replace = Path.replace
-    replace_calls = 0
+    target_root = tmp_path / "targets"
+    target_parent = target_root / "skills"
+    adapter = FilesystemSkillInstallerAdapter()
+    staged = adapter.stage(
+        source=resolved_source(repository),
+        skill=installable_skill(),
+        target=adapter.plan_target(str(target_parent / "code-review")),
+    )
+    cleanup_path = Path(staged.cleanup_path)
+    displaced_root = tmp_path / "displaced-targets"
+    outside = tmp_path / "outside"
+    outside_cleanup = outside / "skills" / cleanup_path.name
+    outside_cleanup.mkdir(parents=True)
+    sentinel = outside_cleanup / "sentinel.txt"
+    sentinel.write_text("outside\n", encoding="utf-8")
+    target_root.rename(displaced_root)
+    target_root.symlink_to(outside, target_is_directory=True)
 
-    def fail_swap(source: Path, destination: Path) -> None:
-        nonlocal replace_calls
-        replace_calls += 1
-        if replace_calls == 2:
-            message = "injected swap failure"
-            raise OSError(message)
-        real_replace(source, destination)
+    with pytest.raises(InstallationPersistenceError, match="staged skill data"):
+        adapter.cleanup_staged(staged)
 
-    monkeypatch.setattr(Path, "replace", fail_swap)
-
-    with pytest.raises(InstallationPersistenceError, match="restored"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(target),
-            force=True,
-        )
-
-    assert replace_calls == 3
-    assert (target / "old.md").read_text(encoding="utf-8") == "old"
-    assert list(target_parent.iterdir()) == [target]
-
-
-def test_forced_install_restore_failure_retains_backup_with_recovery_guidance(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
-    real_replace = Path.replace
-    replace_calls = 0
-
-    def fail_swap_and_restore(source: Path, destination: Path) -> None:
-        nonlocal replace_calls
-        replace_calls += 1
-        if replace_calls >= 2:
-            message = "injected replacement failure"
-            raise OSError(message)
-        real_replace(source, destination)
-
-    monkeypatch.setattr(Path, "replace", fail_swap_and_restore)
-
-    with pytest.raises(
-        InstallationPersistenceError,
-        match=r"recover.*backup",
-    ) as error:
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(target),
-            force=True,
-        )
-
-    assert replace_calls == 3
-    assert not target.exists()
-    backup_files = list(target_parent.glob(".code-review.*/previous/old.md"))
-    assert len(backup_files) == 1
-    assert backup_files[0].read_text(encoding="utf-8") == "old"
-    assert str(backup_files[0].parent) in str(error.value)
-
-
-def test_forced_install_cleanup_failure_keeps_new_target_and_retained_backup(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-    target_parent = tmp_path / "target"
-    target = target_parent / "code-review"
-    target.mkdir(parents=True)
-    (target / "old.md").write_text("old", encoding="utf-8")
-    real_rmtree = shutil.rmtree
-
-    def fail_backup_cleanup(path: Path) -> None:
-        if Path(path).name == "previous":
-            message = "injected cleanup failure"
-            raise OSError(message)
-        real_rmtree(path)
-
-    monkeypatch.setattr(shutil, "rmtree", fail_backup_cleanup)
-
-    with pytest.raises(
-        InstallationPersistenceError,
-        match=r"installed.*backup",
-    ) as error:
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(target),
-            force=True,
-        )
-
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
-    backup_files = list(target_parent.glob(".code-review.*/previous/old.md"))
-    assert len(backup_files) == 1
-    assert backup_files[0].read_text(encoding="utf-8") == "old"
-    assert str(backup_files[0].parent) in str(error.value)
+    assert sentinel.read_text(encoding="utf-8") == "outside\n"
+    retained_staged = displaced_root / "skills" / cleanup_path.name / "candidate"
+    assert (retained_staged / "SKILL.md").read_text(encoding="utf-8") == (
+        "# Code review\n"
+    )
 
 
 @pytest.mark.parametrize("relationship", ["equal", "ancestor", "descendant"])
-def test_filesystem_installer_rejects_source_target_overlap_before_forced_mutation(
+def test_filesystem_installer_rejects_source_target_overlap_before_staging(
     tmp_path: Path,
     relationship: str,
 ) -> None:
     repository = repository_with_skill(tmp_path)
     source_directory = repository / "skills" / "code-review"
-    existing_source_file = source_directory / "SKILL.md"
     if relationship == "equal":
         target = source_directory
     elif relationship == "ancestor":
         target = repository / "skills"
     else:
         target = source_directory / "installed-copy"
-        target.mkdir()
-        (target / "existing.md").write_text("keep", encoding="utf-8")
+    adapter = FilesystemSkillInstallerAdapter()
 
     with pytest.raises(UnsafeInstallPathError, match="source-target overlap"):
-        FilesystemSkillInstallerAdapter().install(
+        adapter.stage(
             source=resolved_source(repository),
             skill=installable_skill(),
-            target=str(target),
-            force=True,
+            target=adapter.plan_target(str(target)),
         )
 
-    assert existing_source_file.read_text(encoding="utf-8") == "# Code review\n"
-    if relationship == "descendant":
-        assert (target / "existing.md").read_text(encoding="utf-8") == "keep"
+    assert (source_directory / "SKILL.md").read_text(encoding="utf-8") == (
+        "# Code review\n"
+    )
+    assert not (source_directory / "installed-copy").exists()
 
 
 def test_filesystem_installer_allows_safe_sibling_of_source_directory(
     tmp_path: Path,
 ) -> None:
     repository = repository_with_skill(tmp_path)
+    adapter = FilesystemSkillInstallerAdapter()
     target = repository / "skills" / "installed-code-review"
 
-    FilesystemSkillInstallerAdapter().install(
+    staged = adapter.stage(
         source=resolved_source(repository),
         skill=installable_skill(),
-        target=str(target),
-        force=False,
+        target=adapter.plan_target(str(target)),
     )
-
-    assert (target / "SKILL.md").read_text(encoding="utf-8") == "# Code review\n"
+    try:
+        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == (
+            "# Code review\n"
+        )
+    finally:
+        adapter.cleanup_staged(staged)
 
 
 @pytest.mark.parametrize(
@@ -362,93 +339,14 @@ def test_filesystem_installer_rejects_unsafe_source_metadata(
     skill_file: str,
 ) -> None:
     repository = repository_with_skill(tmp_path)
+    adapter = FilesystemSkillInstallerAdapter()
 
     with pytest.raises(UnsafeInstallPathError):
-        FilesystemSkillInstallerAdapter().install(
+        adapter.stage(
             source=resolved_source(repository),
             skill=installable_skill(path=skill_path, skill_file=skill_file),
-            target=str(tmp_path / "target" / "code-review"),
-            force=False,
+            target=adapter.plan_target(str(tmp_path / "target" / "code-review")),
         )
-
-
-@pytest.mark.parametrize("target", ["/", "~"])
-def test_filesystem_installer_rejects_broad_absolute_targets(
-    tmp_path: Path,
-    target: str,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-
-    with pytest.raises(UnsafeInstallPathError):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=target,
-            force=True,
-        )
-
-
-def test_filesystem_installer_rejects_current_working_directory_target(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    repository = repository_with_skill(tmp_path)
-    monkeypatch.chdir(tmp_path)
-
-    with pytest.raises(UnsafeInstallPathError, match="current working directory"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=".",
-            force=True,
-        )
-
-
-def test_filesystem_installer_rejects_existing_symlink_target(tmp_path: Path) -> None:
-    repository = repository_with_skill(tmp_path)
-    symlink_target = tmp_path / "target-link"
-    symlink_target.symlink_to(tmp_path / "actual-target")
-
-    with pytest.raises(UnsafeInstallPathError, match="symlink"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(symlink_target),
-            force=True,
-        )
-
-
-def test_filesystem_installer_plans_canonical_target_without_mutation(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    target = tmp_path / "targets" / "nested" / ".." / "code-review"
-
-    planned = FilesystemSkillInstallerAdapter().plan_target(
-        "targets/nested/../code-review",
-    )
-
-    assert planned.requested_target == "targets/nested/../code-review"
-    assert planned.canonical_target == str(target.resolve(strict=False))
-    assert not (tmp_path / "targets").exists()
-
-
-def test_filesystem_installer_rejects_symlinked_target_ancestor_during_planning(
-    tmp_path: Path,
-) -> None:
-    outside = tmp_path / "outside"
-    outside.mkdir()
-    target_root = tmp_path / "targets"
-    target_root.mkdir()
-    (target_root / "linked").symlink_to(outside, target_is_directory=True)
-
-    with pytest.raises(UnsafeInstallPathError, match="symlink"):
-        FilesystemSkillInstallerAdapter().plan_target(
-            str(target_root / "linked" / "code-review"),
-        )
-
-    assert list(outside.iterdir()) == []
 
 
 def test_filesystem_installer_rejects_symlink_source_directory(tmp_path: Path) -> None:
@@ -463,29 +361,19 @@ def test_filesystem_installer_rejects_symlink_source_directory(tmp_path: Path) -
     )
 
     with pytest.raises(UnsafeInstallPathError, match="symlink"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(tmp_path / "target" / "code-review"),
-            force=False,
-        )
+        stage_default_skill(repository, tmp_path / "target" / "code-review")
 
 
 def test_filesystem_installer_rejects_symlink_skill_file(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
-    skill_dir = repository / "skills" / "code-review"
-    skill_dir.mkdir(parents=True)
+    skill_directory = repository / "skills" / "code-review"
+    skill_directory.mkdir(parents=True)
     actual_skill_file = tmp_path / "outside-SKILL.md"
     actual_skill_file.write_text("# Outside\n", encoding="utf-8")
-    (skill_dir / "SKILL.md").symlink_to(actual_skill_file)
+    (skill_directory / "SKILL.md").symlink_to(actual_skill_file)
 
     with pytest.raises(UnsafeInstallPathError, match="symlink"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(tmp_path / "target" / "code-review"),
-            force=False,
-        )
+        stage_default_skill(repository, tmp_path / "target" / "code-review")
 
 
 def test_filesystem_installer_rejects_symlink_inside_source_directory(
@@ -499,19 +387,85 @@ def test_filesystem_installer_rejects_symlink_inside_source_directory(
     )
 
     with pytest.raises(UnsafeInstallPathError, match="contains symlinks"):
-        FilesystemSkillInstallerAdapter().install(
-            source=resolved_source(repository),
-            skill=installable_skill(),
-            target=str(tmp_path / "target" / "code-review"),
-            force=False,
-        )
+        stage_default_skill(repository, tmp_path / "target" / "code-review")
+
+
+def test_filesystem_installer_tree_digest_is_stable_across_creation_order_and_mtime(
+    tmp_path: Path,
+) -> None:
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    (first / "assets").mkdir(parents=True)
+    (first / "SKILL.md").write_bytes(b"skill\n")
+    (first / "assets" / "guide.md").write_bytes(b"guide\n")
+    (second / "assets").mkdir(parents=True)
+    (second / "assets" / "guide.md").write_bytes(b"guide\n")
+    (second / "SKILL.md").write_bytes(b"skill\n")
+    (second / "SKILL.md").touch()
+    adapter = FilesystemSkillInstallerAdapter()
+
+    assert adapter.tree_digest(str(first)) == adapter.tree_digest(str(second))
+
+
+def test_filesystem_installer_tree_digest_changes_with_content_path_and_executable_bit(
+    tmp_path: Path,
+) -> None:
+    tree = tmp_path / "skill"
+    tree.mkdir()
+    skill_file = tree / "SKILL.md"
+    skill_file.write_bytes(b"first\n")
+    adapter = FilesystemSkillInstallerAdapter()
+    original = adapter.tree_digest(str(tree))
+
+    skill_file.write_bytes(b"second\n")
+    content_changed = adapter.tree_digest(str(tree))
+    skill_file.write_bytes(b"first\n")
+    skill_file.chmod(skill_file.stat().st_mode | stat.S_IXUSR)
+    executable_changed = adapter.tree_digest(str(tree))
+    skill_file.chmod(skill_file.stat().st_mode & ~stat.S_IXUSR)
+    skill_file.rename(tree / "GUIDE.md")
+    path_changed = adapter.tree_digest(str(tree))
+
+    assert len({original, content_changed, executable_changed, path_changed}) == 4
+
+
+@pytest.mark.parametrize("entry_kind", ["symlink", "fifo"])
+def test_filesystem_installer_tree_digest_rejects_non_regular_entries(
+    tmp_path: Path,
+    entry_kind: str,
+) -> None:
+    tree = tmp_path / "skill"
+    tree.mkdir()
+    (tree / "SKILL.md").write_text("skill\n", encoding="utf-8")
+    unsafe_entry = tree / "unsafe"
+    if entry_kind == "symlink":
+        unsafe_entry.symlink_to(tree / "SKILL.md")
+    else:
+        os.mkfifo(unsafe_entry)
+
+    with pytest.raises(UnsafeInstallPathError, match="regular files and directories"):
+        FilesystemSkillInstallerAdapter().tree_digest(str(tree))
+
+
+def test_filesystem_installer_tree_digest_rejects_symlinked_ancestor(
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside"
+    tree = outside / "skill"
+    tree.mkdir(parents=True)
+    (tree / "SKILL.md").write_text("skill\n", encoding="utf-8")
+    linked_root = tmp_path / "linked"
+    linked_root.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(UnsafeInstallPathError, match="readable directory"):
+        FilesystemSkillInstallerAdapter().tree_digest(str(linked_root / "skill"))
 
 
 def repository_with_skill(tmp_path: Path) -> Path:
     repository = tmp_path / "repository"
-    skill_dir = repository / "skills" / "code-review"
-    skill_dir.mkdir(parents=True)
-    (skill_dir / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
+    skill_directory = repository / "skills" / "code-review"
+    skill_directory.mkdir(parents=True)
+    (skill_directory / "SKILL.md").write_text("# Code review\n", encoding="utf-8")
     return repository
 
 
@@ -536,4 +490,13 @@ def installable_skill(
         path=path,
         skill_file=skill_file,
         source_root=source_root,
+    )
+
+
+def stage_default_skill(repository: Path, target: Path) -> None:
+    adapter = FilesystemSkillInstallerAdapter()
+    adapter.stage(
+        source=resolved_source(repository),
+        skill=installable_skill(),
+        target=adapter.plan_target(str(target)),
     )

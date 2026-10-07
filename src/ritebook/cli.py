@@ -48,10 +48,11 @@ from ritebook.features.skill_contribution.application.use_cases import (
     PublishSkillChangeDependencies,
 )
 from ritebook.features.skill_installation.adapters.outbound import (
+    FilesystemInstallationTransactionAdapter,
     FilesystemSkillInstallerAdapter,
+    IndexRegistryRefresherAdapter,
     IndexRegistrySkillCatalogAdapter,
-    JsonInstallationRegistryAdapter,
-    JsonLockfileAdapter,
+    JsonInstallationStateAdapter,
     SourceRepositoryAdapter,
     TomlRequirementsReader,
 )
@@ -111,20 +112,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     source_repository = SourceRepositoryAdapter()
     skill_installer = FilesystemSkillInstallerAdapter()
+    installation_state = JsonInstallationStateAdapter()
+    installation_transactions = FilesystemInstallationTransactionAdapter()
     install_skill = InstallSkill(
         catalog=installation_catalog,
         source_resolver=source_repository,
         installer=skill_installer,
-        manifest=JsonInstallationRegistryAdapter(),
-        clock=lambda: datetime.now(UTC),
+        state=installation_state,
+        transactions=installation_transactions,
     )
     install_from_requirements = InstallFromRequirements(
         requirements_reader=TomlRequirementsReader(),
+        index_refresher=IndexRegistryRefresherAdapter(update_index=update_index),
         catalog=installation_catalog,
         source_resolver=source_repository,
         installer=skill_installer,
-        manifest=JsonLockfileAdapter(),
-        clock=lambda: datetime.now(UTC),
+        state=installation_state,
+        transactions=installation_transactions,
     )
     contribution_skill_directory = FilesystemSkillDirectoryAdapter()
     publish_skill_change = PublishSkillChange(

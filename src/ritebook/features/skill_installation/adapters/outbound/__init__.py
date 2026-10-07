@@ -3,15 +3,14 @@
 from .filesystem_installer import (
     FilesystemSkillInstallerAdapter,
 )
+from .index_refresher import IndexRegistryRefresherAdapter
 from .index_registry_catalog import (
     IndexRegistrySkillCatalogAdapter,
 )
-from .json_installation_registry import (
-    JsonInstallationRegistryAdapter,
+from .installation_transaction import (
+    FilesystemInstallationTransactionAdapter,
 )
-from .json_lockfile import (
-    JsonLockfileAdapter,
-)
+from .json_installation_state import JsonInstallationStateAdapter
 from .source_repository import (
     SourceRepositoryAdapter,
 )
@@ -20,10 +19,11 @@ from .toml_requirements import (
 )
 
 __all__ = [
+    "FilesystemInstallationTransactionAdapter",
     "FilesystemSkillInstallerAdapter",
+    "IndexRegistryRefresherAdapter",
     "IndexRegistrySkillCatalogAdapter",
-    "JsonInstallationRegistryAdapter",
-    "JsonLockfileAdapter",
+    "JsonInstallationStateAdapter",
     "SourceRepositoryAdapter",
     "TomlRequirementsReader",
 ]

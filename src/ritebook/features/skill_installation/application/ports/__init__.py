@@ -2,10 +2,16 @@
 
 from ritebook.features.skill_installation.application.ports import (
     install_from_requirements,
-    installation_manifest,
+    installation_transaction,
+)
+from ritebook.features.skill_installation.application.ports.index_refresher import (
+    IndexRefresherPort,
 )
 from ritebook.features.skill_installation.application.ports.install_skill import (
     InstallSkillPort,
+)
+from ritebook.features.skill_installation.application.ports.installation_state import (
+    InstallationStatePort,
 )
 from ritebook.features.skill_installation.application.ports.requirements_reader import (
     RequirementsReaderPort,
@@ -21,12 +27,16 @@ from ritebook.features.skill_installation.application.ports.skill_source import 
 )
 
 InstallFromRequirementsPort = install_from_requirements.InstallFromRequirementsPort
-InstallationManifestPort = installation_manifest.InstallationManifestPort
+InstallationTransaction = installation_transaction.InstallationTransaction
+InstallationTransactionPort = installation_transaction.InstallationTransactionPort
 
 __all__ = [
+    "IndexRefresherPort",
     "InstallFromRequirementsPort",
     "InstallSkillPort",
-    "InstallationManifestPort",
+    "InstallationStatePort",
+    "InstallationTransaction",
+    "InstallationTransactionPort",
     "RequirementsReaderPort",
     "SkillCatalogPort",
     "SkillInstallerPort",

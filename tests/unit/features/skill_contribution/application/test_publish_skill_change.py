@@ -121,6 +121,7 @@ def test_contribution_lockfile_entry_requires_mvp_provenance() -> None:
     assert entry.requirement == "platform-skills/code-review"
     assert entry.source_revision == "a" * 40
     assert entry.index_digest == f"sha256:{'b' * 64}"
+    assert entry.installed_tree_digest == f"sha256:{'c' * 64}"
     assert entry.skill_path == "skills/code-review"
     assert entry.skill_file == "skills/code-review/SKILL.md"
 
@@ -150,6 +151,7 @@ def test_contribution_lockfile_entry_accepts_safe_repository_path_segments(
         "source_type",
         "source_revision",
         "index_digest",
+        "installed_tree_digest",
         "skill_path",
         "skill_file",
     ],
@@ -162,7 +164,10 @@ def test_contribution_lockfile_entry_rejects_missing_required_fields(
 
     with pytest.raises(
         ValueError,
-        match=r"must not be empty|Local alias|Skill name|Source revision|Index digest",
+        match=(
+            r"must not be empty|Local alias|Skill name|Source revision|"
+            r"Index digest|Installed tree digest"
+        ),
     ):
         ContributionLockfileEntry(**kwargs)
 
@@ -550,6 +555,7 @@ def _entry_kwargs() -> dict[str, object]:
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",
         "index_schema_version": 1,
+        "installed_tree_digest": f"sha256:{'c' * 64}",
     }
 
 

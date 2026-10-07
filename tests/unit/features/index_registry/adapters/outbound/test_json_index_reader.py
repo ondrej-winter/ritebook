@@ -518,6 +518,35 @@ def test_json_index_reader_rejects_cached_skill_file_outside_skill_path(
         JsonIndexReader().read_skills(str(cached_index_path))
 
 
+@pytest.mark.parametrize("read_cached", [False, True])
+def test_json_index_reader_requires_canonical_skill_file_basename(
+    tmp_path: Path,
+    *,
+    read_cached: bool,
+) -> None:
+    index_path = tmp_path / "ritebook-index.json"
+    write_index_file(
+        index_path,
+        {
+            "skills": [
+                {
+                    "name": "alpha",
+                    "path": "alpha",
+                    "skill_file": "alpha/README.md",
+                    "description": "Alpha helps with planning.",
+                },
+            ],
+        },
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match=r"must name SKILL\.md"):
+        read_index(
+            JsonIndexReader(),
+            index_path=index_path,
+            read_cached=read_cached,
+        )
+
+
 def write_index(tmp_path: Path, overrides: dict[str, object]) -> None:
     write_index_file(tmp_path / "ritebook-index.json", overrides)
 

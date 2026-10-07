@@ -9,6 +9,8 @@ if TYPE_CHECKING:
         InstallableSkill,
         PlannedInstallTarget,
         ResolvedSkillSource,
+        StagedSkillTree,
+        TargetInspection,
     )
 
 
@@ -18,12 +20,17 @@ class SkillInstallerPort(Protocol):
     def plan_target(self, target: str) -> PlannedInstallTarget:
         """Resolve and validate a target without mutating the filesystem."""
 
-    def install(
+    def inspect_target(self, target: PlannedInstallTarget) -> TargetInspection:
+        """Inspect one planned target without mutating it."""
+
+    def stage(
         self,
         *,
         source: ResolvedSkillSource,
         skill: InstallableSkill,
-        target: str,
-        force: bool,
-    ) -> None:
-        """Copy a skill directory into the requested target path."""
+        target: PlannedInstallTarget,
+    ) -> StagedSkillTree:
+        """Stage and hash a complete candidate beside its target."""
+
+    def cleanup_staged(self, staged: StagedSkillTree) -> None:
+        """Remove a staged candidate that was not consumed by a transaction."""

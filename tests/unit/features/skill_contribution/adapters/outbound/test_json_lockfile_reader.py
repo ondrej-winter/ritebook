@@ -26,6 +26,7 @@ def test_json_lockfile_reader_resolves_exact_requirement(tmp_path: Path) -> None
     assert result.requirement == "platform-skills/code-review"
     assert result.source_revision == "a" * 40
     assert result.index_digest == f"sha256:{'b' * 64}"
+    assert result.installed_tree_digest == f"sha256:{'c' * 64}"
     assert result.target == ".agents/skills/code-review"
 
 
@@ -297,11 +298,11 @@ def test_json_lockfile_reader_rejects_local_sources(
 
 
 def test_json_lockfile_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
-    lockfile_path = write_lockfile(tmp_path, overrides={"schema_version": 2})
+    lockfile_path = write_lockfile(tmp_path, overrides={"schema_version": 1})
 
     with pytest.raises(
         ContributionLockfileReadError,
-        match="unsupported lockfile schema_version: 2",
+        match="unsupported lockfile schema_version: 1",
     ):
         JsonContributionLockfileReader().resolve_entry(
             ContributionSkillReference.parse("platform-skills/code-review"),
@@ -340,6 +341,8 @@ def test_json_lockfile_reader_rejects_non_object_skill_entries(tmp_path: Path) -
         "source_type",
         "source_revision",
         "index_digest",
+        "target_id",
+        "installed_tree_digest",
         "skill_path",
         "skill_file",
     ],
@@ -373,6 +376,64 @@ def test_json_lockfile_reader_rejects_missing_index_schema_version(
         )
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"desired": False},
+        {"status": "retained"},
+    ],
+)
+def test_json_lockfile_reader_does_not_select_non_publishable_entry(
+    tmp_path: Path,
+    overrides: dict[str, object],
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[lockfile_entry(**overrides)],
+    )
+
+    with pytest.raises(ContributionLockfileEntryNotFoundError, match="no lockfile"):
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
+
+
+@pytest.mark.parametrize(
+    "payload_override",
+    [
+        {"unexpected": True},
+        {"issues": None},
+    ],
+)
+def test_json_lockfile_reader_rejects_malformed_schema_v2_root(
+    tmp_path: Path,
+    payload_override: dict[str, object],
+) -> None:
+    lockfile_path = write_lockfile(tmp_path, overrides=payload_override)
+
+    with pytest.raises(ContributionLockfileReadError, match="malformed"):
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
+
+
+def test_json_lockfile_reader_rejects_unknown_schema_v2_entry_fields(
+    tmp_path: Path,
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        skills=[lockfile_entry(unexpected=True)],
+    )
+
+    with pytest.raises(ContributionLockfileReadError, match="malformed"):
+        JsonContributionLockfileReader().resolve_entry(
+            ContributionSkillReference.parse("platform-skills/code-review"),
+            str(lockfile_path),
+        )
+
+
 def test_json_lockfile_reader_rejects_malformed_entry_fields(tmp_path: Path) -> None:
     lockfile_path = write_lockfile(
         tmp_path,
@@ -393,9 +454,11 @@ def write_lockfile(
     overrides: dict[str, object] | None = None,
 ) -> Path:
     payload: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "requirements_file": "ritebook.toml",
+        "state": "complete",
         "skills": skills if skills is not None else [lockfile_entry()],
+        "issues": [],
     }
     if overrides is not None:
         payload.update(overrides)
@@ -410,6 +473,7 @@ def lockfile_entry(**overrides: object) -> dict[str, object]:
         "index_name": "platform-skills",
         "skill_name": "code-review",
         "target": ".agents/skills/code-review",
+        "target_id": f"sha256:{'d' * 64}",
         "source": "git@example.com:example/skills.git",
         "source_type": "git_url",
         "source_revision": "a" * 40,
@@ -417,7 +481,9 @@ def lockfile_entry(**overrides: object) -> dict[str, object]:
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",
-        "locked_at": "2026-07-19T17:00:00Z",
+        "installed_tree_digest": f"sha256:{'c' * 64}",
+        "desired": True,
+        "status": "materialized",
     }
     entry.update(overrides)
     return entry

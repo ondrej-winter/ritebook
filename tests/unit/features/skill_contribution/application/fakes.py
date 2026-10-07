@@ -211,6 +211,7 @@ def contribution_lockfile_entry(
     skill_path: str = "skills/code-review",
     skill_file: str = "skills/code-review/SKILL.md",
     index_schema_version: int = 1,
+    installed_tree_digest: str = f"sha256:{'c' * 64}",
 ) -> ContributionLockfileEntry:
     return ContributionLockfileEntry(
         requirement=requirement,
@@ -224,6 +225,7 @@ def contribution_lockfile_entry(
         skill_path=skill_path,
         skill_file=skill_file,
         index_schema_version=index_schema_version,
+        installed_tree_digest=installed_tree_digest,
     )
 
 

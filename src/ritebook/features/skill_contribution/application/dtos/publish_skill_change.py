@@ -91,6 +91,7 @@ class ContributionLockfileEntry:
     skill_path: str
     skill_file: str
     index_schema_version: int
+    installed_tree_digest: str
 
     def __post_init__(self) -> None:
         """Validate contribution provenance required by the MVP."""
@@ -105,6 +106,9 @@ class ContributionLockfileEntry:
             raise ValueError(msg)
         if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
             msg = "Index digest must use sha256:<64 lowercase hex>."
+            raise ValueError(msg)
+        if not INDEX_DIGEST_PATTERN.fullmatch(self.installed_tree_digest):
+            msg = "Installed tree digest must use sha256:<64 lowercase hex>."
             raise ValueError(msg)
         _require_safe_repository_path(self.skill_path, field_name="Skill path")
         _require_safe_repository_path(self.skill_file, field_name="Skill file")

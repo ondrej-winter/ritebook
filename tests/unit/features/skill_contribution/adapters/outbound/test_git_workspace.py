@@ -597,6 +597,7 @@ def contribution_entry(
         skill_path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",
         index_schema_version=1,
+        installed_tree_digest=f"sha256:{'c' * 64}",
     )
 
 

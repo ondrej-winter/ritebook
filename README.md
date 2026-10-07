@@ -258,12 +258,11 @@ No skills found
 
 ## Consumer skill installation
 
-Ritebook installs skills from already registered and cached indexes. Installation
-commands are offline-first: they read the local registry and cached
-`ritebook-index.json` files, then copy skill directories from the remembered
-source repository path or managed local clone. They do not clone, fetch, pull, or
-mutate source repositories. Run `indexes update` first when you want to refresh the
-cached index and managed Git clone before installing.
+Ritebook installs skills from registered Git-backed indexes. Direct `skills
+install` is offline against the currently registered commit-and-index binding.
+Repository `skills sync` refreshes every referenced local alias before resolving
+requirements and aborts without target or installation-state mutation if any
+refresh fails.
 
 Install one fully qualified skill into an explicit target path:
 
@@ -285,9 +284,11 @@ shorthand such as
 `platform-skills/runtime-verification` does not select
 `platform-skills/browser/runtime-verification`.
 
-Ritebook copies the whole skill directory, creates missing target parent
-directories, and refuses to overwrite an existing target unless `--force` is
-provided:
+Ritebook copies the whole skill directory and creates missing target parent
+directories. An existing target can be replaced only when Ritebook already owns
+that exact target, its current tree still matches the last committed digest, and
+`--force` is provided. Unmanaged targets, locally edited owned targets, symlinks,
+special files, and dangerous paths are preserved or rejected:
 
 ```bash
 uv run ritebook skills install platform-skills/code-review \
@@ -301,10 +302,12 @@ Direct `skills install` runs write generated user-level installation state to:
 ~/.config/ritebook/installations.json
 ```
 
-On POSIX platforms, Ritebook writes both `indexes.json` and `installations.json`
-with mode `0600`. Persisted source values never include standard-URL user-info, and
-`indexes list` defensively removes such user-info from displayed sources. Existing
-unsafe generated state is rejected and must be removed and regenerated.
+Direct installation state uses strict schema version 2 and includes ownership,
+verified source provenance, and the canonical installed-tree digest. On POSIX
+platforms, Ritebook writes both `indexes.json` and `installations.json` with mode
+`0600`. Persisted source values never include standard-URL user-info, and `indexes
+list` defensively removes such user-info from displayed sources. Legacy or unsafe
+generated installation state is rejected and must be inspected and regenerated.
 
 Tests and automation can override both the index registry and direct-install
 state paths:
@@ -333,19 +336,19 @@ target = "agents"
 
 [[skills]]
 name = "company-agents/security-review"
-target_path = "../shared-agent-skills/security-review"
+target_path = "shared-agent-skills/security-review"
 ```
 
-Install all declared skills from the default `ritebook.toml` in the current
-working directory:
+Refresh referenced indexes and exactly reconcile the default `ritebook.toml` in
+the current working directory:
 
 ```bash
 uv run ritebook skills sync
 ```
 
-Use `--file` to read a different requirements file, `--force` to replace existing
-target directories, and `--lockfile` to choose where generated lock state is
-written:
+Use `--file` to read a different requirements file, `--force` to rematerialize
+unchanged Ritebook-owned desired targets, and `--lockfile` to choose where
+generated lock state is written:
 
 ```bash
 uv run ritebook skills sync \
@@ -357,7 +360,9 @@ uv run ritebook skills sync \
 
 `target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
 `target_path` is used exactly as the target path for that skill entry. Each skill
-entry must use exactly one of `target` or `target_path`.
+entry must use exactly one of `target` or `target_path`. Sync targets are portable
+paths relative to the requirements-file directory; absolute paths and parent
+traversal are rejected.
 
 In `ritebook.toml` only, a one-segment selector may select an implicit
 first-level collection. For example, `platform-skills/browser` expands to the
@@ -367,10 +372,19 @@ target base by its final skill name; it cannot use `target_path`. Expansion neve
 matches deeper descendants or searches by `skills[].name`. Direct `skills install`
 and `skills contribute` commands remain exact-only and never expand collections.
 
-After a successful requirements install, Ritebook writes deterministic generated
-state to `ritebook.lock` by default. Commit `ritebook.lock` when a repository uses
-`ritebook.toml` so repo-local skill installation state is reviewable and
-repeatable. Because the lockfile is meant to be shared, Ritebook does not force a
+Sync transactionally writes strict schema-v2 generated state to `ritebook.lock`
+and local ownership state to `.ritebook/installations.json`. Commit
+`ritebook.lock` when a repository uses `ritebook.toml`; do not commit `.ritebook/`.
+The lock records the actual retained Ritebook-owned targets, their installed-tree
+digests, whether each target is still desired, materialization status, and any
+reconciliation issues. Complete no-change syncs produce byte-identical lock state.
+Partial reconciliation preserves independent successful changes, writes truthful
+`state = "partial"` data, reports each issue, and exits nonzero.
+
+Schema-v1 lockfiles and installation registries do not prove ownership because
+they lack installed-tree digests. Ritebook rejects automatic migration: inspect
+and remove or relocate legacy targets, then rerun `skills sync` to generate
+schema-v2 state. Because `ritebook.lock` is shared, Ritebook does not force a
 private file mode; it rejects credential-bearing standard source URLs before
 writing instead.
 
@@ -435,10 +449,11 @@ Ritebook does not run the suggested command, push any branch, or open a merge
 request or pull request. Inspect the checkout and commit before following the
 suggested next step.
 
-Contribution publishing accepts only portable `git_url` entries from shared
-`ritebook.lock`. Legacy or hand-written `local_git_repo` entries fail before any
-contribution clone or Git operation, with guidance to re-register by Git URL and
-regenerate the lockfile.
+Contribution publishing accepts only desired schema-v2 lock entries with
+`materialized` or `local_changes` status, an installed-tree digest, and a portable
+`git_url` source. Schema-v1, issue-only, retained, and hand-written
+`local_git_repo` entries fail before any contribution clone or Git operation,
+with guidance to re-register by Git URL and regenerate the lockfile.
 
 If the selected upstream skill path changed after the lockfile's
 `source_revision`, Ritebook stops instead of attempting to merge or overwrite the

@@ -3,880 +3,329 @@
 ## Status
 
 - State: Active
-- Revision: 2.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 3.0
+- Acceptance basis: User-approved October 6, 2026 exact-reconciliation revision plan and [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md).
+- Accepted by / on: User / 2026-10-06
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
-- Supersedes: None
+- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md) and [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md)
+- Supersedes: Revision 2.1 of this specification
 
 ## Objective and Context
 
-Ritebook provides consumer-facing skill installation workflows for users who have
-already registered one or more Git-backed skill indexes with `indexes add`.
+Ritebook installs one exact skill into an explicit target and reconciles a
+repository's installed skills with declarations in `ritebook.toml`. Installation
+consumes registered Git-backed indexes and preserves the commit-and-index-digest
+binding defined by ADR 0001.
 
-The workflow lets a user install one exact cached skill into an explicit target
-path, and lets a repository declare exact skills or first-level collections in
-`ritebook.toml`. Ritebook resolves those declarations, copies the selected skill
-directories from registered sources, and writes a deterministic `ritebook.lock`
-for reviewable repo-local install state.
-
-### Current-state evidence
-
-- Ritebook already supports publisher-side index generation through
-  `indexes publish`.
-- Publisher indexes are root-level `ritebook-index.json` files with schema
-  version `1`.
-- Publisher schema v1 includes index metadata and skill entries with required
-  `name`, `path`, `skill_file`, and non-empty `description`.
-- Consumer registry functionality already exists in
-  `src/ritebook/features/index_registry/`:
-  - `indexes add` registers a Git URL or local Git repository source.
-  - `indexes update` refreshes cached index contents.
-  - `indexes list` lists registered index metadata.
-  - `skills list` lists skills from locally cached registered indexes.
-- Registry entries already store each index's local alias, remembered
-  source, source type, source cache path for Git URL sources, and cached index
-  path.
-- Installation reads skill content from the commit bound to the validated cached
-  index, as required by
-  [ADR 0001](../adr/0001-source-provenance-and-trust.md), rather than from the
-  source repository's mutable `HEAD` or working tree.
-- Direct installation resolves exact schema-v1 paths only. Requirements
-  installation resolves exact paths first and expands only immediate children of
-  a first-level collection after validating the complete mutation plan.
-- The project follows hexagonal architecture with vertical feature slices under
-  `src/ritebook/features/`.
+Revision 2.1 implemented sync as sequential copy followed by a full lockfile
+rewrite. It did not record ownership or installed bytes, could not prune safely,
+could overwrite unmanaged directories with `--force`, deleted backups before
+generated state committed, and allowed concurrent lost updates. Revision 3.0
+defines exact, ownership-aware reconciliation with deterministic tree digests,
+referenced-index refresh, exclusive locking, rollback, interruption recovery,
+truthful partial state, and schema-v2 generated state.
 
 ## Scope
 
-- In scope: Direct installation of one exact cached skill, repository
-  synchronization from `ritebook.toml`, deterministic generated state, bound-source
-  verification, safe filesystem replacement, path safety, and the installation
-  CLI contracts.
-- Out of scope: Default install destinations, target kinds for direct install,
-  installation from unregistered live remotes, dependency resolution between
-  skills, and publisher-embedded trust policy beyond the cached-index digest.
+- In scope: exact direct install, exact repository reconciliation, referenced
+  index refresh, generated lock and ownership state, content identity, local-edit
+  preservation, safe pruning, locking, target/state transactions, interruption
+  recovery, path and symlink safety, deterministic output, CLI behavior, and
+  schema-v1 migration rejection.
+- Out of scope: unregistered live sources, default direct-install destinations,
+  dependency resolution between skills, publisher signatures, cross-host shared
+  ownership state, automatic adoption of legacy targets, and overriding local
+  edits or unmanaged content.
 
 ## Requirements
 
-The following requirement groups preserve the normative installation contract of revision 2.1.
+### R1 — Exact direct installation
 
-### R1 — Install one skill
+- `skills install` requires a fully qualified
+  `<local-alias>/<skill-path>` reference and explicit `--target`.
+- The selector is exactly one schema-v1 catalog path: `<skill>` or
+  `<collection>/<skill>`. Direct install never expands collections and never
+  falls back to `skills[].name`.
+- Ritebook verifies the cached index bytes and the root index bytes at the bound
+  `source_revision` against the registered `index_digest` before parsing or using
+  skill metadata.
+- `skill_file` must name the canonical `SKILL.md` file inside the selected skill
+  directory.
+- Ritebook copies the complete skill directory from the bound commit. It never
+  substitutes a mutable working tree or current `HEAD`.
+- A missing target may be installed. An existing target may be replaced only when
+  the user passed `--force`, the target is already owned by the same direct-install
+  registry, and its current tree digest matches its last committed digest.
+- `--force` does not authorize replacement of unmanaged targets, locally modified
+  targets, symlinks, special files, dangerous paths, or targets whose ownership
+  cannot be verified.
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+### R2 — Requirements and portable target identity
 
-A user can install one skill by fully qualified local index alias and skill path:
+- `skills sync` reads `ritebook.toml` by default and accepts `--file`.
+- `[targets]` maps simple nicknames to non-empty relative target-base paths.
+- Every `[[skills]]` entry defines `name` and exactly one of `target` or
+  `target_path`.
+- Sync target paths must be portable relative paths. They resolve relative to the
+  requirements-file directory; absolute, root-like, home, current-directory, and
+  escaping paths are invalid.
+- Exact selectors resolve one indexed skill. A single-segment selector that is
+  not an exact skill may expand one first-level collection to its immediate
+  indexed children in deterministic path order.
+- Collection selectors require `target`; `target_path` represents one exact
+  target only.
+- Every resolved target receives a deterministic `target_id` computed from its
+  normalized portable target path. The identifier does not contain a
+  machine-specific canonical path.
+- Duplicate requirements and equal, equivalent, or parent-child targets are
+  rejected before refresh or target mutation.
 
-```bash
-uv run ritebook skills install platform-skills/code-review --target .claude/skills/code-review
-```
+### R3 — Referenced-index refresh and verified resolution
 
-Requirements:
+- Before reading installable metadata, sync refreshes every distinct registered
+  local alias referenced by the parsed requirements file.
+- Refresh uses the index registry's normal source validation, immutable cache,
+  and registry commit protocol.
+- A missing alias or any refresh failure aborts sync before target mutation and
+  before lock or ownership state is changed. Sync never falls back to stale
+  cached metadata after a requested refresh fails.
+- After refresh, Ritebook opens and verifies the bound source snapshot before it
+  parses the verified cached index and resolves skills from that snapshot.
+- Direct install remains explicitly offline against the already registered
+  binding; users choose `indexes update` when they want a newer direct-install
+  source.
 
-- The skill reference must be fully qualified as
-  `<local-alias>/<skill-path>`.
-- Local aliases must be single-segment kebab-case identifiers and must not contain
-  `/`, so the separator before `<skill-path>` is unambiguous.
-- The skill selector after the first slash is a safe relative POSIX path with one
-  or two segments: `<skill>` or `<collection>/<skill>`, such as
-  `browser/runtime-verification`.
-- Every selector segment must use the canonical 1–64 character Ritebook kebab-case
-  identifier form.
-- Ritebook resolves only exact cached relative paths and never falls back to
-  `skills[].name`. A root skill path such as `code-review` remains valid when that
-  exact path exists.
-- `skills install` installs exactly one skill. A collection selector is not a valid
-  direct-install target and is never expanded by this command.
-- Duplicate skill names may coexist within one index when their relative paths
-  differ; each is selected by its full path.
-- `skills install` requires a direct `--target <path>` and also accepts `--force`,
-  `--registry-path`, and `--installation-registry-path`.
-- `skills install` does not accept target aliases, target kinds, or inferred
-  default destinations.
-- Ritebook reads the existing local consumer registry.
-- Ritebook reads the selected registry entry's cached `ritebook-index.json`.
-- Ritebook reads root `ritebook-index.json` from the registry entry's full
-  `source_revision`, without substituting the current checkout or `HEAD`.
-- Ritebook hashes both exact byte sequences and requires the cached index and the
-  committed root index to match the registry entry's same `index_digest` before
-  trusting cached metadata or copying content.
-- Ritebook parses and validates the verified cached bytes, then resolves the
-  selected skill entry from that same in-memory snapshot.
-- Ritebook materializes the whole skill directory, not only `SKILL.md`, from the
-  registry entry's full `source_revision` into the target path.
-- Ritebook never substitutes the source repository's current checkout or `HEAD`
-  for the bound commit.
-- Ritebook creates missing target parent directories.
-- Ritebook refuses to overwrite an existing target path unless `--force` is
-  provided.
-- Ritebook stages a complete copy beside the target before a forced replacement
-  moves the existing target. A staging failure leaves the existing target intact.
-- After staging, Ritebook moves the existing target to an installer-owned backup,
-  moves the staged directory into place, and restores the backup if that final
-  swap fails.
-- A failed restore retains the backup and reports its exact path with recovery
-  guidance. A successful swap removes installer-owned staging and backup paths;
-  cleanup failure reports the retained backup without removing the new target.
-- Ritebook constructs the complete timestamped installation entry and asks the
-  installation-state adapter to validate the candidate update before copying.
-- Ritebook writes generated installation state only after a successful copy.
-- If the final atomic `installations.json` replacement fails, Ritebook reports
-  failure rather than success, leaves the copied target in place, states that the
-  registry was not updated, and directs the user to inspect the target and retry.
+### R4 — Canonical installed-tree digest
 
-Example with overwrite:
+- Every owned installation records `installed_tree_digest` as
+  `sha256:<64-lowercase-hex>`.
+- The digest input begins with a versioned Ritebook tree-hash domain marker.
+- Ritebook walks the complete skill tree without following symlinks and sorts
+  entries by relative POSIX path encoded as UTF-8.
+- For each directory the digest includes entry type and path. For each regular
+  file it includes entry type, path, executable-bit state, byte length, and exact
+  file bytes.
+- Timestamps, uid/gid, platform inode numbers, and non-executable permission bits
+  are excluded.
+- Symlinks, sockets, devices, fifos, and other special files make a source or
+  managed target invalid.
+- The same algorithm is used for staged candidates, installed targets, ownership
+  checks, local-edit detection, and contribution baselines.
 
-```bash
-uv run ritebook skills install platform-skills/code-review \
-  --target .claude/skills/code-review \
-  --force
-```
+### R5 — Ownership and local state
 
-Example for a skill published under a subfolder:
+- Ritebook may replace or prune only a target recorded in schema-v2 ownership
+  state for the same canonical target and `target_id`.
+- Repository sync stores local ownership at
+  `<requirements-file-directory>/.ritebook/installations.json`.
+- The repository-local ownership ledger contains canonical target paths and is
+  local generated state. Projects must not commit `.ritebook/`.
+- When the local ledger is absent, sync may reconstruct it from the repository's
+  strict schema-v2 `ritebook.lock`. It resolves each portable target under the
+  requirements-file directory and treats the lock entry as ownership evidence
+  only when its path is safe and its current tree matches the recorded
+  `installed_tree_digest` before replacement or pruning.
+- A lock mismatch does not adopt the target. The target is preserved as local
+  changes, and unlisted existing targets remain unmanaged.
+- Direct install stores ownership in
+  `~/.config/ritebook/installations.json`, or the explicit
+  `--installation-registry-path` override.
+- Ownership entries are sorted by `target_id` and record the owning workflow,
+  requirement, target identity, canonical target, installed tree digest, and
+  verified source provenance.
+- Local ownership files use schema version 2, strict root and entry validation,
+  no unknown fields, atomic same-directory replacement, and POSIX mode `0600`
+  where supported.
+- A schema-v1 installation registry or ownership file is not ownership evidence.
+  Ritebook rejects it with instructions to inspect and remove or relocate legacy
+  targets before reinstalling.
 
-```bash
-uv run ritebook skills install platform-skills/browser/runtime-verification \
-  --target .claude/skills/runtime-verification
-```
+### R6 — Exact reconciliation and safe pruning
 
-### R2 — Install from `ritebook.toml`
+For each desired resolved target, sync classifies current state under the
+operation lock:
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
+- **missing:** install the candidate and establish ownership;
+- **owned and unchanged, candidate unchanged:** keep the target without rewriting
+  it;
+- **owned and unchanged, candidate changed:** replace it transactionally;
+- **owned but locally modified:** preserve it and record a local-change issue;
+- **unmanaged existing target:** preserve it and record an unmanaged-target issue;
+- **unsafe or unverifiable:** preserve it and record a safety issue.
 
-A repository can declare desired skill installations in a human-authored
-`ritebook.toml` file:
+For each previously owned target no longer desired:
 
-```toml
-[targets]
-claude = ".claude/skills"
-agents = ".agents/skills"
-shared = "../shared-agent-skills"
+- unchanged targets are pruned transactionally;
+- locally modified, unsafe, missing-with-inconsistent-state, or unverifiable
+  targets are retained and recorded as issues;
+- Ritebook never prunes a path based only on its location or name.
 
-[[skills]]
-name = "platform-skills/code-review"
-target = "claude"
+`--force` may request rematerialization of an unchanged owned desired target. It
+does not change ownership, local-edit, pruning, or safety rules.
 
-[[skills]]
-name = "platform-skills/test-driven-development"
-target = "claude"
+### R7 — Transactions, locking, and recovery
 
-[[skills]]
-name = "platform-skills/browser/runtime-verification"
-target = "claude"
+- Direct install and sync acquire an exclusive operation lock before reading
+  ownership state. The lock remains held through refresh, target inspection,
+  mutation, generated-state commit, and finalization.
+- Lock acquisition is bounded and a conflicting live operation produces a
+  user-facing error. All installation workflows use the same deterministic lock
+  order: operation lock, then index-registry refresh operations, then target and
+  generated-state work.
+- Each replacement is staged beside the target. Immediately before mutation,
+  Ritebook revalidates symlink-free ancestry, target type, canonical identity,
+  ownership, and expected tree digest.
+- Tree hashing opens every ancestor and descendant directory without following
+  symlinks. Target replacement, backup, pruning, rollback, and interrupted-run
+  recovery use descriptor-relative mutation against verified parent directories;
+  journal entries retain stable path strings only for durable recovery guidance.
+- The prior target is moved to an installer-owned same-filesystem backup. The
+  backup is retained until all generated-state files for the operation commit.
+- A persistent schema-v1 transaction journal records the operation identifier,
+  phase, target mutations, backup paths, generated-state paths, prior-state
+  backups, and candidate-state digests. Journal and phase changes use atomic
+  replacement and file/directory synchronization where supported.
+- On an ordinary failure before state commit, Ritebook restores prior targets and
+  prior generated state before releasing the lock. If restoration fails, it
+  retains the journal and backups and reports exact safe recovery paths.
+- At the start of the next operation under the same lock, Ritebook recovers an
+  existing journal. If every generated-state file matches its candidate digest,
+  it finalizes committed target changes; otherwise it restores prior targets and
+  generated state.
+- A successful operation removes only its own journal, staging paths, backups,
+  and prior-state snapshots.
 
-[[skills]]
-name = "platform-skills/quality"
-target = "agents"
+### R8 — Truthful schema-v2 lock state
 
-[[skills]]
-name = "company-agents/security-review"
-target = "shared"
-```
-
-A user can install all declared skills:
-
-```bash
-uv run ritebook skills sync
-```
-
-The default requirements file is `ritebook.toml` in the current working
-directory. A user can provide another file explicitly:
-
-```bash
-uv run ritebook skills sync --file path/to/ritebook.toml
-```
-
-Requirements:
-
-- `skills sync` reads the TOML requirements file.
-- `skills sync` resolves each `[[skills]]` entry against existing cached registered
-  indexes.
-- For each selected registry entry, `skills sync` verifies that both the exact cached
-  index bytes and root `ritebook-index.json` read from the bound commit match the
-  same `index_digest`.
-- `skills sync` parses and resolves requirements from the verified cached-byte
-  snapshot and materializes each selected skill directory from that bound commit
-  into the resolved target path.
-- Before the first copy, `skills sync` asks the filesystem adapter to canonicalize and
-  validate every target without creating directories or otherwise mutating the
-  filesystem. It rejects equivalent and parent-child target destinations as one
-  conflicting plan.
-- `skills sync` writes or updates `ritebook.lock` after successful installation.
-- `skills sync` refuses existing target paths unless `--force` is provided.
-- `skills sync` fails without partially updating `ritebook.lock` when any declared
-  install cannot be resolved, validated, or copied.
-- `skills sync` may leave already-copied target directories in place if a later copy
-  fails; rollback is out of scope for v1 and the error must make that clear.
-- Before the first copy, `skills sync` constructs all timestamped lockfile entries and
-  validates the complete candidate lockfile without filesystem mutation.
-- If final atomic lockfile replacement fails after all copies, `skills sync` reports
-  failure rather than success, leaves copied targets in place, states that
-  `ritebook.lock` was not updated, and directs the user to inspect the targets and
-  retry.
-
-### R3 — Generated-state commit and recovery semantics
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-The installation use cases use a retained-state recovery protocol rather than
-attempting application-level deletion after a successful copy:
-
-- Resolution, target planning, timestamp normalization, entry construction,
-  existing-state parsing, conflict checks, provenance checks, and deterministic
-  document construction occur before the first target mutation.
-- A failure in any of those preparation steps is a full pre-mutation failure: no
-  target is copied and no generated-state file is written.
-- A first-copy failure is a full copy failure and does not write generated state.
-- A later requirements-copy failure is a partial installation: earlier copied
-  targets remain and `ritebook.lock` is not updated.
-- If a forced replacement installs the new target but cannot remove its prior
-  backup, the target and backup both remain, generated state is not written, and
-  the diagnostic preserves the adapter's exact backup-recovery path.
-- An `installations.json` or `ritebook.lock` atomic-write failure after copying is a
-  generated-state commit failure: copied targets remain, the command exits with
-  failure, and the diagnostic explicitly says which state file was not updated.
-- If direct-install registry state changes between preflight and final commit, a
-  new recorded-target conflict is also reported as a retained generated-state
-  failure because the target has already been copied.
-- The command never prints its success message unless the generated-state write
-  completed.
-- Ritebook does not automatically remove copied targets after a commit failure.
-  A target may have replaced pre-existing user content under `--force`, and the
-  installer has already finalized its private backup before returning success;
-  blind deletion could therefore destroy valid user state.
-
-Example with overwrite:
-
-```bash
-uv run ritebook skills sync --force
-```
-
-### R4 — `ritebook.toml` format
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-The desired installation file uses TOML so Ritebook can parse it with Python's
-standard-library `tomllib`.
-
-`[targets]` defines optional target nicknames. Each target value is a base path:
-
-```toml
-[targets]
-claude = ".claude/skills"
-shared = "../shared-agent-skills"
-```
-
-`[[skills]]` entries declare desired skills:
-
-```toml
-[[skills]]
-name = "platform-skills/code-review"
-target = "claude"
-
-[[skills]]
-name = "company-agents/security-review"
-target_path = "../shared-agent-skills/security-review"
-```
-
-Skill entry fields:
-
-- `name`: compatibility-sensitive TOML field containing either a fully qualified
-  exact skill reference `<local-alias>/<skill-path>` or a fully qualified
-  first-level collection selector `<local-alias>/<collection>`.
-- `target`: optional target nickname from `[targets]`.
-- `target_path`: optional direct target path.
-
-Target resolution rules:
-
-- Each skill entry must define exactly one of `target` or `target_path`.
-- `target` must reference a key in `[targets]`.
-- `target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
-- `target_path` is used as the exact target path for that skill entry.
-- A collection selector must use `target`, because each immediate child resolves
-  below the target base by its final skill name. A collection selector with
-  `target_path` is invalid because one exact path cannot represent multiple
-  resolved skills.
-- `[targets]` is optional when all skill entries use `target_path`.
-
-Validation rules:
-
-- The TOML document root must be a table.
-- `[targets]`, when present, must be a table of non-empty string paths.
-- Target nickname names must be simple identifiers using letters, numbers,
-  underscores, and hyphens.
-- `[[skills]]` must be an array of tables.
-- Each skill `name` must be fully qualified as
-  `<local-alias>/<selector>`.
-- An exact skill selector resolves a schema-v1 path in the form `<skill>` or
-  `<collection>/<skill>`.
-- When no exact skill exists, a single-segment selector may resolve a collection
-  and expand only indexed skills whose paths are immediate children in the form
-  `<collection>/<skill>`, in deterministic path order.
-- A collection must contain at least one indexed immediate child to resolve.
-  Empty and unrelated non-skill directories are not represented by the cached
-  index and therefore cannot be selected.
-- Arbitrary folder prefixes, multi-level collections, and descendant expansion
-  beyond immediate collection children are invalid.
-- Neither exact-skill nor collection resolution falls back to `skills[].name`.
-- Repeated `[[skills]]` entries with the same fully qualified `name` are rejected.
-- Duplicate, canonically equivalent, and parent-child resolved target paths are
-  rejected before the first copy. This includes lexical aliases using `.`, `..`,
-  or relative versus absolute forms.
-- Resolved target paths must not be empty, root-like, or otherwise dangerous.
-- Existing symlinks in a target or any target ancestor are rejected during
-  planning rather than followed.
-- Canonical target comparison follows the host filesystem's path semantics. It
-  detects case aliases when the host resolves them to the same existing path, but
-  cannot portably prove that differently cased, entirely nonexistent paths will
-  collide on every case-insensitive filesystem. Users must not declare such
-  ambiguous targets.
-- Unknown fields are rejected in v1 so mistakes fail fast.
-
-### R5 — Lockfile
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-`ritebook.lock` is generated by Ritebook and should be committed when a
-repository uses `ritebook.toml` to standardize repo-local agent skills.
-
-The lockfile records resolved installation state rather than target nicknames.
-It must be deterministic and reviewable.
-
-Example schema v1:
+`ritebook.lock` is portable, deterministic repository-shared state with this
+shape:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "requirements_file": "ritebook.toml",
+  "state": "complete",
   "skills": [
     {
       "requirement": "platform-skills/code-review",
       "index_name": "platform-skills",
       "skill_name": "code-review",
       "target": ".claude/skills/code-review",
+      "target_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "target_ref": "claude",
+      "desired": true,
+      "status": "materialized",
       "source": "git@github.com:company/internal-skills.git",
       "source_type": "git_url",
       "source_revision": "0123456789abcdef0123456789abcdef01234567",
-      "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "index_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "index_schema_version": 1,
       "skill_path": "skills/code-review",
       "skill_file": "skills/code-review/SKILL.md",
-      "locked_at": "2026-07-10T21:00:00Z"
+      "installed_tree_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
     }
-  ]
+  ],
+  "issues": []
 }
 ```
 
-Lockfile requirements:
-
-- `schema_version` is required and must be `1` for v1.
-- `requirements_file` records the requirements file path used by `skills sync`.
-- `skills` are sorted deterministically by `index_name`, then skill path.
-- `requirement` stores the exact qualified catalog selector
-  `<local-alias>/<skill>` or `<local-alias>/<collection>/<skill>` resolved for the
-  entry. Collection expansion writes one exact child requirement per resolved
-  skill.
-- `index_name` is a compatibility-sensitive schema-v1 field containing the local
-  alias from the qualified skill reference; it is not publisher `index.name`.
-- `target` stores the resolved target path written from the requirements file.
-- `target_ref` is present only when the requirement used a `[targets]` nickname.
-- `source_revision` is required and records the full commit object ID bound during
-  index validation and actually used for installation.
-- `index_digest` is required and records the verified digest of the cached index
-  used to resolve the skill.
-- `skill_path` stores the selected skill directory path relative to the source
-  repository, formed from the index `skills_root` and catalog-relative skill path.
-- `skill_file` stores the selected `SKILL.md` path relative to the source
-  repository, formed from the index `skills_root` and catalog-relative skill-file
-  path.
-- Catalog one-or-two-segment depth validation applies to the selector encoded in
-  `requirement`, not to repository-relative `skill_path` or `skill_file`. Those
-  repository paths may contain additional segments contributed by `skills_root`
-  and remain subject to safe relative-path validation.
-- `source` must be the safe persisted locator propagated from the registry. A
-  standard URL containing authority user-info is rejected before lockfile writing.
-- Shared lockfiles support `source_type = "git_url"` only. A registration backed by
-  `local_git_repo` is valid for browsing and direct `skills install`, but
-  requirements installation rejects it during candidate lockfile validation before
-  copying any target. Register the same index from a portable Git URL and rerun
-  installation to generate commit-safe lock state.
-- Pre-release schema-v1 lockfiles missing either provenance field are rejected and
-  regenerated by rerunning installation; provenance is never inferred from the
-  source's current `HEAD`.
-- Relative, absolute, missing, and moved local repository paths are never written to
-  `ritebook.lock`; Ritebook does not transform them into an ambiguous portable
-  locator.
-- The lockfile is replaced atomically enough for local CLI use after all planned
-  installs have succeeded.
-- `ritebook.lock` is intended for review and repository sharing, so Ritebook does
-  not force mode `0600`; its source-safety boundary is rejection of secret-bearing
-  standard URLs before serialization.
-
-### R6 — User-level ad hoc installation state
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-When `skills install` is used directly, Ritebook records generated user-level
-installation state under Ritebook's own config directory instead of writing a
-lockfile into arbitrary target directories:
-
-```text
-~/.config/ritebook/installations.json
-```
-
-Example schema v1:
-
-```json
-{
-  "schema_version": 1,
-  "installations": [
-    {
-      "requirement": "platform-skills/code-review",
-      "index_name": "platform-skills",
-      "skill_name": "code-review",
-      "target": "/Users/me/.claude/skills/code-review",
-      "source": "git@github.com:company/internal-skills.git",
-      "source_type": "git_url",
-      "source_revision": "0123456789abcdef0123456789abcdef01234567",
-      "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "index_schema_version": 1,
-      "skill_path": "skills/code-review",
-      "skill_file": "skills/code-review/SKILL.md",
-      "installed_at": "2026-07-10T21:00:00Z"
-    }
-  ]
-}
-```
-
-Requirements:
-
-- The user installation registry is generated state owned by Ritebook.
-- The default path is `~/.config/ritebook/installations.json`.
-- Tests and automation can override the path with an explicit CLI option or
-  injected setting.
-- `index_name` is a compatibility-sensitive schema-v1 field containing the local
-  alias from the qualified skill reference; it is not publisher `index.name`.
-- Entries are sorted deterministically by `target`.
-- Entries require the verified full `source_revision` and `index_digest` used for
-  installation.
-- Existing or candidate entries containing standard-URL authority user-info are
-  rejected without echoing credentials. Unsafe existing state must be removed and
-  regenerated by reinstalling.
-- Replacement `installations.json` files receive POSIX mode `0600` where supported
-  because this is user-owned local state.
-- Existing pre-release schema-v1 registries containing entries without either
-  provenance field are rejected with guidance to remove the generated registry
-  and reinstall; Ritebook does not infer provenance from a mutable source.
-- Reinstalling the same skill to the same target with `--force` replaces that
-  entry.
-- Installing a different skill to an already-recorded target is refused unless
-  `--force` is provided.
-
-### R7 — Source repository behavior
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-For a registered Git URL source:
-
-- Ritebook uses the managed Git clone already associated with the registry entry.
-- `skills install` and `skills sync` do not fetch or pull by default.
-- Users should run `indexes update` first when they want to refresh cached index
-  contents and the managed clone.
-- Ritebook verifies that the bound commit is available and reads the selected
-  skill from that commit, even if the managed clone's current checkout has moved.
-- Ritebook reads root `ritebook-index.json` from that commit and requires its exact
-  bytes to match the same `index_digest` already verified against the cached index.
-- If the commit is unavailable locally, Ritebook may fetch the remembered source
-  to recover that exact object, but it must not advance the selected binding.
-
-For a registered local Git repository source:
-
-- Ritebook reads the remembered local repository path.
-- Ritebook does not mutate the local repository.
-- Ritebook reads committed objects at the bound `source_revision`, not the
-  repository's working tree.
-- Ritebook reads root `ritebook-index.json` from that commit and requires its exact
-  bytes to match the same `index_digest` already verified against the cached index.
-- Ritebook does not create an owned snapshot. If the repository or bound commit is
-  unavailable, installation fails before copying and directs the user to restore
-  it or explicitly refresh and reinstall.
-- This source kind supports direct `skills install` only. Requirements installation
-  cannot generate the shared `ritebook.lock` contract from a machine-local path and
-  fails before copying with guidance to register a Git URL.
-
-For every source type, a missing bound commit, cached-index digest mismatch, or
-bound-commit index digest mismatch is a provenance failure. Ritebook does not fall
-back to mutable source bytes. It performs these checks before trusting cached
-metadata, creating target paths, or copying content.
-
-Standard Git URLs containing authority user-info are not valid persisted sources.
-Installation and contribution lockfile readers reject such legacy state with a
-non-secret error instead of using or displaying the value. scp-like SSH sources
-remain valid.
-
-### R8 — Path safety
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-Ritebook handles paths from three places:
-
-1. target paths supplied by the user or `ritebook.toml`,
-2. skill paths supplied by cached publisher indexes, and
-3. source repository paths stored in the local registry.
-
-Requirements:
-
-- Cached index `path` and `skill_file` values are treated as untrusted external
-  data and validated before use.
-- Skill source paths must stay within the selected source repository.
-- Target paths must be explicit, non-empty paths.
-- Target paths must not resolve to filesystem root, the user's home directory
-  itself, the current working directory itself, or another broad destructive
-  destination.
-- The resolved target must not equal, contain, or be contained by the resolved
-  source skill directory. Both installation commands reject this overlap before
-  deleting, creating, or copying any path, including when `--force` is provided.
-- Parent directories may be created.
-- Existing target paths are refused unless `--force` is provided.
-- `--force` stages the complete source directory in a uniquely created path beside
-  the target before changing the target. It then moves only the resolved target to
-  an installer-owned backup and swaps the staged directory into place.
-- Copy or backup-move failure preserves the prior target. Swap failure restores
-  the backup when possible; restore failure retains the backup and reports its
-  location for recovery.
-- Successful replacement removes installer-owned staging and backup paths without
-  deleting broader parent directories or unrelated similarly named paths.
-- Symlink handling must avoid writing outside the intended target path. The first
-  implementation may reject existing symlink targets rather than follow them.
-
-### R9 — CLI and workflow requirements
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
-Initial commands:
-
-```bash
-uv run ritebook skills install <local-alias>/<skill-path> --target <path> [--force]
-uv run ritebook skills sync [--file ritebook.toml] [--force]
-```
-
-Potential test/automation path overrides:
-
-```bash
-uv run ritebook skills install <local-alias>/<skill-path> \
-  --target <path> \
-  --registry-path <path-to-indexes.json> \
-  --installation-registry-path <path-to-installations.json>
-
-uv run ritebook skills sync \
-  --file <path-to-ritebook.toml> \
-  --registry-path <path-to-indexes.json> \
-  --lockfile <path-to-ritebook.lock>
-```
-
-Success output should be concise, for example:
-
-```text
-Installed platform-skills/code-review to .claude/skills/code-review
-Installed 3 skill(s) from ritebook.toml
-```
-
-Error output should be clear and user-facing, for example:
-
-```text
-ritebook: error: target .claude/skills/code-review already exists; use --force to replace it
-ritebook: error: unknown local alias: platform-skills
-ritebook: error: unknown skill platform-skills/code-review
-ritebook: error: target nickname claude is not defined in ritebook.toml
-ritebook: error: skill entries must define exactly one of target or target_path
-ritebook: error: installation copied target(s) .claude/skills/code-review, but installations.json was not updated; copied directories remain, so inspect them and retry the installation
-```
-
-## Implementation and Verification Evidence
-
-### Project structure
-
-The implementation uses the `skill_installation` vertical feature slice:
-
-```text
-src/ritebook/features/skill_installation/
-├── application/
-│   ├── dtos/
-│   │   └── install_skill.py
-│   ├── ports/
-│   │   ├── install_skill.py
-│   │   ├── install_from_requirements.py
-│   │   ├── installation_manifest.py
-│   │   ├── requirements_reader.py
-│   │   ├── skill_catalog.py
-│   │   ├── skill_source.py
-│   │   └── skill_installer.py
-│   └── use_cases/
-│       ├── install_skill.py
-│       └── install_from_requirements.py
-└── adapters/
-    └── outbound/
-        ├── filesystem_installer/
-        │   └── adapter.py
-        ├── index_registry_catalog/
-        │   └── adapter.py
-        ├── json_installation_registry/
-        │   └── adapter.py
-        ├── json_lockfile/
-        │   └── adapter.py
-        ├── source_repository/
-        │   └── adapter.py
-        └── toml_requirements/
-            └── reader.py
-```
-
-CLI integration and composition root:
-
-- `src/ritebook/adapters/inbound/cli/parser.py`
-- `src/ritebook/features/skill_installation/adapters/inbound/cli/commands.py`
-- `src/ritebook/adapters/inbound/cli/adapter.py`
-- `src/ritebook/cli.py`
-
-Tests should mirror source ownership:
-
-```text
-tests/unit/features/skill_installation/
-├── application/
-│   ├── test_install_skill.py
-│   └── test_install_from_requirements.py
-└── adapters/outbound/
-    ├── test_filesystem_installer.py
-    ├── test_json_installation_registry.py
-    ├── test_json_lockfile.py
-    ├── test_source_repository.py
-    └── test_toml_requirements_reader.py
-```
-
-### Conventions
-
-- Keep application logic independent of filesystem, TOML, JSON, and Git details.
-- Keep requirements parsing in an outbound adapter.
-- Keep lockfile and user installation registry writing in outbound adapters.
-- Keep skill directory copying in an outbound adapter.
-- Use application-owned DTOs at application boundaries.
-- Use explicit inbound and outbound ports.
-- Validate external inputs at adapter boundaries.
-- Use deterministic JSON output for generated state files.
-- Use injected clocks for timestamps in tests.
-- Validate timestamps and deterministic generated-state candidates before target
-  mutation, then atomically commit generated state after successful copies.
-- Do not log or print secrets, Git credentials, raw index contents, raw skill file
-  contents, or copied file contents.
-
-### Testing strategy
-
-#### Application tests
-
-Cover:
-
-- Installs one fully qualified exact skill path to an explicit target path.
-- Resolves duplicate names by full relative path and rejects name-only shorthand
-  for collected skills.
-- Expands a requirements-file collection selector to its immediate child skills
-  in deterministic path order without using skill-name fallback.
-- Rejects direct collection installation, over-deep cached skill paths, and
-  arbitrary descendant-prefix selectors.
-- Rejects a collection selector using `target_path` before any target mutation.
-- Rejects bare or malformed skill references.
-- Rejects unknown local aliases.
-- Rejects unknown skills.
-- Refuses existing targets without `force`.
-- Allows replacement with `force`.
-- Resolves TOML target nicknames to `<target-base>/<final-skill-name>`.
-- Resolves TOML `target_path` as an exact target path.
-- Rejects skill entries that define both `target` and `target_path`.
-- Rejects skill entries that define neither `target` nor `target_path`.
-- Rejects duplicate skill requirements.
-- Rejects duplicate, canonically equivalent, and parent-child resolved targets
-  before any install call while allowing safe siblings.
-- Writes `ritebook.lock` only after successful requirements installation.
-- Rejects naive clocks and deterministic generated-state validation failures before
-  any install call.
-- Reports retained copied targets without a success result when final
-  `installations.json` or `ritebook.lock` persistence fails.
-- Rejects an unavailable bound commit, cached-index digest mismatch, or
-  bound-commit index digest mismatch before trusting metadata or copying.
-- Proves that the cached index and root index at `source_revision` both match the
-  same `index_digest` for direct and requirements-file installs.
-- Records the verified revision and index digest rather than installation-time
-  `HEAD`.
-
-#### TOML requirements reader tests
-
-Cover:
-
-- Reads valid `[targets]` and `[[skills]]` entries.
-- Supports files where every skill uses `target_path` and `[targets]` is absent.
-- Rejects invalid TOML.
-- Rejects malformed `[targets]` values.
-- Rejects unknown fields.
-- Rejects missing or malformed skill references.
-- Rejects unknown target nicknames.
-
-#### Filesystem installer tests
-
-Cover:
-
-- Copies a skill directory recursively into the target path.
-- Creates target parent directories.
-- Refuses existing targets without `force`.
-- Replaces only the target path with `force`.
-- Preserves the prior target on staging or backup failure.
-- Restores the prior target on swap failure and retains it with recovery guidance
-  when restoration fails.
-- Cleans installer-owned staging and backup paths after successful replacement and
-  reports a retained backup if cleanup fails.
-- Rejects unsafe source paths from cached index metadata.
-- Rejects equal, ancestor, and descendant source-target overlap before mutation
-  while allowing safe sibling paths.
-- Rejects dangerous target paths.
-- Handles symlink targets and symlinked target ancestors safely by rejecting them
-  during non-mutating planning in v1.
-
-#### Manifest writer tests
-
-Cover:
-
-- Writes deterministic `ritebook.lock` JSON.
-- Requires and persists full `source_revision` and `index_digest` provenance.
-- Preserves no stale entries for skills removed from `ritebook.toml` when running
-  `skills sync`.
-- Writes deterministic `installations.json` for direct `skills install` usage.
-- Rejects credential-bearing source URLs in existing or candidate generated state
-  without leaking the credential value.
-- Writes replacement `installations.json` with POSIX mode `0600` where supported,
-  while leaving the shareable `ritebook.lock` permission policy unchanged.
-- Replaces matching installation entries on forced reinstall.
-- Refuses conflicting target entries without `force`.
-
-#### CLI tests
-
-Cover:
-
-- `skills install` maps CLI args into application command DTOs.
-- `skills install` requires `--target`.
-- `skills install` exposes `--force`.
-- `skills sync` uses default `ritebook.toml`.
-- `skills sync` maps `--file`, `--force`, `--registry-path`, and `--lockfile`.
-- Success output is concise and deterministic.
-- Application and adapter errors are rendered as concise
-  `ritebook: error: ...` messages.
-- Pre-mutation failures, partial copy failures, and post-copy generated-state
-  commit failures have distinct exact diagnostics.
-
-### Commands and validation
-
-When changing this workflow, use focused tests first, then the full quality gate:
-
-```bash
-uv run pytest tests/unit/features/skill_installation/application
-uv run pytest tests/unit/features/skill_installation/adapters/outbound
-uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py
-uv run ruff format --check .
-uv run ruff check .
-uv run ty check src/ritebook
-uv run pytest
-uv build
-docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
-```
-
-#### Implementation evidence
-
-- Direct `skills install` and requirements-file `skills sync` are implemented in the
-  `features/skill_installation` vertical slice.
-- CLI E2E coverage exercises local-Git-backed registration, direct installation,
-  requirements-file installation, copied directory contents, generated
-  `installations.json`, generated `ritebook.lock`, and invalid requirements that
-  do not write a lockfile.
-- Target path danger checks are enforced at the filesystem installation adapter
-  boundary, after TOML shape and application-level duplicate planning checks.
-- Final audit handoff should include a fresh current-tree run of the full quality
-  gate and Docker E2E command, or explicitly document any skipped validation.
+- `skills` describes actual retained Ritebook-owned materialized targets, not only
+  the latest desired candidates.
+- `desired` distinguishes current requirements from retained no-longer-desired
+  targets that could not be pruned safely.
+- `status` is `materialized` for an unchanged or successfully installed target,
+  `local_changes` for an edited retained target, or `retained` for another
+  retained owned target.
+- `issues` describes desired targets that could not be materialized and retained
+  targets requiring user action. Issues use stable codes and terminal-safe detail.
+- `state` is `complete` only when every desired target is materialized and every
+  no-longer-desired owned target is pruned. Otherwise it is `partial`.
+- Entries are sorted by `target_id`; issues are sorted by target and code.
+- The file contains no timestamps, canonical machine paths, credentials, or local
+  repository sources. Re-running a complete no-change sync produces identical
+  bytes.
+- Schema-v1 lockfiles are read only to reject unsafe automatic migration. They do
+  not authorize target replacement or pruning.
+
+### R9 — Partial reconciliation and CLI results
+
+- A target-specific install, update, or prune failure does not erase independent
+  successful target mutations.
+- After target processing, Ritebook commits ownership and lock state that exactly
+  describe the resulting owned targets and issues.
+- Sync exits zero only for complete reconciliation. It exits nonzero when any
+  desired target was skipped or failed, any obsolete owned target was retained,
+  state commit or recovery failed, or index refresh failed.
+- Success output reports installed, updated, unchanged, and pruned counts.
+- Partial output reports those counts plus one terminal-safe diagnostic per issue.
+- CLI handlers translate command-construction, application, adapter-validation,
+  and persistence errors without traceback leakage or terminal-control injection.
+- Direct install reports success only after ownership state commits and transaction
+  artifacts are finalized.
+
+### R10 — Contribution compatibility
+
+- Contribution lockfile reading supports schema version 2 only after migration.
+- Only an exact `skills` entry with a safe Git URL source, verified provenance,
+  `installed_tree_digest`, and a materialized or local-changes status is a valid
+  contribution baseline.
+- Issue-only entries and retained no-longer-desired entries are not selected by
+  fallback.
+- Contribution continues to resolve the exact qualified `requirement`; it never
+  falls back to skill name or repository-relative path.
 
 ## Constraints and Execution Boundaries
 
-### Binding constraints
+- Domain and application code remain independent of JSON, TOML, Git commands,
+  filesystem APIs, process-lock APIs, and CLI rendering.
+- Adapters validate all untrusted generated state before returning application
+  DTOs.
+- Cross-slice refresh uses the index registry's published application port; the
+  installation application does not import index-registry adapters.
+- Production diagnostics do not reveal Git credentials, raw state payloads, raw
+  index bytes, raw skill contents, or terminal controls.
+- Target mutation uses same-filesystem atomic rename semantics. Cross-device
+  target replacement is unsupported.
+- The implementation may use a platform-specific advisory lock where supported,
+  but unsupported locking must fail closed rather than run unlocked.
 
-- Support direct `install-skill <local-alias>/<skill-path> --target <path>`.
-- Support `skills sync` from `ritebook.toml`.
-- Support TOML `[targets]` nicknames for requirements-file installs only.
-- Require fully qualified `<local-alias>/<skill-path>` skill references.
-- Resolve direct installs only by exact relative skill path.
-- Resolve requirements-file collection selectors only to immediate child skills,
-  without arbitrary prefix expansion or name-only fallback.
-- Reject cached schema-v1 skill paths outside `<skill>` or
-  `<collection>/<skill>`.
-- Resolve install sources from locally registered and cached indexes.
-- Verify that the cached index and root index at the bound Git commit both match
-  the same digest before materializing skill content, as defined by
-  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
-- Copy the whole skill directory.
-- Refuse overwrites unless `--force` is provided.
-- Write deterministic `ritebook.lock` for `skills sync`.
-- Write user installation state under `~/.config/ritebook/installations.json` for
-  direct `skills install`.
-- Never report installation success unless the corresponding generated-state file
-  has been committed.
+## Implementation and Verification Evidence
 
-### Changes requiring specification approval
-
-- Adding target aliases or target kinds to `skills install`.
-- Adding default install destinations.
-- Adding `restore`, `update-skill`, or `uninstall-skill`.
-- Installing directly from unregistered Git URLs.
-- Refreshing, pulling, or fetching mutable refs during installation. A managed
-  source may fetch solely to recover the already-bound commit object without
-  changing the selected binding.
-- Bulk install by skill name without an index namespace.
-- Adding publisher-embedded per-skill hashes, signatures, approvals, or trust
-  policy beyond the required local cached-index digest.
-- Supporting dependency relationships between skills.
-
-### Exclusions and prohibited behavior
-
-- Mutate source repositories during installation.
-- Install from live remotes without cached registered indexes.
-- Copy from a mutable working tree or current `HEAD` in place of the bound commit.
-- Overwrite user files silently.
-- Treat duplicate skill names across different indexes or at distinct paths in one
-  index as an error.
-- Print secrets, Git credentials, raw index contents, raw skill file contents, or
-  copied file contents.
-- Write repo lockfiles containing machine-specific absolute paths for repo-local
-  installs.
+- ADR 0001 defines immutable source provenance.
+- ADR 0004 defines ownership, reconciliation, locking, transaction, recovery, and
+  schema-transition decisions.
+- Revision-3 implementation evidence must include focused unit and integration
+  tests for tree hashing, strict schema parsing, refresh failure, ownership,
+  unmanaged targets, local edits, pruning, partial state, idempotence, concurrent
+  processes, interruption recovery, symlink races, and CLI exit behavior.
+- Handoff requires the configured formatting, lint, type, import-boundary, full
+  non-E2E test, package build, installed-wheel Docker E2E, real concurrent-process,
+  and process-kill recovery checks when the environment supports them.
 
 ## Acceptance Checks
 
-| ID | Requirement | Conditions and action | Expected observable result | Verification method |
-| --- | --- | --- | --- | --- |
-| AC1 | R1 | Install an exact root or collected skill to an explicit missing or existing target, with and without `--force`. | The whole bound skill directory is installed; collection selectors are not expanded; existing targets require `--force`; success includes committed user installation state. | Direct-install application, filesystem, manifest, and CLI tests. |
-| AC2 | R2 | Synchronize valid exact-skill and first-level collection declarations from `ritebook.toml`. | Target nicknames and direct paths resolve deterministically, collections expand only to immediate indexed children, all preflight conflicts fail before copying, and successful copies produce `ritebook.lock`. | Requirements application and TOML-reader tests. |
-| AC3 | R3 | Simulate staging, copy, backup, swap, cleanup, generated-state write, and concurrent-state failures. | Prior targets are preserved or recoverable as specified; copied targets remain after generated-state commit failure; diagnostics name retained recovery state; success is never reported before state commit. | Filesystem-installer and manifest-writer failure tests. |
-| AC4 | R4 | Parse valid and malformed requirements documents, unknown fields, invalid selectors, target references, duplicates, and dangerous paths. | Valid declarations normalize to one deterministic mutation plan; invalid or ambiguous declarations fail before target mutation. | TOML requirements-reader and application tests. |
-| AC5 | R5 | Generate a lockfile after exact and collection-based synchronization. | Schema-v1 entries are deterministic, portable, expanded to exact requirements, and record the verified commit, digest, source, repository-relative paths, target, and timestamp semantics. | JSON lockfile tests and review of generated fixtures. |
-| AC6 | R6 | Complete direct installation or simulate installation-registry validation and replacement failures. | Deterministic user installation state records the installed target only after copying; state failure is reported without falsely reporting success or deleting the copied target. | Installation-registry adapter and direct-install tests. |
-| AC7 | R7 | Resolve content from managed Git URL and clean local Git sources, including missing commit or digest mismatch cases. | Both cached and committed root index bytes match the persisted digest before content is materialized; mutable `HEAD` is never substituted; unavailable bindings fail safely. | Source-repository and catalog-adapter tests. |
-| AC8 | R8 | Install with unsafe index paths, dangerous targets, source/target overlap, symlinks, canonical aliases, or parent-child target collisions. | Ritebook rejects unsafe plans before destructive mutation and confines approved writes to the explicit target and installer-owned staging/backup paths. | Path-safety application and filesystem-adapter tests. |
-| AC9 | R9 | Invoke direct install and sync commands with supported overrides and representative user errors. | Arguments map correctly, success output is concise, errors are actionable, and README usage and file-format guidance remain aligned. | CLI tests and README review. |
-| AC10 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
+| ID | Requirements | Scenario | Expected observable result |
+| --- | --- | --- | --- |
+| AC1 | R1, R4, R5, R7 | Direct install a missing target, reinstall unchanged owned content, modify it locally, and attempt unmanaged replacement. | Missing target installs with schema-v2 ownership; owned unchanged replacement is safe; local edits and unmanaged targets are preserved; success follows state commit. |
+| AC2 | R2, R3 | Sync exact and collection requirements whose registered sources have advanced, then make one refresh fail. | Referenced aliases refresh before resolution; new committed content is selected; any refresh failure causes no target or install-state mutation and no stale fallback. |
+| AC3 | R4 | Hash equivalent trees with different creation order and timestamps, then change path, executable bit, bytes, or entry type. | Equivalent trees have one stable digest; every content-identity change changes the digest; symlinks and special files are rejected. |
+| AC4 | R5, R6 | Reconcile missing, unchanged, outdated, locally edited, unmanaged, and obsolete targets. | Ritebook installs, keeps, updates, preserves, skips, or prunes exactly according to ownership and digest rules. |
+| AC5 | R7 | Inject failures before mutation, after backup, after target swap, during each state write, during rollback, and after process termination. | Prior state is restored or exact recovery artifacts remain; next-run recovery deterministically finalizes committed state or rolls back uncommitted state. |
+| AC6 | R7 | Run two real processes against the same ownership state. | Only one holds the operation lock; no lost update or interleaved target/state transaction occurs. |
+| AC7 | R8, R9 | Cause one target success, one local-edit skip, one unmanaged-target skip, and one prune success. | Lock schema v2 truthfully represents retained owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
+| AC8 | R8 | Run a complete sync twice without source or target changes. | The second run mutates no targets and writes byte-identical lock and ownership state. |
+| AC9 | R5, R8, R10 | Present schema-v1 lock and installation state, malformed schema-v2 documents, unknown fields, unsafe sources, and non-materialized contribution entries. | Readers reject them with safe migration or regeneration guidance and never infer ownership or provenance. |
+| AC10 | R1-R10 | Run all repository handoff gates and installed-wheel workflows. | Formatting, linting, typing, import contracts, tests, build, Docker E2E, concurrency, and interruption checks pass or an environmental limitation is reported exactly. |
 
 ## Assumptions
 
-- Installation consumes only registered Git-backed indexes that satisfy the shared
-  catalog contract.
-- Schema version `1` and ADR 0001's commit-and-digest binding remain the
-  compatibility baseline.
+- Installation consumes only registered Git-backed indexes satisfying the shared
+  catalog contract and ADR 0001.
+- The repository remains pre-release, so schema-v1 generated installation state
+  may be rejected instead of automatically migrated.
 - Material unresolved assumptions: None.
 
 ## Open Questions
@@ -885,12 +334,10 @@ None.
 
 ## Revision and Handoff Notes
 
-- October 2, 2026: Reformatted revision 2.1 to the current
-  spec-driven-development template under the user's instruction. Requirement
-  meaning, lifecycle state, and revision number were preserved.
-- The format audit removed `sync` from the future-change list because R2 and R9
-  already define the implemented `skills sync` workflow; this resolves an internal
-  wording contradiction without changing behavior.
-- Next authorized step: Treat this Active revision as canonical. New install
-  destinations, remote-source modes, lifecycle commands, or trust policy require
-  an approved specification revision.
+- October 6, 2026: Revision 3.0 replaced install-and-rewrite sync with the
+  accepted exact-reconciliation contract in ADR 0004.
+- October 7, 2026: Marked revision 3.0 implemented after schema-v2 state,
+  ownership-aware reconciliation, referenced-index refresh, transactional target
+  and state commit, interruption recovery, partial CLI results, contribution
+  compatibility, and descriptor-bound symlink-race hardening were verified in the
+  tree.

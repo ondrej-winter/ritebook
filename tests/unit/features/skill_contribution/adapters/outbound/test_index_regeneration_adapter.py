@@ -191,6 +191,7 @@ def contribution_entry() -> ContributionLockfileEntry:
         skill_path="skills/code-review",
         skill_file="skills/code-review/SKILL.md",
         index_schema_version=1,
+        installed_tree_digest=f"sha256:{'c' * 64}",
     )
 
 

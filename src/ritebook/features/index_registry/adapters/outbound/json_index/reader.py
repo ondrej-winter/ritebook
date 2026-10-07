@@ -193,6 +193,9 @@ def _validate_relative_posix_path(value: str, *, field_name: str) -> None:
 
 
 def _validate_skill_file_inside_path(*, skill_file: str, path: str) -> None:
+    if PurePosixPath(skill_file).name != "SKILL.md":
+        msg = "index skill entry skill_file must name SKILL.md"
+        raise InvalidPublishedIndexError(msg)
     try:
         PurePosixPath(skill_file).relative_to(PurePosixPath(path))
     except ValueError as err:

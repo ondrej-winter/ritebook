@@ -106,6 +106,7 @@ class PublishSkillChange(PublishSkillChangePort):
             "source_type",
             "skill_path",
             "skill_file",
+            "installed_tree_digest",
         )
         for field_name in required_fields:
             if not getattr(entry, field_name, None):

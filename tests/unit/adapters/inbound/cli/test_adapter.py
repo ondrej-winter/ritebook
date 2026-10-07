@@ -41,15 +41,17 @@ from ritebook.features.skill_contribution.application.errors import (
     ContributionLockfileEntryNotFoundError,
 )
 from ritebook.features.skill_installation.application.dtos import (
-    InstallationManifestEntry,
+    InstallationWorkflow,
     InstallFromRequirementsCommand,
     InstallFromRequirementsResult,
     InstallSkillCommand,
     InstallSkillResult,
+    OwnedInstallation,
+    ReconciliationIssue,
 )
 from ritebook.features.skill_installation.application.errors import (
     ExistingInstallTargetError,
-    GeneratedStateCommitError,
+    InstallationPersistenceError,
     UnknownInstallIndexError,
 )
 from ritebook.features.skill_linter.application.dtos import (
@@ -253,20 +255,7 @@ class FakeInstallSkill:
         self.result = result or InstallSkillResult(
             requirement="platform-skills/code-review",
             target=".claude/skills/code-review",
-            manifest_entry=InstallationManifestEntry(
-                requirement="platform-skills/code-review",
-                index_name="platform-skills",
-                skill_name="code-review",
-                target=".claude/skills/code-review",
-                source="git@example.com:company/skills.git",
-                source_type="git_url",
-                source_revision="a" * 40,
-                index_digest=f"sha256:{'b' * 64}",
-                index_schema_version=1,
-                skill_path="skills/code-review",
-                skill_file="skills/code-review/SKILL.md",
-                installed_at="2026-07-10T21:00:00Z",
-            ),
+            ownership_entry=_owned_installation(),
         )
         self.commands: list[InstallSkillCommand] = []
 
@@ -284,7 +273,11 @@ class FakeInstallFromRequirements:
         self.result = result or InstallFromRequirementsResult(
             requirements_file="ritebook.toml",
             installed_count=3,
-            lockfile_entries=(),
+            updated_count=1,
+            unchanged_count=2,
+            pruned_count=1,
+            ownership_entries=(),
+            issues=(),
         )
         self.commands: list[InstallFromRequirementsCommand] = []
 
@@ -295,6 +288,27 @@ class FakeInstallFromRequirements:
         """Record the command and return the configured result."""
         self.commands.append(command)
         return self.result
+
+
+def _owned_installation() -> OwnedInstallation:
+    target = ".claude/skills/code-review"
+    return OwnedInstallation(
+        workflow=InstallationWorkflow.DIRECT,
+        requirement="platform-skills/code-review",
+        index_name="platform-skills",
+        skill_name="code-review",
+        target=target,
+        target_id=f"sha256:{'1' * 64}",
+        canonical_target=str((Path.cwd() / target).resolve(strict=False)),
+        source="git@example.com:company/skills.git",
+        source_type="git_url",
+        source_revision="a" * 40,
+        index_digest=f"sha256:{'b' * 64}",
+        index_schema_version=1,
+        skill_path="skills/code-review",
+        skill_file="skills/code-review/SKILL.md",
+        installed_tree_digest=f"sha256:{'c' * 64}",
+    )
 
 
 class FailingPublisher:
@@ -598,6 +612,41 @@ def test_publish_skill_change_translates_application_errors() -> None:
     assert exit_code == 1
     assert stderr.getvalue() == (
         "ritebook: error: no lockfile entry found for platform-skills/missing\n"
+    )
+
+
+def test_install_skill_translates_command_validation_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["skills", "install", "malformed", "--target", "target"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: Skill reference must be fully qualified as "
+        "<local-alias>/<skill-path>.\n"
+    )
+
+
+def test_sync_translates_command_validation_errors() -> None:
+    stderr = StringIO()
+
+    exit_code = run(
+        ["skills", "sync", "--file", ""],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        stdout=StringIO(),
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stderr.getvalue() == (
+        "ritebook: error: Requirements file must not be empty.\n"
     )
 
 
@@ -1803,7 +1852,7 @@ def test_install_skill_translates_application_errors() -> None:
     )
 
 
-def test_install_skill_reports_retained_target_after_state_commit_failure() -> None:
+def test_install_skill_translates_transaction_recovery_failure() -> None:
     stderr = StringIO()
 
     exit_code = run(
@@ -1817,9 +1866,9 @@ def test_install_skill_reports_retained_target_after_state_commit_failure() -> N
         linter=FakeLinter(),
         publisher=FakePublisher(),
         install_skill=FailingInstallSkill(
-            GeneratedStateCommitError(
-                "installations.json",
-                (".claude/skills/code-review",),
+            InstallationPersistenceError(
+                "installation rollback failed; recover using journal "
+                "/tmp/installation-transaction.json",
             ),
         ),
         stdout=StringIO(),
@@ -1828,9 +1877,8 @@ def test_install_skill_reports_retained_target_after_state_commit_failure() -> N
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: installation copied target(s) "
-        ".claude/skills/code-review, but installations.json was not updated; "
-        "copied directories remain, so inspect them and retry the installation\n"
+        "ritebook: error: installation rollback failed; recover using journal "
+        "/tmp/installation-transaction.json\n"
     )
 
 
@@ -1852,7 +1900,10 @@ def test_install_maps_default_arguments_to_application_command() -> None:
     assert install_from_requirements.commands == [
         InstallFromRequirementsCommand(requirements_file="ritebook.toml"),
     ]
-    assert stdout.getvalue() == "Installed 3 skill(s) from ritebook.toml\n"
+    assert stdout.getvalue() == (
+        "Reconciled skills from ritebook.toml: installed 3, updated 1, "
+        "unchanged 2, pruned 1\n"
+    )
     assert stderr.getvalue() == ""
 
 
@@ -1894,7 +1945,11 @@ def test_install_maps_overrides_to_application_command() -> None:
         InstallFromRequirementsResult(
             requirements_file="config/ritebook.toml",
             installed_count=2,
-            lockfile_entries=(),
+            updated_count=0,
+            unchanged_count=1,
+            pruned_count=0,
+            ownership_entries=(),
+            issues=(),
         ),
     )
     stdout = StringIO()
@@ -1928,8 +1983,51 @@ def test_install_maps_overrides_to_application_command() -> None:
             lockfile_path="/tmp/ritebook.lock",
         ),
     ]
-    assert stdout.getvalue() == "Installed 2 skill(s) from config/ritebook.toml\n"
+    assert stdout.getvalue() == (
+        "Reconciled skills from config/ritebook.toml: installed 2, updated 0, "
+        "unchanged 1, pruned 0\n"
+    )
     assert stderr.getvalue() == ""
+
+
+def test_install_reports_partial_reconciliation_and_returns_nonzero() -> None:
+    issue = ReconciliationIssue(
+        code="local-changes",
+        target=".agents/skills/code-review",
+        requirement="platform-skills/code-review",
+        detail="target has local changes\nand was preserved",
+    )
+    result = InstallFromRequirementsResult(
+        requirements_file="ritebook.toml",
+        installed_count=1,
+        updated_count=0,
+        unchanged_count=2,
+        pruned_count=1,
+        ownership_entries=(),
+        issues=(issue,),
+    )
+    stdout = StringIO()
+    stderr = StringIO()
+
+    exit_code = run(
+        ["skills", "sync"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        install_from_requirements=FakeInstallFromRequirements(result),
+        stdout=stdout,
+        stderr=stderr,
+    )
+
+    assert exit_code == 1
+    assert stdout.getvalue() == (
+        "Reconciled skills from ritebook.toml: installed 1, updated 0, "
+        "unchanged 2, pruned 1\n"
+    )
+    assert stderr.getvalue() == (
+        "ritebook: issue: local-changes: .agents/skills/code-review: "
+        r"target has local changes\nand was preserved" + "\n"
+    )
+    assert stderr.getvalue().count("\n") == 1
 
 
 def test_install_translates_application_errors() -> None:
@@ -1952,7 +2050,7 @@ def test_install_translates_application_errors() -> None:
     )
 
 
-def test_install_reports_retained_targets_after_lockfile_commit_failure() -> None:
+def test_install_translates_transaction_recovery_failure() -> None:
     stderr = StringIO()
 
     exit_code = run(
@@ -1960,9 +2058,9 @@ def test_install_reports_retained_targets_after_lockfile_commit_failure() -> Non
         linter=FakeLinter(),
         publisher=FakePublisher(),
         install_from_requirements=FailingInstallFromRequirements(
-            GeneratedStateCommitError(
-                "ritebook.lock",
-                (".claude/skills/code-review", ".agents/skills/tdd"),
+            InstallationPersistenceError(
+                "interrupted installation recovery failed; recover using journal "
+                ".ritebook/transaction.json",
             ),
         ),
         stdout=StringIO(),
@@ -1971,10 +2069,8 @@ def test_install_reports_retained_targets_after_lockfile_commit_failure() -> Non
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: installation copied target(s) "
-        ".claude/skills/code-review, .agents/skills/tdd, but ritebook.lock was not "
-        "updated; copied directories remain, so inspect them and retry the "
-        "installation\n"
+        "ritebook: error: interrupted installation recovery failed; recover using "
+        "journal .ritebook/transaction.json\n"
     )
 
 

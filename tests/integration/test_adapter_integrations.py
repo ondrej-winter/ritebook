@@ -23,17 +23,17 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.domain import SkillCatalog
 from ritebook.features.skill_installation.adapters.outbound import (
+    FilesystemInstallationTransactionAdapter,
     FilesystemSkillInstallerAdapter,
     IndexRegistrySkillCatalogAdapter,
-    JsonInstallationRegistryAdapter,
-    JsonLockfileAdapter,
+    JsonInstallationStateAdapter,
     SourceRepositoryAdapter,
     TomlRequirementsReader,
 )
 from ritebook.features.skill_installation.application.dtos import (
     InstallableSkill,
-    InstallationManifestEntry,
-    LockfileManifestEntry,
+    InstallationWorkflow,
+    OwnedInstallation,
     RegisteredSkillIndex,
     ResolvedSkillSource,
 )
@@ -197,11 +197,11 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
     (skill_dir / "SKILL.md").write_text("# code-review\n", encoding="utf-8")
     (skill_dir / "guide.md").write_text("# Review guide\n", encoding="utf-8")
     target = tmp_path / "consumer" / ".claude" / "skills" / "code-review"
-    registry_path = tmp_path / "config" / "installations.json"
+    requirements_file = tmp_path / "consumer" / "ritebook.toml"
     lockfile_path = tmp_path / "consumer" / "ritebook.lock"
     source = ResolvedSkillSource(
-        source=str(repository),
-        source_type="local_git_repo",
+        source="git@example.com:company/skills.git",
+        source_type="git_url",
         repository_path=str(repository),
         source_revision="a" * 40,
         index_digest=f"sha256:{'b' * 64}",
@@ -212,27 +212,45 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         skill_file="code-review/SKILL.md",
     )
 
-    FilesystemSkillInstallerAdapter().install(
-        source=source,
-        skill=skill,
-        target=str(target),
-        force=False,
+    installer = FilesystemSkillInstallerAdapter()
+    planned_target = installer.plan_target(str(target))
+    staged = installer.stage(source=source, skill=skill, target=planned_target)
+    state = JsonInstallationStateAdapter()
+    paths = state.sync_paths(
+        requirements_file=str(requirements_file),
+        lockfile_path=str(lockfile_path),
     )
-    JsonInstallationRegistryAdapter().write_installation(
-        _installation_entry(target=str(target), source=str(repository)),
-        str(registry_path),
-        force=False,
+    assert paths.lockfile_path is not None
+    entry = _owned_installation(
+        target=planned_target.canonical_target,
+        installed_tree_digest=staged.installed_tree_digest,
     )
-    JsonLockfileAdapter().write_lockfile(
-        (_lockfile_entry(source=repository.as_uri()),),
-        str(lockfile_path),
+    ownership_file = state.ownership_file((entry,), paths.ownership_path)
+    lockfile = state.lockfile(
+        (entry,),
+        (),
+        paths.lockfile_path,
         requirements_file="ritebook.toml",
     )
+    try:
+        with FilesystemInstallationTransactionAdapter().open(
+            lock_path=paths.lock_path,
+            journal_path=paths.journal_path,
+        ) as transaction:
+            transaction.replace_tree(
+                staged_path=staged.staged_path,
+                target_path=planned_target.canonical_target,
+                expected_digest=None,
+            )
+            transaction.commit_state((ownership_file, lockfile))
+    finally:
+        installer.cleanup_staged(staged)
 
     assert (target / "SKILL.md").is_file()
     assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
-    assert '"installations"' in registry_path.read_text(encoding="utf-8")
-    assert '"skills"' in lockfile_path.read_text(encoding="utf-8")
+    assert state.read_ownership(paths.ownership_path) == (entry,)
+    assert '"schema_version": 2' in lockfile_path.read_text(encoding="utf-8")
+    assert '"state": "complete"' in lockfile_path.read_text(encoding="utf-8")
 
 
 def test_requirements_and_catalog_bridge_adapters_read_real_registry_and_index(
@@ -348,37 +366,28 @@ def _registered_index(
     )
 
 
-def _installation_entry(*, target: str, source: str) -> InstallationManifestEntry:
-    return InstallationManifestEntry(
+def _owned_installation(
+    *,
+    target: str,
+    installed_tree_digest: str,
+) -> OwnedInstallation:
+    portable_target = ".claude/skills/code-review"
+    return OwnedInstallation(
+        workflow=InstallationWorkflow.SYNC,
         requirement="company-skills/code-review",
         index_name="company-skills",
         skill_name="code-review",
-        target=target,
-        source=source,
-        source_type="local_git_repo",
-        source_revision="a" * 40,
-        index_digest=f"sha256:{'b' * 64}",
-        index_schema_version=1,
-        skill_path="code-review",
-        skill_file="code-review/SKILL.md",
-        installed_at="2026-07-13T18:00:00Z",
-    )
-
-
-def _lockfile_entry(*, source: str) -> LockfileManifestEntry:
-    return LockfileManifestEntry(
-        requirement="company-skills/code-review",
-        index_name="company-skills",
-        skill_name="code-review",
-        target=".claude/skills/code-review",
-        source=source,
+        target=portable_target,
+        target_id=f"sha256:{hashlib.sha256(portable_target.encode()).hexdigest()}",
+        canonical_target=target,
+        source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,
         skill_path="code-review",
         skill_file="code-review/SKILL.md",
-        locked_at="2026-07-13T18:00:00Z",
+        installed_tree_digest=installed_tree_digest,
         target_ref="claude",
     )
 

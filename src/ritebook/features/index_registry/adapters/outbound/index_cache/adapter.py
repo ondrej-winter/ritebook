@@ -34,7 +34,7 @@ class FilesystemIndexCache:
         self,
         *,
         name: str,
-        content: str,
+        content: bytes,
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,
@@ -49,13 +49,14 @@ class FilesystemIndexCache:
             ),
         )
         alias_root = path.parent.parent
-        _recover_alias_root(
-            alias_root,
-            preserve_path=preserve_path,
-            candidate_path=str(path),
-        )
+        with suppress(IndexCacheError):
+            _recover_alias_root(
+                alias_root,
+                preserve_path=preserve_path,
+                candidate_path=str(path),
+            )
         if path.exists():
-            if path.read_text(encoding="utf-8") != content:
+            if path.read_bytes() != content:
                 msg = f"cached index generation does not match digest for {name}"
                 raise IndexCacheError(msg)
             return str(path)
@@ -68,7 +69,7 @@ class FilesystemIndexCache:
                 suffix=".tmp",
             )
             temp_path = Path(temp_name)
-            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            with os.fdopen(descriptor, "wb") as stream:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
@@ -126,8 +127,8 @@ def _digest_hex(index_digest: str) -> str:
     return digest
 
 
-def _require_matching_digest(content: str, index_digest: str) -> None:
-    actual = hashlib.sha256(content.encode()).hexdigest()
+def _require_matching_digest(content: bytes, index_digest: str) -> None:
+    actual = hashlib.sha256(content).hexdigest()
     if actual != _digest_hex(index_digest):
         msg = "Cached index content does not match its validated digest."
         raise IndexCacheError(msg)

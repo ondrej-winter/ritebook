@@ -19,6 +19,13 @@ class IndexSourceType(StrEnum):
     LOCAL_GIT_REPO = "local_git_repo"
 
 
+class AliasOrigin(StrEnum):
+    """Origin of a consumer registry alias."""
+
+    PUBLISHED_NAME = "published_name"
+    EXPLICIT = "explicit"
+
+
 @dataclass(frozen=True)
 class AddIndexCommand:
     """Command for registering a Git-backed published index."""
@@ -120,7 +127,7 @@ class PublishedIndex:
     published_name: str
     schema_version: int
     skill_count: int
-    cacheable_content: str
+    cacheable_content: bytes
     index_digest: str
 
     def __post_init__(self) -> None:
@@ -135,7 +142,9 @@ class PublishedIndex:
         if self.skill_count < 0:
             msg = "Published index skill count must not be negative."
             raise ValueError(msg)
-        _require_non_empty(self.cacheable_content, field_name="Cacheable index content")
+        if not self.cacheable_content:
+            msg = "Cacheable index content must not be empty."
+            raise ValueError(msg)
         _require_index_digest(self.index_digest)
 
 
@@ -145,6 +154,7 @@ class RegisteredIndex:
 
     name: str
     published_name: str
+    alias_origin: AliasOrigin
     source: str
     source_type: IndexSourceType
     source_revision: str
@@ -163,6 +173,9 @@ class RegisteredIndex:
             self.published_name,
             field_name="Published index name",
         )
+        if not isinstance(self.alias_origin, AliasOrigin):
+            msg = "Alias origin must be published_name or explicit."
+            raise TypeError(msg)
         _require_non_empty(self.source, field_name="Index source")
         _require_source_revision(self.source_revision)
         _require_index_digest(self.index_digest)

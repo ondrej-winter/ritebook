@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 2.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 2.2
+- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -58,7 +58,7 @@ consumer-side catalog foundation used by the implemented `skills list`,
 
 ## Requirements
 
-The following requirement groups preserve the normative index-registry contract of revision 2.1.
+The following requirement groups define the normative index-registry contract of revision 2.2.
 
 ### R1 — Add index
 
@@ -103,6 +103,8 @@ Requirements:
 - `ritebook-index.json` must be located at the repository root.
 - Ritebook must read and validate root `ritebook-index.json` before registering
   the index.
+- Source admission applies the shared bounded strict-JSON preflight and complete
+  closed schema-v1 semantic validation before cache or registry mutation.
 - Every `skills[].path` must contain exactly one or two non-empty safe POSIX path
   segments: `<skill>` or `<collection>/<skill>`. Paths with three or more segments
   are invalid legacy catalog metadata.
@@ -124,8 +126,11 @@ Requirements:
   from `ritebook-index.json`.
 - If `--alias` is provided, Ritebook uses it as the local registry namespace
   without changing the published name.
+- Registry schema v1 persists `alias_origin = "published_name"` for the default
+  and `alias_origin = "explicit"` for a supplied alias. Update preserves the
+  origin while preserving the local alias.
 - Ritebook caches the exact validated index contents locally under the local
-  alias.
+  alias as bytes without decode/re-encode normalization.
 - Ritebook persists the source locator and type, full `source_revision`, and
   `index_digest` with the cached-index path.
 - Git URL sources must not contain standard-URL authority user-info. Ritebook
@@ -186,7 +191,7 @@ Requirements:
 - Read selected entries from the existing local registry and their immutable
   `cached_index_path` values.
 - Verify the exact cached bytes against each registry entry's `index_digest`
-  before displaying metadata.
+  before UTF-8 decoding, JSON parsing, or displaying metadata.
 - Do not clone, fetch, pull, inspect publisher directories, or read `SKILL.md`.
 - Apply the shared schema-v1 catalog validation before displaying any entry.
 - List all indexes in deterministic local-alias order and skills in catalog-path
@@ -285,7 +290,7 @@ options or injected settings so unit tests do not mutate real user state.
 Example registry schema:
 
 The existing registry `name` field stores the local alias; `published_name`
-stores publisher-owned metadata.
+stores publisher-owned metadata; `alias_origin` records how the alias was chosen.
 
 ```json
 {
@@ -294,6 +299,7 @@ stores publisher-owned metadata.
     {
       "name": "platform-skills",
       "published_name": "company-skills",
+      "alias_origin": "explicit",
       "source": "git@github.com:company/internal-skills.git",
       "source_type": "git_url",
       "source_cache_path": "/Users/me/.cache/ritebook/git/<cache-id>",
@@ -315,6 +321,7 @@ For local repository sources:
 {
   "name": "platform-skills-local",
   "published_name": "company-skills",
+  "alias_origin": "explicit",
   "source": "/absolute/path/to/internal-skills",
   "source_type": "local_git_repo",
   "source_cache_path": null,
@@ -338,12 +345,17 @@ Registry schema-v1 provenance requirements follow
 - Pre-release schema-v1 registry files missing either field are rejected with
   guidance to regenerate the registration. Ritebook does not infer provenance
   from the source's current `HEAD` or silently migrate on first use.
+- Legacy schema-v1 entries without `alias_origin` remain readable. Readers infer
+  `published_name` when `name == published_name` and `explicit` otherwise, and the
+  next successful write persists the inferred value.
 
 #### Registry/cache commit protocol
 
 - Cached indexes are immutable, content-addressed generations. The directory name
   is the lowercase SHA-256 hex from `index_digest`; the adapter verifies the exact
   bytes again before writing that generation.
+- Every cached read receives the registered digest, reads bytes, verifies the
+  digest, and only then runs strict JSON and semantic validation.
 - `add-index --force` and `indexes update` preserve the generation referenced by the
   current registry entry while writing and synchronizing the candidate generation.
 - The deterministic registry file is the commit record. Ritebook writes and
@@ -357,6 +369,9 @@ Registry schema-v1 provenance requirements follow
 - If candidate cache writing or registry replacement fails, the previous registry
   entry continues to reference its unchanged generation. Ritebook attempts to
   discard the unreferenced candidate without changing the reported commit failure.
+- Candidate and abandoned-generation cleanup is best-effort. The registry atomic
+  replacement result remains authoritative and cleanup failure never rewrites or
+  masks a successful registry commit.
 - A process interruption may leave an unreferenced generation or adapter-owned
   temporary file. The next add or update for that local alias preserves the
   registry-referenced generation and the current candidate while deterministically
@@ -747,6 +762,12 @@ None.
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.
+- October 7, 2026: Revision 2.2 adopted strict closed schema-v1 admission,
+  exact-byte digest-before-parse cache reads, persisted alias provenance with
+  conservative legacy inference, and best-effort post-commit cleanup.
+- October 7, 2026: Marked revision 2.2 implemented after exact-byte cache tests,
+  strict shared-reader coverage, alias migration, and candidate/superseded
+  generation cleanup behavior were verified.
 - Next authorized step: Treat this Active revision as canonical. Installation,
   non-Git sources, listing side effects, or trust-policy additions require their
   owning specification or an approved revision.

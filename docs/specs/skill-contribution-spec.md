@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 2.3
-- Acceptance basis: Existing Active repository contract, the user's approved October 6, 2026 validated-snapshot publication decision, and implemented Skill Installation revision 3.0 schema-v2 state.
-- Accepted by / on: User / 2026-10-06
+- Revision: 2.4
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 publication and strict-catalog decisions.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), and [ADR 0004: Reconcile Installed Skills with Owned Transactional State](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), [ADR 0004: Reconcile Installed Skills with Owned Transactional State](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: Revision 2.2 of this specification
 
 ## Objective and Context
@@ -294,6 +294,12 @@ Catalog depth and segment validation applies to the selector encoded in
 published `skills_root`, may contain additional safe segments, and remain subject
 to repository-relative path validation before checkout or comparison.
 
+Index regeneration derives the published `skills_root` from the verified
+repository-relative `skill_path` and exact catalog selector in `requirement`.
+Contribution does not use a secondary permissive JSON parser. When existing index
+metadata is needed, it uses the shared strict schema-v1 reader and keeps the
+provenance-derived root authoritative.
+
 Contribution reads strict schema-v2 lockfiles only. Schema-v1 files, unknown
 fields, issue-only entries, and non-publishable retained entries are rejected or
 ignored for selection; Ritebook does not infer missing provenance, ownership, or
@@ -550,6 +556,11 @@ docker run --rm ritebook-e2e
 - October 7, 2026: Revision 2.3 adopted strict schema-v2 installation lock state,
   installed-tree digests, and publishable desired/status selection from Skill
   Installation revision 3.0.
+- October 7, 2026: Revision 2.4 made contribution index regeneration derive
+  `skills_root` from verified lockfile provenance and prohibited permissive
+  secondary index parsing under ADR 0005.
+- October 7, 2026: Marked revision 2.4 implemented after provenance-derived root,
+  nested-selector, inconsistent-provenance, and checkout-safety tests passed.
 - October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
   publisher's exact validated-snapshot contract from ADR 0003.
 - OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,

@@ -1,4 +1,5 @@
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     CachedSkillSummary,
     IndexSourceType,
     RegisteredIndex,
@@ -21,14 +22,26 @@ class FakeIndexRegistry:
         self.get_calls.append((name, registry_path))
         return self.entry
 
+    def list(self, registry_path: str | None) -> tuple[RegisteredIndex, ...]:
+        del registry_path
+        return (self.entry,) if self.entry is not None else ()
+
+    def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
+        del registry_path
+        self.entry = entry
+
 
 class FakeCachedIndexReader:
     def __init__(self, skills: tuple[CachedSkillSummary, ...] = ()) -> None:
         self.skills = skills
-        self.read_skills_calls: list[str] = []
+        self.read_skills_calls: list[tuple[str, str]] = []
 
-    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
-        self.read_skills_calls.append(cached_index_path)
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[CachedSkillSummary, ...]:
+        self.read_skills_calls.append((cached_index_path, index_digest))
         return self.skills
 
 
@@ -93,23 +106,31 @@ def test_index_registry_catalog_maps_cached_skills_to_installation_dtos() -> Non
     result = IndexRegistrySkillCatalogAdapter(
         registry=FakeIndexRegistry(None),
         index_reader=index_reader,
-    ).read_skills("/cache/indexes/platform-skills/ritebook-index.json")
+    ).read_skills(
+        "/cache/indexes/platform-skills/ritebook-index.json",
+        f"sha256:{'b' * 64}",
+    )
 
     assert result == (
         InstallableSkill(
             name="code-review",
             path="skills/code-review",
             skill_file="skills/code-review/SKILL.md",
+            description="Ignored by installation.",
             source_root="skills-root",
         ),
         InstallableSkill(
             name="test-writer",
             path="skills/test-writer",
             skill_file="skills/test-writer/SKILL.md",
+            description="Ignored by installation.",
         ),
     )
     assert index_reader.read_skills_calls == [
-        "/cache/indexes/platform-skills/ritebook-index.json",
+        (
+            "/cache/indexes/platform-skills/ritebook-index.json",
+            f"sha256:{'b' * 64}",
+        ),
     ]
 
 
@@ -123,6 +144,7 @@ def registered_index(
     return RegisteredIndex(
         name=name,
         published_name=name,
+        alias_origin=AliasOrigin.PUBLISHED_NAME,
         source=source,
         source_type=source_type,
         source_revision="a" * 40,

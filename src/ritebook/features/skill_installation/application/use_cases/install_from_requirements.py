@@ -17,6 +17,7 @@ from ritebook.features.skill_installation.application.dtos import (
     SkillReference,
 )
 from ritebook.features.skill_installation.application.errors import (
+    CommittedSkillMetadataMismatchError,
     DuplicateInstallTargetError,
     DuplicateSkillRequirementError,
     InvalidSkillReferenceError,
@@ -45,6 +46,7 @@ if TYPE_CHECKING:
         StagedSkillTree,
     )
     from ritebook.features.skill_installation.application.ports import (
+        CommittedSkillValidatorPort,
         IndexRefresherPort,
         InstallationStatePort,
         InstallationTransaction,
@@ -62,6 +64,16 @@ class _ResolvedRequirement:
     target_base: str
     target_ref: str | None
     uses_target_path: bool
+
+
+@dataclass(frozen=True)
+class _SelectedInstall:
+    reference: SkillReference
+    portable_target: str
+    target_ref: str | None
+    index: RegisteredSkillIndex
+    skill: InstallableSkill
+    source: ResolvedSkillSource
 
 
 @dataclass(frozen=True)
@@ -95,6 +107,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         index_refresher: IndexRefresherPort,
         catalog: SkillCatalogPort,
         source_resolver: SkillSourcePort,
+        committed_skill_validator: CommittedSkillValidatorPort,
         installer: SkillInstallerPort,
         state: InstallationStatePort,
         transactions: InstallationTransactionPort,
@@ -104,6 +117,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self._index_refresher = index_refresher
         self._catalog = catalog
         self._source_resolver = source_resolver
+        self._committed_skill_validator = committed_skill_validator
         self._installer = installer
         self._state = state
         self._transactions = transactions
@@ -348,7 +362,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         root = Path(command.requirements_file).expanduser().resolve(strict=False).parent
         seen_requirements: set[str] = set()
         sources: dict[str, ResolvedSkillSource] = {}
-        desired: list[_DesiredInstall] = []
+        selected: list[_SelectedInstall] = []
 
         for requirement in requirements:
             if requirement.name in seen_requirements:
@@ -375,7 +389,10 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 sources[index.name] = source
             skills, expands_collection = _find_skills(
                 reference,
-                self._catalog.read_skills(index.cached_index_path),
+                self._catalog.read_skills(
+                    index.cached_index_path,
+                    index.index_digest,
+                ),
             )
             if resolved.uses_target_path and expands_collection:
                 msg = "A collection selector must use target, not target_path."
@@ -383,19 +400,39 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             for skill in skills:
                 exact_reference = _reference_for_skill(resolved, skill)
                 portable_target = _portable_target(resolved, exact_reference)
-                target_path = root / portable_target
-                desired.append(
-                    _DesiredInstall(
+                committed_header = self._committed_skill_validator.validate(
+                    source,
+                    skill,
+                )
+                if (
+                    committed_header.name != skill.name
+                    or committed_header.description != skill.description
+                ):
+                    raise CommittedSkillMetadataMismatchError(skill.path)
+                selected.append(
+                    _SelectedInstall(
                         reference=exact_reference,
                         portable_target=portable_target,
                         target_ref=resolved.target_ref,
                         index=index,
                         skill=skill,
                         source=source,
-                        planned_target=self._installer.plan_target(str(target_path)),
                     ),
                 )
-        return tuple(desired)
+        return tuple(
+            _DesiredInstall(
+                reference=item.reference,
+                portable_target=item.portable_target,
+                target_ref=item.target_ref,
+                index=item.index,
+                skill=item.skill,
+                source=item.source,
+                planned_target=self._installer.plan_target(
+                    str(root / item.portable_target),
+                ),
+            )
+            for item in selected
+        )
 
 
 def _referenced_aliases(

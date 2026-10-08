@@ -53,6 +53,7 @@ from ritebook.features.skill_installation.adapters.outbound import (
     IndexRegistryRefresherAdapter,
     IndexRegistrySkillCatalogAdapter,
     JsonInstallationStateAdapter,
+    LinterCommittedSkillValidatorAdapter,
     SourceRepositoryAdapter,
     TomlRequirementsReader,
 )
@@ -68,6 +69,7 @@ from ritebook.features.skill_linter.adapters.outbound.publisher_precheck import 
 )
 from ritebook.features.skill_linter.application.use_cases import (
     LintSkills,
+    ValidateSkillFile,
     ValidateSkillHeaders,
 )
 
@@ -77,9 +79,17 @@ if TYPE_CHECKING:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the Ritebook command-line interface."""
+    header_adapter = FilesystemSkillHeaderDiscovery()
+    header_validator = ValidateSkillHeaders()
     linter = LintSkills(
-        header_discovery=FilesystemSkillHeaderDiscovery(),
-        header_validator=ValidateSkillHeaders(),
+        header_discovery=header_adapter,
+        header_validator=header_validator,
+    )
+    committed_skill_validator = LinterCommittedSkillValidatorAdapter(
+        validator=ValidateSkillFile(
+            header_reader=header_adapter,
+            header_validator=header_validator,
+        ),
     )
     publisher = PublishIndex(
         precheck=LinterPublisherPrecheck(linter=linter),
@@ -117,6 +127,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     install_skill = InstallSkill(
         catalog=installation_catalog,
         source_resolver=source_repository,
+        committed_skill_validator=committed_skill_validator,
         installer=skill_installer,
         state=installation_state,
         transactions=installation_transactions,
@@ -126,6 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         index_refresher=IndexRegistryRefresherAdapter(update_index=update_index),
         catalog=installation_catalog,
         source_resolver=source_repository,
+        committed_skill_validator=committed_skill_validator,
         installer=skill_installer,
         state=installation_state,
         transactions=installation_transactions,

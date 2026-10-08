@@ -8,6 +8,7 @@ from ritebook.features.index_registry.adapters.outbound.filesystem_registry impo
     FilesystemIndexRegistry,
 )
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     IndexSourceType,
     RegisteredIndex,
 )
@@ -40,6 +41,7 @@ def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> Non
     assert registry.get("alpha-skills", str(path)) == entry(name="alpha-skills")
     assert payload["indexes"][0]["source_revision"] == SOURCE_REVISION
     assert payload["indexes"][0]["index_digest"] == INDEX_DIGEST
+    assert payload["indexes"][0]["alias_origin"] == "explicit"
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
@@ -72,6 +74,52 @@ def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None
     assert zeta_entry is not None
     assert alpha_entry.skill_count == 1
     assert zeta_entry.skill_count == 2
+
+
+@pytest.mark.parametrize(
+    ("name", "published_name", "expected_origin"),
+    [
+        (
+            "company-skills",
+            "company-skills",
+            AliasOrigin.PUBLISHED_NAME,
+        ),
+        (
+            "platform-skills",
+            "company-skills",
+            AliasOrigin.EXPLICIT,
+        ),
+    ],
+)
+def test_filesystem_registry_infers_legacy_alias_origin_and_persists_on_write(
+    tmp_path: Path,
+    name: str,
+    published_name: str,
+    expected_origin: AliasOrigin,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(
+        entry(
+            name=name,
+            published_name=published_name,
+            alias_origin=expected_origin,
+        ),
+        str(path),
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    del payload["indexes"][0]["alias_origin"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    loaded = registry.get(name, str(path))
+
+    assert loaded is not None
+    assert loaded.alias_origin is expected_origin
+
+    registry.upsert(loaded, str(path))
+
+    migrated = json.loads(path.read_text(encoding="utf-8"))
+    assert migrated["indexes"][0]["alias_origin"] == expected_origin.value
 
 
 def test_filesystem_registry_recovers_abandoned_temporary_file(tmp_path: Path) -> None:
@@ -145,10 +193,17 @@ def test_filesystem_registry_rejects_credential_bearing_persisted_source(
     assert "sentinel-secret" not in str(exc_info.value)
 
 
-def entry(*, name: str = "company-skills", skill_count: int = 1) -> RegisteredIndex:
+def entry(
+    *,
+    name: str = "company-skills",
+    published_name: str = "company-skills",
+    alias_origin: AliasOrigin = AliasOrigin.EXPLICIT,
+    skill_count: int = 1,
+) -> RegisteredIndex:
     return RegisteredIndex(
         name=name,
-        published_name="company-skills",
+        published_name=published_name,
+        alias_origin=alias_origin,
         source="git@example.com:company/skills.git",
         source_type=IndexSourceType.GIT_URL,
         source_revision=SOURCE_REVISION,

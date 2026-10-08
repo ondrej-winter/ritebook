@@ -13,6 +13,7 @@ from ritebook.features.skill_installation.application.dtos import (
     SkillReference,
 )
 from ritebook.features.skill_installation.application.errors import (
+    CommittedSkillMetadataMismatchError,
     ExistingInstallTargetError,
     InvalidSkillReferenceError,
     LocallyModifiedInstallTargetError,
@@ -26,6 +27,7 @@ from ._provenance import repository_relative_source_path
 
 if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
+        CommittedSkillHeader,
         InstallableSkill,
         InstallSkillCommand,
         PlannedInstallTarget,
@@ -33,6 +35,7 @@ if TYPE_CHECKING:
         StagedSkillTree,
     )
     from ritebook.features.skill_installation.application.ports import (
+        CommittedSkillValidatorPort,
         InstallationStatePort,
         InstallationTransactionPort,
         SkillCatalogPort,
@@ -44,11 +47,12 @@ if TYPE_CHECKING:
 class InstallSkill(InstallSkillPort):
     """Install one exact skill while preserving ownership and local edits."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         *,
         catalog: SkillCatalogPort,
         source_resolver: SkillSourcePort,
+        committed_skill_validator: CommittedSkillValidatorPort,
         installer: SkillInstallerPort,
         state: InstallationStatePort,
         transactions: InstallationTransactionPort,
@@ -56,6 +60,7 @@ class InstallSkill(InstallSkillPort):
         """Initialize direct-install orchestration dependencies."""
         self._catalog = catalog
         self._source_resolver = source_resolver
+        self._committed_skill_validator = committed_skill_validator
         self._installer = installer
         self._state = state
         self._transactions = transactions
@@ -80,7 +85,14 @@ class InstallSkill(InstallSkillPort):
             with self._source_resolver.open_source(index) as source:
                 skill = _find_skill(
                     reference,
-                    self._catalog.read_skills(index.cached_index_path),
+                    self._catalog.read_skills(
+                        index.cached_index_path,
+                        index.index_digest,
+                    ),
+                )
+                _validate_committed_metadata(
+                    skill,
+                    self._committed_skill_validator.validate(source, skill),
                 )
                 planned_target = self._installer.plan_target(command.target)
                 inspection = self._installer.inspect_target(planned_target)
@@ -147,6 +159,17 @@ def _find_skill(
         if skill.path == reference.skill_path:
             return skill
     raise UnknownInstallSkillError(reference.requirement)
+
+
+def _validate_committed_metadata(
+    skill: InstallableSkill,
+    committed_header: CommittedSkillHeader,
+) -> None:
+    if (
+        committed_header.name != skill.name
+        or committed_header.description != skill.description
+    ):
+        raise CommittedSkillMetadataMismatchError(skill.path)
 
 
 def _owner_for_target(

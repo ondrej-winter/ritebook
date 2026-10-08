@@ -6,7 +6,11 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel import (
+    normalize_portable_description,
+    require_index_name,
+    require_kebab_case_identifier,
+)
 from ritebook.shared_kernel.catalog_paths import validate_catalog_path
 
 SCHEMA_VERSION = 1
@@ -183,12 +187,32 @@ class RegisteredSkillIndex:
 
 
 @dataclass(frozen=True)
+class CommittedSkillHeader:
+    """Validated portable header values read from a committed skill file."""
+
+    name: str
+    description: str
+
+    def __post_init__(self) -> None:
+        """Validate normalized committed header metadata."""
+        require_kebab_case_identifier(self.name, field_name="Committed skill name")
+        normalized = normalize_portable_description(
+            self.description,
+            field_name="Committed skill description",
+        )
+        if normalized != self.description:
+            msg = "Committed skill description must be normalized."
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True)
 class InstallableSkill:
     """Cached skill metadata needed to install a skill directory."""
 
     name: str
     path: str
     skill_file: str
+    description: str
     source_root: str = "."
 
     def __post_init__(self) -> None:
@@ -196,6 +220,13 @@ class InstallableSkill:
         require_kebab_case_identifier(self.name, field_name="Skill name")
         _require_non_empty(self.path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")
+        normalized = normalize_portable_description(
+            self.description,
+            field_name="Skill description",
+        )
+        if normalized != self.description:
+            msg = "Skill description must be normalized."
+            raise ValueError(msg)
         _require_non_empty(self.source_root, field_name="Skill source root")
 
 

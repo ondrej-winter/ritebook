@@ -17,6 +17,7 @@ from ritebook.features.index_registry.adapters.outbound.json_index import (
     JsonIndexReader,
 )
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     IndexSourceType,
     RegisteredIndex,
 )
@@ -137,7 +138,10 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     )
 
     assert published.published_name == "company-skills"
-    assert [skill.name for skill in index_reader.read_skills(cached_path)] == [
+    assert [
+        skill.name
+        for skill in index_reader.read_skills(cached_path, published.index_digest)
+    ] == [
         "code-review",
         "test-driven-development",
     ]
@@ -210,6 +214,7 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         name="code-review",
         path="code-review",
         skill_file="code-review/SKILL.md",
+        description="Helps review code.",
     )
 
     installer = FilesystemSkillInstallerAdapter()
@@ -271,11 +276,12 @@ target = "claude"
         encoding="utf-8",
     )
     cached_index_path.parent.mkdir(parents=True)
-    cached_index_path.write_text(
-        """
+    cached_content = """
 {
   "schema_version": 1,
   "index": {"name": "company-skills"},
+  "generated_at": "2026-07-13T18:00:00Z",
+  "skills_root": ".",
   "skills": [
     {
       "name": "code-review",
@@ -285,12 +291,15 @@ target = "claude"
     }
   ]
 }
-""".lstrip(),
-        encoding="utf-8",
-    )
+""".lstrip().encode()
+    cached_index_path.write_bytes(cached_content)
+    index_digest = f"sha256:{hashlib.sha256(cached_content).hexdigest()}"
     registry = FilesystemIndexRegistry()
     registry.upsert(
-        _registered_index(cached_index_path=str(cached_index_path)),
+        _registered_index(
+            cached_index_path=str(cached_index_path),
+            index_digest=index_digest,
+        ),
         str(registry_path),
     )
     catalog = IndexRegistrySkillCatalogAdapter(
@@ -300,17 +309,18 @@ target = "claude"
 
     requirements = TomlRequirementsReader().read_requirements(str(requirements_file))
     index = catalog.get_index("company-skills", str(registry_path))
-    skills = catalog.read_skills(str(cached_index_path))
+    assert index is not None
+    skills = catalog.read_skills(str(cached_index_path), index.index_digest)
 
     assert requirements.targets == {"claude": ".claude/skills"}
     assert requirements.skills[0].name == "company-skills/code-review"
-    assert index is not None
     assert index.cached_index_path == str(cached_index_path)
     assert skills == (
         InstallableSkill(
             name="code-review",
             path="code-review",
             skill_file="code-review/SKILL.md",
+            description="Helps review code changes.",
         ),
     )
 
@@ -353,6 +363,7 @@ def _registered_index(
     return RegisteredIndex(
         name="company-skills",
         published_name="company-skills",
+        alias_origin=AliasOrigin.PUBLISHED_NAME,
         source=source,
         source_type=source_type,
         source_revision=source_revision,

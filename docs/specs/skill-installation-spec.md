@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 3.0
-- Acceptance basis: User-approved October 6, 2026 exact-reconciliation revision plan and [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md).
-- Accepted by / on: User / 2026-10-06
+- Revision: 3.1
+- Acceptance basis: User-approved October 6, 2026 exact-reconciliation plan plus the October 7, 2026 committed-header coherence decision in ADR 0005.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
-- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md) and [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md)
+- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: Revision 2.1 of this specification
 
 ## Objective and Context
@@ -52,10 +52,14 @@ truthful partial state, and schema-v2 generated state.
 - Ritebook verifies the cached index bytes and the root index bytes at the bound
   `source_revision` against the registered `index_digest` before parsing or using
   skill metadata.
+- Cached-index digest verification occurs before JSON decoding or parsing.
 - `skill_file` must name the canonical `SKILL.md` file inside the selected skill
   directory.
 - Ritebook copies the complete skill directory from the bound commit. It never
   substitutes a mutable working tree or current `HEAD`.
+- Before target planning, staging, or mutation, Ritebook validates the selected
+  committed `SKILL.md` through the linter's single-file API. Its validated `name`
+  and normalized `description` must exactly match the selected index entry.
 - A missing target may be installed. An existing target may be replaced only when
   the user passed `--force`, the target is already owned by the same direct-install
   registry, and its current tree digest matches its last committed digest.
@@ -94,6 +98,8 @@ truthful partial state, and schema-v2 generated state.
   cached metadata after a requested refresh fails.
 - After refresh, Ritebook opens and verifies the bound source snapshot before it
   parses the verified cached index and resolves skills from that snapshot.
+- Every selected exact or collection-expanded skill passes committed-header
+  coherence before any target or generated-state mutation begins.
 - Direct install remains explicitly offline against the already registered
   binding; users choose `indexes update` when they want a newer direct-install
   source.
@@ -341,3 +347,8 @@ None.
   and state commit, interruption recovery, partial CLI results, contribution
   compatibility, and descriptor-bound symlink-race hardening were verified in the
   tree.
+- October 7, 2026: Revision 3.1 added digest-before-parse and selected committed
+  header coherence before mutation under ADR 0005.
+- October 7, 2026: Marked revision 3.1 implemented after direct and sync
+  workflows validated all selected committed headers before target planning,
+  staging, mutation, or generated-state commit.

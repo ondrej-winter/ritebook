@@ -3,6 +3,7 @@
 from ritebook.features.index_registry.application.dtos.index_registry import (
     AddIndexCommand,
     AddIndexResult,
+    AliasOrigin,
     CachedSkillSummary,
     IndexSourceType,
     ListedIndexSkills,
@@ -21,6 +22,7 @@ from ritebook.features.index_registry.application.dtos.index_registry import (
 __all__ = [
     "AddIndexCommand",
     "AddIndexResult",
+    "AliasOrigin",
     "CachedSkillSummary",
     "IndexSourceType",
     "ListIndexesCommand",

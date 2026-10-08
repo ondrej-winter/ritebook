@@ -230,11 +230,25 @@ def test_validate_skill_headers_rejects_overlong_description() -> None:
     assert _messages(report) == ["description must be at most 1024 characters."]
 
 
+def test_validate_skill_headers_applies_description_limit_after_trimming() -> None:
+    report = _validate(_valid_frontmatter(description=f" {'x' * 1024} "))
+
+    assert report.succeeded
+
+
 def test_validate_skill_headers_rejects_description_controls() -> None:
     report = _validate(_valid_frontmatter(description="unsafe\x1b[31m description"))
 
     assert _messages(report) == [
         "description must not contain terminal control characters.",
+    ]
+
+
+def test_validate_skill_headers_rejects_description_surrogates() -> None:
+    report = _validate(_valid_frontmatter(description="unsafe \ud800 description"))
+
+    assert _messages(report) == [
+        "description must not contain Unicode surrogate code points.",
     ]
 
 

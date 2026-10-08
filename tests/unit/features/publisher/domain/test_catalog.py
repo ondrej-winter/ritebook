@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
+from ritebook.shared_kernel import MAX_SCHEMA_V1_SKILL_ENTRIES
 
 
 def test_skill_entry_represents_discovered_skill() -> None:
@@ -72,7 +73,7 @@ def test_skill_entry_rejects_path_traversal_segments(
 
 
 def test_skill_entry_rejects_skill_file_outside_skill_path() -> None:
-    with pytest.raises(ValueError, match="inside path"):
+    with pytest.raises(ValueError, match=r"exactly path/SKILL\.md"):
         SkillEntry(
             name="example-skill",
             path="example-skill",
@@ -87,6 +88,63 @@ def test_skill_entry_requires_kebab_case_name() -> None:
             name="Example Skill",
             path="example-skill",
             skill_file="example-skill/SKILL.md",
+            description="Example skill.",
+        )
+
+
+def test_skill_entry_requires_name_to_match_final_path_segment() -> None:
+    with pytest.raises(ValueError, match="final path segment"):
+        SkillEntry(
+            name="other-skill",
+            path="nested/example-skill",
+            skill_file="nested/example-skill/SKILL.md",
+            description="Example skill.",
+        )
+
+
+@pytest.mark.parametrize(
+    "skill_file",
+    [
+        "example-skill/docs/SKILL.md",
+        "example-skill/skill.md",
+    ],
+)
+def test_skill_entry_requires_exact_canonical_skill_file(skill_file: str) -> None:
+    with pytest.raises(ValueError, match=r"exactly path/SKILL\.md"):
+        SkillEntry(
+            name="example-skill",
+            path="example-skill",
+            skill_file=skill_file,
+            description="Example skill.",
+        )
+
+
+def test_skill_entry_rejects_non_normalized_description() -> None:
+    with pytest.raises(ValueError, match="normalized"):
+        SkillEntry(
+            name="example-skill",
+            path="example-skill",
+            skill_file="example-skill/SKILL.md",
+            description="  Example skill.  ",
+        )
+
+
+def test_skill_entry_rejects_over_limit_description() -> None:
+    with pytest.raises(ValueError, match="at most 1024"):
+        SkillEntry(
+            name="example-skill",
+            path="example-skill",
+            skill_file="example-skill/SKILL.md",
+            description="x" * 1025,
+        )
+
+
+def test_skill_entry_rejects_non_portable_path_segments() -> None:
+    with pytest.raises(ValueError, match="safe relative POSIX path"):
+        SkillEntry(
+            name="example-skill",
+            path="con/example-skill",
+            skill_file="con/example-skill/SKILL.md",
             description="Example skill.",
         )
 
@@ -185,7 +243,14 @@ def test_skill_catalog_exposes_schema_version_generated_at_and_root() -> None:
 
 @pytest.mark.parametrize(
     "bad_skills_root",
-    ["", "/absolute", "../skills", "nested\\skills"],
+    [
+        "",
+        "/absolute",
+        "../skills",
+        "nested\\skills",
+        "CON",
+        "skills/name.",
+    ],
 )
 def test_skill_catalog_requires_safe_relative_posix_skills_root(
     bad_skills_root: str,
@@ -228,4 +293,21 @@ def test_skill_catalog_requires_timezone_aware_generated_at() -> None:
             generated_at=generated_at,
             skills_root="skills",
             skills=(),
+        )
+
+
+def test_skill_catalog_rejects_skill_count_above_schema_v1_limit() -> None:
+    entry = SkillEntry(
+        name="example-skill",
+        path="example-skill",
+        skill_file="example-skill/SKILL.md",
+        description="Example skill.",
+    )
+
+    with pytest.raises(ValueError, match="at most 10,000"):
+        SkillCatalog.create(
+            index_name="company-skills",
+            generated_at=datetime(2026, 7, 4, 18, 49, tzinfo=UTC),
+            skills_root="skills",
+            skills=[entry] * (MAX_SCHEMA_V1_SKILL_ENTRIES + 1),
         )

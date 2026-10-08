@@ -3,6 +3,7 @@ import pytest
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
+    AliasOrigin,
     CachedSkillSummary,
     IndexSourceType,
     ListedIndexSkills,
@@ -44,7 +45,7 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             published_name="ondrej-winter/ritebook-shelf",
             schema_version=1,
             skill_count=0,
-            cacheable_content="{}",
+            cacheable_content=b"{}",
             index_digest=INDEX_DIGEST,
         )
 
@@ -52,6 +53,7 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
         RegisteredIndex(
             name="ondrej-winter/ritebook-shelf",
             published_name="company-skills",
+            alias_origin=AliasOrigin.EXPLICIT,
             source="git@example.com:ondrej-winter/ritebook-shelf.git",
             source_type=IndexSourceType.GIT_URL,
             source_revision=SOURCE_REVISION,
@@ -217,7 +219,7 @@ def test_published_index_rejects_invalid_metadata() -> None:
             published_name="Company Skills",
             schema_version=1,
             skill_count=0,
-            cacheable_content="{}",
+            cacheable_content=b"{}",
             index_digest=INDEX_DIGEST,
         )
 
@@ -226,7 +228,7 @@ def test_published_index_rejects_invalid_metadata() -> None:
             published_name="company-skills",
             schema_version=2,
             skill_count=0,
-            cacheable_content="{}",
+            cacheable_content=b"{}",
             index_digest=INDEX_DIGEST,
         )
 
@@ -236,6 +238,7 @@ def test_registered_local_index_rejects_source_cache_path() -> None:
         RegisteredIndex(
             name="company-skills",
             published_name="company-skills",
+            alias_origin=AliasOrigin.PUBLISHED_NAME,
             source="/tmp/repo",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             source_revision=SOURCE_REVISION,
@@ -268,6 +271,6 @@ def test_published_index_rejects_invalid_digest(index_digest: str) -> None:
             published_name="company-skills",
             schema_version=1,
             skill_count=0,
-            cacheable_content="{}",
+            cacheable_content=b"{}",
             index_digest=index_digest,
         )

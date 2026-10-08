@@ -1,5 +1,6 @@
 """Outbound adapters for skill installation workflows."""
 
+from .committed_skill_validator import LinterCommittedSkillValidatorAdapter
 from .filesystem_installer import (
     FilesystemSkillInstallerAdapter,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "IndexRegistryRefresherAdapter",
     "IndexRegistrySkillCatalogAdapter",
     "JsonInstallationStateAdapter",
+    "LinterCommittedSkillValidatorAdapter",
     "SourceRepositoryAdapter",
     "TomlRequirementsReader",
 ]

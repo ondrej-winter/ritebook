@@ -36,7 +36,7 @@ infrastructure.
 
 | Specification | Owner | Status | Implementation | Purpose |
 | --- | --- | --- | --- | --- |
-| [Shared Catalog Contract](shared-catalog-contract-spec.md) | Shared kernel and consuming slices | Active | Implemented | Catalog identity, schema-v1 paths, index fields, provenance, and shared trust rules. |
+| [Shared Catalog Contract](shared-catalog-contract-spec.md) | Shared kernel and consuming slices | Active | Implemented | Catalog identity, strict portable schema-v1 parsing, paths, index fields, provenance, and shared trust rules. |
 
 ### Feature slices
 

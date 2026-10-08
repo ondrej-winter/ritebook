@@ -32,6 +32,7 @@ def installable_skill(
     name: str = "code-review",
     path: str | None = None,
     skill_file: str | None = None,
+    description: str | None = None,
     source_root: str = "skills",
 ) -> InstallableSkill:
     skill_path = path or name
@@ -39,5 +40,6 @@ def installable_skill(
         name=name,
         path=skill_path,
         skill_file=skill_file or f"{skill_path}/SKILL.md",
+        description=description or f"Helps with {name} workflows.",
         source_root=source_root,
     )

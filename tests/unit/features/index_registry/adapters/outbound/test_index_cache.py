@@ -6,13 +6,14 @@ import pytest
 
 from ritebook.features.index_registry.adapters.outbound.index_cache import (
     FilesystemIndexCache,
+    adapter,
 )
 from ritebook.features.index_registry.application.errors import IndexCacheError
 
 
 def test_index_cache_writes_content_addressed_generation(tmp_path: Path) -> None:
     cache = FilesystemIndexCache()
-    content = '{"schema_version":1}\n'
+    content = b'{"schema_version":1}\n'
     digest = _digest(content)
 
     path = cache.write_index(
@@ -31,14 +32,14 @@ def test_index_cache_writes_content_addressed_generation(tmp_path: Path) -> None
         / "ritebook-index.json"
     )
     assert path == str(expected)
-    assert expected.read_text(encoding="utf-8") == content
+    assert expected.read_bytes() == content
 
 
 def test_index_cache_preserves_current_generation_while_staging_next(
     tmp_path: Path,
 ) -> None:
     cache = FilesystemIndexCache()
-    old_content = "old"
+    old_content = b"old"
     old_path = cache.write_index(
         name="company-skills",
         content=old_content,
@@ -47,7 +48,7 @@ def test_index_cache_preserves_current_generation_while_staging_next(
         preserve_path=None,
     )
 
-    new_content = "new"
+    new_content = b"new"
     new_path = cache.write_index(
         name="company-skills",
         content=new_content,
@@ -56,8 +57,8 @@ def test_index_cache_preserves_current_generation_while_staging_next(
         preserve_path=old_path,
     )
 
-    assert Path(old_path).read_text(encoding="utf-8") == old_content
-    assert Path(new_path).read_text(encoding="utf-8") == new_content
+    assert Path(old_path).read_bytes() == old_content
+    assert Path(new_path).read_bytes() == new_content
 
 
 def test_index_cache_rejects_content_that_does_not_match_digest(tmp_path: Path) -> None:
@@ -66,8 +67,8 @@ def test_index_cache_rejects_content_that_does_not_match_digest(tmp_path: Path) 
     with pytest.raises(IndexCacheError, match="does not match"):
         cache.write_index(
             name="company-skills",
-            content="candidate",
-            index_digest=_digest("different"),
+            content=b"candidate",
+            index_digest=_digest(b"different"),
             cache_root=str(tmp_path),
             preserve_path=None,
         )
@@ -80,7 +81,7 @@ def test_index_cache_sync_failure_leaves_no_visible_generation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     cache = FilesystemIndexCache()
-    content = "candidate"
+    content = b"candidate"
 
     def fail_sync(_descriptor: int) -> None:
         message = "injected cache sync failure"
@@ -105,7 +106,7 @@ def test_index_cache_recovers_abandoned_generation_before_next_write(
     tmp_path: Path,
 ) -> None:
     cache = FilesystemIndexCache()
-    current_content = "current"
+    current_content = b"current"
     current_path = cache.write_index(
         name="company-skills",
         content=current_content,
@@ -133,9 +134,33 @@ def test_index_cache_recovers_abandoned_generation_before_next_write(
     assert not orphan_directory.exists()
 
 
+def test_index_cache_continues_when_abandoned_generation_cleanup_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cache = FilesystemIndexCache()
+    content = b"candidate"
+
+    def fail_cleanup(*_args: object, **_kwargs: object) -> None:
+        message = "injected cleanup failure"
+        raise IndexCacheError(message)
+
+    monkeypatch.setattr(adapter, "_recover_alias_root", fail_cleanup)
+
+    path = cache.write_index(
+        name="company-skills",
+        content=content,
+        index_digest=_digest(content),
+        cache_root=str(tmp_path),
+        preserve_path=None,
+    )
+
+    assert Path(path).read_bytes() == content
+
+
 def test_index_cache_discards_only_owned_generation(tmp_path: Path) -> None:
     cache = FilesystemIndexCache()
-    content = "candidate"
+    content = b"candidate"
     path = cache.write_index(
         name="company-skills",
         content=content,
@@ -153,5 +178,6 @@ def test_index_cache_discards_only_owned_generation(tmp_path: Path) -> None:
     assert not Path(path).exists()
 
 
-def _digest(content: str) -> str:
-    return f"sha256:{hashlib.sha256(content.encode()).hexdigest()}"
+def _digest(content: str | bytes) -> str:
+    encoded = content.encode() if isinstance(content, str) else content
+    return f"sha256:{hashlib.sha256(encoded).hexdigest()}"

@@ -11,7 +11,10 @@ from ritebook.features.skill_linter.application.dtos import (
     ParsedSkillHeader,
     SkillValidationIssue,
 )
-from ritebook.shared_kernel import contains_terminal_control_characters
+from ritebook.shared_kernel import (
+    contains_terminal_control_characters,
+    contains_unicode_surrogate_code_points,
+)
 
 ALLOWED_FRONTMATTER_FIELDS = frozenset(
     {
@@ -100,18 +103,19 @@ def _validate_description(
     description = frontmatter["description"]
     if not isinstance(description, str):
         return (_issue(header, "description must be a string."),)
-    if not description.strip():
+    normalized = description.strip()
+    if not normalized:
         return (_issue(header, "description must not be blank."),)
-    if len(description) > MAX_DESCRIPTION_LENGTH:
+    if len(normalized) > MAX_DESCRIPTION_LENGTH:
         return (_issue(header, "description must be at most 1024 characters."),)
-    if contains_terminal_control_characters(description):
-        return (
-            _issue(
-                header,
-                "description must not contain terminal control characters.",
-            ),
-        )
-    return ()
+    message: str | None = None
+    if contains_terminal_control_characters(normalized):
+        message = "description must not contain terminal control characters."
+    elif contains_unicode_surrogate_code_points(normalized):
+        message = "description must not contain Unicode surrogate code points."
+    if message is None:
+        return ()
+    return (_issue(header, message),)
 
 
 def _validate_optional_string(

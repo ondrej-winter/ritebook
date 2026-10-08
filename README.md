@@ -154,7 +154,10 @@ reparse frontmatter. The success message reports the canonical output path
 `ritebook-index.json` relative to the invocation directory.
 
 Review the generated `ritebook-index.json` before committing it with the related
-skill changes.
+skill changes. Schema v1 is a closed portable contract: consumers reject unknown
+or duplicate JSON members, non-standard JSON constants, unsafe or non-portable
+paths, invalid canonical UTC timestamps, non-normalized descriptions, excessive
+input above 16 MiB, nesting above depth 32, and catalogs above 10,000 skills.
 
 ## Consumer index registry
 
@@ -195,6 +198,9 @@ changes only the local namespace used for cache paths, updates, listing, and
 skill references; it does not rewrite publisher metadata. If a project shares
 alias-based references in `ritebook.toml` or `ritebook.lock`, collaborators and
 CI must register the source with the same alias.
+Registry schema v1 records whether an alias came from the published name or an
+explicit `--alias`. Existing entries are inferred conservatively and gain the
+explicit origin on their next successful registry write.
 
 Refresh a registered index from its remembered Git source:
 
@@ -223,7 +229,8 @@ uv run ritebook skills list --show-description
 The `skills list` command is offline-first: it reads the local registry and each
 selected registry entry's cached `ritebook-index.json` file only. It does not
 clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
-files.
+files. Ritebook verifies each cached file's exact bytes against its registered
+SHA-256 digest before decoding or parsing it.
 
 Non-empty output is grouped by local alias in a deterministic tree:
 
@@ -289,6 +296,10 @@ directories. An existing target can be replaced only when Ritebook already owns
 that exact target, its current tree still matches the last committed digest, and
 `--force` is provided. Unmanaged targets, locally edited owned targets, symlinks,
 special files, and dangerous paths are preserved or rejected:
+
+Before planning or mutating targets, Ritebook validates the selected committed
+`SKILL.md` and requires its name and normalized description to match the
+digest-bound index entry.
 
 ```bash
 uv run ritebook skills install platform-skills/code-review \

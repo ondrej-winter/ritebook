@@ -49,14 +49,22 @@ class IndexRegistrySkillCatalogAdapter:
             index_schema_version=entry.source_schema_version,
         )
 
-    def read_skills(self, cached_index_path: str) -> tuple[InstallableSkill, ...]:
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[InstallableSkill, ...]:
         """Return installation-owned skill metadata from a cached index."""
         return tuple(
             InstallableSkill(
                 name=skill.name,
                 path=skill.path,
                 skill_file=skill.skill_file,
+                description=skill.description,
                 source_root=skill.source_root,
             )
-            for skill in self._index_reader.read_skills(cached_index_path)
+            for skill in self._index_reader.read_skills(
+                cached_index_path,
+                index_digest,
+            )
         )

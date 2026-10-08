@@ -4,11 +4,13 @@ import pytest
 
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
+    AliasOrigin,
     IndexSourceType,
     PreparedIndexSource,
 )
 from ritebook.features.index_registry.application.errors import (
     DuplicateIndexNameError,
+    IndexCacheError,
     IndexRegistryPersistenceError,
     InvalidPublishedIndexError,
 )
@@ -54,7 +56,7 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     assert cache.write_calls == [
         (
             "company-skills",
-            '{"schema_version":1}\n',
+            b'{"schema_version":1}\n',
             f"sha256:{'b' * 64}",
             "/tmp/cache",
             None,
@@ -62,6 +64,7 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     ]
     entry = registry.entries["company-skills"]
     assert entry.source_type is IndexSourceType.GIT_URL
+    assert entry.alias_origin is AliasOrigin.PUBLISHED_NAME
     assert entry.source_revision == "a" * 40
     assert entry.index_digest == f"sha256:{'b' * 64}"
     assert entry.added_at == "2026-07-08T18:00:00Z"
@@ -85,6 +88,7 @@ def test_add_index_uses_local_alias_without_changing_published_name() -> None:
 
     assert result.name == "platform-skills"
     assert registry.entries["platform-skills"].published_name == "company-skills"
+    assert registry.entries["platform-skills"].alias_origin is AliasOrigin.EXPLICIT
     assert cache.write_calls[0][0] == "platform-skills"
 
 
@@ -130,12 +134,14 @@ def test_add_index_refuses_duplicate_without_force() -> None:
 
 
 def test_add_index_replaces_duplicate_with_force() -> None:
-    registry = FakeRegistry([registered_index(skill_count=1)])
+    existing = registered_index(skill_count=1)
+    registry = FakeRegistry([existing])
+    cache = FakeCache()
     use_case = AddIndex(
         git_source=FakeGitSource(),
         index_reader=FakeIndexReader(),
         registry=registry,
-        cache=FakeCache(),
+        cache=cache,
         clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
     )
 
@@ -143,6 +149,30 @@ def test_add_index_replaces_duplicate_with_force() -> None:
 
     assert result.skill_count == 2
     assert registry.entries["company-skills"].skill_count == 2
+    assert cache.discard_calls == [
+        ("company-skills", existing.cached_index_path, None),
+    ]
+
+
+def test_add_index_success_is_not_masked_by_old_generation_cleanup_failure() -> None:
+    existing = registered_index(skill_count=1)
+    registry = FakeRegistry([existing])
+    cache = FakeCache(discard_error=IndexCacheError("injected cleanup failure"))
+    use_case = AddIndex(
+        git_source=FakeGitSource(),
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 18, 0, tzinfo=UTC),
+    )
+
+    result = use_case.execute(AddIndexCommand(source="repo", force=True))
+
+    assert result.skill_count == 2
+    assert registry.entries["company-skills"].skill_count == 2
+    assert cache.discard_calls == [
+        ("company-skills", existing.cached_index_path, None),
+    ]
 
 
 def test_add_index_does_not_mutate_state_when_validation_fails() -> None:

@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 1.1
-- Acceptance basis: Existing Active repository contract; format normalized under the user's October 2, 2026 instruction without changing normative behavior.
-- Accepted by / on: Original accepting person and date were not recorded.
+- Revision: 1.2
+- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict portable schema-v1 catalog decision.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-08-27
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: None
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -44,7 +44,7 @@ diagnostics, and recovery behavior.
 
 ## Requirements
 
-The following requirement groups preserve the normative shared contract of revision 1.1.
+The following requirement groups define the normative shared contract of revision 1.2.
 
 All consuming slices use the terminology, catalog structure, compatibility rules,
 and provenance requirements defined below rather than redefining them locally.
@@ -141,7 +141,7 @@ Field requirements:
 
 - `schema_version` is the integer `1`.
 - `index.name` is a canonical published name.
-- `generated_at` is a timezone-aware UTC timestamp in ISO 8601 format.
+- `generated_at` is a real canonical UTC RFC 3339 timestamp ending in `Z`.
 - `skills_root` is a safe normalized POSIX path relative to the repository root;
   `.` identifies the repository root itself.
 - `skills` is a deterministically sorted array.
@@ -150,10 +150,30 @@ Field requirements:
   structure rules.
 - `skills[].skill_file` is the path from `skills_root` to the skill's `SKILL.md`.
 - `skills[].description` is a required non-empty description copied from the
-  validated skill header.
+  validated skill header after trimming leading and trailing whitespace. It is at
+  most 1024 Unicode scalar values, contains no C0, DEL, C1, or surrogate code
+  points, and is already in its normalized trimmed form.
 
-Publisher and consumer readers must reject missing, unsupported, malformed,
-unsafe, duplicate, over-deep, or mixed-node schema-v1 data before using it.
+The root object contains exactly `schema_version`, `index`, `generated_at`,
+`skills_root`, and `skills`. The `index` object contains exactly `name`. Every
+skill object contains exactly `name`, `path`, `skill_file`, and `description`.
+Publisher and consumer readers reject missing, unknown, malformed, unsafe,
+duplicate, over-deep, or mixed-node schema-v1 data before using it.
+
+Before constructing a JSON object graph, consumers apply a bounded strict preflight:
+
+- the exact input is non-empty UTF-8 without a byte-order mark;
+- non-standard `NaN`, `Infinity`, and `-Infinity` constants are invalid;
+- duplicate object member names are invalid; and
+- input is at most 16 MiB (16,777,216 bytes);
+- JSON object/array nesting depth is at most 32; and
+- `skills` contains at most 10,000 entries.
+
+`skills_root` is `.` or a normalized portable relative POSIX path. Portable path
+segments reject empty, current, parent, control, surrogate, Windows-reserved,
+trailing-dot or trailing-space, and Windows-forbidden forms. Catalog `path`
+remains the canonical one-or-two-segment identity; `name` equals its final segment;
+and `skill_file` equals `<path>/SKILL.md` exactly.
 
 ### R5 — Compatibility-sensitive names
 
@@ -190,6 +210,9 @@ diagnostics must state the semantic role of these fields in the meantime.
   regeneration guidance instead of inferring provenance from mutable sources.
 - The consumer-owned digest does not alter the publisher schema and does not by
   itself authenticate the publisher.
+- Consumers preserve the committed index as exact `bytes`, verify cached bytes
+  against `index_digest` before decoding or parsing, and never substitute a
+  decoded-and-reencoded representation for the digest-bound artifact.
 
 ### R7 — Shared trust and path rules
 
@@ -202,7 +225,8 @@ diagnostics must state the semantic role of these fields in the meantime.
 - Validate catalog paths separately from repository-relative and target paths;
   passing one policy must not imply passing another.
 - Reject C0 controls (`U+0000`–`U+001F`), DEL (`U+007F`), and C1 controls
-  (`U+0080`–`U+009F`) in persisted path and display metadata.
+  (`U+0080`–`U+009F`) and Unicode surrogate code points in persisted path and
+  display metadata.
 - Preserve ordinary Unicode descriptions outside those control ranges.
 - Render any control character that reaches a CLI boundary as a visible,
   deterministic ASCII escape rather than emitting terminal control bytes.
@@ -271,7 +295,7 @@ diagnostics must state the semantic role of these fields in the meantime.
 | AC1 | R1 | Publisher and consumer features exchange catalog identifiers and references. | Published names, local aliases, catalog paths, selectors, and repository-relative paths retain the distinct meanings defined by this specification. | Shared-kernel and consuming-slice contract tests. |
 | AC2 | R2 | A boundary receives valid and invalid identifier values. | Canonical identifiers are accepted; invalid length, character, edge-hyphen, or consecutive-hyphen forms are rejected before application orchestration. | Shared-kernel identifier tests and adapter tests. |
 | AC3 | R3 | A catalog contains root skills, collection children, duplicates at distinct paths, mixed nodes, or over-deep candidates. | Only valid one- or two-segment catalog paths are accepted; valid duplicate names remain distinct by path; mixed and over-deep structures fail deterministically. | Catalog-path unit tests and publisher/consumer adapter tests. |
-| AC4 | R4 | A publisher index is generated or read by a schema-v1 consumer. | Required fields and deterministic ordering are preserved, while missing, malformed, unsafe, duplicate, over-deep, or mixed-node data is rejected before use. | Publisher JSON tests and consumer index-reader tests. |
+| AC4 | R4 | A publisher index is generated or read by a schema-v1 consumer. | Closed object shapes and deterministic ordering are preserved, while missing, unknown, malformed, unsafe, duplicate, over-deep, or mixed-node data is rejected before use. Exact bytes receive strict preflight before semantic use. | Shared strict-reader tests, publisher JSON tests, and consumer index-reader tests. |
 | AC5 | R5 | Schema-v1 compatibility-sensitive fields and CLI options are rendered or consumed. | Each field retains its documented semantic role, and no rename occurs without a versioned migration. | Schema and CLI contract review plus focused tests. |
 | AC6 | R6 | Registry, installation, or contribution code trusts cached or committed index data. | The exact bytes are bound to and verified against both a full Git commit and SHA-256 digest; mutable source state is never substituted. | Provenance unit tests and publisher-to-consumer E2E coverage. |
 | AC7 | R7 | Untrusted paths, metadata, diagnostics, or mutating workflows cross a boundary. | Unsafe paths and controls are rejected or visibly escaped, ordinary Unicode is preserved, secrets and raw contents are not exposed, and each mutating feature supplies its own recovery contract. | Shared safety tests, adapter tests, and manual diagnostic review. |
@@ -291,6 +315,13 @@ None.
 - October 2, 2026: Reformatted revision 1.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.
+- October 7, 2026: Revision 1.2 closed schema-v1 object shapes; added strict JSON
+  preflight, portable path/text/timestamp rules, exact-byte cache verification,
+  committed-header coherence, and the approved 16 MiB, depth-32, and 10,000-entry
+  resource limits under ADR 0005.
+- October 7, 2026: Marked revision 1.2 implemented after shared strict parsing,
+  publisher and consumer conformance, exact-byte provenance, alias migration,
+  committed-header validation, and contribution provenance were verified.
 - Next authorized step: Treat this Active revision as the canonical shared
   contract. Any schema, compatibility, or provenance change requires a revised
   specification and, where durable architecture changes, an ADR.

@@ -49,9 +49,15 @@ def test_list_skills_lists_all_registered_indexes_in_deterministic_order() -> No
             ),
         ),
     )
-    assert cached_reader.read_paths == [
-        "/cache/indexes/alpha-skills/ritebook-index.json",
-        "/cache/indexes/beta-skills/ritebook-index.json",
+    assert cached_reader.read_calls == [
+        (
+            "/cache/indexes/alpha-skills/ritebook-index.json",
+            alpha.index_digest,
+        ),
+        (
+            "/cache/indexes/beta-skills/ritebook-index.json",
+            beta.index_digest,
+        ),
     ]
 
 
@@ -86,7 +92,7 @@ def test_list_skills_filters_by_effective_index_name() -> None:
     )
     assert registry.get_calls == [("beta-skills", "/tmp/indexes.json")]
     assert registry.list_calls == []
-    assert cached_reader.read_paths == [beta.cached_index_path]
+    assert cached_reader.read_calls == [(beta.cached_index_path, beta.index_digest)]
 
 
 def test_list_skills_fails_for_unknown_index_name() -> None:
@@ -99,7 +105,7 @@ def test_list_skills_fails_for_unknown_index_name() -> None:
     with pytest.raises(UnknownIndexNameError, match="is not registered"):
         use_case.execute(ListSkillsCommand(index_name="missing-index"))
 
-    assert cached_reader.read_paths == []
+    assert cached_reader.read_calls == []
 
 
 def test_list_skills_sorts_skills_by_name_within_each_index() -> None:
@@ -171,7 +177,7 @@ def test_list_skills_returns_empty_result_for_empty_registry() -> None:
     result = use_case.execute(ListSkillsCommand())
 
     assert result == ListSkillsResult(indexes=())
-    assert cached_reader.read_paths == []
+    assert cached_reader.read_calls == []
 
 
 def test_list_skills_preserves_selected_index_group_when_no_skills_exist() -> None:
@@ -204,16 +210,20 @@ def test_list_skills_rejects_invalid_cached_index_before_display() -> None:
     ):
         use_case.execute(ListSkillsCommand())
 
-    assert cached_reader.read_paths == [entry.cached_index_path]
+    assert cached_reader.read_calls == [(entry.cached_index_path, entry.index_digest)]
 
 
 class FailingCachedIndexReader:
     def __init__(self, error: InvalidPublishedIndexError) -> None:
         self._error = error
-        self.read_paths: list[str] = []
+        self.read_calls: list[tuple[str, str]] = []
 
-    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
-        self.read_paths.append(cached_index_path)
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[CachedSkillSummary, ...]:
+        self.read_calls.append((cached_index_path, index_digest))
         raise self._error
 
 

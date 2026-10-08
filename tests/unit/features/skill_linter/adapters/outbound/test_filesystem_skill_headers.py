@@ -5,6 +5,7 @@ import pytest
 from ritebook.features.skill_linter.adapters.outbound.filesystem import (
     FilesystemSkillHeaderDiscovery,
 )
+from ritebook.features.skill_linter.application.dtos import SkillValidationIssue
 from ritebook.features.skill_linter.application.errors import LintSkillsDiscoveryError
 
 
@@ -30,6 +31,45 @@ def test_discover_headers_parses_nested_skill_frontmatter(tmp_path: Path) -> Non
         "name": "alpha",
         "description": "Alpha skill.",
     }
+
+
+def test_read_header_parses_one_explicit_deep_skill_without_catalog_discovery(
+    tmp_path: Path,
+) -> None:
+    skill_file = tmp_path / "one" / "two" / "three" / "code-review" / "SKILL.md"
+    write_skill(
+        skill_file,
+        frontmatter(name="code-review", description="  Helps review code.  "),
+    )
+
+    result = FilesystemSkillHeaderDiscovery().read_header(
+        str(skill_file),
+        "code-review",
+    )
+
+    assert not hasattr(result, "message")
+    assert result.skill_file == str(skill_file)
+    assert result.expected_name == "code-review"
+    assert result.frontmatter == {
+        "name": "code-review",
+        "description": "Helps review code.",
+    }
+
+
+def test_read_header_translates_unreadable_utf8_to_issue(tmp_path: Path) -> None:
+    skill_file = tmp_path / "code-review" / "SKILL.md"
+    skill_file.parent.mkdir()
+    skill_file.write_bytes(b"---\nname: code-review\ndescription: \xff\n---\n")
+
+    result = FilesystemSkillHeaderDiscovery().read_header(
+        str(skill_file),
+        "code-review",
+    )
+
+    assert result == SkillValidationIssue(
+        skill_file=str(skill_file),
+        message="skill file must be readable UTF-8 text.",
+    )
 
 
 def test_discover_headers_reports_zero_segment_candidate_before_frontmatter(

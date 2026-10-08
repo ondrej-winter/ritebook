@@ -489,6 +489,7 @@ def installable_skill(
         name="code-review",
         path=path,
         skill_file=skill_file,
+        description="Helps review code.",
         source_root=source_root,
     )
 

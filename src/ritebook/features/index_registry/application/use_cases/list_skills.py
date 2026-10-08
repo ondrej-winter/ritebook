@@ -61,7 +61,10 @@ class ListSkills(ListSkillsPort):
         return ListedIndexSkills(
             index_name=entry.name,
             skills=_sorted_skills(
-                self._cached_index_reader.read_skills(entry.cached_index_path),
+                self._cached_index_reader.read_skills(
+                    entry.cached_index_path,
+                    entry.index_digest,
+                ),
             ),
         )
 

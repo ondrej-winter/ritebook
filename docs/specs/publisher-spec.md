@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 2.2
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6, 2026 validated-snapshot publication decision.
-- Accepted by / on: User / 2026-10-06
+- Revision: 2.3
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 publication decisions.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-06
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md)
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -45,7 +45,7 @@ installation.
 
 ## Requirements
 
-The following requirement groups define the normative publisher contract of revision 2.2.
+The following requirement groups define the normative publisher contract of revision 2.3.
 
 Ritebook generates or updates a JSON index file for a maintainer-controlled
 skills repository.
@@ -90,6 +90,9 @@ skills repository.
   `skills_root` relative to the repository root containing the index, so all
   serialized paths stay portable within the repository.
 - Output ordering is deterministic by catalog path.
+- Publisher domain construction applies the shared schema-v1 portable path, text,
+  timestamp, skill-entry coherence, and confirmed resource bounds before
+  serialization.
 - Hidden directories under the skills root are skipped by default in the MVP.
 - Missing or unreadable skills root paths must produce clear user-facing errors at the
   adapter boundary.
@@ -102,6 +105,8 @@ skills repository.
 
 - The canonical output filename is `ritebook-index.json`.
 - The index must be valid JSON.
+- The index uses the exact closed schema-v1 object shapes from the shared catalog
+  contract and emits no extension members.
 - The index must include a schema version so future versions can evolve without
   ambiguity.
 - The index must include enough data for future consumer commands to list and
@@ -294,6 +299,11 @@ None.
 - October 6, 2026: Revision 2.2 made the linter's successful immutable snapshot
   the publisher's sole catalog input and prohibited rediscovery or reparsing after
   validation.
+- October 7, 2026: Revision 2.3 aligned publisher domain invariants and output
+  with the strict portable schema-v1 contract in ADR 0005.
+- October 7, 2026: Marked revision 2.3 implemented after closed portable domain
+  invariants, canonical timestamp output, and shared 16 MiB and 10,000-entry
+  limits were verified.
 - Next authorized step: Treat this Active revision as canonical. Consumer
   workflows or publisher artifact trust fields require their owning specification
   or an approved revision before implementation.

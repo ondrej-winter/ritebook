@@ -12,6 +12,7 @@ from ritebook.features.index_registry.adapters.outbound.index_cache import (
     FilesystemIndexCache,
 )
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     IndexSourceType,
     PreparedIndexSource,
     PublishedIndex,
@@ -19,6 +20,7 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexResult,
 )
 from ritebook.features.index_registry.application.errors import (
+    IndexCacheError,
     IndexRegistryPersistenceError,
     InvalidPublishedIndexError,
     UnknownIndexNameError,
@@ -36,7 +38,8 @@ from .fakes import (
 
 
 def test_update_index_refreshes_git_url_source() -> None:
-    registry = FakeRegistry([registered_index()])
+    existing = registered_index()
+    registry = FakeRegistry([existing])
     cache = FakeCache()
     git_source = FakeGitSource()
     use_case = UpdateIndex(
@@ -46,7 +49,7 @@ def test_update_index_refreshes_git_url_source() -> None:
                 published_name="company-skills",
                 schema_version=1,
                 skill_count=3,
-                cacheable_content='{"schema_version":1,"skills":[]}\n',
+                cacheable_content=b'{"schema_version":1,"skills":[]}\n',
                 index_digest=f"sha256:{'d' * 64}",
             ),
         ),
@@ -71,7 +74,7 @@ def test_update_index_refreshes_git_url_source() -> None:
     assert cache.write_calls == [
         (
             "company-skills",
-            '{"schema_version":1,"skills":[]}\n',
+            b'{"schema_version":1,"skills":[]}\n',
             f"sha256:{'d' * 64}",
             "/tmp/cache",
             "/cache/indexes/company-skills/ritebook-index.json",
@@ -82,6 +85,38 @@ def test_update_index_refreshes_git_url_source() -> None:
     assert entry.updated_at == "2026-07-08T19:00:00Z"
     assert entry.source_revision == "c" * 40
     assert entry.index_digest == f"sha256:{'d' * 64}"
+    assert cache.discard_calls == [
+        ("company-skills", existing.cached_index_path, "/tmp/cache"),
+    ]
+
+
+def test_update_index_success_is_not_masked_by_old_generation_cleanup_failure() -> None:
+    existing = registered_index()
+    registry = FakeRegistry([existing])
+    cache = FakeCache(discard_error=IndexCacheError("injected cleanup failure"))
+    use_case = UpdateIndex(
+        git_source=FakeGitSource(),
+        index_reader=FakeIndexReader(
+            PublishedIndex(
+                published_name="company-skills",
+                schema_version=1,
+                skill_count=3,
+                cacheable_content=b'{"schema_version":1,"skills":[]}\n',
+                index_digest=f"sha256:{'d' * 64}",
+            ),
+        ),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 7, 8, 19, 0, tzinfo=UTC),
+    )
+
+    result = use_case.execute(UpdateIndexCommand(name="company-skills"))
+
+    assert result.skill_count == 3
+    assert registry.entries["company-skills"].skill_count == 3
+    assert cache.discard_calls == [
+        ("company-skills", existing.cached_index_path, None),
+    ]
 
 
 def test_update_index_refreshes_local_git_repository_source() -> None:
@@ -131,7 +166,14 @@ def test_update_index_fails_for_unknown_name() -> None:
 
 
 def test_update_index_keeps_local_alias_when_published_name_changes() -> None:
-    registry = FakeRegistry([registered_index(name="local-name")])
+    registry = FakeRegistry(
+        [
+            registered_index(
+                name="local-name",
+                alias_origin=AliasOrigin.EXPLICIT,
+            ),
+        ],
+    )
     use_case = UpdateIndex(
         git_source=FakeGitSource(),
         index_reader=FakeIndexReader(
@@ -139,7 +181,7 @@ def test_update_index_keeps_local_alias_when_published_name_changes() -> None:
                 published_name="renamed-upstream",
                 schema_version=1,
                 skill_count=4,
-                cacheable_content='{"schema_version":1}\n',
+                cacheable_content=b'{"schema_version":1}\n',
                 index_digest=f"sha256:{'e' * 64}",
             ),
         ),
@@ -152,6 +194,33 @@ def test_update_index_keeps_local_alias_when_published_name_changes() -> None:
 
     assert result.name == "local-name"
     assert registry.entries["local-name"].published_name == "renamed-upstream"
+    assert registry.entries["local-name"].alias_origin is AliasOrigin.EXPLICIT
+
+
+def test_update_index_preserves_publisher_derived_alias_origin() -> None:
+    registry = FakeRegistry([registered_index()])
+    use_case = UpdateIndex(
+        git_source=FakeGitSource(),
+        index_reader=FakeIndexReader(
+            PublishedIndex(
+                published_name="renamed-upstream",
+                schema_version=1,
+                skill_count=4,
+                cacheable_content=b'{"schema_version":1}\n',
+                index_digest=f"sha256:{'e' * 64}",
+            ),
+        ),
+        registry=registry,
+        cache=FakeCache(),
+        clock=lambda: datetime(2026, 7, 8, 19, 0, tzinfo=UTC),
+    )
+
+    use_case.execute(UpdateIndexCommand(name="company-skills"))
+
+    entry = registry.entries["company-skills"]
+    assert entry.name == "company-skills"
+    assert entry.published_name == "renamed-upstream"
+    assert entry.alias_origin is AliasOrigin.PUBLISHED_NAME
 
 
 def test_update_index_preserves_cache_and_registry_when_validation_fails() -> None:
@@ -180,8 +249,8 @@ def test_update_index_validation_failure_preserves_filesystem_state(
 ) -> None:
     registry_path = tmp_path / "indexes.json"
     cache_root = tmp_path / "cache"
-    cached_content = '{"schema_version":1,"skills":[{"path":"code-review"}]}\n'
-    cached_digest = f"sha256:{hashlib.sha256(cached_content.encode()).hexdigest()}"
+    cached_content = b'{"schema_version":1,"skills":[{"path":"code-review"}]}\n'
+    cached_digest = f"sha256:{hashlib.sha256(cached_content).hexdigest()}"
     cache = FilesystemIndexCache()
     cached_index_path = cache.write_index(
         name="company-skills",
@@ -291,14 +360,14 @@ def test_update_index_all_continues_after_failure() -> None:
                 published_name="alpha-skills",
                 schema_version=1,
                 skill_count=11,
-                cacheable_content='{"schema_version":1,"skills":[]}\n',
+                cacheable_content=b'{"schema_version":1,"skills":[]}\n',
                 index_digest=f"sha256:{'1' * 64}",
             ),
             "gamma-skills": PublishedIndex(
                 published_name="gamma-skills",
                 schema_version=1,
                 skill_count=13,
-                cacheable_content='{"schema_version":1,"skills":[{}]}\n',
+                cacheable_content=b'{"schema_version":1,"skills":[{}]}\n',
                 index_digest=f"sha256:{'3' * 64}",
             ),
         },
@@ -327,14 +396,14 @@ def test_update_index_all_continues_after_failure() -> None:
     assert cache.write_calls == [
         (
             "alpha-skills",
-            '{"schema_version":1,"skills":[]}\n',
+            b'{"schema_version":1,"skills":[]}\n',
             f"sha256:{'1' * 64}",
             None,
             "/cache/indexes/company-skills/ritebook-index.json",
         ),
         (
             "gamma-skills",
-            '{"schema_version":1,"skills":[{}]}\n',
+            b'{"schema_version":1,"skills":[{}]}\n',
             f"sha256:{'3' * 64}",
             None,
             "/cache/indexes/company-skills/ritebook-index.json",
@@ -345,4 +414,7 @@ def test_update_index_all_continues_after_failure() -> None:
         "alpha-skills",
         "gamma-skills",
     ]
-    assert cache.discard_calls == []
+    assert cache.discard_calls == [
+        ("alpha-skills", alpha.cached_index_path, None),
+        ("gamma-skills", gamma.cached_index_path, None),
+    ]

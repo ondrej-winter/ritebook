@@ -21,5 +21,9 @@ class SkillCatalogPort(Protocol):
     ) -> RegisteredSkillIndex | None:
         """Return registered index metadata by effective name when available."""
 
-    def read_skills(self, cached_index_path: str) -> tuple[InstallableSkill, ...]:
-        """Return installable skills from a cached index path."""
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[InstallableSkill, ...]:
+        """Return verified installable skills from a cached index path."""

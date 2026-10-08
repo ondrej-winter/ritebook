@@ -97,3 +97,17 @@ class RequirementsReadError(SkillInstallationError):
 
 class SkillSourceResolutionError(SkillInstallationError):
     """Raised when source repository metadata cannot be resolved."""
+
+
+class CommittedSkillValidationError(SkillInstallationError):
+    """Raised when a selected committed skill header cannot be validated."""
+
+
+class CommittedSkillMetadataMismatchError(SkillInstallationError):
+    """Raised when committed skill metadata differs from the bound index."""
+
+    def __init__(self, skill_path: str) -> None:
+        """Build a mismatch error without exposing source contents."""
+        super().__init__(
+            f"committed skill header does not match indexed metadata: {skill_path}",
+        )

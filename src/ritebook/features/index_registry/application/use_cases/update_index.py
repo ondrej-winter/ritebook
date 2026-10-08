@@ -103,6 +103,7 @@ class UpdateIndex(UpdateIndexPort):
         entry = RegisteredIndex(
             name=existing.name,
             published_name=published_index.published_name,
+            alias_origin=existing.alias_origin,
             source=prepared_source.source,
             source_type=prepared_source.source_type,
             source_revision=prepared_source.source_revision,
@@ -125,6 +126,13 @@ class UpdateIndex(UpdateIndexPort):
                         cache_root=command.cache_root,
                     )
             raise
+        if cached_index_path != existing.cached_index_path:
+            with suppress(IndexCacheError):
+                self._cache.discard_index(
+                    name=existing.name,
+                    cached_index_path=existing.cached_index_path,
+                    cache_root=command.cache_root,
+                )
         return UpdateIndexResult(
             name=existing.name,
             skill_count=published_index.skill_count,

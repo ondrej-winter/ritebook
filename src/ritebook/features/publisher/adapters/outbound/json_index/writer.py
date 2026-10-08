@@ -6,11 +6,12 @@ import json
 import os
 import tempfile
 from contextlib import suppress
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, BinaryIO
 
 from ritebook.features.publisher.application.errors import PublishIndexWriteError
+from ritebook.shared_kernel import format_canonical_utc_timestamp
+from ritebook.shared_kernel.strict_json import MAX_STRICT_JSON_INPUT_BYTES
 
 if TYPE_CHECKING:
     from ritebook.features.publisher.domain import SkillCatalog, SkillEntry
@@ -24,11 +25,13 @@ class JsonIndexWriter:
         staged_path: Path | None = None
         try:
             content = json.dumps(_catalog_to_json(catalog), indent=2) + "\n"
+            content_bytes = content.encode()
+            _require_bounded_payload(content_bytes)
             destination = Path(output_path)
             _validate_destination(destination)
             staged_path, staged_file = _create_staged_file(destination)
             with staged_file:
-                _write_and_sync(staged_file, content.encode())
+                _write_and_sync(staged_file, content_bytes)
             _validate_destination(destination)
             staged_path.replace(destination)
             staged_path = None
@@ -80,11 +83,20 @@ def _write_and_sync(staged_file: BinaryIO, content: bytes) -> None:
     os.fsync(staged_file.fileno())
 
 
+def _require_bounded_payload(content: bytes) -> None:
+    if len(content) > MAX_STRICT_JSON_INPUT_BYTES:
+        msg = "Serialized schema-v1 index exceeds the 16 MiB size limit."
+        raise ValueError(msg)
+
+
 def _catalog_to_json(catalog: SkillCatalog) -> dict[str, Any]:
     return {
         "schema_version": catalog.schema_version,
         "index": {"name": catalog.index_name},
-        "generated_at": _generated_at(catalog.generated_at),
+        "generated_at": format_canonical_utc_timestamp(
+            catalog.generated_at,
+            field_name="generated_at",
+        ),
         "skills_root": catalog.skills_root,
         "skills": [_entry_to_json(entry) for entry in catalog.skills],
     }
@@ -97,7 +109,3 @@ def _entry_to_json(entry: SkillEntry) -> dict[str, str]:
         "skill_file": entry.skill_file,
         "description": entry.description,
     }
-
-
-def _generated_at(value: datetime) -> str:
-    return value.astimezone(UTC).isoformat().replace("+00:00", "Z")

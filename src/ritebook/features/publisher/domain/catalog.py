@@ -7,9 +7,12 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, ClassVar, Self
 
 from ritebook.shared_kernel import (
+    MAX_SCHEMA_V1_SKILL_ENTRIES,
+    format_canonical_utc_timestamp,
+    normalize_portable_description,
     require_index_name,
     require_kebab_case_identifier,
-    require_no_terminal_control_characters,
+    validate_portable_relative_posix_path,
 )
 from ritebook.shared_kernel.catalog_paths import validate_catalog_paths
 
@@ -35,15 +38,21 @@ class SkillEntry:
         """Validate entry invariants after dataclass initialization."""
         _require_relative_posix_path(self.path, field_name="path")
         _require_relative_posix_path(self.skill_file, field_name="skill_file")
-        _require_skill_file_inside_path(skill_file=self.skill_file, path=self.path)
         require_kebab_case_identifier(self.name, field_name="Skill entry name")
+        if self.name != PurePosixPath(self.path).name:
+            msg = "Skill entry name must match the final path segment."
+            raise ValueError(msg)
+        _require_canonical_skill_file(skill_file=self.skill_file, path=self.path)
         if not self.description:
             msg = "Skill entry description must not be empty."
             raise ValueError(msg)
-        require_no_terminal_control_characters(
+        normalized_description = normalize_portable_description(
             self.description,
             field_name="Skill entry description",
         )
+        if normalized_description != self.description:
+            msg = "Skill entry description must be normalized without edge whitespace."
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True)
@@ -81,11 +90,19 @@ class SkillCatalog:
 
     def __post_init__(self) -> None:
         """Validate catalog invariants after dataclass initialization."""
-        if self.generated_at.tzinfo is None or self.generated_at.utcoffset() is None:
-            msg = "Catalog generation timestamp must be timezone-aware."
-            raise ValueError(msg)
+        format_canonical_utc_timestamp(
+            self.generated_at,
+            field_name="Catalog generation timestamp",
+        )
         require_index_name(self.index_name, field_name="Published index name")
-        _require_relative_posix_path(self.skills_root, field_name="skills_root")
+        _require_relative_posix_path(
+            self.skills_root,
+            field_name="skills_root",
+            allow_current_directory=True,
+        )
+        if len(self.skills) > MAX_SCHEMA_V1_SKILL_ENTRIES:
+            msg = "Schema-v1 catalogs must contain at most 10,000 skill entries."
+            raise ValueError(msg)
         object.__setattr__(
             self,
             "skills",
@@ -94,20 +111,24 @@ class SkillCatalog:
         validate_catalog_paths(skill.path for skill in self.skills)
 
 
-def _require_relative_posix_path(value: str, *, field_name: str) -> None:
-    if not value:
-        msg = f"{field_name} must not be empty."
-        raise ValueError(msg)
-    path = PurePosixPath(value)
-    if path.is_absolute() or "\\" in value or ".." in path.parts:
-        msg = f"{field_name} must be a safe relative POSIX path."
-        raise ValueError(msg)
-    require_no_terminal_control_characters(value, field_name=field_name)
-
-
-def _require_skill_file_inside_path(*, skill_file: str, path: str) -> None:
+def _require_relative_posix_path(
+    value: str,
+    *,
+    field_name: str,
+    allow_current_directory: bool = False,
+) -> None:
     try:
-        PurePosixPath(skill_file).relative_to(PurePosixPath(path))
+        validate_portable_relative_posix_path(
+            value,
+            field_name=field_name,
+            allow_current_directory=allow_current_directory,
+        )
     except ValueError as err:
-        msg = "Skill entry skill_file must be inside path."
+        msg = f"{field_name} must be a safe relative POSIX path."
         raise ValueError(msg) from err
+
+
+def _require_canonical_skill_file(*, skill_file: str, path: str) -> None:
+    if skill_file != f"{path}/SKILL.md":
+        msg = "Skill entry skill_file must be exactly path/SKILL.md."
+        raise ValueError(msg)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
@@ -13,11 +12,15 @@ from ritebook.features.publisher.application.dtos import (
     PublishIndexValidationError,
 )
 from ritebook.features.publisher.application.errors import PublisherError
+from ritebook.features.skill_contribution.application.dtos import (
+    ContributionSkillReference,
+)
 from ritebook.features.skill_contribution.application.errors import (
     ContributionIndexRegenerationError,
     SkillContributionValidationError,
 )
 from ritebook.features.skill_contribution.application.ports import IndexRegeneratorPort
+from ritebook.shared_kernel import SchemaV1CatalogError, parse_schema_v1_catalog_bytes
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -43,10 +46,11 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
     ) -> None:
         """Publish ritebook-index.json in the isolated contribution checkout."""
         checkout_path = Path(workspace.checkout_path)
-        _validate_index_path(checkout_path)
-        skills_root = _published_skills_root(checkout_path, entry.skill_path)
+        _validate_checkout_path(checkout_path)
+        published_name = _published_name(checkout_path)
+        skills_root = _published_skills_root(entry)
         command = PublishIndexCommand(
-            index_name=entry.index_name,
+            index_name=published_name,
             skills_root=str(checkout_path / skills_root),
             published_skills_root=skills_root,
         )
@@ -73,25 +77,16 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
             raise ContributionIndexRegenerationError(message) from err
 
 
-def _validate_index_path(checkout_path: Path) -> None:
-    index_path = checkout_path / "ritebook-index.json"
+def _validate_checkout_path(checkout_path: Path) -> None:
     try:
         _reject_symlink_components(checkout_path)
-        if (
-            not checkout_path.is_dir()
-            or checkout_path.is_symlink()
-            or not index_path.is_file()
-            or index_path.is_symlink()
-        ):
-            raise _index_read_error()
-        resolved_checkout = checkout_path.resolve(strict=True)
-        resolved_index = index_path.resolve(strict=True)
+        if not checkout_path.is_dir() or checkout_path.is_symlink():
+            raise _checkout_error()
+        checkout_path.resolve(strict=True)
     except ContributionIndexRegenerationError:
         raise
     except OSError as err:
-        raise _index_read_error() from err
-    if not resolved_index.is_relative_to(resolved_checkout):
-        raise _index_read_error()
+        raise _checkout_error() from err
 
 
 def _reject_symlink_components(path: Path) -> None:
@@ -101,38 +96,60 @@ def _reject_symlink_components(path: Path) -> None:
             continue
         current /= part
         if current.is_symlink():
-            raise _index_read_error()
+            raise _checkout_error()
 
 
-def _published_skills_root(checkout_path: Path, skill_path: str) -> str:
+def _published_name(checkout_path: Path) -> str:
     index_path = checkout_path / "ritebook-index.json"
     try:
-        payload = json.loads(index_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as err:
+        if not index_path.is_file() or index_path.is_symlink():
+            raise _index_read_error()
+        resolved_checkout = checkout_path.resolve(strict=True)
+        resolved_index = index_path.resolve(strict=True)
+        if not resolved_index.is_relative_to(resolved_checkout):
+            raise _index_read_error()
+        catalog = parse_schema_v1_catalog_bytes(index_path.read_bytes())
+    except ContributionIndexRegenerationError:
+        raise
+    except (OSError, SchemaV1CatalogError) as err:
         raise _index_read_error() from err
-    if not isinstance(payload, dict):
-        raise _index_read_error()
+    return catalog.published_name
 
-    skills_root = payload.get("skills_root", ".")
-    if not isinstance(skills_root, str) or not skills_root:
-        raise _index_read_error()
-    root_path = PurePosixPath(skills_root)
-    if (
-        root_path.is_absolute()
-        or "\\" in skills_root
-        or any(part == ".." for part in root_path.parts)
-    ):
-        raise _index_read_error()
+
+def _published_skills_root(entry: ContributionLockfileEntry) -> str:
     try:
-        PurePosixPath(skill_path).relative_to(root_path)
+        selector = PurePosixPath(
+            ContributionSkillReference.parse(entry.requirement).skill_selector,
+        )
+        skill_path = PurePosixPath(entry.skill_path)
     except ValueError as err:
-        raise _index_read_error() from err
-    return skills_root
+        raise _provenance_error() from err
+    selector_depth = len(selector.parts)
+    if skill_path.parts[-selector_depth:] != selector.parts:
+        raise _provenance_error()
+    root_parts = skill_path.parts[:-selector_depth]
+    return PurePosixPath(*root_parts).as_posix() if root_parts else "."
+
+
+def _checkout_error() -> ContributionIndexRegenerationError:
+    message = (
+        "contribution checkout could not be used safely; "
+        "contribution commit was not created"
+    )
+    return ContributionIndexRegenerationError(message)
 
 
 def _index_read_error() -> ContributionIndexRegenerationError:
     message = (
         "existing index metadata could not be read safely; "
+        "contribution commit was not created"
+    )
+    return ContributionIndexRegenerationError(message)
+
+
+def _provenance_error() -> ContributionIndexRegenerationError:
+    message = (
+        "contribution provenance does not identify a catalog root; "
         "contribution commit was not created"
     )
     return ContributionIndexRegenerationError(message)

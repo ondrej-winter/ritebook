@@ -93,6 +93,24 @@ class FilesystemSkillHeaderDiscovery:
             issues=issues,
         )
 
+    def read_header(
+        self,
+        skill_file: str,
+        expected_name: str,
+    ) -> ParsedSkillHeader | SkillValidationIssue:
+        """Parse one explicit skill file without catalog discovery."""
+        try:
+            return parse_skill_header(
+                Path(skill_file),
+                relative_skill_file=skill_file,
+                expected_name=expected_name,
+            )
+        except SkillFileReadError:
+            return SkillValidationIssue(
+                skill_file=skill_file,
+                message="skill file must be readable UTF-8 text.",
+            )
+
 
 def _parse_candidates(
     candidates: list[DiscoveredNamedFile],

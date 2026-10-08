@@ -3,14 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 1.4
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6, 2026 secure and deterministic validation decisions.
-- Accepted by / on: User / 2026-10-06
+- Revision: 1.5
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 validation decisions.
+- Accepted by / on: User / 2026-10-07
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-06
+- Last reviewed: 2026-10-07
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
-- Associated ADRs: [ADR 0002](../adr/0002-adopt-agent-skills-as-canonical-skill-schema.md) and [ADR 0003](../adr/0003-publish-from-validated-skill-snapshots.md)
+- Associated ADRs: [ADR 0002](../adr/0002-adopt-agent-skills-as-canonical-skill-schema.md), [ADR 0003](../adr/0003-publish-from-validated-skill-snapshots.md), and [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
 - Supersedes: None
 
 ## Objective and Context
@@ -48,7 +48,7 @@ modifying publisher or consumer state.
 
 ## Requirements
 
-The following requirement groups define the normative linter contract of revision 1.4.
+The following requirement groups define the normative linter contract of revision 1.5.
 
 ### R1 — Validation workflow
 
@@ -134,11 +134,11 @@ Validation requirements:
 - The shared catalog contract separately requires Ritebook catalog path segments
   to be canonical ASCII identifiers.
 - `description` is required and is a non-whitespace string of at most 1024
-  characters.
+  characters after trimming leading and trailing whitespace.
 - Describing both what the skill does and when to use it is authoring guidance,
   not a deterministic validity rule.
-- `description` contains no C0, DEL, or C1 control characters. Ordinary Unicode
-  text remains valid and is preserved.
+- The normalized trimmed `description` contains no C0, DEL, C1, or surrogate code
+  points. Ordinary Unicode scalar text remains valid and is preserved.
 - `license` is optional. When present, it is a string naming the license or a
   bundled license file.
 - `compatibility` is optional. When present, it is a non-empty string of at most
@@ -208,11 +208,17 @@ conventional-commits/SKILL.md: metadata values must be strings.
 - Each snapshot contains the catalog-relative path, validated name,
   catalog-relative skill-file path, and normalized description derived from the
   same parsed header that passed validation.
+- The normalized description is the trimmed value used for length, control, and
+  snapshot validation.
 - Any discovery, path, read, parse, or header issue causes the result to expose no
   validated snapshots; partial publication input is prohibited.
 - A successful empty catalog returns an empty snapshot.
 - Publisher prechecks may map this application snapshot to publisher-owned DTOs,
   but must not rediscover files or reparse frontmatter.
+- The linter publishes a single-file application API that accepts one explicit
+  `SKILL.md` path and expected name, applies the same parsing and portable-header
+  rules, and returns either deterministic issues or the validated name and
+  normalized description. It does not apply catalog discovery or path-depth rules.
 
 ## Implementation and Verification Evidence
 
@@ -291,11 +297,12 @@ conventional-commits/SKILL.md: metadata values must be strings.
 | ID | Requirement | Conditions and action | Expected observable result | Verification method |
 | --- | --- | --- | --- | --- |
 | AC1 | R1 | Run `skills lint` with a valid, empty, invalid, deeply nested, symlink-containing, or unreadable root. | Regular candidates are counted, empty roots succeed, traversal has no recursion cap, visible candidate symlinks fail without being followed, invalid candidates or root inspection failures exit non-zero, and no publisher or consumer state is written. | Application, discovery-adapter, and CLI tests. |
-| AC2 | R2 | Validate minimal headers, supported optional fields, flat string metadata, duplicate keys, exact and over-limit frontmatter, malformed values, and catalog/path mismatches. | Agent Skills-compatible values pass; 65,536-byte frontmatter passes; over-limit, duplicate, unsupported, malformed, nested, or mismatched values fail with path-scoped findings. | Header-validator and frontmatter-adapter tests. |
+| AC2 | R2 | Validate minimal headers, supported optional fields, flat string metadata, duplicate keys, exact and over-limit frontmatter, malformed values, whitespace-padded descriptions, surrogate values, and catalog/path mismatches. | Agent Skills-compatible values pass; descriptions are trimmed before length and snapshot use; 65,536-byte frontmatter passes; over-limit, duplicate, unsupported, malformed, nested, surrogate, or mismatched values fail with path-scoped findings. | Header-validator and frontmatter-adapter tests. |
 | AC3 | R3 | Render multiple validation, parse, read, UTF-8, symlink, and control-character failures. | Findings use stable path/message ordering, controls are visible ASCII escapes, ordinary Unicode is preserved, and raw skill contents are not emitted. | Application ordering and CLI rendering tests. |
 | AC4 | R4 | Lint a valid, invalid, or empty catalog and pass the result through the publisher precheck. | Successful regular candidates produce the exact deterministic snapshot, failures produce no partial snapshot, empty catalogs produce an empty snapshot, and no second discovery or parse occurs. | Linter application, precheck adapter, and publisher application tests. |
 | AC5 | R1-R4 | Publisher or contribution validation receives linter failure. | The same validation rules apply and the caller cannot publish or commit invalid skill content. | Publisher and contribution adapter tests. |
 | AC6 | R1-R4 | Execute the focused linter unit suite. | Application, adapter, and CLI behaviors represented by this specification pass without live network or global-state dependencies. | `uv run pytest tests/unit/features/skill_linter`. |
+| AC7 | R2-R4 | Validate one explicit committed `SKILL.md` through the application API. | The result uses the same header parser, name checks, normalized description, and deterministic issues as catalog linting without running catalog discovery. | Single-file linter application and adapter tests. |
 
 ## Assumptions
 
@@ -324,6 +331,10 @@ None.
   65,536-byte UTF-8 bound, rejected duplicate keys and visible candidate
   symlinks, required iterative traversal, clarified advisory field-quality rules
   and path/message diagnostics, and added the validated publication snapshot.
-- Implementation and repository quality gates completed on October 6, 2026.
+- October 7, 2026: Revision 1.5 made trimmed descriptions the validated snapshot
+  value, rejected surrogate code points, and added the published single-file
+  validation API required by installation.
+- October 7, 2026: Marked revision 1.5 implemented after normalized-description,
+  surrogate-rejection, catalog-snapshot, and single-file validation tests passed.
   Changes to the adopted header schema, catalog model, or snapshot ownership
   require specification and ADR review as described above.

@@ -12,6 +12,11 @@ from ritebook.features.skill_linter.application.dtos.skill_validation import (
     SkillValidationIssue,
     SkillValidationReport,
 )
+from ritebook.features.skill_linter.application.dtos.validate_skill_file import (
+    ValidatedSkillFile,
+    ValidateSkillFileCommand,
+    ValidateSkillFileResult,
+)
 
 __all__ = [
     "FrontmatterMapping",
@@ -21,5 +26,8 @@ __all__ = [
     "SkillHeaderDiscoveryResult",
     "SkillValidationIssue",
     "SkillValidationReport",
+    "ValidateSkillFileCommand",
+    "ValidateSkillFileResult",
     "ValidatedSkill",
+    "ValidatedSkillFile",
 ]

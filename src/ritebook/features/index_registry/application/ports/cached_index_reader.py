@@ -11,5 +11,9 @@ if TYPE_CHECKING:
 class CachedIndexReaderPort(Protocol):
     """Outbound dependency for reading local cached index skill entries."""
 
-    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
-        """Read validated skill summaries from a cached index path."""
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[CachedSkillSummary, ...]:
+        """Verify and read skill summaries from a cached index path."""

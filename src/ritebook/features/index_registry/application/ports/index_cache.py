@@ -21,7 +21,7 @@ class IndexCachePort(Protocol):
         self,
         *,
         name: str,
-        content: str,
+        content: bytes,
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,

@@ -1,6 +1,7 @@
 """Application ports for skill installation workflows."""
 
 from ritebook.features.skill_installation.application.ports import (
+    committed_skill_validator,
     install_from_requirements,
     installation_transaction,
 )
@@ -27,10 +28,12 @@ from ritebook.features.skill_installation.application.ports.skill_source import 
 )
 
 InstallFromRequirementsPort = install_from_requirements.InstallFromRequirementsPort
+CommittedSkillValidatorPort = committed_skill_validator.CommittedSkillValidatorPort
 InstallationTransaction = installation_transaction.InstallationTransaction
 InstallationTransactionPort = installation_transaction.InstallationTransactionPort
 
 __all__ = [
+    "CommittedSkillValidatorPort",
     "IndexRefresherPort",
     "InstallFromRequirementsPort",
     "InstallSkillPort",

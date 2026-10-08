@@ -1,4 +1,5 @@
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     CachedSkillSummary,
     IndexSourceType,
     PreparedIndexSource,
@@ -65,7 +66,7 @@ class FakeIndexReader:
             published_name="company-skills",
             schema_version=1,
             skill_count=2,
-            cacheable_content='{"schema_version":1}\n',
+            cacheable_content=b'{"schema_version":1}\n',
             index_digest=INDEX_DIGEST,
         )
         self.failures = failures or {}
@@ -95,10 +96,14 @@ class FakeCachedIndexReader:
         skills_by_path: dict[str, tuple[CachedSkillSummary, ...]] | None = None,
     ) -> None:
         self.skills_by_path = skills_by_path or {}
-        self.read_paths: list[str] = []
+        self.read_calls: list[tuple[str, str]] = []
 
-    def read_skills(self, cached_index_path: str) -> tuple[CachedSkillSummary, ...]:
-        self.read_paths.append(cached_index_path)
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[CachedSkillSummary, ...]:
+        self.read_calls.append((cached_index_path, index_digest))
         return self.skills_by_path.get(cached_index_path, ())
 
 
@@ -131,8 +136,9 @@ class FakeRegistry:
 
 
 class FakeCache:
-    def __init__(self) -> None:
-        self.write_calls: list[tuple[str, str, str, str | None, str | None]] = []
+    def __init__(self, *, discard_error: Exception | None = None) -> None:
+        self.discard_error = discard_error
+        self.write_calls: list[tuple[str, bytes, str, str | None, str | None]] = []
         self.discard_calls: list[tuple[str, str, str | None]] = []
 
     def cached_index_path(
@@ -149,7 +155,7 @@ class FakeCache:
         self,
         *,
         name: str,
-        content: str,
+        content: bytes,
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,
@@ -171,12 +177,15 @@ class FakeCache:
         cache_root: str | None,
     ) -> None:
         self.discard_calls.append((name, cached_index_path, cache_root))
+        if self.discard_error is not None:
+            raise self.discard_error
 
 
 def registered_index(
     *,
     name: str = "company-skills",
     published_name: str = "company-skills",
+    alias_origin: AliasOrigin = AliasOrigin.PUBLISHED_NAME,
     source: str = "git@example.com:company/skills.git",
     source_type: IndexSourceType = IndexSourceType.GIT_URL,
     source_cache_path: str | None = "/cache/git/source-id",
@@ -191,6 +200,7 @@ def registered_index(
     return RegisteredIndex(
         name=name,
         published_name=published_name,
+        alias_origin=alias_origin,
         source=source,
         source_type=source_type,
         source_revision=source_revision,

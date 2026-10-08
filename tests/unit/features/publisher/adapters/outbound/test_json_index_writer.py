@@ -143,6 +143,21 @@ def test_json_index_writer_preserves_existing_file_when_serialization_fails(
     assert temporary_index_paths(tmp_path) == []
 
 
+def test_json_index_writer_rejects_payload_above_shared_size_limit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = tmp_path / "ritebook-index.json"
+    output_path.write_text("old content", encoding="utf-8")
+    monkeypatch.setattr(writer, "MAX_STRICT_JSON_INPUT_BYTES", 100)
+
+    with pytest.raises(PublishIndexWriteError):
+        JsonIndexWriter().write_index(empty_catalog(), str(output_path))
+
+    assert output_path.read_text(encoding="utf-8") == "old content"
+    assert temporary_index_paths(tmp_path) == []
+
+
 def test_json_index_writer_preserves_existing_file_when_temporary_write_fails(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from ritebook.features.index_registry.application.dtos import (
     AddIndexCommand,
     AddIndexResult,
+    AliasOrigin,
     RegisteredIndex,
 )
 from ritebook.features.index_registry.application.errors import (
@@ -72,6 +73,11 @@ class AddIndex(AddIndexPort):
         entry = RegisteredIndex(
             name=local_alias,
             published_name=published_index.published_name,
+            alias_origin=(
+                AliasOrigin.EXPLICIT
+                if command.alias is not None
+                else AliasOrigin.PUBLISHED_NAME
+            ),
             source=prepared_source.source,
             source_type=prepared_source.source_type,
             source_revision=prepared_source.source_revision,
@@ -94,6 +100,13 @@ class AddIndex(AddIndexPort):
                         cache_root=command.cache_root,
                     )
             raise
+        if existing is not None and cached_index_path != existing.cached_index_path:
+            with suppress(IndexCacheError):
+                self._cache.discard_index(
+                    name=local_alias,
+                    cached_index_path=existing.cached_index_path,
+                    cache_root=command.cache_root,
+                )
         return AddIndexResult(
             name=local_alias,
             skill_count=published_index.skill_count,

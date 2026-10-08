@@ -84,6 +84,32 @@ def test_lint_skills_succeeds_with_zero_discovered_headers() -> None:
     assert result.validated_skills == ()
 
 
+def test_lint_skills_snapshot_uses_trimmed_description() -> None:
+    header = _valid_header("alpha")
+    header = ParsedSkillHeader(
+        skill_file=header.skill_file,
+        expected_name=header.expected_name,
+        frontmatter={
+            "name": "alpha",
+            "description": "  alpha skill.  ",
+        },
+    )
+    use_case = LintSkills(
+        header_discovery=FakeHeaderDiscovery(
+            SkillHeaderDiscoveryResult.create(
+                discovered_skill_count=1,
+                headers=[header],
+                issues=[],
+            ),
+        ),
+        header_validator=ValidateSkillHeaders(),
+    )
+
+    result = use_case.execute(LintSkillsCommand(skills_root="skills"))
+
+    assert result.validated_skills[0].description == "alpha skill."
+
+
 def test_lint_skills_returns_adapter_and_validation_issues_deterministically() -> None:
     discovery = FakeHeaderDiscovery(
         SkillHeaderDiscoveryResult.create(

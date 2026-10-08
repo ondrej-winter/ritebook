@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from ritebook.features.skill_installation.application.dtos import (
+    CommittedSkillHeader,
     GeneratedStateFile,
     InstallableSkill,
     InstallationOperationPaths,
@@ -23,6 +24,7 @@ from ritebook.features.skill_installation.application.dtos import (
     TargetInspection,
 )
 from ritebook.features.skill_installation.application.errors import (
+    CommittedSkillMetadataMismatchError,
     UnmanagedInstallTargetError,
 )
 from ritebook.features.skill_installation.application.use_cases import (
@@ -39,14 +41,18 @@ def test_direct_install_establishes_ownership_after_transactional_placement(
     target = tmp_path / "skills" / "code-review"
     index = registered_skill_index(name="platform-skills")
     catalog = _Catalog(index=index, skills=(installable_skill(),))
+    order: list[str] = []
     installer = _Installer(
         inspections={str(target): _inspection(target, exists=False)},
+        order=order,
     )
+    validator = _CommittedSkillValidator(order=order)
     state = _StateAdapter(direct_root=tmp_path / "state")
     transactions = _Transactions()
     use_case = InstallSkill(
         catalog=catalog,
         source_resolver=_SourceResolver(),
+        committed_skill_validator=validator,
         installer=installer,
         state=state,
         transactions=transactions,
@@ -67,6 +73,48 @@ def test_direct_install_establishes_ownership_after_transactional_placement(
     ]
     assert transactions.transaction.committed_files == (state.last_ownership_file,)
     assert state.read_calls == [state.direct_paths(None).ownership_path]
+    assert order == ["validate", "plan"]
+
+
+def test_direct_install_rejects_committed_header_mismatch_before_target_planning(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "skills" / "code-review"
+    installer = _Installer(
+        inspections={str(target): _inspection(target, exists=False)},
+    )
+    transactions = _Transactions()
+    use_case = InstallSkill(
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(description="Indexed description."),),
+        ),
+        source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(
+            headers={
+                "code-review": CommittedSkillHeader(
+                    name="code-review",
+                    description="Different committed description.",
+                ),
+            },
+        ),
+        installer=installer,
+        state=_StateAdapter(direct_root=tmp_path / "state"),
+        transactions=transactions,
+    )
+
+    with pytest.raises(CommittedSkillMetadataMismatchError, match="does not match"):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="platform-skills/code-review",
+                target=str(target),
+            ),
+        )
+
+    assert installer.plan_calls == []
+    assert installer.stage_calls == []
+    assert transactions.transaction.replace_calls == []
+    assert transactions.transaction.committed_files == ()
 
 
 def test_direct_install_force_refuses_unmanaged_existing_target(tmp_path: Path) -> None:
@@ -78,6 +126,7 @@ def test_direct_install_force_refuses_unmanaged_existing_target(tmp_path: Path) 
     use_case = InstallSkill(
         catalog=_Catalog(index=index, skills=(installable_skill(),)),
         source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(),
         installer=installer,
         state=_StateAdapter(direct_root=tmp_path / "state"),
         transactions=_Transactions(),
@@ -92,6 +141,63 @@ def test_direct_install_force_refuses_unmanaged_existing_target(tmp_path: Path) 
             ),
         )
 
+    assert installer.stage_calls == []
+
+
+def test_sync_validates_every_selected_header_before_planning_any_target(
+    tmp_path: Path,
+) -> None:
+    index = registered_skill_index(name="platform-skills")
+    reader = _RequirementsReader(
+        SkillRequirements(
+            targets={"agents": ".agents/skills"},
+            skills=(
+                SkillRequirement(name="platform-skills/code-review", target="agents"),
+                SkillRequirement(
+                    name="platform-skills/security-review", target="agents"
+                ),
+            ),
+        ),
+    )
+    installer = _Installer(inspections={})
+    validator = _CommittedSkillValidator(
+        headers={
+            "code-review": CommittedSkillHeader(
+                name="code-review",
+                description="Helps with code-review workflows.",
+            ),
+            "security-review": CommittedSkillHeader(
+                name="security-review",
+                description="Different committed description.",
+            ),
+        },
+    )
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=reader,
+        catalog=_Catalog(
+            index=index,
+            skills=(
+                installable_skill(),
+                installable_skill(name="security-review"),
+            ),
+        ),
+        committed_skill_validator=validator,
+        installer=installer,
+    )
+
+    with pytest.raises(CommittedSkillMetadataMismatchError, match="does not match"):
+        use_case.execute(
+            InstallFromRequirementsCommand(
+                requirements_file=str(tmp_path / "ritebook.toml"),
+            ),
+        )
+
+    assert [skill.name for _, skill in validator.calls] == [
+        "code-review",
+        "security-review",
+    ]
+    assert installer.plan_calls == []
     assert installer.stage_calls == []
 
 
@@ -413,7 +519,12 @@ class _Catalog:
             self.order.append("get")
         return self.indexes.get(name)
 
-    def read_skills(self, cached_index_path: str) -> tuple[InstallableSkill, ...]:
+    def read_skills(
+        self,
+        cached_index_path: str,
+        index_digest: str,
+    ) -> tuple[InstallableSkill, ...]:
+        del index_digest
         if self.order is not None:
             self.order.append("read")
         return self.skills_by_index.get(cached_index_path, self.skills)
@@ -434,12 +545,50 @@ class _SourceResolver:
         )
 
 
+class _CommittedSkillValidator:
+    def __init__(
+        self,
+        *,
+        headers: dict[str, CommittedSkillHeader] | None = None,
+        order: list[str] | None = None,
+    ) -> None:
+        self.headers = headers or {}
+        self.order = order
+        self.calls: list[tuple[ResolvedSkillSource, InstallableSkill]] = []
+
+    def validate(
+        self,
+        source: ResolvedSkillSource,
+        skill: InstallableSkill,
+    ) -> CommittedSkillHeader:
+        self.calls.append((source, skill))
+        if self.order is not None:
+            self.order.append("validate")
+        return self.headers.get(
+            skill.name,
+            CommittedSkillHeader(
+                name=skill.name,
+                description=skill.description,
+            ),
+        )
+
+
 class _Installer:
-    def __init__(self, *, inspections: dict[str, TargetInspection]) -> None:
+    def __init__(
+        self,
+        *,
+        inspections: dict[str, TargetInspection],
+        order: list[str] | None = None,
+    ) -> None:
         self.inspections = inspections
+        self.order = order
+        self.plan_calls: list[str] = []
         self.stage_calls: list[str] = []
 
     def plan_target(self, target: str) -> PlannedInstallTarget:
+        self.plan_calls.append(target)
+        if self.order is not None:
+            self.order.append("plan")
         return PlannedInstallTarget(
             requested_target=target,
             canonical_target=str(Path(target).resolve(strict=False)),
@@ -604,6 +753,7 @@ def _sync_use_case(
     *,
     reader: _RequirementsReader,
     catalog: _Catalog | None = None,
+    committed_skill_validator: _CommittedSkillValidator | None = None,
     refresher: _Refresher | None = None,
     installer: _Installer | None = None,
     state: _StateAdapter | None = None,
@@ -614,6 +764,9 @@ def _sync_use_case(
         index_refresher=refresher or _Refresher(),
         catalog=catalog or _Catalog(),
         source_resolver=_SourceResolver(),
+        committed_skill_validator=(
+            committed_skill_validator or _CommittedSkillValidator()
+        ),
         installer=installer or _Installer(inspections={}),
         state=state or _StateAdapter(sync_root=tmp_path / ".ritebook"),
         transactions=transactions or _Transactions(),

@@ -53,7 +53,7 @@ def test_index_regeneration_adapter_preserves_published_skills_root(
 
     assert publisher.commands == [
         PublishIndexCommand(
-            index_name="platform-skills",
+            index_name="company-skills",
             skills_root=str(checkout / "skills"),
             published_skills_root="skills",
         ),
@@ -62,15 +62,110 @@ def test_index_regeneration_adapter_preserves_published_skills_root(
     assert Path.cwd() == original_directory
 
 
-def test_index_regeneration_adapter_rejects_symlinked_index_before_publishing(
+def test_index_regeneration_adapter_preserves_publisher_name_not_local_alias(
     tmp_path: Path,
 ) -> None:
     publisher = FakePublisher()
     workspace = contribution_workspace(tmp_path)
-    index_path = Path(workspace.checkout_path) / "ritebook-index.json"
+
+    PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+        contribution_entry(),
+        workspace,
+    )
+
+    assert publisher.commands[0].index_name == "company-skills"
+
+
+def test_index_regeneration_adapter_uses_provenance_root_not_existing_index_root(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    workspace = contribution_workspace(tmp_path, existing_skills_root="other-skills")
+
+    PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+        contribution_entry(),
+        workspace,
+    )
+
+    assert publisher.commands[0].published_skills_root == "skills"
+
+
+def test_index_regeneration_adapter_derives_root_from_nested_selector(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+
+    PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+        contribution_entry(
+            requirement="platform-skills/quality/code-review",
+            skill_path="catalog/skills/quality/code-review",
+        ),
+        contribution_workspace(tmp_path),
+    )
+
+    assert publisher.commands == [
+        PublishIndexCommand(
+            index_name="company-skills",
+            skills_root=str(
+                Path(contribution_workspace(tmp_path).checkout_path) / "catalog/skills"
+            ),
+            published_skills_root="catalog/skills",
+        ),
+    ]
+
+
+def test_index_regeneration_adapter_rejects_inconsistent_provenance(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+
+    with pytest.raises(
+        ContributionIndexRegenerationError,
+        match=(
+            "contribution provenance does not identify a catalog root; "
+            "contribution commit was not created"
+        ),
+    ):
+        PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+            contribution_entry(skill_path="skills/security-review"),
+            contribution_workspace(tmp_path),
+        )
+
+    assert publisher.commands == []
+
+
+def test_index_regeneration_adapter_rejects_missing_existing_index(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    workspace = contribution_workspace(tmp_path)
+    (Path(workspace.checkout_path) / "ritebook-index.json").unlink()
+
+    with pytest.raises(
+        ContributionIndexRegenerationError,
+        match=(
+            "existing index metadata could not be read safely; "
+            "contribution commit was not created"
+        ),
+    ):
+        PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+            contribution_entry(),
+            workspace,
+        )
+
+    assert publisher.commands == []
+
+
+def test_index_regeneration_adapter_rejects_symlinked_existing_index(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    workspace = contribution_workspace(tmp_path)
+    checkout = Path(workspace.checkout_path)
+    index_path = checkout / "ritebook-index.json"
     external_index = tmp_path / "external-index.json"
-    external_content = json.dumps({"skills_root": "skills"})
-    external_index.write_text(external_content, encoding="utf-8")
+    external_content = _index_content()
+    external_index.write_bytes(external_content)
     index_path.unlink()
     index_path.symlink_to(external_index)
 
@@ -87,7 +182,31 @@ def test_index_regeneration_adapter_rejects_symlinked_index_before_publishing(
         )
 
     assert publisher.commands == []
-    assert external_index.read_text(encoding="utf-8") == external_content
+    assert external_index.read_bytes() == external_content
+
+
+def test_index_regeneration_adapter_rejects_non_strict_existing_index(
+    tmp_path: Path,
+) -> None:
+    publisher = FakePublisher()
+    workspace = contribution_workspace(tmp_path)
+    (Path(workspace.checkout_path) / "ritebook-index.json").write_bytes(
+        b'{"schema_version":1,"schema_version":1}',
+    )
+
+    with pytest.raises(
+        ContributionIndexRegenerationError,
+        match=(
+            "existing index metadata could not be read safely; "
+            "contribution commit was not created"
+        ),
+    ):
+        PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
+            contribution_entry(),
+            workspace,
+        )
+
+    assert publisher.commands == []
 
 
 def test_index_regeneration_adapter_rejects_symlinked_checkout_ancestor(
@@ -97,10 +216,6 @@ def test_index_regeneration_adapter_rejects_symlinked_checkout_ancestor(
     real_root = tmp_path / "real-contributions"
     real_checkout = real_root / "platform-skills-code-review"
     real_checkout.mkdir(parents=True)
-    (real_checkout / "ritebook-index.json").write_text(
-        json.dumps({"skills_root": "skills"}),
-        encoding="utf-8",
-    )
     linked_root = tmp_path / "linked-contributions"
     linked_root.symlink_to(real_root, target_is_directory=True)
     workspace = ContributionWorkspace(
@@ -114,7 +229,7 @@ def test_index_regeneration_adapter_rejects_symlinked_checkout_ancestor(
     with pytest.raises(
         ContributionIndexRegenerationError,
         match=(
-            "existing index metadata could not be read safely; "
+            "contribution checkout could not be used safely; "
             "contribution commit was not created"
         ),
     ):
@@ -178,9 +293,13 @@ def test_index_regeneration_adapter_converts_publisher_failure_without_details(
     assert "private index output details" not in str(exc_info.value)
 
 
-def contribution_entry() -> ContributionLockfileEntry:
+def contribution_entry(
+    *,
+    requirement: str = "platform-skills/code-review",
+    skill_path: str = "skills/code-review",
+) -> ContributionLockfileEntry:
     return ContributionLockfileEntry(
-        requirement="platform-skills/code-review",
+        requirement=requirement,
         index_name="platform-skills",
         skill_name="code-review",
         target=".agents/skills/code-review",
@@ -188,19 +307,22 @@ def contribution_entry() -> ContributionLockfileEntry:
         source_type="git_url",
         source_revision="a" * 40,
         index_digest=f"sha256:{'b' * 64}",
-        skill_path="skills/code-review",
-        skill_file="skills/code-review/SKILL.md",
+        skill_path=skill_path,
+        skill_file=f"{skill_path}/SKILL.md",
         index_schema_version=1,
         installed_tree_digest=f"sha256:{'c' * 64}",
     )
 
 
-def contribution_workspace(tmp_path: Path) -> ContributionWorkspace:
+def contribution_workspace(
+    tmp_path: Path,
+    *,
+    existing_skills_root: str = "skills",
+) -> ContributionWorkspace:
     checkout = tmp_path / "contributions" / "platform-skills-code-review"
-    checkout.mkdir(parents=True)
-    (checkout / "ritebook-index.json").write_text(
-        json.dumps({"skills_root": "skills"}),
-        encoding="utf-8",
+    checkout.mkdir(parents=True, exist_ok=True)
+    (checkout / "ritebook-index.json").write_bytes(
+        _index_content(skills_root=existing_skills_root),
     )
     return ContributionWorkspace(
         checkout_path=str(checkout),
@@ -209,3 +331,22 @@ def contribution_workspace(tmp_path: Path) -> ContributionWorkspace:
         locked_revision="abc123",
         has_usable_origin=True,
     )
+
+
+def _index_content(*, skills_root: str = "skills") -> bytes:
+    return json.dumps(
+        {
+            "schema_version": 1,
+            "index": {"name": "company-skills"},
+            "generated_at": "2026-07-08T18:00:00Z",
+            "skills_root": skills_root,
+            "skills": [
+                {
+                    "name": "code-review",
+                    "path": "code-review",
+                    "skill_file": "code-review/SKILL.md",
+                    "description": "Helps review code.",
+                },
+            ],
+        },
+    ).encode()

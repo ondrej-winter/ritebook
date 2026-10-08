@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     IndexSourceType,
     RegisteredIndex,
 )
@@ -121,14 +122,18 @@ def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:
         raise IndexRegistryPersistenceError(msg) from err
     source = str(payload["source"])
     source_type = IndexSourceType(str(payload["source_type"]))
+    name = str(payload["name"])
+    published_name = str(payload["published_name"])
+    alias_origin = _alias_origin(payload, name=name, published_name=published_name)
     try:
         require_safe_persisted_source(source, source_type.value)
     except ValueError as err:
         msg = "index registry contains an unsafe Git source; remove and regenerate it"
         raise IndexRegistryPersistenceError(msg) from err
     return RegisteredIndex(
-        name=str(payload["name"]),
-        published_name=str(payload["published_name"]),
+        name=name,
+        published_name=published_name,
+        alias_origin=alias_origin,
         source=source,
         source_type=source_type,
         source_revision=source_revision,
@@ -151,6 +156,7 @@ def _entry_to_json(entry: RegisteredIndex) -> dict[str, Any]:
     return {
         "name": entry.name,
         "published_name": entry.published_name,
+        "alias_origin": entry.alias_origin.value,
         "source": entry.source,
         "source_type": entry.source_type.value,
         "source_revision": entry.source_revision,
@@ -162,3 +168,17 @@ def _entry_to_json(entry: RegisteredIndex) -> dict[str, Any]:
         "added_at": entry.added_at,
         "updated_at": entry.updated_at,
     }
+
+
+def _alias_origin(
+    payload: dict[str, Any],
+    *,
+    name: str,
+    published_name: str,
+) -> AliasOrigin:
+    raw_origin = payload.get("alias_origin")
+    if raw_origin is None:
+        if name == published_name:
+            return AliasOrigin.PUBLISHED_NAME
+        return AliasOrigin.EXPLICIT
+    return AliasOrigin(str(raw_origin))

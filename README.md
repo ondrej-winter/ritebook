@@ -525,24 +525,33 @@ Python Semantic Release to:
 2. bump `pyproject.toml` from `0.1.x` to the next patch version,
 3. update `uv.lock` to the same package version,
 4. commit both version files together in a release commit,
-5. atomically retain that release commit under the matching `v0.1.x` tag and
-   dedicated `releases/v0.1.x` branch without pushing it to protected `master`,
+5. atomically push that release commit to `master` with the matching `v0.1.x`
+   tag,
 6. publish a GitHub release without maintaining a changelog, and
 7. publish the built distributions to PyPI in the same workflow run.
 
-The version tag and its dedicated release branch identify the exact generated
-source commit used for the GitHub and PyPI release, while `master` remains on the
-already-tested change commit.
-When the project is ready to move beyond patch-only `0.1.x` releases, the same
-Semantic Release tooling can be used for normal commit-derived SemVer releases.
+The release commit becomes the new `master` head, keeping repository metadata in
+sync with Git tags and published packages. Its push triggers a verification-only
+CI run: quality and Docker E2E checks still execute, while the release job skips
+commits whose message starts with `release: bump version to` to prevent a release
+loop. When the project is ready to move beyond patch-only `0.1.x` releases, the
+same Semantic Release tooling can be used for normal commit-derived SemVer
+releases.
 
 The default branch requires the stable `Quality checks` and `Docker E2E` status
 checks. The repository owner retains an explicit ruleset bypass for the current
-solo-maintainer direct-push workflow; CI verifies each accepted push, and the
-release job still waits for both checks to pass. Other actors and pull requests
-remain subject to the required checks. After both prerequisite jobs succeed, the
-release workflow atomically pushes the generated version tag and a dedicated
-`releases/v0.1.x` branch, so it does not need to update the protected branch.
+solo-maintainer direct-push workflow; other actors and pull requests remain
+subject to the required checks. The release job uses a short-lived installation
+token from the repository-scoped release GitHub App, which has an explicit
+`Master` ruleset bypass. Before generating a release, the job verifies that
+`origin/master` still identifies the triggering commit. It then uses a non-force,
+atomic push for the generated release commit and tag, so a concurrent update fails
+without partially publishing Git refs.
+
+The GitHub App client ID is stored in the repository variable
+`RITEBOOK_RELEASE_APP_CLIENT_ID`; its private key is stored as the `pypi`
+environment secret `RITEBOOK_RELEASE_APP_PRIVATE_KEY`. The app must remain
+installed only on this repository with `Contents: read and write` permission.
 
 Publishing uses PyPI Trusted Publishing through GitHub Actions OIDC. Before the
 first release, configure a trusted publisher for this repository in the PyPI

@@ -76,22 +76,43 @@ jobs:
 
   patch-release:
     name: Create patch release and publish to PyPI
-    if: github.event_name == 'push'
+    if: >-
+      github.event_name == 'push' &&
+      !startsWith(github.event.head_commit.message, 'release: bump version to ')
     needs: [quality, docker-e2e]
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/project/ritebook/
     permissions:
-      contents: write
+      contents: read
       id-token: write
 
     steps:
+      - name: Create release app token
+        id: release-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.RITEBOOK_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RITEBOOK_RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - name: Check out repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.release-token.outputs.token }}
+
+      - name: Verify release source is current master
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin master
+          actual_sha="$(git rev-parse refs/remotes/origin/master)"
+          if [[ "$actual_sha" != "$EXPECTED_SHA" ]]; then
+            echo "::error::master advanced from $EXPECTED_SHA to $actual_sha before release"
+            exit 1
+          fi
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6
@@ -107,14 +128,18 @@ jobs:
         run: uv sync --frozen --group dev
 
       - name: Configure release author
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          RELEASE_APP_SLUG: ${{ steps.release-token.outputs.app-slug }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          app_user_id="$(gh api "/users/${RELEASE_APP_SLUG}[bot]" --jq .id)"
+          git config user.name "${RELEASE_APP_SLUG}[bot]"
+          git config user.email "${app_user_id}+${RELEASE_APP_SLUG}[bot]@users.noreply.github.com"
 
       - name: Create patch release commit and tag
         id: release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
         run: |
           uv run semantic-release version \
             --patch \
@@ -123,17 +148,17 @@ jobs:
             --no-vcs-release
           echo "tag=$(git describe --tags --exact-match HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Push release branch and tag
+      - name: Push release commit and tag
         env:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |-
           git push --atomic origin \
-            "HEAD:refs/heads/releases/${RELEASE_TAG}" \
+            "HEAD:refs/heads/master" \
             "refs/tags/${RELEASE_TAG}"
 
       - name: Create GitHub release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
         run: >-
           gh release create "${{ steps.release.outputs.tag }}" dist/*
           --verify-tag

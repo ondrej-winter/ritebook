@@ -123,8 +123,13 @@ jobs:
             --no-vcs-release
           echo "tag=$(git describe --tags --exact-match HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Push release tag
-        run: git push origin "refs/tags/${{ steps.release.outputs.tag }}"
+      - name: Push release branch and tag
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |-
+          git push --atomic origin \
+            "HEAD:refs/heads/releases/${RELEASE_TAG}" \
+            "refs/tags/${RELEASE_TAG}"
 
       - name: Create GitHub release
         env:

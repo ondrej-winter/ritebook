@@ -188,9 +188,7 @@ def test_sync_validates_every_selected_header_before_planning_any_target(
             targets={"agents": ".agents/skills"},
             skills=(
                 SkillRequirement(name="platform-skills/code-review", target="agents"),
-                SkillRequirement(
-                    name="platform-skills/security-review", target="agents"
-                ),
+                SkillRequirement(name="platform-skills/security-review", target="agents"),
             ),
         ),
     )
@@ -251,9 +249,7 @@ def test_sync_refreshes_referenced_aliases_before_catalog_reads(tmp_path: Path) 
             targets={"agents": ".agents/skills"},
             skills=(
                 SkillRequirement(name="platform-skills/code-review", target="agents"),
-                SkillRequirement(
-                    name="company-skills/security-review", target="agents"
-                ),
+                SkillRequirement(name="company-skills/security-review", target="agents"),
             ),
         ),
     )
@@ -293,9 +289,7 @@ def test_sync_refreshes_referenced_aliases_before_catalog_reads(tmp_path: Path) 
     )
 
     assert refresher.calls == ["company-skills", "platform-skills"]
-    first_catalog_read = min(
-        index for index, value in enumerate(order) if value == "get"
-    )
+    first_catalog_read = min(index for index, value in enumerate(order) if value == "get")
     assert all(value == "refresh" for value in order[:first_catalog_read])
 
 
@@ -310,9 +304,7 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
             targets={"agents": ".agents/skills"},
             skills=(
                 SkillRequirement(name="platform-skills/code-review", target="agents"),
-                SkillRequirement(
-                    name="platform-skills/security-review", target="agents"
-                ),
+                SkillRequirement(name="platform-skills/security-review", target="agents"),
             ),
         ),
     )
@@ -460,18 +452,12 @@ def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
         reader=_RequirementsReader(
             SkillRequirements(
                 targets={"agents": ".agents/skills"},
-                skills=(
-                    SkillRequirement(
-                        name="platform-skills/code-review", target="agents"
-                    ),
-                ),
+                skills=(SkillRequirement(name="platform-skills/code-review", target="agents"),),
             ),
         ),
         catalog=_Catalog(index=index, skills=(installable_skill(),)),
         installer=_Installer(
-            inspections={
-                str(target): _inspection(target, exists=True, digest=_TREE_DIGEST)
-            },
+            inspections={str(target): _inspection(target, exists=True, digest=_TREE_DIGEST)},
         ),
         state=state,
         transactions=transactions,
@@ -854,9 +840,7 @@ def _sync_use_case(
         index_refresher=refresher or _Refresher(),
         catalog=catalog or _Catalog(),
         source_resolver=_SourceResolver(),
-        committed_skill_validator=(
-            committed_skill_validator or _CommittedSkillValidator()
-        ),
+        committed_skill_validator=(committed_skill_validator or _CommittedSkillValidator()),
         installer=installer or _Installer(inspections={}),
         state=state or _StateAdapter(sync_root=tmp_path / ".ritebook"),
         transactions=transactions or _Transactions(),
@@ -904,11 +888,7 @@ def _owned(
 
 
 def edited_target_entry(entry: OwnedInstallation) -> dict[str, object]:
-    return {
-        field: getattr(entry, field)
-        for field in entry.__dataclass_fields__
-        if field not in {"desired", "status"}
-    }
+    return {field: getattr(entry, field) for field in entry.__dataclass_fields__ if field not in {"desired", "status"}}
 
 
 def _target_id(value: str) -> str:

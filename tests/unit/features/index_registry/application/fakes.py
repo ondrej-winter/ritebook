@@ -27,9 +27,7 @@ class FakeGitSource:
             source_branch="refs/heads/main",
         )
         self.prepare_calls: list[tuple[str, str | None, str | None]] = []
-        self.refresh_calls: list[
-            tuple[str, str | None, str | None, str | None, str | None]
-        ] = []
+        self.refresh_calls: list[tuple[str, str | None, str | None, str | None, str | None]] = []
 
     def prepare_source(
         self,

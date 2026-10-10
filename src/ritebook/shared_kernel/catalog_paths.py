@@ -105,15 +105,9 @@ def validate_catalog_paths(values: Iterable[str]) -> tuple[CatalogPath, ...]:
             )
         paths_by_value[catalog_path.value] = catalog_path
 
-    root_paths = {
-        path.value for path in catalog_paths if path.kind is CatalogPathKind.ROOT_SKILL
-    }
+    root_paths = {path.value for path in catalog_paths if path.kind is CatalogPathKind.ROOT_SKILL}
     for child_path in sorted(
-        (
-            path
-            for path in catalog_paths
-            if path.kind is CatalogPathKind.COLLECTION_CHILD
-        ),
+        (path for path in catalog_paths if path.kind is CatalogPathKind.COLLECTION_CHILD),
         key=lambda path: path.value,
     ):
         if child_path.collection in root_paths:
@@ -150,7 +144,4 @@ def _error_message(
         return f"Catalog path contains a non-canonical identifier segment: {path!r}."
     if reason is CatalogPathValidationReason.DUPLICATE_PATH:
         return f"Catalog contains duplicate skill path: {path!r}."
-    return (
-        f"Catalog node cannot be both a root skill and a collection: {path!r} "
-        f"conflicts with {related_path!r}."
-    )
+    return f"Catalog node cannot be both a root skill and a collection: {path!r} conflicts with {related_path!r}."

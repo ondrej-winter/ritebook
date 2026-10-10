@@ -32,21 +32,13 @@ def test_parse_strict_json_bytes_rejects_input_above_size_limit() -> None:
 
 
 def test_parse_strict_json_bytes_accepts_exact_nesting_depth_limit() -> None:
-    content = (
-        b"[" * MAX_STRICT_JSON_NESTING_DEPTH
-        + b"null"
-        + b"]" * MAX_STRICT_JSON_NESTING_DEPTH
-    )
+    content = b"[" * MAX_STRICT_JSON_NESTING_DEPTH + b"null" + b"]" * MAX_STRICT_JSON_NESTING_DEPTH
 
     parse_strict_json_bytes(content)
 
 
 def test_parse_strict_json_bytes_rejects_nesting_above_depth_limit() -> None:
-    content = (
-        b"[" * (MAX_STRICT_JSON_NESTING_DEPTH + 1)
-        + b"null"
-        + b"]" * (MAX_STRICT_JSON_NESTING_DEPTH + 1)
-    )
+    content = b"[" * (MAX_STRICT_JSON_NESTING_DEPTH + 1) + b"null" + b"]" * (MAX_STRICT_JSON_NESTING_DEPTH + 1)
 
     with pytest.raises(StrictJsonError) as exc_info:
         parse_strict_json_bytes(content)

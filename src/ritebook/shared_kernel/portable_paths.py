@@ -40,12 +40,8 @@ class PortablePathValidationError(ValueError):
         self.field_name = field_name
         self.reason = reason
         detail = {
-            PortablePathValidationReason.MALFORMED_PATH: (
-                "must be a literal relative POSIX path"
-            ),
-            PortablePathValidationReason.INVALID_SEGMENT: (
-                "contains a non-portable path segment"
-            ),
+            PortablePathValidationReason.MALFORMED_PATH: ("must be a literal relative POSIX path"),
+            PortablePathValidationReason.INVALID_SEGMENT: ("contains a non-portable path segment"),
         }[reason]
         super().__init__(f"{field_name} {detail}.")
 

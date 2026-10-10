@@ -14,7 +14,7 @@ from ritebook.features.skill_installation.application.errors import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
 
 def absolute_path(path: Path) -> Path:
@@ -29,7 +29,7 @@ def open_verified_directory(
     *,
     create: bool,
     label: str,
-) -> Iterator[int]:
+) -> Generator[int]:
     """Open every directory component without following symlinks."""
     absolute = absolute_path(path)
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
@@ -50,10 +50,7 @@ def open_verified_directory(
             os.close(descriptor)
             raise
     except OSError as err:
-        msg = (
-            f"{label} contains a symlink or is not a directory "
-            "and cannot be used safely"
-        )
+        msg = f"{label} contains a symlink or is not a directory and cannot be used safely"
         raise UnsafeInstallPathError(msg) from err
 
     try:

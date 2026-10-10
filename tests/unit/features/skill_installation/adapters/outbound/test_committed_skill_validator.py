@@ -55,14 +55,7 @@ def test_committed_skill_validator_maps_validated_snapshot_header(
     assert result.description == "Helps review code."
     assert linter.commands == [
         ValidateSkillFileCommand(
-            skill_file=str(
-                tmp_path
-                / "snapshot"
-                / "skills"
-                / "quality"
-                / "code-review"
-                / "SKILL.md"
-            ),
+            skill_file=str(tmp_path / "snapshot" / "skills" / "quality" / "code-review" / "SKILL.md"),
             expected_name="code-review",
         ),
     ]

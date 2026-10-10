@@ -42,11 +42,7 @@ class LintSkills(LintSkillsPort):
         discovery_result = self._header_discovery.discover_headers(command.skills_root)
         validation_report = self._header_validator.execute(discovery_result.headers)
         issues = (*discovery_result.issues, *validation_report.issues)
-        validated_skills = (
-            tuple(_validated_skill(header) for header in discovery_result.headers)
-            if not issues
-            else ()
-        )
+        validated_skills = tuple(_validated_skill(header) for header in discovery_result.headers) if not issues else ()
         return LintSkillsResult.create(
             discovered_skill_count=discovery_result.discovered_skill_count,
             issues=issues,

@@ -169,9 +169,7 @@ def test_contribution_checkout_sanitizes_commit_failure() -> None:
             "ritebook/skills-code-review-20260718201534",
         )
 
-    assert str(exc_info.value) == (
-        "git contribution commit failed; the checkout remains available for inspection"
-    )
+    assert str(exc_info.value) == ("git contribution commit failed; the checkout remains available for inspection")
     assert "secret" not in str(exc_info.value)
 
 

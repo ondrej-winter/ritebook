@@ -111,10 +111,7 @@ def test_discover_headers_reports_invalid_and_over_deep_paths_deterministically(
             "BadCollection/skill/SKILL.md: Catalog path contains a non-canonical "
             "identifier segment: 'BadCollection/skill'."
         ),
-        (
-            "collection/nested/skill/SKILL.md: Catalog path must contain one or two "
-            "segments: 'collection/nested/skill'."
-        ),
+        ("collection/nested/skill/SKILL.md: Catalog path must contain one or two segments: 'collection/nested/skill'."),
     ]
 
 

@@ -95,11 +95,7 @@ def _hash_directory(
 
         if stat.S_ISDIR(metadata.st_mode):
             _hash_record(digest, b"D", relative_path.as_posix().encode("utf-8"))
-            child_flags = (
-                os.O_RDONLY
-                | getattr(os, "O_DIRECTORY", 0)
-                | getattr(os, "O_NOFOLLOW", 0)
-            )
+            child_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
             try:
                 child_fd = os.open(name, child_flags, dir_fd=directory_fd)
             except OSError as err:
@@ -124,10 +120,7 @@ def _hash_directory(
             )
             continue
 
-        msg = (
-            "managed skill trees may contain only regular files and directories: "
-            f"{relative_path}"
-        )
+        msg = f"managed skill trees may contain only regular files and directories: {relative_path}"
         raise UnsafeInstallPathError(msg)
 
 
@@ -147,10 +140,7 @@ def _hash_regular_file(
     try:
         metadata = os.fstat(file_fd)
         if not stat.S_ISREG(metadata.st_mode):
-            msg = (
-                "managed skill trees may contain only regular files and directories: "
-                f"{relative_path}"
-            )
+            msg = f"managed skill trees may contain only regular files and directories: {relative_path}"
             raise UnsafeInstallPathError(msg)
         path_bytes = relative_path.as_posix().encode("utf-8")
         executable_bits = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH

@@ -20,10 +20,7 @@ def test_discover_skill_files_returns_sorted_filesystem_facts(tmp_path: Path) ->
 
     discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
 
-    assert [
-        (skill.directory_name, skill.relative_dir, skill.relative_file)
-        for skill in discovered
-    ] == [
+    assert [(skill.directory_name, skill.relative_dir, skill.relative_file) for skill in discovered] == [
         ("alpha", "group/alpha", "group/alpha/SKILL.md"),
         ("zeta", "zeta", "zeta/SKILL.md"),
     ]
@@ -69,10 +66,9 @@ def test_discover_skill_files_supports_root_skill_directory(tmp_path: Path) -> N
 
     discovered = discover_named_files(tmp_path, file_name=SKILL_FILE_NAME)
 
-    assert [
-        (skill.directory_name, skill.relative_dir, skill.relative_file)
-        for skill in discovered
-    ] == [(tmp_path.name, ".", "SKILL.md")]
+    assert [(skill.directory_name, skill.relative_dir, skill.relative_file) for skill in discovered] == [
+        (tmp_path.name, ".", "SKILL.md")
+    ]
 
 
 def test_discover_skill_files_rejects_missing_root(tmp_path: Path) -> None:

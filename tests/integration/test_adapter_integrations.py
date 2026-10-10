@@ -139,10 +139,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
     )
 
     assert published.published_name == "company-skills"
-    assert [
-        skill.name
-        for skill in index_reader.read_skills(cached_path, published.index_digest)
-    ] == [
+    assert [skill.name for skill in index_reader.read_skills(cached_path, published.index_digest)] == [
         "code-review",
         "test-driven-development",
     ]
@@ -174,9 +171,7 @@ def test_git_source_and_source_repository_adapters_resolve_real_git_revisions(
         source_type=prepared_local.source_type.value,
         source_revision=prepared_local.source_revision,
         source_branch=prepared_local.source_branch,
-        index_digest=(
-            f"sha256:{hashlib.sha256(prepared_local.index_content).hexdigest()}"
-        ),
+        index_digest=(f"sha256:{hashlib.sha256(prepared_local.index_content).hexdigest()}"),
         source_cache_path=prepared_local.source_cache_path,
         cached_index_path=str(repository.path / "ritebook-index.json"),
         index_schema_version=1,

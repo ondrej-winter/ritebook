@@ -79,17 +79,13 @@ def run_update_index(
         )
         return 0
     print(
-        "Updated "
-        f"{len(result.updated_indexes)} index(es) with "
-        f"{result.skill_count} total skill(s)",
+        f"Updated {len(result.updated_indexes)} index(es) with {result.skill_count} total skill(s)",
         file=stdout,
     )
     if not result.failed_indexes:
         return 0
     print(
-        "Failed to update "
-        f"{len(result.failed_indexes)} index(es): "
-        f"{', '.join(result.failed_indexes)}",
+        f"Failed to update {len(result.failed_indexes)} index(es): {', '.join(result.failed_indexes)}",
         file=stderr,
     )
     return 1
@@ -117,8 +113,7 @@ def run_list_indexes(
             safe_source_display(index.source, index.source_type),
         )
         print(
-            f"{index.name}\t{index.skill_count} skill(s)\t"
-            f"{index.source_type}\t{index.updated_at}\t{display_source}",
+            f"{index.name}\t{index.skill_count} skill(s)\t{index.source_type}\t{index.updated_at}\t{display_source}",
             file=stdout,
         )
     return 0

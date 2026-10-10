@@ -32,9 +32,7 @@ def test_docker_runner_uses_clean_installed_wheel_environment() -> None:
     assert ritebook is not None
     ritebook_executable = Path(ritebook)
     assert ritebook_executable == consumer_venv / "bin" / "ritebook"
-    assert ritebook_executable.read_text(encoding="utf-8").splitlines()[0] == (
-        f"#!{consumer_venv}/bin/python"
-    )
+    assert ritebook_executable.read_text(encoding="utf-8").splitlines()[0] == (f"#!{consumer_venv}/bin/python")
 
     import_probe = """
 import pathlib

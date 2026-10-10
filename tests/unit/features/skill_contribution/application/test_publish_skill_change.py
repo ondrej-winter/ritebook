@@ -470,9 +470,7 @@ def test_publish_skill_change_runs_changed_workflow_in_order() -> None:
     assert result.prepared_contribution.push_command == checkout.prepared.push_command
 
 
-def test_publish_skill_change_validation_failure_prevents_regeneration_and_commit() -> (
-    None
-):
+def test_publish_skill_change_validation_failure_prevents_regeneration_and_commit() -> None:
     failure = SkillContributionValidationError(
         "skill validation failed; contribution commit was not created",
     )

@@ -21,9 +21,7 @@ def require_canonical_git_branch(value: str, *, field_name: str) -> str:
         or ".." in branch
         or "@{" in branch
         or any(
-            character in invalid_characters
-            or ord(character) < _ASCII_CONTROL_CHARACTER_LIMIT
-            for character in branch
+            character in invalid_characters or ord(character) < _ASCII_CONTROL_CHARACTER_LIMIT for character in branch
         )
         or any(part.endswith(".lock") for part in branch.split("/"))
     ):

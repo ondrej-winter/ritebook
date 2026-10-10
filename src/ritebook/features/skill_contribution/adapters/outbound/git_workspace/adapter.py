@@ -91,9 +91,7 @@ class GitWorkspaceAdapter(SkillSourceWorkspacePort):
         """Initialize injectable Git and default-root boundaries."""
         self._runner = runner or _run_git
         self._binary_runner = binary_runner or _run_git_bytes
-        self._default_contribution_root = (
-            default_contribution_root or _default_contribution_root
-        )
+        self._default_contribution_root = default_contribution_root or _default_contribution_root
 
     def prepare_workspace(
         self,
@@ -220,17 +218,11 @@ def _checkout_path(
     contribution_root: str | None,
     default_root: ContributionRootResolver,
 ) -> Path:
-    root = (
-        Path(contribution_root).expanduser()
-        if contribution_root is not None
-        else default_root().expanduser()
-    )
+    root = Path(contribution_root).expanduser() if contribution_root is not None else default_root().expanduser()
     source_digest = hashlib.sha256(entry.source.encode("utf-8")).hexdigest()[:16]
     skill_digest = hashlib.sha256(entry.requirement.encode("utf-8")).hexdigest()[:8]
     skill_slug = entry.skill_path.replace("/", "-")
-    checkout_path = (
-        root / source_digest / f"{entry.index_name}-{skill_slug}-{skill_digest}"
-    )
+    checkout_path = root / source_digest / f"{entry.index_name}-{skill_slug}-{skill_digest}"
     current = root
     for part in checkout_path.relative_to(root).parts:
         current /= part

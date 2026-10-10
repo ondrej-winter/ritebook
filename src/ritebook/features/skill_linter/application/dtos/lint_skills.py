@@ -73,9 +73,7 @@ class LintSkillsResult:
         if self.issues and self.validated_skills:
             msg = "Failed lint results must not expose validated skill snapshots."
             raise ValueError(msg)
-        if not self.issues and self.discovered_skill_count != len(
-            self.validated_skills
-        ):
+        if not self.issues and self.discovered_skill_count != len(self.validated_skills):
             msg = "Successful lint result count must match validated skills."
             raise ValueError(msg)
         object.__setattr__(self, "issues", tuple(sorted(self.issues)))

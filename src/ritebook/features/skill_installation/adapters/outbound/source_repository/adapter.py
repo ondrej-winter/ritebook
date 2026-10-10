@@ -6,7 +6,7 @@ import hashlib
 import io
 import subprocess
 import tarfile
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -42,7 +42,7 @@ class SourceRepositoryAdapter:
     def open_source(
         self,
         index: RegisteredSkillIndex,
-    ) -> Iterator[ResolvedSkillSource]:
+    ) -> Generator[ResolvedSkillSource]:
         """Verify both index copies and yield the exact bound commit snapshot."""
         self._verify_cached_index(index)
         repository_path = self._repository_path(index)
@@ -134,9 +134,7 @@ class SourceRepositoryAdapter:
             msg = "bound commit index is unavailable; restore it or run update-index"
             raise SkillSourceResolutionError(msg)
         if _digest(result.stdout) != index.index_digest:
-            msg = (
-                "bound commit index mismatch; run update-index to revalidate the source"
-            )
+            msg = "bound commit index mismatch; run update-index to revalidate the source"
             raise SkillSourceResolutionError(msg)
 
 

@@ -194,9 +194,7 @@ def test_filesystem_registry_rejects_credential_bearing_persisted_source(
     registry = FilesystemIndexRegistry()
     registry.upsert(entry(), str(path))
     payload = json.loads(path.read_text(encoding="utf-8"))
-    payload["indexes"][0]["source"] = (
-        "https://user:sentinel-secret@example.com/company/skills.git"
-    )
+    payload["indexes"][0]["source"] = "https://user:sentinel-secret@example.com/company/skills.git"
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(IndexRegistryPersistenceError) as exc_info:

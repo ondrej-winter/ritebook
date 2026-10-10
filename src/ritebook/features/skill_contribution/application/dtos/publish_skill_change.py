@@ -48,9 +48,7 @@ class ContributionSkillReference:
         """Parse a `<local-alias>/<skill-path>` contribution reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
-            msg = (
-                "Skill reference must be fully qualified as <local-alias>/<skill-path>."
-            )
+            msg = "Skill reference must be fully qualified as <local-alias>/<skill-path>."
             raise ValueError(msg)
         index_name, skill_selector = value.split("/", maxsplit=1)
         catalog_path = validate_catalog_path(skill_selector)
@@ -201,16 +199,10 @@ class PublishSkillChangeResult:
     def __post_init__(self) -> None:
         """Validate contribution result consistency."""
         ContributionSkillReference.parse(self.skill_reference)
-        if (
-            self.status is SkillChangeStatus.CHANGED
-            and self.prepared_contribution is None
-        ):
+        if self.status is SkillChangeStatus.CHANGED and self.prepared_contribution is None:
             msg = "Changed contribution results must include prepared metadata."
             raise ValueError(msg)
-        if (
-            self.status is not SkillChangeStatus.CHANGED
-            and self.prepared_contribution is not None
-        ):
+        if self.status is not SkillChangeStatus.CHANGED and self.prepared_contribution is not None:
             msg = "Only changed contribution results may include prepared metadata."
             raise ValueError(msg)
 

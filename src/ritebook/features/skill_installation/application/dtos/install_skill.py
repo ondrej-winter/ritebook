@@ -57,9 +57,7 @@ class SkillReference:
         """Parse a `<local-alias>/<skill-path>` reference."""
         _require_non_empty(value, field_name="Skill reference")
         if "/" not in value:
-            msg = (
-                "Skill reference must be fully qualified as <local-alias>/<skill-path>."
-            )
+            msg = "Skill reference must be fully qualified as <local-alias>/<skill-path>."
             raise ValueError(msg)
         index_name, skill_path = value.split("/", maxsplit=1)
         catalog_path = validate_catalog_path(skill_path)
@@ -127,10 +125,7 @@ class SkillRequirement:
         if self.target is not None and not TARGET_NICKNAME_PATTERN.fullmatch(
             self.target,
         ):
-            msg = (
-                "Target nickname must contain only ASCII letters, digits, "
-                "underscores, or hyphens."
-            )
+            msg = "Target nickname must contain only ASCII letters, digits, underscores, or hyphens."
             raise ValueError(msg)
 
 
@@ -145,10 +140,7 @@ class SkillRequirements:
         """Validate parsed requirements content."""
         for nickname, target_base in self.targets.items():
             if not TARGET_NICKNAME_PATTERN.fullmatch(nickname):
-                msg = (
-                    "Target nickname must contain only ASCII letters, digits, "
-                    "underscores, or hyphens."
-                )
+                msg = "Target nickname must contain only ASCII letters, digits, underscores, or hyphens."
                 raise ValueError(msg)
             _require_non_empty(target_base, field_name="Target path")
 

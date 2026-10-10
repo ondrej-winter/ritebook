@@ -21,6 +21,9 @@ from ritebook.features.index_registry.application.errors import (
 )
 from ritebook.shared_kernel import require_safe_persisted_source
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 DEFAULT_REGISTRY_PATH = "~/.config/ritebook/indexes.json"
 SCHEMA_VERSION = 2
 ROOT_FIELDS = frozenset({"schema_version", "indexes"})
@@ -43,8 +46,6 @@ ENTRY_FIELDS = frozenset(
     },
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
 
 try:
     import fcntl
@@ -96,7 +97,7 @@ class FilesystemIndexRegistry:
         registry_path: str | None,
         *,
         exclusive: bool,
-    ) -> Iterator[_FilesystemIndexRegistryTransaction]:
+    ) -> Generator[_FilesystemIndexRegistryTransaction]:
         path = _registry_path(registry_path)
         lock = _acquire_lock(
             _lock_path(path),
@@ -201,10 +202,7 @@ def _load_entries(path: Path) -> dict[str, RegisteredIndex]:
         msg = f"unable to read index registry: {path}"
         raise IndexRegistryPersistenceError(msg) from err
     if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
-        msg = (
-            "index registry requires schema version 2; regenerate it with "
-            f"ritebook indexes add: {path}"
-        )
+        msg = f"index registry requires schema version 2; regenerate it with ritebook indexes add: {path}"
         raise IndexRegistryPersistenceError(msg)
     if set(payload) != ROOT_FIELDS:
         msg = f"index registry root is malformed: {path}"
@@ -269,10 +267,7 @@ def _entry_from_json(payload: dict[str, Any]) -> RegisteredIndex:
         source_revision = str(payload["source_revision"])
         index_digest = str(payload["index_digest"])
     except KeyError as err:
-        msg = (
-            "index registry entry lacks required source provenance; "
-            "remove and regenerate it with add-index"
-        )
+        msg = "index registry entry lacks required source provenance; remove and regenerate it with add-index"
         raise IndexRegistryPersistenceError(msg) from err
     source = str(payload["source"])
     source_type = IndexSourceType(str(payload["source_type"]))

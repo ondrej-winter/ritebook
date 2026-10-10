@@ -133,8 +133,7 @@ class JsonInstallationStateAdapter:
             msg = f"installation ownership state is malformed: {path}"
             raise InstallationPersistenceError(msg)
         entries = tuple(
-            _owned_from_json(entry, position=position, path=path)
-            for position, entry in enumerate(installations)
+            _owned_from_json(entry, position=position, path=path) for position, entry in enumerate(installations)
         )
         if len({entry.target_id for entry in entries}) != len(entries):
             msg = f"installation ownership state contains duplicate targets: {path}"
@@ -160,10 +159,7 @@ class JsonInstallationStateAdapter:
             return InstallationStateSnapshot(entries=(), digest=None)
         payload, digest = _read_json_object(path)
         if payload.get("schema_version") != SCHEMA_VERSION:
-            msg = (
-                "ritebook.lock requires schema version 3 before it can bootstrap "
-                "local installation ownership"
-            )
+            msg = "ritebook.lock requires schema version 3 before it can bootstrap local installation ownership"
             raise InstallationPersistenceError(msg)
         if set(payload) != LOCK_ROOT_FIELDS:
             msg = f"ritebook.lock schema-v3 root is malformed: {path}"
@@ -171,10 +167,7 @@ class JsonInstallationStateAdapter:
         if payload.get("state") not in {"complete", "partial"}:
             msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
-        if (
-            not isinstance(payload.get("requirements_file"), str)
-            or not payload["requirements_file"]
-        ):
+        if not isinstance(payload.get("requirements_file"), str) or not payload["requirements_file"]:
             msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         _validate_lock_issues(payload.get("issues"), path=path)
@@ -218,8 +211,7 @@ class JsonInstallationStateAdapter:
         document: dict[str, object] = {
             "schema_version": SCHEMA_VERSION,
             "installations": [
-                _ownership_entry_to_json(entry)
-                for entry in sorted(entries, key=lambda item: item.target_id)
+                _ownership_entry_to_json(entry) for entry in sorted(entries, key=lambda item: item.target_id)
             ],
         }
         return GeneratedStateFile(
@@ -252,17 +244,13 @@ class JsonInstallationStateAdapter:
             key=lambda issue: (issue.target, issue.code, issue.requirement or ""),
         )
         complete = not sorted_issues and all(
-            entry.desired and entry.status is InstallationStatus.MATERIALIZED
-            for entry in entries
+            entry.desired and entry.status is InstallationStatus.MATERIALIZED for entry in entries
         )
         document: dict[str, object] = {
             "schema_version": SCHEMA_VERSION,
             "requirements_file": requirements_file,
             "state": "complete" if complete else "partial",
-            "skills": [
-                _lock_entry_to_json(entry)
-                for entry in sorted(entries, key=lambda item: item.target_id)
-            ],
+            "skills": [_lock_entry_to_json(entry) for entry in sorted(entries, key=lambda item: item.target_id)],
             "issues": [_issue_to_json(issue) for issue in sorted_issues],
         }
         return GeneratedStateFile(
@@ -413,9 +401,7 @@ def _validate_lock_issues(value: object, *, path: Path) -> None:
                 msg = f"ritebook.lock issue entry is malformed: {path}"
                 raise InstallationPersistenceError(msg)
         requirement = issue.get("requirement")
-        if requirement is not None and (
-            not isinstance(requirement, str) or not requirement
-        ):
+        if requirement is not None and (not isinstance(requirement, str) or not requirement):
             msg = f"ritebook.lock issue entry is malformed: {path}"
             raise InstallationPersistenceError(msg)
 

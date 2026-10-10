@@ -167,9 +167,7 @@ def test_filesystem_installer_resolves_skill_below_published_source_root(
         target=adapter.plan_target(str(tmp_path / "target" / "code-review")),
     )
     try:
-        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == (
-            "# Code review\n"
-        )
+        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == ("# Code review\n")
     finally:
         adapter.cleanup_staged(staged)
 
@@ -268,9 +266,7 @@ def test_filesystem_installer_cleanup_rejects_symlink_ancestor_race(
 
     assert sentinel.read_text(encoding="utf-8") == "outside\n"
     retained_staged = displaced_root / "skills" / cleanup_path.name / "candidate"
-    assert (retained_staged / "SKILL.md").read_text(encoding="utf-8") == (
-        "# Code review\n"
-    )
+    assert (retained_staged / "SKILL.md").read_text(encoding="utf-8") == ("# Code review\n")
 
 
 @pytest.mark.parametrize("relationship", ["equal", "ancestor", "descendant"])
@@ -295,9 +291,7 @@ def test_filesystem_installer_rejects_source_target_overlap_before_staging(
             target=adapter.plan_target(str(target)),
         )
 
-    assert (source_directory / "SKILL.md").read_text(encoding="utf-8") == (
-        "# Code review\n"
-    )
+    assert (source_directory / "SKILL.md").read_text(encoding="utf-8") == ("# Code review\n")
     assert not (source_directory / "installed-copy").exists()
 
 
@@ -314,9 +308,7 @@ def test_filesystem_installer_allows_safe_sibling_of_source_directory(
         target=adapter.plan_target(str(target)),
     )
     try:
-        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == (
-            "# Code review\n"
-        )
+        assert Path(staged.staged_path, "SKILL.md").read_text(encoding="utf-8") == ("# Code review\n")
     finally:
         adapter.cleanup_staged(staged)
 

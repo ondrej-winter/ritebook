@@ -81,9 +81,7 @@ def test_source_repository_materializes_bound_commit_and_cleans_snapshot(
         snapshot = Path(source.repository_path)
         assert source.source_revision == REVISION
         assert source.source_branch == "refs/heads/main"
-        assert (snapshot / "skills" / "code-review" / "SKILL.md").read_text() == (
-            "bound content"
-        )
+        assert (snapshot / "skills" / "code-review" / "SKILL.md").read_text() == ("bound content")
         assert snapshot.exists()
 
     assert not snapshot.exists()
@@ -160,10 +158,7 @@ def test_source_repository_reads_local_commit_without_mutating_repository(
     with adapter.open_source(index) as source:
         assert source.source_revision == REVISION
 
-    assert all(
-        "checkout" not in command and "fetch" not in command
-        for command in runner.commands
-    )
+    assert all("checkout" not in command and "fetch" not in command for command in runner.commands)
     assert exporter.calls[0][0] == local_repo
 
 

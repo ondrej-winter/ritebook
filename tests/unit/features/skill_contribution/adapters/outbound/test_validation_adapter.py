@@ -61,12 +61,8 @@ def test_validation_adapter_lints_catalog_root() -> None:
     ]
 
 
-def test_validation_adapter_converts_lint_issues_without_exposing_issue_details() -> (
-    None
-):
-    expected_message = (
-        "skill validation failed with 1 issue; contribution commit was not created"
-    )
+def test_validation_adapter_converts_lint_issues_without_exposing_issue_details() -> None:
+    expected_message = "skill validation failed with 1 issue; contribution commit was not created"
     linter = FakeLinter(
         result=LintSkillsResult.create(
             discovered_skill_count=1,
@@ -93,9 +89,7 @@ def test_validation_adapter_converts_lint_issues_without_exposing_issue_details(
 
 
 def test_validation_adapter_converts_linter_errors() -> None:
-    expected_message = (
-        "skill validation could not be completed; contribution commit was not created"
-    )
+    expected_message = "skill validation could not be completed; contribution commit was not created"
     linter = FakeLinter(
         failure=LintSkillsDiscoveryError("private checkout details"),
     )

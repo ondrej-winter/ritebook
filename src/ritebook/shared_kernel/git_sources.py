@@ -5,9 +5,7 @@ from __future__ import annotations
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 GIT_URL_SOURCE_TYPE = "git_url"
-UNSAFE_GIT_SOURCE_MESSAGE = (
-    "Git URL must not include credentials; use SSH configuration or a credential helper"
-)
+UNSAFE_GIT_SOURCE_MESSAGE = "Git URL must not include credentials; use SSH configuration or a credential helper"
 
 
 def require_safe_persisted_source(source: str, source_type: str) -> None:

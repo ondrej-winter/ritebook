@@ -55,10 +55,7 @@ def pytest_collection_modifyitems(
 def is_e2e_path(path: Path) -> bool:
     """Return whether a collected test path belongs to the E2E suite."""
     parts = path.parts
-    return any(
-        part == "tests" and parts[index + 1] == "e2e"
-        for index, part in enumerate(parts[:-1])
-    )
+    return any(part == "tests" and parts[index + 1] == "e2e" for index, part in enumerate(parts[:-1]))
 
 
 def validate_e2e_execution(*, run_e2e: bool, docker_e2e: bool) -> None:

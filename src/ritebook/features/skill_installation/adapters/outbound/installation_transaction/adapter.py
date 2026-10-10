@@ -34,7 +34,7 @@ from ritebook.features.skill_installation.application.errors import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Generator, Mapping
 
     from ritebook.features.skill_installation.application.dtos import GeneratedStateFile
 
@@ -101,7 +101,7 @@ class FilesystemInstallationTransactionAdapter:
         *,
         lock_path: str,
         journal_path: str,
-    ) -> Iterator[FilesystemInstallationTransaction]:
+    ) -> Generator[FilesystemInstallationTransaction]:
         lock = _acquire_lock(
             Path(lock_path),
             timeout_seconds=self._lock_timeout_seconds,
@@ -134,9 +134,7 @@ class FilesystemInstallationTransaction:
         """Initialize an empty lazy journal."""
         self._journal_path = journal_path
         self._transaction_id = uuid.uuid4().hex
-        self._transaction_root = (
-            journal_path.parent / "transactions" / self._transaction_id
-        )
+        self._transaction_root = journal_path.parent / "transactions" / self._transaction_id
         self._phase = "prepared"
         self._mutations: list[dict[str, object]] = []
         self._state_files: list[dict[str, object]] = []
@@ -197,9 +195,7 @@ class FilesystemInstallationTransaction:
                     msg = f"owned target has local changes: {target}"
                     raise InstallationPersistenceError(msg)
 
-            backup = target.parent / (
-                f".{target.name}.ritebook-{self._transaction_id}.previous"
-            )
+            backup = target.parent / (f".{target.name}.ritebook-{self._transaction_id}.previous")
             mutation: dict[str, object] = {
                 "kind": "replace",
                 "target_path": str(target),
@@ -254,9 +250,7 @@ class FilesystemInstallationTransaction:
             ):
                 msg = f"owned target has local changes: {target}"
                 raise InstallationPersistenceError(msg)
-            backup = target.parent / (
-                f".{target.name}.ritebook-{self._transaction_id}.previous"
-            )
+            backup = target.parent / (f".{target.name}.ritebook-{self._transaction_id}.previous")
             self._mutations.append(
                 {
                     "kind": "remove",

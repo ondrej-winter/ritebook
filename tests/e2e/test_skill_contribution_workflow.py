@@ -69,12 +69,8 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     assert re.fullmatch(r"[0-9a-f]{40}", output.commit_hash)
     assert output.checkout.is_relative_to(installed.contribution_root)
     assert output.checkout != installed.source_repository.path
-    assert output.next_step == (
-        f"Next: cd {output.checkout} && git push origin {output.branch_name}"
-    )
-    assert (
-        _git_output(output.checkout, "branch", "--show-current") == output.branch_name
-    )
+    assert output.next_step == (f"Next: cd {output.checkout} && git push origin {output.branch_name}")
+    assert _git_output(output.checkout, "branch", "--show-current") == output.branch_name
     assert _git_output(output.checkout, "rev-parse", "HEAD") == output.commit_hash
     assert _git_output(output.checkout, "show", "-s", "--format=%s", "HEAD") == (
         "Update code-review skill from Ritebook contribution"
@@ -85,13 +81,8 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
     generated_index = _read_json(output.checkout / "ritebook-index.json")
     assert generated_index["skills_root"] == "skills"
     assert generated_index["skills"][0]["path"] == CATALOG_SKILL_PATH.as_posix()
-    assert (
-        generated_index["skills"][0]["skill_file"]
-        == (CATALOG_SKILL_PATH / "SKILL.md").as_posix()
-    )
-    assert generated_index["skills"][0]["description"] == (
-        "Helps review code changes carefully."
-    )
+    assert generated_index["skills"][0]["skill_file"] == (CATALOG_SKILL_PATH / "SKILL.md").as_posix()
+    assert generated_index["skills"][0]["description"] == ("Helps review code changes carefully.")
     _assert_source_repository_unchanged(installed.source_repository)
 
 
@@ -158,10 +149,7 @@ def test_publish_skill_change_rejects_collection_only_reference_before_checkout(
     )
 
     result.assert_failure()
-    assert (
-        result.stderr == "ritebook: error: no lockfile entry found for "
-        "company-skills/software-development\n"
-    )
+    assert result.stderr == "ritebook: error: no lockfile entry found for company-skills/software-development\n"
     assert not installed.contribution_root.exists()
 
 

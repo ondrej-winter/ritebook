@@ -37,11 +37,7 @@ class RecordingRunner:
         elif "rev-parse" in command:
             stdout = self.revision + b"\n"
         elif "symbolic-ref" in command:
-            stdout = (
-                b"refs/remotes/origin/main\n"
-                if "refs/remotes/origin/HEAD" in command
-                else b"refs/heads/main\n"
-            )
+            stdout = b"refs/remotes/origin/main\n" if "refs/remotes/origin/HEAD" in command else b"refs/heads/main\n"
         elif "show" in command:
             stdout = self.index_content
         return subprocess.CompletedProcess(command, returncode, stdout, b"")

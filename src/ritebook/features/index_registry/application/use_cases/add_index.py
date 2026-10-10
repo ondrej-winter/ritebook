@@ -77,11 +77,7 @@ class AddIndex(AddIndexPort):
             entry = RegisteredIndex(
                 name=local_alias,
                 published_name=published_index.published_name,
-                alias_origin=(
-                    AliasOrigin.EXPLICIT
-                    if command.alias is not None
-                    else AliasOrigin.PUBLISHED_NAME
-                ),
+                alias_origin=(AliasOrigin.EXPLICIT if command.alias is not None else AliasOrigin.PUBLISHED_NAME),
                 source=prepared_source.source,
                 source_type=prepared_source.source_type,
                 source_revision=prepared_source.source_revision,

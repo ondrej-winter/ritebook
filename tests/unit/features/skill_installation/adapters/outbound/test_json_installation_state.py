@@ -43,9 +43,7 @@ def test_json_installation_state_resolves_direct_and_sync_operation_paths(
     assert sync.ownership_path == str(
         requirements_file.parent / ".ritebook" / "installations.json",
     )
-    assert sync.lock_path == str(
-        requirements_file.parent / ".ritebook" / "install.lock"
-    )
+    assert sync.lock_path == str(requirements_file.parent / ".ritebook" / "install.lock")
     assert sync.journal_path == str(
         requirements_file.parent / ".ritebook" / "transaction.json",
     )
@@ -74,9 +72,7 @@ def test_json_installation_state_round_trips_strict_schema_v3_ownership(
     assert result.digest == _bytes_digest(state_file.content)
     assert payload["schema_version"] == 3
     assert payload["installations"][0]["source_branch"] == "refs/heads/main"
-    assert [entry["target_id"] for entry in payload["installations"]] == sorted(
-        entry.target_id for entry in entries
-    )
+    assert [entry["target_id"] for entry in payload["installations"]] == sorted(entry.target_id for entry in entries)
     assert state_file.private is True
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
@@ -300,9 +296,7 @@ def test_json_installation_state_renders_deterministic_complete_lockfile() -> No
     assert payload["schema_version"] == 3
     assert payload["state"] == "complete"
     assert payload["issues"] == []
-    assert [entry["target_id"] for entry in payload["skills"]] == sorted(
-        entry.target_id for entry in entries
-    )
+    assert [entry["target_id"] for entry in payload["skills"]] == sorted(entry.target_id for entry in entries)
     assert "canonical_target" not in first.content.decode()
     assert "locked_at" not in first.content.decode()
     assert first.private is False

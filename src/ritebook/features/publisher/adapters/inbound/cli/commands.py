@@ -39,8 +39,7 @@ def run_publish_index(
         return 1
 
     print(
-        "Published skill index with "
-        f"{result.discovered_skill_count} skill(s) to {result.output_path}",
+        f"Published skill index with {result.discovered_skill_count} skill(s) to {result.output_path}",
         file=stdout,
     )
     return 0

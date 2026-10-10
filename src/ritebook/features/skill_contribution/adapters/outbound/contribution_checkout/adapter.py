@@ -84,18 +84,13 @@ class ContributionCheckoutAdapter(ContributionCheckoutPort):
                 f"Update {entry.skill_name} skill from Ritebook contribution",
                 "--",
             ),
-            failure_message=(
-                "git contribution commit failed; the checkout remains available "
-                "for inspection"
-            ),
+            failure_message=("git contribution commit failed; the checkout remains available for inspection"),
         )
         commit_hash = self._read_required_output(
             _git(workspace, "rev-parse", "HEAD"),
             failure_message="git contribution commit metadata could not be read",
         )
-        push_command = (
-            f"git push origin {branch_name}" if workspace.has_usable_origin else None
-        )
+        push_command = f"git push origin {branch_name}" if workspace.has_usable_origin else None
         return PreparedContribution(
             skill_reference=entry.requirement,
             checkout_path=workspace.checkout_path,
@@ -108,10 +103,7 @@ class ContributionCheckoutAdapter(ContributionCheckoutPort):
         for key in ("user.name", "user.email"):
             result = self._runner(_git(workspace, "config", "--get", key))
             if result.returncode != 0 or not result.stdout.strip():
-                msg = (
-                    "Git commit identity is not configured; set user.name and "
-                    "user.email before retrying"
-                )
+                msg = "Git commit identity is not configured; set user.name and user.email before retrying"
                 raise ContributionGitError(msg)
 
     def _read_required_output(

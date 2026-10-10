@@ -108,9 +108,7 @@ def _read_frontmatter_lines(
                     break
                 byte_count += len(raw_line)
                 lines.append(raw_line.decode("utf-8").rstrip("\r\n"))
-                if len(lines) > FRONTMATTER_CONTENT_START_LINE_INDEX and (
-                    lines[-1] == FRONTMATTER_DELIMITER
-                ):
+                if len(lines) > FRONTMATTER_CONTENT_START_LINE_INDEX and (lines[-1] == FRONTMATTER_DELIMITER):
                     _validate_remaining_utf8(file)
                     break
                 if byte_count == MAX_FRONTMATTER_BYTE_COUNT:

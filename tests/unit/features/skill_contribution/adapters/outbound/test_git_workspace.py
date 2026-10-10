@@ -77,9 +77,7 @@ class RecordingLocalChangeDetector:
         return self.comparison
 
 
-def test_git_change_detector_delegates_when_selected_upstream_path_is_unchanged() -> (
-    None
-):
+def test_git_change_detector_delegates_when_selected_upstream_path_is_unchanged() -> None:
     entry = contribution_entry()
     workspace = contribution_workspace()
     diff_command = git(
@@ -344,12 +342,8 @@ def test_git_workspace_reuses_owned_checkout_without_cloning(tmp_path: Path) -> 
     )
 
     assert all("clone" not in command for command in runner.commands)
-    assert git(checkout_path, "reset", "--hard", "origin/main") in [
-        tuple(command) for command in runner.commands
-    ]
-    assert git(checkout_path, "clean", "-fd") in [
-        tuple(command) for command in runner.commands
-    ]
+    assert git(checkout_path, "reset", "--hard", "origin/main") in [tuple(command) for command in runner.commands]
+    assert git(checkout_path, "clean", "-fd") in [tuple(command) for command in runner.commands]
 
 
 def test_git_workspace_rejects_unavailable_locked_revision_before_cleanup(
@@ -542,9 +536,7 @@ def test_git_workspace_local_clone_does_not_mutate_user_working_tree(
         str(tmp_path / "contributions"),
     )
 
-    checkout_skill_file = (
-        Path(workspace.checkout_path) / "skills" / "code-review" / "SKILL.md"
-    )
+    checkout_skill_file = Path(workspace.checkout_path) / "skills" / "code-review" / "SKILL.md"
     assert Path(workspace.checkout_path) != source
     assert checkout_skill_file.is_file()
     assert workspace.has_usable_origin is False

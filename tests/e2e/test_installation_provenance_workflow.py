@@ -96,10 +96,7 @@ def test_install_skill_rejects_cached_index_digest_mismatch_before_copy(
 
     result.assert_failure()
     assert result.stdout == ""
-    assert result.stderr == (
-        "ritebook: error: cached index digest mismatch; "
-        "run update-index to regenerate it\n"
-    )
+    assert result.stderr == ("ritebook: error: cached index digest mismatch; run update-index to regenerate it\n")
     assert not target.exists()
     assert not installation_registry_path.exists()
 
@@ -145,8 +142,7 @@ def test_install_skill_rejects_bound_commit_index_mismatch_before_copy(
     result.assert_failure()
     assert result.stdout == ""
     assert result.stderr == (
-        "ritebook: error: bound commit index mismatch; "
-        "run update-index to revalidate the source\n"
+        "ritebook: error: bound commit index mismatch; run update-index to revalidate the source\n"
     )
     assert not target.exists()
     assert not installation_registry_path.exists()

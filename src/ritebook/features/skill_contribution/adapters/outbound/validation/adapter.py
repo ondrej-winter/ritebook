@@ -34,19 +34,13 @@ class LinterSkillValidatorAdapter(SkillValidatorPort):
                 LintSkillsCommand(skills_root=_catalog_root(entry, workspace)),
             )
         except LinterError as err:
-            message = (
-                "skill validation could not be completed; "
-                "contribution commit was not created"
-            )
+            message = "skill validation could not be completed; contribution commit was not created"
             raise SkillContributionValidationError(message) from err
 
         if result.issues:
             issue_count = len(result.issues)
             issue_label = "issue" if issue_count == 1 else "issues"
-            message = (
-                f"skill validation failed with {issue_count} {issue_label}; "
-                "contribution commit was not created"
-            )
+            message = f"skill validation failed with {issue_count} {issue_label}; contribution commit was not created"
             raise SkillContributionValidationError(message)
 
 

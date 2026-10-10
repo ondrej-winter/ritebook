@@ -43,10 +43,7 @@ class JsonIndexReader:
         """Verify exact cached bytes before parsing validated skill summaries."""
         content = _read_cached_bytes(Path(cached_index_path))
         if _digest(content) != index_digest:
-            msg = (
-                "cached ritebook-index.json digest does not match registered "
-                "index_digest"
-            )
+            msg = "cached ritebook-index.json digest does not match registered index_digest"
             raise InvalidPublishedIndexError(msg)
         return _cached_skills(_parse_catalog(content))
 
@@ -68,10 +65,7 @@ def _parse_catalog(content: bytes) -> SchemaV1Catalog:
     except SchemaV1CatalogError as err:
         message = str(err)
         if message.startswith("invalid schema-v1 catalog structure:"):
-            message = (
-                f"{message} Reorganize skills into root or collection/skill paths "
-                "and republish the index."
-            )
+            message = f"{message} Reorganize skills into root or collection/skill paths and republish the index."
         raise InvalidPublishedIndexError(message) from err
 
 

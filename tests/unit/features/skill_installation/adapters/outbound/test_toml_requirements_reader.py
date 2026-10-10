@@ -162,11 +162,7 @@ def test_toml_requirements_reader_rejects_unknown_skill_fields(
         'name = "code-review"\ntarget_path = ".claude/skills/code-review"',
         'name = 42\ntarget_path = ".claude/skills/code-review"',
         'name = "platform-skills/code-review"',
-        (
-            'name = "platform-skills/code-review"\n'
-            'target = "claude"\n'
-            'target_path = ".claude/skills/code-review"'
-        ),
+        ('name = "platform-skills/code-review"\ntarget = "claude"\ntarget_path = ".claude/skills/code-review"'),
         'name = "platform-skills/code-review"\ntarget_path = ""',
     ],
 )

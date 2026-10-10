@@ -95,9 +95,7 @@ def _add_publish_index_parser(
     parser = commands.add_parser(
         "publish",
         help="Generate a publisher skill index.",
-        description=(
-            "Validate skills and write ritebook-index.json in the current directory."
-        ),
+        description=("Validate skills and write ritebook-index.json in the current directory."),
     )
     _set_command_default(parser, PUBLISH_INDEX_COMMAND)
     parser.add_argument(
@@ -221,9 +219,7 @@ def _add_install_skill_parser(
     parser = commands.add_parser(
         "install",
         help="Install one cached skill.",
-        description=(
-            "Install one exact skill reference into an explicit target directory."
-        ),
+        description=("Install one exact skill reference into an explicit target directory."),
     )
     _set_command_default(parser, INSTALL_SKILL_COMMAND)
     parser.add_argument(
@@ -260,9 +256,7 @@ def _add_install_parser(
     parser = commands.add_parser(
         "sync",
         help="Reconcile skills declared in ritebook.toml.",
-        description=(
-            "Exactly reconcile skills declared in a Ritebook requirements file."
-        ),
+        description=("Exactly reconcile skills declared in a Ritebook requirements file."),
     )
     _set_command_default(parser, INSTALL_COMMAND)
     parser.add_argument(

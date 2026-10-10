@@ -63,10 +63,7 @@ def _parse_targets(value: object) -> dict[str, str]:
     targets: dict[str, str] = {}
     for nickname, target_path in target_values.items():
         if not TARGET_NICKNAME_PATTERN.fullmatch(nickname):
-            msg = (
-                "target nickname must contain only ASCII letters, digits, "
-                "underscores, or hyphens"
-            )
+            msg = "target nickname must contain only ASCII letters, digits, underscores, or hyphens"
             raise RequirementsReadError(msg)
         if not isinstance(target_path, str) or not target_path:
             msg = f"target {nickname} must be a non-empty string path"

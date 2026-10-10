@@ -121,21 +121,13 @@ def _require_bounded_nesting(text: str) -> None:
 def _error_message(reason: StrictJsonValidationReason) -> str:
     return {
         StrictJsonValidationReason.EMPTY_INPUT: "JSON input must not be empty.",
-        StrictJsonValidationReason.INPUT_TOO_LARGE: (
-            "JSON input exceeds the 16 MiB size limit."
-        ),
-        StrictJsonValidationReason.BYTE_ORDER_MARK: (
-            "JSON input must not start with a UTF-8 byte-order mark."
-        ),
+        StrictJsonValidationReason.INPUT_TOO_LARGE: ("JSON input exceeds the 16 MiB size limit."),
+        StrictJsonValidationReason.BYTE_ORDER_MARK: ("JSON input must not start with a UTF-8 byte-order mark."),
         StrictJsonValidationReason.INVALID_UTF8: "JSON input must be valid UTF-8.",
-        StrictJsonValidationReason.NESTING_TOO_DEEP: (
-            "JSON input exceeds the maximum nesting depth of 32."
-        ),
+        StrictJsonValidationReason.NESTING_TOO_DEEP: ("JSON input exceeds the maximum nesting depth of 32."),
         StrictJsonValidationReason.INVALID_JSON: "JSON input is malformed.",
         StrictJsonValidationReason.NON_STANDARD_CONSTANT: (
             "JSON input must not contain non-standard numeric constants."
         ),
-        StrictJsonValidationReason.DUPLICATE_MEMBER: (
-            "JSON objects must not contain duplicate member names."
-        ),
+        StrictJsonValidationReason.DUPLICATE_MEMBER: ("JSON objects must not contain duplicate member names."),
     }[reason]

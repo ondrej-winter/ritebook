@@ -77,7 +77,6 @@ def _print_prepared_contribution(
         print(f"Next: cd {checkout_path} && {prepared.push_command}", file=stdout)
         return
     print(
-        "Next: inspect the checkout and push or share the branch manually; "
-        "no usable origin remote is configured.",
+        "Next: inspect the checkout and push or share the branch manually; no usable origin remote is configured.",
         file=stdout,
     )

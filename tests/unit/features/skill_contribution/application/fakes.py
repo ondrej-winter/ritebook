@@ -64,9 +64,7 @@ class FakeSkillChangeDetector:
         self.comparison = comparison or changed_comparison()
         self.failure = failure
         self.events = events
-        self.compare_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace]
-        ] = []
+        self.compare_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
 
     def compare(
         self,
@@ -93,12 +91,8 @@ class FakeContributionCheckout:
         self.prepare_failure = prepare_failure
         self.commit_failure = commit_failure
         self.events = events
-        self.prepare_branch_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace]
-        ] = []
-        self.commit_changes_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace, str]
-        ] = []
+        self.prepare_branch_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
+        self.commit_changes_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace, str]] = []
 
     def prepare_branch(
         self,
@@ -134,9 +128,7 @@ class FakeSkillDirectory:
     ) -> None:
         self.failure = failure
         self.events = events
-        self.copy_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace]
-        ] = []
+        self.copy_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
 
     def copy_installed_skill(
         self,
@@ -158,9 +150,7 @@ class FakeSkillValidator:
     ) -> None:
         self.failure = failure
         self.events = events
-        self.validate_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace]
-        ] = []
+        self.validate_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
 
     def validate(
         self,
@@ -182,9 +172,7 @@ class FakeIndexRegenerator:
     ) -> None:
         self.failure = failure
         self.events = events
-        self.regenerate_calls: list[
-            tuple[ContributionLockfileEntry, ContributionWorkspace]
-        ] = []
+        self.regenerate_calls: list[tuple[ContributionLockfileEntry, ContributionWorkspace]] = []
 
     def regenerate_index(
         self,

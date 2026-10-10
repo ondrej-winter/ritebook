@@ -57,10 +57,7 @@ def _validate_top_level_fields(
     issues: list[SkillValidationIssue] = []
     if any(not isinstance(key, str) for key in frontmatter):
         issues.append(_issue(header, "frontmatter keys must be strings."))
-    if any(
-        isinstance(key, str) and key not in ALLOWED_FRONTMATTER_FIELDS
-        for key in frontmatter
-    ):
+    if any(isinstance(key, str) and key not in ALLOWED_FRONTMATTER_FIELDS for key in frontmatter):
         issues.append(_issue(header, "frontmatter contains unsupported fields."))
     return tuple(issues)
 

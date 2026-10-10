@@ -30,11 +30,7 @@ class FilesystemIndexCache:
         """Return a content-addressed cache path for a local index alias."""
         digest = _digest_hex(index_digest)
         return str(
-            registry_cache_root(cache_root, registry_path)
-            / "indexes"
-            / name
-            / digest
-            / "ritebook-index.json",
+            registry_cache_root(cache_root, registry_path) / "indexes" / name / digest / "ritebook-index.json",
         )
 
     def write_index(  # noqa: PLR0913
@@ -173,14 +169,8 @@ def _recover_alias_root(
 
 
 def _is_owned_generation(path: Path, alias_root: Path) -> bool:
-    return (
-        path.name == "ritebook-index.json"
-        and path.parent.parent == alias_root
-        and _is_digest_directory(path.parent)
-    )
+    return path.name == "ritebook-index.json" and path.parent.parent == alias_root and _is_digest_directory(path.parent)
 
 
 def _is_digest_directory(path: Path) -> bool:
-    return len(path.name) == SHA256_HEX_LENGTH and all(
-        character in "0123456789abcdef" for character in path.name
-    )
+    return len(path.name) == SHA256_HEX_LENGTH and all(character in "0123456789abcdef" for character in path.name)

@@ -106,9 +106,7 @@ def test_index_regeneration_adapter_derives_root_from_nested_selector(
     assert publisher.commands == [
         PublishIndexCommand(
             index_name="company-skills",
-            skills_root=str(
-                Path(contribution_workspace(tmp_path).checkout_path) / "catalog/skills"
-            ),
+            skills_root=str(Path(contribution_workspace(tmp_path).checkout_path) / "catalog/skills"),
             published_skills_root="catalog/skills",
         ),
     ]
@@ -121,10 +119,7 @@ def test_index_regeneration_adapter_rejects_inconsistent_provenance(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "contribution provenance does not identify a catalog root; "
-            "contribution commit was not created"
-        ),
+        match=("contribution provenance does not identify a catalog root; contribution commit was not created"),
     ):
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(skill_path="skills/security-review"),
@@ -143,10 +138,7 @@ def test_index_regeneration_adapter_rejects_missing_existing_index(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "existing index metadata could not be read safely; "
-            "contribution commit was not created"
-        ),
+        match=("existing index metadata could not be read safely; contribution commit was not created"),
     ):
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),
@@ -171,10 +163,7 @@ def test_index_regeneration_adapter_rejects_symlinked_existing_index(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "existing index metadata could not be read safely; "
-            "contribution commit was not created"
-        ),
+        match=("existing index metadata could not be read safely; contribution commit was not created"),
     ):
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),
@@ -196,10 +185,7 @@ def test_index_regeneration_adapter_rejects_non_strict_existing_index(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "existing index metadata could not be read safely; "
-            "contribution commit was not created"
-        ),
+        match=("existing index metadata could not be read safely; contribution commit was not created"),
     ):
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),
@@ -228,10 +214,7 @@ def test_index_regeneration_adapter_rejects_symlinked_checkout_ancestor(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "contribution checkout could not be used safely; "
-            "contribution commit was not created"
-        ),
+        match=("contribution checkout could not be used safely; contribution commit was not created"),
     ):
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),
@@ -257,10 +240,7 @@ def test_index_regeneration_adapter_converts_validation_failure_without_details(
 
     with pytest.raises(
         SkillContributionValidationError,
-        match=(
-            "skill validation failed during index regeneration; "
-            "contribution commit was not created"
-        ),
+        match=("skill validation failed during index regeneration; contribution commit was not created"),
     ) as exc_info:
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),
@@ -280,10 +260,7 @@ def test_index_regeneration_adapter_converts_publisher_failure_without_details(
 
     with pytest.raises(
         ContributionIndexRegenerationError,
-        match=(
-            "index regeneration could not be completed; "
-            "contribution commit was not created"
-        ),
+        match=("index regeneration could not be completed; contribution commit was not created"),
     ) as exc_info:
         PublisherIndexRegeneratorAdapter(publisher=publisher).regenerate_index(
             contribution_entry(),

@@ -172,9 +172,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                         source_stack,
                     )
                     _reject_conflicting_targets(desired)
-                    ownership_by_target = {
-                        entry.canonical_target: entry for entry in ownership
-                    }
+                    ownership_by_target = {entry.canonical_target: entry for entry in ownership}
                     desired_outcome = self._reconcile_desired(
                         desired,
                         ownership_by_target,
@@ -301,11 +299,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             transaction.replace_tree(
                 staged_path=staged.staged_path,
                 target_path=item.planned_target.canonical_target,
-                expected_digest=(
-                    owner.installed_tree_digest
-                    if inspection.exists and owner is not None
-                    else None
-                ),
+                expected_digest=(owner.installed_tree_digest if inspection.exists and owner is not None else None),
             )
             entries.append(candidate)
             if inspection.exists:
@@ -337,21 +331,14 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 continue
             planned = self._installer.plan_target(owner.canonical_target)
             inspection = self._installer.inspect_target(planned)
-            if (
-                inspection.exists
-                and inspection.installed_tree_digest == owner.installed_tree_digest
-            ):
+            if inspection.exists and inspection.installed_tree_digest == owner.installed_tree_digest:
                 transaction.remove_tree(
                     target_path=owner.canonical_target,
                     expected_digest=owner.installed_tree_digest,
                 )
                 pruned_count += 1
                 continue
-            status = (
-                InstallationStatus.LOCAL_CHANGES
-                if inspection.exists
-                else InstallationStatus.RETAINED
-            )
+            status = InstallationStatus.LOCAL_CHANGES if inspection.exists else InstallationStatus.RETAINED
             entries.append(replace(owner, desired=False, status=status))
             issues.append(_obsolete_issue(owner, exists=inspection.exists))
 
@@ -413,10 +400,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                     source,
                     skill,
                 )
-                if (
-                    committed_header.name != skill.name
-                    or committed_header.description != skill.description
-                ):
+                if committed_header.name != skill.name or committed_header.description != skill.description:
                     raise CommittedSkillMetadataMismatchError(skill.path)
                 selected.append(
                     _SelectedInstall(
@@ -449,12 +433,7 @@ def _referenced_aliases(
 ) -> tuple[str, ...]:
     try:
         return tuple(
-            sorted(
-                {
-                    SkillReference.parse(requirement.name).index_name
-                    for requirement in requirements
-                }
-            ),
+            sorted({SkillReference.parse(requirement.name).index_name for requirement in requirements}),
         )
     except ValueError as err:
         raise InvalidSkillReferenceError(str(err)) from err
@@ -518,11 +497,7 @@ def _find_skills(
         raise UnknownInstallSkillError(reference.requirement)
     children = tuple(
         sorted(
-            (
-                skill
-                for skill in skills
-                if _is_immediate_collection_child(skill.path, selector.value)
-            ),
+            (skill for skill in skills if _is_immediate_collection_child(skill.path, selector.value)),
             key=lambda skill: skill.path,
         ),
     )
@@ -542,10 +517,7 @@ def _reference_for_skill(
 
 def _is_immediate_collection_child(path: str, collection: str) -> bool:
     catalog_path = validate_catalog_path(path)
-    return (
-        catalog_path.kind is CatalogPathKind.COLLECTION_CHILD
-        and catalog_path.collection == collection
-    )
+    return catalog_path.kind is CatalogPathKind.COLLECTION_CHILD and catalog_path.collection == collection
 
 
 def _reject_conflicting_targets(desired: tuple[_DesiredInstall, ...]) -> None:

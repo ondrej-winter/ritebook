@@ -26,9 +26,7 @@ def test_format_canonical_utc_timestamp_emits_schema_v1_form(
     timestamp: datetime,
     expected: str,
 ) -> None:
-    assert (
-        format_canonical_utc_timestamp(timestamp, field_name="generated_at") == expected
-    )
+    assert format_canonical_utc_timestamp(timestamp, field_name="generated_at") == expected
 
 
 def test_parse_canonical_utc_timestamp_returns_utc_datetime() -> None:

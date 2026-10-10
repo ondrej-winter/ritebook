@@ -587,9 +587,7 @@ def _replace_then_fail(
         transaction.replace_tree(
             staged_path=str(staged),
             target_path=str(target),
-            expected_digest=(
-                transaction.tree_digest(str(target)) if target.exists() else None
-            ),
+            expected_digest=(transaction.tree_digest(str(target)) if target.exists() else None),
         )
         message = "injected"
         raise RuntimeError(message)
@@ -611,9 +609,7 @@ def _replace_and_commit(
         transaction.replace_tree(
             staged_path=str(staged),
             target_path=str(target),
-            expected_digest=(
-                transaction.tree_digest(str(target)) if target.exists() else None
-            ),
+            expected_digest=(transaction.tree_digest(str(target)) if target.exists() else None),
         )
         transaction.commit_state(files)
 

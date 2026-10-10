@@ -23,7 +23,7 @@ from ritebook.features.skill_contribution.application.ports import IndexRegenera
 from ritebook.shared_kernel import SchemaV1CatalogError, parse_schema_v1_catalog_bytes
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
     from ritebook.features.publisher.application.ports import PublishIndexPort
     from ritebook.features.skill_contribution.application.dtos import (
@@ -58,22 +58,13 @@ class PublisherIndexRegeneratorAdapter(IndexRegeneratorPort):
             with _working_directory(checkout_path):
                 self._publisher.execute(command)
         except PublishIndexValidationError as err:
-            message = (
-                "skill validation failed during index regeneration; "
-                "contribution commit was not created"
-            )
+            message = "skill validation failed during index regeneration; contribution commit was not created"
             raise SkillContributionValidationError(message) from err
         except PublisherError as err:
-            message = (
-                "index regeneration could not be completed; "
-                "contribution commit was not created"
-            )
+            message = "index regeneration could not be completed; contribution commit was not created"
             raise ContributionIndexRegenerationError(message) from err
         except OSError as err:
-            message = (
-                "index regeneration could not be completed; "
-                "contribution commit was not created"
-            )
+            message = "index regeneration could not be completed; contribution commit was not created"
             raise ContributionIndexRegenerationError(message) from err
 
 
@@ -132,31 +123,22 @@ def _published_skills_root(entry: ContributionLockfileEntry) -> str:
 
 
 def _checkout_error() -> ContributionIndexRegenerationError:
-    message = (
-        "contribution checkout could not be used safely; "
-        "contribution commit was not created"
-    )
+    message = "contribution checkout could not be used safely; contribution commit was not created"
     return ContributionIndexRegenerationError(message)
 
 
 def _index_read_error() -> ContributionIndexRegenerationError:
-    message = (
-        "existing index metadata could not be read safely; "
-        "contribution commit was not created"
-    )
+    message = "existing index metadata could not be read safely; contribution commit was not created"
     return ContributionIndexRegenerationError(message)
 
 
 def _provenance_error() -> ContributionIndexRegenerationError:
-    message = (
-        "contribution provenance does not identify a catalog root; "
-        "contribution commit was not created"
-    )
+    message = "contribution provenance does not identify a catalog root; contribution commit was not created"
     return ContributionIndexRegenerationError(message)
 
 
 @contextmanager
-def _working_directory(path: Path) -> Iterator[None]:
+def _working_directory(path: Path) -> Generator[None]:
     """Run a synchronous adapter operation from a selected directory."""
     previous_directory = Path.cwd()
     os.chdir(path)

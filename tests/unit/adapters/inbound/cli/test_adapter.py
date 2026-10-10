@@ -77,12 +77,8 @@ def run(
     list_skills: FakeListSkills | FailingListSkills | None = None,
     update_index: FakeUpdateIndex | FailingUpdateIndex | None = None,
     install_skill: FakeInstallSkill | FailingInstallSkill | None = None,
-    install_from_requirements: (
-        FakeInstallFromRequirements | FailingInstallFromRequirements | None
-    ) = None,
-    publish_skill_change: (
-        FakePublishSkillChange | FailingPublishSkillChange | None
-    ) = None,
+    install_from_requirements: (FakeInstallFromRequirements | FailingInstallFromRequirements | None) = None,
+    publish_skill_change: (FakePublishSkillChange | FailingPublishSkillChange | None) = None,
 ) -> int:
     """Run the CLI test adapter with default consumer command fakes."""
     return run_cli(
@@ -94,8 +90,7 @@ def run(
         list_skills=list_skills or FakeListSkills(),
         update_index=update_index or FakeUpdateIndex(),
         install_skill=install_skill or FakeInstallSkill(),
-        install_from_requirements=install_from_requirements
-        or FakeInstallFromRequirements(),
+        install_from_requirements=install_from_requirements or FakeInstallFromRequirements(),
         publish_skill_change=publish_skill_change or FakePublishSkillChange(),
         stdout=stdout,
         stderr=stderr,
@@ -444,9 +439,7 @@ def test_publish_skill_change_maps_default_arguments_and_prints_no_op() -> None:
     assert publish_skill_change.commands == [
         PublishSkillChangeCommand(skill_reference="platform-skills/code-review"),
     ]
-    assert stdout.getvalue() == (
-        "No local changes to publish for platform-skills/code-review\n"
-    )
+    assert stdout.getvalue() == ("No local changes to publish for platform-skills/code-review\n")
     assert stderr.getvalue() == ""
 
 
@@ -468,9 +461,7 @@ def test_skills_contribute_maps_canonical_arguments_without_warning() -> None:
     assert publish_skill_change.commands == [
         PublishSkillChangeCommand(skill_reference="platform-skills/code-review"),
     ]
-    assert stdout.getvalue() == (
-        "No local changes to publish for platform-skills/code-review\n"
-    )
+    assert stdout.getvalue() == ("No local changes to publish for platform-skills/code-review\n")
     assert stderr.getvalue() == ""
 
 
@@ -611,9 +602,7 @@ def test_publish_skill_change_translates_application_errors() -> None:
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == (
-        "ritebook: error: no lockfile entry found for platform-skills/missing\n"
-    )
+    assert stderr.getvalue() == ("ritebook: error: no lockfile entry found for platform-skills/missing\n")
 
 
 def test_install_skill_translates_command_validation_errors() -> None:
@@ -629,8 +618,7 @@ def test_install_skill_translates_command_validation_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: Skill reference must be fully qualified as "
-        "<local-alias>/<skill-path>.\n"
+        "ritebook: error: Skill reference must be fully qualified as <local-alias>/<skill-path>.\n"
     )
 
 
@@ -646,9 +634,7 @@ def test_sync_translates_command_validation_errors() -> None:
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == (
-        "ritebook: error: Requirements file must not be empty.\n"
-    )
+    assert stderr.getvalue() == ("ritebook: error: Requirements file must not be empty.\n")
 
 
 def test_cli_error_boundaries_escape_controls_without_forging_lines() -> None:
@@ -743,9 +729,7 @@ def test_publish_index_maps_arguments_to_application_command() -> None:
             published_skills_root="skills",
         ),
     ]
-    assert stdout.getvalue() == (
-        "Published skill index with 3 skill(s) to ritebook-index.json\n"
-    )
+    assert stdout.getvalue() == ("Published skill index with 3 skill(s) to ritebook-index.json\n")
     assert stderr.getvalue() == ""
 
 
@@ -845,9 +829,7 @@ def test_publish_index_rejects_skills_root_outside_output_directory(
 
     assert exit_code == 1
     assert publisher.commands == []
-    assert stderr.getvalue() == (
-        "ritebook: error: Skills root must be inside the index output directory.\n"
-    )
+    assert stderr.getvalue() == ("ritebook: error: Skills root must be inside the index output directory.\n")
 
 
 def test_publish_index_rejects_output_argument_with_argparse_error() -> None:
@@ -943,9 +925,7 @@ def test_command_group_help_describes_available_workflows() -> None:
     )
 
     assert exit_code == 0
-    assert "Validate, browse, install, synchronize, and contribute skills." in (
-        stdout.getvalue()
-    )
+    assert "Validate, browse, install, synchronize, and contribute skills." in (stdout.getvalue())
     assert "{lint,list,install,sync,contribute}" in stdout.getvalue()
 
 
@@ -1165,8 +1145,7 @@ def test_add_index_translates_duplicate_name_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: local alias company-skills already exists; "
-        "use --force to replace it\n"
+        "ritebook: error: local alias company-skills already exists; use --force to replace it\n"
     )
 
 
@@ -1207,9 +1186,7 @@ def test_update_index_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
-def test_indexes_update_maps_canonical_positional_alias_to_application_command() -> (
-    None
-):
+def test_indexes_update_maps_canonical_positional_alias_to_application_command() -> None:
     update_index = FakeUpdateIndex(
         UpdateIndexResult(name="platform-skills", skill_count=2),
     )
@@ -1317,8 +1294,7 @@ def test_list_indexes_maps_arguments_to_application_command() -> None:
         ListIndexesCommand(registry_path="/tmp/indexes.json"),
     ]
     assert stdout.getvalue() == (
-        "company-skills\t2 skill(s)\tgit_url\t2026-07-08T18:00:00Z\t"
-        "git@example.com:company/skills.git\n"
+        "company-skills\t2 skill(s)\tgit_url\t2026-07-08T18:00:00Z\tgit@example.com:company/skills.git\n"
     )
     assert stderr.getvalue() == ""
 
@@ -1524,12 +1500,7 @@ def test_list_skills_prints_deterministic_tree_output() -> None:
 
     assert exit_code == 0
     assert stdout.getvalue() == (
-        "Indexes\n"
-        "├── platform-skills\n"
-        "│   ├── skill-a\n"
-        "│   └── skill-b\n"
-        "└── data-skills\n"
-        "    └── query-helper\n"
+        "Indexes\n├── platform-skills\n│   ├── skill-a\n│   └── skill-b\n└── data-skills\n    └── query-helper\n"
     )
 
 
@@ -1561,9 +1532,7 @@ def test_list_skills_prints_nested_skill_paths() -> None:
     )
 
     assert exit_code == 0
-    assert stdout.getvalue() == (
-        "Indexes\n└── platform-skills\n    └── browser/runtime-verification\n"
-    )
+    assert stdout.getvalue() == ("Indexes\n└── platform-skills\n    └── browser/runtime-verification\n")
 
 
 def test_list_skills_maps_show_description_to_application_command() -> None:
@@ -1706,16 +1675,13 @@ def test_list_skills_translates_application_errors() -> None:
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == (
-        "ritebook: error: local alias missing-skills is not registered\n"
-    )
+    assert stderr.getvalue() == ("ritebook: error: local alias missing-skills is not registered\n")
 
 
 def test_list_skills_reports_invalid_catalog_republish_guidance() -> None:
     stderr = StringIO()
     error = InvalidPublishedIndexError(
-        "invalid schema-v1 catalog structure; reorganize skills and republish "
-        "the index",
+        "invalid schema-v1 catalog structure; reorganize skills and republish the index",
     )
 
     exit_code = run(
@@ -1729,8 +1695,7 @@ def test_list_skills_reports_invalid_catalog_republish_guidance() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: invalid schema-v1 catalog structure; "
-        "reorganize skills and republish the index\n"
+        "ritebook: error: invalid schema-v1 catalog structure; reorganize skills and republish the index\n"
     )
 
 
@@ -1769,9 +1734,7 @@ def test_install_skill_maps_arguments_to_application_command() -> None:
             installation_registry_path="/tmp/installations.json",
         ),
     ]
-    assert stdout.getvalue() == (
-        "Installed platform-skills/code-review to .claude/skills/code-review\n"
-    )
+    assert stdout.getvalue() == ("Installed platform-skills/code-review to .claude/skills/code-review\n")
     assert stderr.getvalue() == ""
 
 
@@ -1848,8 +1811,7 @@ def test_install_skill_translates_application_errors() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: target .claude/skills/code-review already exists; "
-        "use --force to replace it\n"
+        "ritebook: error: target .claude/skills/code-review already exists; use --force to replace it\n"
     )
 
 
@@ -1868,8 +1830,7 @@ def test_install_skill_translates_transaction_recovery_failure() -> None:
         publisher=FakePublisher(),
         install_skill=FailingInstallSkill(
             InstallationPersistenceError(
-                "installation rollback failed; recover using journal "
-                "/tmp/installation-transaction.json",
+                "installation rollback failed; recover using journal /tmp/installation-transaction.json",
             ),
         ),
         stdout=StringIO(),
@@ -1878,8 +1839,7 @@ def test_install_skill_translates_transaction_recovery_failure() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: installation rollback failed; recover using journal "
-        "/tmp/installation-transaction.json\n"
+        "ritebook: error: installation rollback failed; recover using journal /tmp/installation-transaction.json\n"
     )
 
 
@@ -1902,8 +1862,7 @@ def test_install_maps_default_arguments_to_application_command() -> None:
         InstallFromRequirementsCommand(requirements_file="ritebook.toml"),
     ]
     assert stdout.getvalue() == (
-        "Reconciled skills from ritebook.toml: installed 3, updated 1, "
-        "unchanged 2, pruned 1\n"
+        "Reconciled skills from ritebook.toml: installed 3, updated 1, unchanged 2, pruned 1\n"
     )
     assert stderr.getvalue() == ""
 
@@ -1985,8 +1944,7 @@ def test_install_maps_overrides_to_application_command() -> None:
         ),
     ]
     assert stdout.getvalue() == (
-        "Reconciled skills from config/ritebook.toml: installed 2, updated 0, "
-        "unchanged 1, pruned 0\n"
+        "Reconciled skills from config/ritebook.toml: installed 2, updated 0, unchanged 1, pruned 0\n"
     )
     assert stderr.getvalue() == ""
 
@@ -2021,8 +1979,7 @@ def test_install_reports_partial_reconciliation_and_returns_nonzero() -> None:
 
     assert exit_code == 1
     assert stdout.getvalue() == (
-        "Reconciled skills from ritebook.toml: installed 1, updated 0, "
-        "unchanged 2, pruned 1\n"
+        "Reconciled skills from ritebook.toml: installed 1, updated 0, unchanged 2, pruned 1\n"
     )
     assert stderr.getvalue() == (
         "ritebook: issue: local-changes: .agents/skills/code-review: "
@@ -2046,9 +2003,7 @@ def test_install_translates_application_errors() -> None:
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == (
-        "ritebook: error: unknown local alias: platform-skills\n"
-    )
+    assert stderr.getvalue() == ("ritebook: error: unknown local alias: platform-skills\n")
 
 
 def test_install_translates_transaction_recovery_failure() -> None:
@@ -2060,8 +2015,7 @@ def test_install_translates_transaction_recovery_failure() -> None:
         publisher=FakePublisher(),
         install_from_requirements=FailingInstallFromRequirements(
             InstallationPersistenceError(
-                "interrupted installation recovery failed; recover using journal "
-                ".ritebook/transaction.json",
+                "interrupted installation recovery failed; recover using journal .ritebook/transaction.json",
             ),
         ),
         stdout=StringIO(),
@@ -2070,8 +2024,7 @@ def test_install_translates_transaction_recovery_failure() -> None:
 
     assert exit_code == 1
     assert stderr.getvalue() == (
-        "ritebook: error: interrupted installation recovery failed; recover using "
-        "journal .ritebook/transaction.json\n"
+        "ritebook: error: interrupted installation recovery failed; recover using journal .ritebook/transaction.json\n"
     )
 
 
@@ -2184,9 +2137,7 @@ def test_lint_skills_escapes_controls_in_diagnostics() -> None:
     assert exit_code == 1
     assert stderr.getvalue().count("\n") == 1
     assert "\x1b" not in stderr.getvalue()
-    assert stderr.getvalue() == (
-        r"alpha\nforged/SKILL.md: invalid\x1b[31m description." + "\n"
-    )
+    assert stderr.getvalue() == (r"alpha\nforged/SKILL.md: invalid\x1b[31m description." + "\n")
 
 
 def test_lint_skills_translates_invalid_root_errors() -> None:

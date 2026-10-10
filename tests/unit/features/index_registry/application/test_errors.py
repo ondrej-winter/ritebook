@@ -11,6 +11,4 @@ def test_duplicate_index_name_error_mentions_force() -> None:
 
 
 def test_unknown_index_name_error_is_user_facing() -> None:
-    assert str(UnknownIndexNameError("company-skills")) == (
-        "local alias company-skills is not registered"
-    )
+    assert str(UnknownIndexNameError("company-skills")) == ("local alias company-skills is not registered")

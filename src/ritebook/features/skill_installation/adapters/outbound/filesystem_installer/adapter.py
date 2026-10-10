@@ -284,10 +284,7 @@ def _copy_directory(source_fd: int, destination_fd: int) -> None:
                 mode=stat.S_IMODE(metadata.st_mode),
             )
             continue
-        msg = (
-            "skill source directory may contain only regular files and directories: "
-            f"{name}"
-        )
+        msg = f"skill source directory may contain only regular files and directories: {name}"
         raise UnsafeInstallPathError(msg)
 
 
@@ -320,9 +317,7 @@ def _copy_regular_file(
     mode: int,
 ) -> None:
     source_flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    destination_flags = (
-        os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-    )
+    destination_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     try:
         source_fd = os.open(name, source_flags, dir_fd=source_parent_fd)
     except OSError as err:

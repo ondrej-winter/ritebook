@@ -39,11 +39,7 @@ class FilesystemSkillDirectoryAdapter(SkillChangeDetectorPort, SkillDirectoryPor
         _validate_skill_directory(installed_path, description="installed skill target")
         _validate_skill_directory(source_path, description="source skill directory")
         changed_file_count = _changed_file_count(installed_path, source_path)
-        status = (
-            SkillChangeStatus.NO_CHANGES
-            if changed_file_count == 0
-            else SkillChangeStatus.CHANGED
-        )
+        status = SkillChangeStatus.NO_CHANGES if changed_file_count == 0 else SkillChangeStatus.CHANGED
         return SkillChangeComparison(
             status=status,
             installed_path=str(installed_path),
@@ -71,10 +67,7 @@ class FilesystemSkillDirectoryAdapter(SkillChangeDetectorPort, SkillDirectoryPor
 def _installed_skill_path(entry: ContributionLockfileEntry) -> Path:
     path = Path(entry.target).expanduser()
     if not path.exists() or not path.is_dir() or path.is_symlink():
-        msg = (
-            f"installed skill target {entry.target} does not exist "
-            "or is not a directory"
-        )
+        msg = f"installed skill target {entry.target} does not exist or is not a directory"
         raise MissingInstalledSkillTargetError(msg)
     return path.resolve(strict=True)
 
@@ -124,11 +117,7 @@ def _safe_relative_path(value: str, *, field_name: str) -> PurePosixPath:
         msg = f"{field_name} must be a safe relative POSIX path"
         raise UnsafeContributionPathError(msg)
     path = PurePosixPath(value)
-    if (
-        path.is_absolute()
-        or not path.parts
-        or any(part in {".", ".."} for part in path.parts)
-    ):
+    if path.is_absolute() or not path.parts or any(part in {".", ".."} for part in path.parts):
         msg = f"{field_name} must be a safe relative POSIX path"
         raise UnsafeContributionPathError(msg)
     return path
@@ -170,9 +159,7 @@ def _validate_skill_directory(path: Path, *, description: str) -> None:
 def _reject_symlinks(root: Path, *, description: str) -> None:
     for child in root.rglob("*"):
         if child.is_symlink():
-            msg = (
-                f"{description} contains unsupported symlink: {child.relative_to(root)}"
-            )
+            msg = f"{description} contains unsupported symlink: {child.relative_to(root)}"
             raise UnsafeContributionPathError(msg)
 
 
@@ -185,11 +172,7 @@ def _changed_file_count(left: Path, right: Path) -> int:
         for entry in left_entries.intersection(right_entries)
         if (left / entry).is_file() and (right / entry).is_file()
     )
-    changed_files = sum(
-        1
-        for entry in common_files
-        if not filecmp.cmp(left / entry, right / entry, shallow=False)
-    )
+    changed_files = sum(1 for entry in common_files if not filecmp.cmp(left / entry, right / entry, shallow=False))
     return len(changed_entries) + changed_files
 
 

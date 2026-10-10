@@ -42,10 +42,7 @@ def normalize_portable_description(value: str, *, field_name: str) -> str:
         msg = f"{field_name} must not be blank."
         raise ValueError(msg)
     if len(normalized) > MAX_PORTABLE_DESCRIPTION_LENGTH:
-        msg = (
-            f"{field_name} must be at most "
-            f"{MAX_PORTABLE_DESCRIPTION_LENGTH} characters."
-        )
+        msg = f"{field_name} must be at most {MAX_PORTABLE_DESCRIPTION_LENGTH} characters."
         raise ValueError(msg)
     require_portable_text(normalized, field_name=field_name)
     return normalized
@@ -58,9 +55,7 @@ def escape_terminal_control_characters(value: str) -> str:
 
 def _is_terminal_control(character: str) -> bool:
     code_point = ord(character)
-    return (
-        code_point <= C0_CONTROL_MAX or DELETE_CONTROL <= code_point <= C1_CONTROL_MAX
-    )
+    return code_point <= C0_CONTROL_MAX or DELETE_CONTROL <= code_point <= C1_CONTROL_MAX
 
 
 def _is_non_portable_character(character: str) -> bool:

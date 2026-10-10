@@ -42,11 +42,7 @@ def test_parse_yaml_frontmatter_accepts_more_than_two_hundred_lines(
     skill_file = tmp_path / "SKILL.md"
     metadata = "\n".join(f"  key-{index}: value" for index in range(250))
     skill_file.write_text(
-        (
-            "---\nname: code-review\n"
-            "description: Helps review code.\nmetadata:\n"
-            f"{metadata}\n---\n# Body\n"
-        ),
+        (f"---\nname: code-review\ndescription: Helps review code.\nmetadata:\n{metadata}\n---\n# Body\n"),
         encoding="utf-8",
     )
 

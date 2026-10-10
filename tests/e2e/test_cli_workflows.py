@@ -57,13 +57,9 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         cwd=published_repo.path,
     )
     publish_result.assert_success()
-    assert publish_result.stdout == (
-        "Published skill index with 2 skill(s) to ritebook-index.json\n"
-    )
+    assert publish_result.stdout == ("Published skill index with 2 skill(s) to ritebook-index.json\n")
     assert (published_repo.path / "ritebook-index.json").is_file()
-    assert _read_json(published_repo.path / "ritebook-index.json")["skills_root"] == (
-        "skills"
-    )
+    assert _read_json(published_repo.path / "ritebook-index.json")["skills_root"] == ("skills")
     published_repo.commit_all("Publish initial skill index")
 
     add_result = run_cli(
@@ -106,9 +102,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
         cwd=published_repo.path,
     )
     republish_result.assert_success()
-    assert republish_result.stdout == (
-        "Published skill index with 3 skill(s) to ritebook-index.json\n"
-    )
+    assert republish_result.stdout == ("Published skill index with 3 skill(s) to ritebook-index.json\n")
     published_repo.commit_all("Publish refreshed skill index")
 
     update_result = run_cli(
@@ -198,9 +192,7 @@ def test_registry_browsing_supports_index_listing_and_filtered_skill_listing(
     ]
     assert list_indexes.stderr == ""
     list_skills.assert_success()
-    assert list_skills.stdout == (
-        "Indexes\n└── company-skills\n    ├── alpha\n    └── beta\n"
-    )
+    assert list_skills.stdout == ("Indexes\n└── company-skills\n    ├── alpha\n    └── beta\n")
     assert list_skills.stderr == ""
 
 
@@ -467,9 +459,7 @@ def test_update_index_preserves_cached_catalog_after_invalid_candidate(
 
     update_result.assert_failure()
     assert "invalid schema-v1 catalog structure" in update_result.stderr
-    assert "reorganize skills into root or collection/skill paths" in (
-        update_result.stderr.lower()
-    )
+    assert "reorganize skills into root or collection/skill paths" in (update_result.stderr.lower())
     assert registry_path.read_bytes() == before_registry
     assert cached_index.read_bytes() == before_cache
     listed = run_cli(["skills", "list", "--registry-path", str(registry_path)])
@@ -522,9 +512,7 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
     result.assert_success()
     assert result.stdout == f"Installed company-skills/code-review to {target}\n"
     assert (target / "SKILL.md").is_file()
-    assert (target / "checklist.md").read_text(encoding="utf-8") == (
-        "# Review checklist\n"
-    )
+    assert (target / "checklist.md").read_text(encoding="utf-8") == ("# Review checklist\n")
     installation_registry = _read_json(installation_registry_path)
     assert installation_registry["schema_version"] == 3
     installation = installation_registry["installations"][0]
@@ -599,19 +587,11 @@ def test_install_skill_copies_skill_from_subdirectory_and_records_source_path(
     result.assert_success()
     assert result.stdout == f"Installed company-skills/skills/code-review to {target}\n"
     assert (target / "SKILL.md").is_file()
-    assert (target / "checklist.md").read_text(encoding="utf-8") == (
-        "# Nested review checklist\n"
-    )
+    assert (target / "checklist.md").read_text(encoding="utf-8") == ("# Nested review checklist\n")
     installation_registry = _read_json(installation_registry_path)
-    assert installation_registry["installations"][0]["requirement"] == (
-        "company-skills/skills/code-review"
-    )
-    assert installation_registry["installations"][0]["skill_path"] == (
-        "skills/skills/code-review"
-    )
-    assert installation_registry["installations"][0]["skill_file"] == (
-        "skills/skills/code-review/SKILL.md"
-    )
+    assert installation_registry["installations"][0]["requirement"] == ("company-skills/skills/code-review")
+    assert installation_registry["installations"][0]["skill_path"] == ("skills/skills/code-review")
+    assert installation_registry["installations"][0]["skill_file"] == ("skills/skills/code-review/SKILL.md")
 
 
 def test_install_skill_refuses_unmanaged_existing_target(
@@ -654,9 +634,7 @@ def test_install_skill_refuses_unmanaged_existing_target(
 
     result.assert_failure()
     assert result.stdout == ""
-    expected_error = (
-        f"ritebook: error: target {target} exists but is not owned by Ritebook\n"
-    )
+    expected_error = f"ritebook: error: target {target} exists but is not owned by Ritebook\n"
     assert result.stderr == expected_error
     assert (target / "local-note.md").read_text(encoding="utf-8") == "keep me\n"
 
@@ -818,8 +796,7 @@ target_path = ".agents/skills/tdd"
 
     result.assert_success()
     assert result.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 2, updated 0, "
-        "unchanged 0, pruned 0\n"
+        f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0, pruned 0\n"
     )
     assert (consumer_repo / ".claude" / "skills" / "code-review" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "tdd" / "notes.md").read_text(
@@ -841,9 +818,7 @@ target_path = ".agents/skills/tdd"
         "index_name": "company-skills",
         "skill_name": "code-review",
         "target": ".claude/skills/code-review",
-        "target_id": (
-            f"sha256:{hashlib.sha256(b'.claude/skills/code-review').hexdigest()}"
-        ),
+        "target_id": (f"sha256:{hashlib.sha256(b'.claude/skills/code-review').hexdigest()}"),
         "source": published_repo.path.as_uri(),
         "source_type": "git_url",
         "source_branch": "refs/heads/master",
@@ -857,9 +832,7 @@ target_path = ".agents/skills/tdd"
         "target_ref": "claude",
         "source_revision": _git_head(published_repo.path),
     }
-    assert lock_entries["company-skills/test-driven-development"]["target"] == (
-        ".agents/skills/tdd"
-    )
+    assert lock_entries["company-skills/test-driven-development"]["target"] == (".agents/skills/tdd")
     assert "target_ref" not in lock_entries["company-skills/test-driven-development"]
     ownership_path = consumer_repo / ".ritebook" / "installations.json"
     ownership = _read_json(ownership_path)
@@ -884,8 +857,7 @@ target_path = ".agents/skills/tdd"
 
     second.assert_success()
     assert second.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 0, updated 0, "
-        "unchanged 2, pruned 0\n"
+        f"Reconciled skills from {requirements_file}: installed 0, updated 0, unchanged 2, pruned 0\n"
     )
     assert lockfile.read_bytes() == first_lock_bytes
     assert ownership_path.is_file()
@@ -954,8 +926,7 @@ target = "agents"
 
     install_result.assert_success()
     assert install_result.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 2, updated 0, "
-        "unchanged 0, pruned 0\n"
+        f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0, pruned 0\n"
     )
     assert (consumer_repo / ".agents" / "skills" / "alpha-tool" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "zeta-tool" / "SKILL.md").is_file()
@@ -1046,10 +1017,7 @@ target = "claude"
 
     result.assert_failure()
     assert result.stdout == ""
-    assert (
-        result.stderr
-        == "ritebook: error: unable to commit generated installation state\n"
-    )
+    assert result.stderr == "ritebook: error: unable to commit generated installation state\n"
     assert not target.exists()
     assert blocked_parent.read_text(encoding="utf-8") == "not a directory\n"
     assert not lockfile.exists()
@@ -1105,13 +1073,9 @@ target = "claude"
     )
 
     result.assert_failure()
-    assert result.stdout == (
-        "Reconciled skills from ritebook.toml: installed 0, updated 0, "
-        "unchanged 0, pruned 0\n"
-    )
+    assert result.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 0, unchanged 0, pruned 0\n")
     assert result.stderr == (
-        "ritebook: issue: unmanaged-target: .claude/skills/code-review: "
-        "target exists but is not owned by Ritebook\n"
+        "ritebook: issue: unmanaged-target: .claude/skills/code-review: target exists but is not owned by Ritebook\n"
     )
     assert (target / "stale.md").read_text(encoding="utf-8") == "remove me\n"
     assert not (target / "guide.md").exists()
@@ -1175,10 +1139,7 @@ target = "claude"
 
     result.assert_failure()
     assert result.stdout == ""
-    expected_error = (
-        "ritebook: error: target nickname claude is not defined in "
-        f"{requirements_file}\n"
-    )
+    expected_error = f"ritebook: error: target nickname claude is not defined in {requirements_file}\n"
     assert result.stderr == expected_error
     assert not lockfile.exists()
 

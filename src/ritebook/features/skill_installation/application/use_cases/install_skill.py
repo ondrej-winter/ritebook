@@ -130,8 +130,7 @@ class InstallSkill(InstallSkillPort):
                                 *(
                                     existing
                                     for existing in ownership
-                                    if existing.canonical_target
-                                    != planned_target.canonical_target
+                                    if existing.canonical_target != planned_target.canonical_target
                                 ),
                             ),
                             key=lambda item: item.target_id,
@@ -167,10 +166,7 @@ def _validate_committed_metadata(
     skill: InstallableSkill,
     committed_header: CommittedSkillHeader,
 ) -> None:
-    if (
-        committed_header.name != skill.name
-        or committed_header.description != skill.description
-    ):
+    if committed_header.name != skill.name or committed_header.description != skill.description:
         raise CommittedSkillMetadataMismatchError(skill.path)
 
 

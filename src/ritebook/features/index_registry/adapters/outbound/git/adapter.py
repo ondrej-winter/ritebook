@@ -122,10 +122,7 @@ class GitSourceAdapter:
             ],
         )
         if status.stdout:
-            msg = (
-                "local index source has uncommitted changes; "
-                "commit or discard them before registration"
-            )
+            msg = "local index source has uncommitted changes; commit or discard them before registration"
             raise IndexSourceError(msg)
         selected_branch = source_branch or self._local_branch(source_path)
         source_revision, index_content = self._capture_candidate(

@@ -18,9 +18,7 @@ def test_validate_portable_relative_posix_path_accepts_literal_paths(
     ) == PurePosixPath(value)
 
 
-def test_validate_portable_relative_posix_path_allows_explicit_current_directory() -> (
-    None
-):
+def test_validate_portable_relative_posix_path_allows_explicit_current_directory() -> None:
     assert validate_portable_relative_posix_path(
         ".",
         field_name="skills_root",

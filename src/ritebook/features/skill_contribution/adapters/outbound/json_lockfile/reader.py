@@ -101,10 +101,7 @@ def _read_entries(path: Path) -> tuple[_ParsedEntry, ...]:
     if set(payload) != ROOT_FIELDS:
         msg = "ritebook.lock schema-v3 root is malformed"
         raise ContributionLockfileReadError(msg)
-    if (
-        not isinstance(payload.get("requirements_file"), str)
-        or not payload["requirements_file"]
-    ):
+    if not isinstance(payload.get("requirements_file"), str) or not payload["requirements_file"]:
         msg = "ritebook.lock must contain a non-empty requirements_file"
         raise ContributionLockfileReadError(msg)
     if payload.get("state") not in {"complete", "partial"}:
@@ -116,10 +113,7 @@ def _read_entries(path: Path) -> tuple[_ParsedEntry, ...]:
     if not isinstance(skills, list):
         msg = "ritebook.lock must contain a skills array"
         raise ContributionLockfileReadError(msg)
-    return tuple(
-        _entry_from_json(entry, position=position)
-        for position, entry in enumerate(skills)
-    )
+    return tuple(_entry_from_json(entry, position=position) for position, entry in enumerate(skills))
 
 
 def _read_payload(path: Path) -> dict[str, Any]:
@@ -160,9 +154,7 @@ def _validate_issues(value: object) -> None:
                 msg = "ritebook.lock issue entry is malformed"
                 raise ContributionLockfileReadError(msg)
         requirement = issue.get("requirement")
-        if requirement is not None and (
-            not isinstance(requirement, str) or not requirement
-        ):
+        if requirement is not None and (not isinstance(requirement, str) or not requirement):
             msg = "ritebook.lock issue entry is malformed"
             raise ContributionLockfileReadError(msg)
 
@@ -188,9 +180,7 @@ def _entry_from_json(entry: object, *, position: int) -> _ParsedEntry:
                 "ritebook skills sync"
             )
         else:
-            msg = (
-                f"lockfile skill entry at position {position} must include {field_name}"
-            )
+            msg = f"lockfile skill entry at position {position} must include {field_name}"
         raise ContributionLockfileReadError(msg)
     if not fields.issubset(ENTRY_FIELDS | OPTIONAL_ENTRY_FIELDS):
         msg = f"lockfile skill entry at position {position} is malformed"

@@ -26,9 +26,7 @@ class ListIndexes(ListIndexesPort):
     def execute(self, command: ListIndexesCommand) -> ListIndexesResult:
         """Return user-facing summaries for all registered indexes."""
         return ListIndexesResult(
-            indexes=tuple(
-                _summary(entry) for entry in self._registry.list(command.registry_path)
-            ),
+            indexes=tuple(_summary(entry) for entry in self._registry.list(command.registry_path)),
         )
 
 

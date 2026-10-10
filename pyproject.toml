@@ -52,7 +52,7 @@ packages = ["src/ritebook"]
 [tool.semantic_release]
 assets = ["uv.lock"]
 build_command = "uv lock && uv build"
-commit_message = "release: bump version to {version}"
+commit_message = "release: bump version to {version}\n\n[skip ci]"
 commit_parser = "conventional"
 tag_format = "v{version}"
 version_toml = ["pyproject.toml:project.version"]

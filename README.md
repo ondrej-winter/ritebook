@@ -531,12 +531,13 @@ Python Semantic Release to:
 7. publish the built distributions to PyPI in the same workflow run.
 
 The release commit becomes the new `master` head, keeping repository metadata in
-sync with Git tags and published packages. Its push triggers a verification-only
-CI run: quality and Docker E2E checks still execute, while the release job skips
-commits whose message starts with `release: bump version to` to prevent a release
-loop. When the project is ready to move beyond patch-only `0.1.x` releases, the
-same Semantic Release tooling can be used for normal commit-derived SemVer
-releases.
+sync with Git tags and published packages. Its commit body contains `[skip ci]`,
+so the generated push does not start another CI/CD workflow after the parent
+commit has already passed quality and Docker E2E. The release job also skips
+commits whose message starts with `release: bump version to` as defense in depth
+against a release loop. When the project is ready to move beyond patch-only
+`0.1.x` releases, the same Semantic Release tooling can be used for normal
+commit-derived SemVer releases.
 
 The default branch requires the stable `Quality checks` and `Docker E2E` status
 checks. The repository owner retains an explicit ruleset bypass for the current

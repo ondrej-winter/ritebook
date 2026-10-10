@@ -49,6 +49,7 @@ def registered_skill_index(
     source_type: str = "git_url",
     source: str = "git@example.com:company/skills.git",
     source_revision: str = REVISION,
+    source_branch: str = "refs/heads/main",
     index_digest: str = INDEX_DIGEST,
 ) -> RegisteredSkillIndex:
     repository = tmp_path / "repository"
@@ -60,6 +61,7 @@ def registered_skill_index(
         source=source,
         source_type=source_type,
         source_revision=source_revision,
+        source_branch=source_branch,
         index_digest=index_digest,
         source_cache_path=str(repository) if source_type == "git_url" else None,
         cached_index_path=str(cached_index),
@@ -78,6 +80,7 @@ def test_source_repository_materializes_bound_commit_and_cleans_snapshot(
     with adapter.open_source(index) as source:
         snapshot = Path(source.repository_path)
         assert source.source_revision == REVISION
+        assert source.source_branch == "refs/heads/main"
         assert (snapshot / "skills" / "code-review" / "SKILL.md").read_text() == (
             "bound content"
         )

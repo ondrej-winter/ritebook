@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum
 
-from ritebook.shared_kernel import require_index_name
+from ritebook.shared_kernel import require_canonical_git_branch, require_index_name
 
 _GIT_OBJECT_ID_PATTERN = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})\Z")
 _INDEX_DIGEST_PATTERN = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -99,6 +99,7 @@ class PreparedIndexSource:
     source_type: IndexSourceType
     repository_path: str
     source_revision: str
+    source_branch: str
     index_content: bytes
     source_cache_path: str | None = None
 
@@ -107,6 +108,7 @@ class PreparedIndexSource:
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.repository_path, field_name="Repository path")
         _require_source_revision(self.source_revision)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         if not self.index_content:
             msg = "Committed index content must not be empty."
             raise ValueError(msg)
@@ -158,6 +160,7 @@ class RegisteredIndex:
     source: str
     source_type: IndexSourceType
     source_revision: str
+    source_branch: str
     index_digest: str
     source_cache_path: str | None
     cached_index_path: str
@@ -178,6 +181,7 @@ class RegisteredIndex:
             raise TypeError(msg)
         _require_non_empty(self.source, field_name="Index source")
         _require_source_revision(self.source_revision)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         _require_index_digest(self.index_digest)
         _require_non_empty(self.cached_index_path, field_name="Cached index path")
         _require_non_empty(self.added_at, field_name="Added timestamp")
@@ -221,6 +225,8 @@ class UpdateIndexResult:
     skill_count: int
     updated_indexes: tuple[str, ...] = ()
     failed_indexes: tuple[str, ...] = ()
+    updated_index: RegisteredIndex | None = None
+    updated_indexes_metadata: tuple[RegisteredIndex, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate update-index result metadata."""
@@ -233,6 +239,12 @@ class UpdateIndexResult:
             require_index_name(name, field_name="Updated local alias")
         for name in self.failed_indexes:
             require_index_name(name, field_name="Failed local alias")
+        if self.name is None and self.updated_index is not None:
+            msg = "Bulk update results must not include one selected updated index."
+            raise ValueError(msg)
+        if self.name is not None and self.updated_indexes_metadata:
+            msg = "Single update results must not include bulk updated index metadata."
+            raise ValueError(msg)
 
 
 @dataclass(frozen=True)

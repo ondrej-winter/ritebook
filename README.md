@@ -313,9 +313,10 @@ Direct `skills install` runs write generated user-level installation state to:
 ~/.config/ritebook/installations.json
 ```
 
-Direct installation state uses strict schema version 2 and includes ownership,
-verified source provenance, and the canonical installed-tree digest. On POSIX
-platforms, Ritebook writes both `indexes.json` and `installations.json` with mode
+Direct installation state uses strict schema version 3 and includes ownership,
+verified commit, canonical-branch, and index-digest provenance, and the canonical
+installed-tree digest. On POSIX platforms, Ritebook writes both `indexes.json`
+and `installations.json` with mode
 `0600`. Persisted source values never include standard-URL user-info, and `indexes
 list` defensively removes such user-info from displayed sources. Legacy or unsafe
 generated installation state is rejected and must be inspected and regenerated.
@@ -383,7 +384,7 @@ target base by its final skill name; it cannot use `target_path`. Expansion neve
 matches deeper descendants or searches by `skills[].name`. Direct `skills install`
 and `skills contribute` commands remain exact-only and never expand collections.
 
-Sync transactionally writes strict schema-v2 generated state to `ritebook.lock`
+Sync transactionally writes strict schema-v3 generated state to `ritebook.lock`
 and local ownership state to `.ritebook/installations.json`. Commit
 `ritebook.lock` when a repository uses `ritebook.toml`; do not commit `.ritebook/`.
 The lock records the actual retained Ritebook-owned targets, their installed-tree
@@ -392,11 +393,12 @@ reconciliation issues. Complete no-change syncs produce byte-identical lock stat
 Partial reconciliation preserves independent successful changes, writes truthful
 `state = "partial"` data, reports each issue, and exits nonzero.
 
-Schema-v1 lockfiles and installation registries do not prove ownership because
-they lack installed-tree digests. Ritebook rejects automatic migration: inspect
-and remove or relocate legacy targets, then rerun `skills sync` to generate
-schema-v2 state. Because `ritebook.lock` is shared, Ritebook does not force a
-private file mode; it rejects credential-bearing standard source URLs before
+Schema-v1 and schema-v2 lockfiles and installation registries are rejected
+without automatic migration because they lack current ownership or canonical
+source-branch provenance. Inspect and remove or relocate legacy targets, then
+rerun `skills sync` to generate schema-v3 state. Because `ritebook.lock` is
+shared, Ritebook does not force a private file mode; it rejects
+credential-bearing standard source URLs before
 writing instead.
 
 Each lock entry's `requirement` stores the exact catalog-qualified selector, such
@@ -460,9 +462,9 @@ Ritebook does not run the suggested command, push any branch, or open a merge
 request or pull request. Inspect the checkout and commit before following the
 suggested next step.
 
-Contribution publishing accepts only desired schema-v2 lock entries with
+Contribution publishing accepts only desired schema-v3 lock entries with
 `materialized` or `local_changes` status, an installed-tree digest, and a portable
-`git_url` source. Schema-v1, issue-only, retained, and hand-written
+`git_url` source. Schema-v1, schema-v2, issue-only, retained, and hand-written
 `local_git_repo` entries fail before any contribution clone or Git operation,
 with guidance to re-register by Git URL and regenerate the lockfile.
 

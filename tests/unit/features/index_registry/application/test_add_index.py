@@ -50,7 +50,7 @@ def test_add_index_registers_git_url_source_with_published_name() -> None:
     assert result.name == "company-skills"
     assert result.skill_count == 2
     assert git_source.prepare_calls == [
-        ("git@example.com:company/skills.git", "/tmp/cache"),
+        ("git@example.com:company/skills.git", "/tmp/cache", "/tmp/indexes.json"),
     ]
     assert reader.read_contents == [b'{"schema_version":1}\n']
     assert cache.write_calls == [
@@ -99,6 +99,7 @@ def test_add_index_registers_local_git_repository_source() -> None:
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/repos/skills",
             source_revision="a" * 40,
+            source_branch="refs/heads/main",
             index_content=b'{"schema_version":1}\n',
         ),
     )
@@ -235,6 +236,7 @@ def test_add_index_discards_candidate_when_registry_commit_fails() -> None:
         name="company-skills",
         index_digest=f"sha256:{'b' * 64}",
         cache_root="/tmp/cache",
+        registry_path=None,
     )
     assert cache.discard_calls == [
         ("company-skills", candidate_path, "/tmp/cache"),

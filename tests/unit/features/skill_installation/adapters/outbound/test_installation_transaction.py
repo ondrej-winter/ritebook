@@ -75,20 +75,48 @@ def test_installation_transaction_commits_target_and_multiple_state_files(
             (
                 GeneratedStateFile(
                     path=str(lockfile),
-                    content=b'{"schema_version":2}\n',
+                    content=b'{"schema_version":3}\n',
                     private=False,
                 ),
                 GeneratedStateFile(
                     path=str(ownership),
-                    content=b'{"schema_version":2,"installations":[]}\n',
+                    content=b'{"schema_version":3,"installations":[]}\n',
                     private=True,
                 ),
             ),
         )
 
     assert (target / "SKILL.md").read_text(encoding="utf-8") == "new\n"
-    assert lockfile.read_bytes() == b'{"schema_version":2}\n'
-    assert ownership.read_bytes() == b'{"schema_version":2,"installations":[]}\n'
+    assert lockfile.read_bytes() == b'{"schema_version":3}\n'
+    assert ownership.read_bytes() == b'{"schema_version":3,"installations":[]}\n'
+    assert not (tmp_path / ".ritebook" / "transaction.json").exists()
+
+
+def test_installation_transaction_rejects_stale_generated_state_snapshot(
+    tmp_path: Path,
+) -> None:
+    adapter = FilesystemInstallationTransactionAdapter()
+    state_path = tmp_path / "ritebook.lock"
+    expected = b"expected\n"
+    state_path.write_bytes(expected)
+    candidate = GeneratedStateFile(
+        path=str(state_path),
+        content=b"candidate\n",
+        private=False,
+        expected_digest=_digest(expected),
+    )
+    state_path.write_bytes(b"concurrent update\n")
+
+    with (
+        adapter.open(
+            lock_path=str(tmp_path / ".ritebook" / "install.lock"),
+            journal_path=str(tmp_path / ".ritebook" / "transaction.json"),
+        ) as transaction,
+        pytest.raises(InstallationPersistenceError, match="changed concurrently"),
+    ):
+        transaction.commit_state((candidate,))
+
+    assert state_path.read_bytes() == b"concurrent update\n"
     assert not (tmp_path / ".ritebook" / "transaction.json").exists()
 
 

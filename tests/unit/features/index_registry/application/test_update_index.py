@@ -68,8 +68,15 @@ def test_update_index_refreshes_git_url_source() -> None:
 
     assert result.name == "company-skills"
     assert result.skill_count == 3
+    assert result.updated_index == registry.entries["company-skills"]
     assert git_source.refresh_calls == [
-        ("git@example.com:company/skills.git", "/cache/git/source-id", "/tmp/cache"),
+        (
+            "git@example.com:company/skills.git",
+            "refs/heads/main",
+            "/cache/git/source-id",
+            "/tmp/cache",
+            "/tmp/indexes.json",
+        ),
     ]
     assert cache.write_calls == [
         (
@@ -126,6 +133,7 @@ def test_update_index_refreshes_local_git_repository_source() -> None:
                 source="/repos/skills",
                 source_type=IndexSourceType.LOCAL_GIT_REPO,
                 source_cache_path=None,
+                source_branch="refs/heads/main",
             ),
         ],
     )
@@ -135,6 +143,7 @@ def test_update_index_refreshes_local_git_repository_source() -> None:
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/repos/skills",
             source_revision="c" * 40,
+            source_branch="refs/heads/main",
             index_content=b'{"schema_version":1}\n',
         ),
     )
@@ -148,7 +157,9 @@ def test_update_index_refreshes_local_git_repository_source() -> None:
 
     use_case.execute(UpdateIndexCommand(name="company-skills"))
 
-    assert git_source.refresh_calls == [("/repos/skills", None, None)]
+    assert git_source.refresh_calls == [
+        ("/repos/skills", "refs/heads/main", None, None, None),
+    ]
     assert registry.entries["company-skills"].source_cache_path is None
 
 
@@ -258,6 +269,7 @@ def test_update_index_validation_failure_preserves_filesystem_state(
         index_digest=cached_digest,
         cache_root=str(cache_root),
         preserve_path=None,
+        registry_path=str(registry_path),
     )
     existing = replace(
         registered_index(),
@@ -318,6 +330,7 @@ def test_update_index_discards_candidate_when_registry_commit_fails() -> None:
         name="company-skills",
         index_digest=f"sha256:{'b' * 64}",
         cache_root="/tmp/cache",
+        registry_path=None,
     )
     assert registry.entries["company-skills"] == existing
     assert cache.discard_calls == [
@@ -391,6 +404,10 @@ def test_update_index_all_continues_after_failure() -> None:
             "gamma-skills",
         ),
         failed_indexes=("beta-skills",),
+        updated_indexes_metadata=(
+            registry.entries["alpha-skills"],
+            registry.entries["gamma-skills"],
+        ),
     )
     assert registry.list_calls == [None]
     assert cache.write_calls == [

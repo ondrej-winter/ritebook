@@ -3,11 +3,11 @@
 ## Status
 
 - State: Active
-- Revision: 3.1
-- Acceptance basis: User-approved October 6, 2026 exact-reconciliation plan plus the October 7, 2026 committed-header coherence decision in ADR 0005.
-- Accepted by / on: User / 2026-10-07
+- Revision: 3.2
+- Acceptance basis: User-approved October 6, 2026 exact-reconciliation plan, the October 7, 2026 committed-header coherence decision in ADR 0005, and the October 9, 2026 canonical-branch provenance decision in ADR 0001.
+- Accepted by / on: User / 2026-10-09
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-07
+- Last reviewed: 2026-10-09
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
 - Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
@@ -26,7 +26,9 @@ could overwrite unmanaged directories with `--force`, deleted backups before
 generated state committed, and allowed concurrent lost updates. Revision 3.0
 defines exact, ownership-aware reconciliation with deterministic tree digests,
 referenced-index refresh, exclusive locking, rollback, interruption recovery,
-truthful partial state, and schema-v2 generated state.
+truthful partial state, and schema-v2 generated state. Revision 3.2 advances
+generated installation state to schema v3 so the canonical source branch is
+retained with the immutable commit-and-index binding.
 
 ## Scope
 
@@ -34,7 +36,7 @@ truthful partial state, and schema-v2 generated state.
   index refresh, generated lock and ownership state, content identity, local-edit
   preservation, safe pruning, locking, target/state transactions, interruption
   recovery, path and symlink safety, deterministic output, CLI behavior, and
-  schema-v1 migration rejection.
+  schema-v1 and schema-v2 migration rejection.
 - Out of scope: unregistered live sources, default direct-install destinations,
   dependency resolution between skills, publisher signatures, cross-host shared
   ownership state, automatic adoption of legacy targets, and overriding local
@@ -123,14 +125,14 @@ truthful partial state, and schema-v2 generated state.
 
 ### R5 — Ownership and local state
 
-- Ritebook may replace or prune only a target recorded in schema-v2 ownership
+- Ritebook may replace or prune only a target recorded in schema-v3 ownership
   state for the same canonical target and `target_id`.
 - Repository sync stores local ownership at
   `<requirements-file-directory>/.ritebook/installations.json`.
 - The repository-local ownership ledger contains canonical target paths and is
   local generated state. Projects must not commit `.ritebook/`.
 - When the local ledger is absent, sync may reconstruct it from the repository's
-  strict schema-v2 `ritebook.lock`. It resolves each portable target under the
+  strict schema-v3 `ritebook.lock`. It resolves each portable target under the
   requirements-file directory and treats the lock entry as ownership evidence
   only when its path is safe and its current tree matches the recorded
   `installed_tree_digest` before replacement or pruning.
@@ -142,12 +144,12 @@ truthful partial state, and schema-v2 generated state.
 - Ownership entries are sorted by `target_id` and record the owning workflow,
   requirement, target identity, canonical target, installed tree digest, and
   verified source provenance.
-- Local ownership files use schema version 2, strict root and entry validation,
+- Local ownership files use schema version 3, strict root and entry validation,
   no unknown fields, atomic same-directory replacement, and POSIX mode `0600`
   where supported.
-- A schema-v1 installation registry or ownership file is not ownership evidence.
-  Ritebook rejects it with instructions to inspect and remove or relocate legacy
-  targets before reinstalling.
+- Schema-v1 and schema-v2 installation registries or ownership files are not
+  current ownership evidence. Ritebook rejects them with instructions to inspect
+  and remove or relocate legacy targets before reinstalling.
 
 ### R6 — Exact reconciliation and safe pruning
 
@@ -190,6 +192,14 @@ does not change ownership, local-edit, pruning, or safety rules.
   journal entries retain stable path strings only for durable recovery guidance.
 - The prior target is moved to an installer-owned same-filesystem backup. The
   backup is retained until all generated-state files for the operation commit.
+- Ownership and lockfile reads compute a SHA-256 digest from the exact bytes they
+  parse. Direct install attaches the ownership snapshot digest to its generated
+  ownership candidate. Sync captures both the authoritative ownership snapshot
+  and the companion `ritebook.lock` snapshot before reconciliation, then attaches
+  the corresponding digests to both generated-state candidates.
+- Immediately before state backup or replacement, the transaction compares each
+  supplied snapshot digest with the current file bytes and fails without writing
+  generated state when a file changed concurrently.
 - A persistent schema-v1 transaction journal records the operation identifier,
   phase, target mutations, backup paths, generated-state paths, prior-state
   backups, and candidate-state digests. Journal and phase changes use atomic
@@ -204,14 +214,14 @@ does not change ownership, local-edit, pruning, or safety rules.
 - A successful operation removes only its own journal, staging paths, backups,
   and prior-state snapshots.
 
-### R8 — Truthful schema-v2 lock state
+### R8 — Truthful schema-v3 lock state
 
 `ritebook.lock` is portable, deterministic repository-shared state with this
 shape:
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "requirements_file": "ritebook.toml",
   "state": "complete",
   "skills": [
@@ -227,6 +237,7 @@ shape:
       "source": "git@github.com:company/internal-skills.git",
       "source_type": "git_url",
       "source_revision": "0123456789abcdef0123456789abcdef01234567",
+      "source_branch": "refs/heads/main",
       "index_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "index_schema_version": 1,
       "skill_path": "skills/code-review",
@@ -253,8 +264,9 @@ shape:
 - The file contains no timestamps, canonical machine paths, credentials, or local
   repository sources. Re-running a complete no-change sync produces identical
   bytes.
-- Schema-v1 lockfiles are read only to reject unsafe automatic migration. They do
-  not authorize target replacement or pruning.
+- Schema-v1 and schema-v2 lockfiles are rejected without automatic migration.
+  They do not authorize target replacement or pruning because they lack all
+  current ownership and canonical-branch provenance.
 
 ### R9 — Partial reconciliation and CLI results
 
@@ -274,7 +286,7 @@ shape:
 
 ### R10 — Contribution compatibility
 
-- Contribution lockfile reading supports schema version 2 only after migration.
+- Contribution lockfile reading supports schema version 3 only.
 - Only an exact `skills` entry with a safe Git URL source, verified provenance,
   `installed_tree_digest`, and a materialized or local-changes status is a valid
   contribution baseline.
@@ -315,15 +327,15 @@ shape:
 
 | ID | Requirements | Scenario | Expected observable result |
 | --- | --- | --- | --- |
-| AC1 | R1, R4, R5, R7 | Direct install a missing target, reinstall unchanged owned content, modify it locally, and attempt unmanaged replacement. | Missing target installs with schema-v2 ownership; owned unchanged replacement is safe; local edits and unmanaged targets are preserved; success follows state commit. |
+| AC1 | R1, R4, R5, R7 | Direct install a missing target, reinstall unchanged owned content, modify it locally, and attempt unmanaged replacement. | Missing target installs with schema-v3 ownership; owned unchanged replacement is safe; local edits and unmanaged targets are preserved; success follows state commit. |
 | AC2 | R2, R3 | Sync exact and collection requirements whose registered sources have advanced, then make one refresh fail. | Referenced aliases refresh before resolution; new committed content is selected; any refresh failure causes no target or install-state mutation and no stale fallback. |
 | AC3 | R4 | Hash equivalent trees with different creation order and timestamps, then change path, executable bit, bytes, or entry type. | Equivalent trees have one stable digest; every content-identity change changes the digest; symlinks and special files are rejected. |
 | AC4 | R5, R6 | Reconcile missing, unchanged, outdated, locally edited, unmanaged, and obsolete targets. | Ritebook installs, keeps, updates, preserves, skips, or prunes exactly according to ownership and digest rules. |
 | AC5 | R7 | Inject failures before mutation, after backup, after target swap, during each state write, during rollback, and after process termination. | Prior state is restored or exact recovery artifacts remain; next-run recovery deterministically finalizes committed state or rolls back uncommitted state. |
-| AC6 | R7 | Run two real processes against the same ownership state. | Only one holds the operation lock; no lost update or interleaved target/state transaction occurs. |
-| AC7 | R8, R9 | Cause one target success, one local-edit skip, one unmanaged-target skip, and one prune success. | Lock schema v2 truthfully represents retained owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
+| AC6 | R7 | Run two real processes against the same ownership state and change generated state after its snapshot is read. | Only one holds the operation lock; no interleaved target/state transaction occurs; stale snapshot commits fail before generated-state replacement. |
+| AC7 | R8, R9 | Cause one target success, one local-edit skip, one unmanaged-target skip, and one prune success. | Lock schema v3 truthfully represents retained owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
 | AC8 | R8 | Run a complete sync twice without source or target changes. | The second run mutates no targets and writes byte-identical lock and ownership state. |
-| AC9 | R5, R8, R10 | Present schema-v1 lock and installation state, malformed schema-v2 documents, unknown fields, unsafe sources, and non-materialized contribution entries. | Readers reject them with safe migration or regeneration guidance and never infer ownership or provenance. |
+| AC9 | R5, R8, R10 | Present schema-v1 and schema-v2 lock and installation state, malformed schema-v3 documents, unknown fields, unsafe sources, and non-materialized contribution entries. | Readers reject them with safe migration or regeneration guidance and never infer ownership or provenance. |
 | AC10 | R1-R10 | Run all repository handoff gates and installed-wheel workflows. | Formatting, linting, typing, import contracts, tests, build, Docker E2E, concurrency, and interruption checks pass or an environmental limitation is reported exactly. |
 
 ## Assumptions
@@ -352,3 +364,6 @@ None.
 - October 7, 2026: Marked revision 3.1 implemented after direct and sync
   workflows validated all selected committed headers before target planning,
   staging, mutation, or generated-state commit.
+- October 9, 2026: Revision 3.2 propagated exact-byte ownership and lockfile
+  snapshot digests into direct-install and sync generated-state candidates so the
+  transaction compare-and-swap check rejects stale state before replacement.

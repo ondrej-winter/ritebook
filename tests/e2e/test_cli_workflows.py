@@ -526,7 +526,7 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
         "# Review checklist\n"
     )
     installation_registry = _read_json(installation_registry_path)
-    assert installation_registry["schema_version"] == 2
+    assert installation_registry["schema_version"] == 3
     installation = installation_registry["installations"][0]
     target_digest = hashlib.sha256(str(target.resolve()).encode()).hexdigest()
     assert installation == {
@@ -538,6 +538,7 @@ def test_install_skill_copies_cached_skill_directory_and_writes_installation_sta
         "source": str(published_repo.path),
         "source_type": "local_git_repo",
         "source_revision": _git_head(published_repo.path),
+        "source_branch": "refs/heads/master",
         "index_digest": installation["index_digest"],
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
@@ -825,7 +826,7 @@ target_path = ".agents/skills/tdd"
         encoding="utf-8",
     ) == "# TDD notes\n"
     lockfile_data = _read_json(lockfile)
-    assert lockfile_data["schema_version"] == 2
+    assert lockfile_data["schema_version"] == 3
     assert lockfile_data["requirements_file"] == "ritebook.toml"
     assert lockfile_data["state"] == "complete"
     assert lockfile_data["issues"] == []
@@ -845,6 +846,7 @@ target_path = ".agents/skills/tdd"
         ),
         "source": published_repo.path.as_uri(),
         "source_type": "git_url",
+        "source_branch": "refs/heads/master",
         "index_digest": code_review["index_digest"],
         "index_schema_version": 1,
         "skill_path": "skills/code-review",
@@ -861,7 +863,7 @@ target_path = ".agents/skills/tdd"
     assert "target_ref" not in lock_entries["company-skills/test-driven-development"]
     ownership_path = consumer_repo / ".ritebook" / "installations.json"
     ownership = _read_json(ownership_path)
-    assert ownership["schema_version"] == 2
+    assert ownership["schema_version"] == 3
     assert len(ownership["installations"]) == 2
 
     first_lock_bytes = lockfile.read_bytes()

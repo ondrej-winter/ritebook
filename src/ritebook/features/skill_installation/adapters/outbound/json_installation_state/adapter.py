@@ -1,4 +1,4 @@
-"""Read strict ownership state and render deterministic schema-v2 state files."""
+"""Read strict ownership state and render deterministic schema-v3 state files."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 from ritebook.features.skill_installation.application.dtos import (
     GeneratedStateFile,
     InstallationOperationPaths,
+    InstallationStateSnapshot,
     InstallationStatus,
     InstallationWorkflow,
     OwnedInstallation,
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
         ReconciliationIssue,
     )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_DIRECT_STATE_PATH = Path.home() / ".config" / "ritebook" / "installations.json"
 OWNERSHIP_ROOT_FIELDS = frozenset({"schema_version", "installations"})
 OWNERSHIP_ENTRY_FIELDS = frozenset(
@@ -41,6 +42,7 @@ OWNERSHIP_ENTRY_FIELDS = frozenset(
         "source",
         "source_type",
         "source_revision",
+        "source_branch",
         "index_digest",
         "index_schema_version",
         "skill_path",
@@ -64,6 +66,7 @@ LOCK_ENTRY_FIELDS = frozenset(
         "source",
         "source_type",
         "source_revision",
+        "source_branch",
         "index_digest",
         "index_schema_version",
         "skill_path",
@@ -110,15 +113,15 @@ class JsonInstallationStateAdapter:
             lockfile_path=str(lockfile),
         )
 
-    def read_ownership(self, ownership_path: str) -> tuple[OwnedInstallation, ...]:
-        """Read and strictly validate schema-v2 ownership state."""
+    def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
+        """Read and strictly validate schema-v3 ownership state."""
         path = Path(ownership_path)
         if not path.exists():
-            return ()
-        payload = _read_json_object(path)
+            return InstallationStateSnapshot(entries=(), digest=None)
+        payload, digest = _read_json_object(path)
         if payload.get("schema_version") != SCHEMA_VERSION:
             msg = (
-                "installation ownership state requires schema version 2; inspect "
+                "installation ownership state requires schema version 3; inspect "
                 "and remove or relocate legacy targets before reinstalling"
             )
             raise InstallationPersistenceError(msg)
@@ -136,7 +139,10 @@ class JsonInstallationStateAdapter:
         if len({entry.target_id for entry in entries}) != len(entries):
             msg = f"installation ownership state contains duplicate targets: {path}"
             raise InstallationPersistenceError(msg)
-        return tuple(sorted(entries, key=lambda entry: entry.target_id))
+        return InstallationStateSnapshot(
+            entries=tuple(sorted(entries, key=lambda entry: entry.target_id)),
+            digest=digest,
+        )
 
     def ownership_exists(self, ownership_path: str) -> bool:
         """Return whether a local ownership ledger exists."""
@@ -147,34 +153,34 @@ class JsonInstallationStateAdapter:
         lockfile_path: str,
         *,
         requirements_file: str,
-    ) -> tuple[OwnedInstallation, ...]:
-        """Read strict portable lock state as constrained local sync ownership."""
+    ) -> InstallationStateSnapshot:
+        """Read strict portable schema-v3 lock state as local sync ownership."""
         path = Path(lockfile_path)
         if not path.exists():
-            return ()
-        payload = _read_json_object(path)
+            return InstallationStateSnapshot(entries=(), digest=None)
+        payload, digest = _read_json_object(path)
         if payload.get("schema_version") != SCHEMA_VERSION:
             msg = (
-                "ritebook.lock requires schema version 2 before it can bootstrap "
+                "ritebook.lock requires schema version 3 before it can bootstrap "
                 "local installation ownership"
             )
             raise InstallationPersistenceError(msg)
         if set(payload) != LOCK_ROOT_FIELDS:
-            msg = f"ritebook.lock schema-v2 root is malformed: {path}"
+            msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         if payload.get("state") not in {"complete", "partial"}:
-            msg = f"ritebook.lock schema-v2 root is malformed: {path}"
+            msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         if (
             not isinstance(payload.get("requirements_file"), str)
             or not payload["requirements_file"]
         ):
-            msg = f"ritebook.lock schema-v2 root is malformed: {path}"
+            msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         _validate_lock_issues(payload.get("issues"), path=path)
         skills = payload.get("skills")
         if not isinstance(skills, list):
-            msg = f"ritebook.lock schema-v2 root is malformed: {path}"
+            msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         root = Path(requirements_file).expanduser().resolve(strict=False).parent
         entries = tuple(
@@ -184,14 +190,31 @@ class JsonInstallationStateAdapter:
         if len({entry.target_id for entry in entries}) != len(entries):
             msg = f"ritebook.lock contains duplicate target identities: {path}"
             raise InstallationPersistenceError(msg)
-        return tuple(sorted(entries, key=lambda entry: entry.target_id))
+        return InstallationStateSnapshot(
+            entries=tuple(sorted(entries, key=lambda entry: entry.target_id)),
+            digest=digest,
+        )
+
+    def read_state_digest(self, path: str) -> str | None:
+        """Return the exact current file-byte digest without parsing its contents."""
+        state_path = Path(path)
+        if not state_path.exists():
+            return None
+        try:
+            content = state_path.read_bytes()
+        except OSError as err:
+            msg = f"generated installation state cannot be read: {state_path}"
+            raise InstallationPersistenceError(msg) from err
+        return _bytes_digest(content)
 
     def ownership_file(
         self,
         entries: tuple[OwnedInstallation, ...],
         ownership_path: str,
+        *,
+        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
-        """Render deterministic private schema-v2 ownership state."""
+        """Render deterministic private schema-v3 ownership state."""
         document: dict[str, object] = {
             "schema_version": SCHEMA_VERSION,
             "installations": [
@@ -203,6 +226,7 @@ class JsonInstallationStateAdapter:
             path=str(Path(ownership_path).expanduser()),
             content=_json_bytes(document),
             private=True,
+            expected_digest=expected_digest,
         )
 
     def lockfile(
@@ -212,8 +236,9 @@ class JsonInstallationStateAdapter:
         lockfile_path: str,
         *,
         requirements_file: str,
+        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
-        """Render portable deterministic schema-v2 mixed reconciliation state."""
+        """Render portable deterministic schema-v3 mixed reconciliation state."""
         for entry in entries:
             if entry.source_type == "local_git_repo":
                 msg = (
@@ -244,6 +269,7 @@ class JsonInstallationStateAdapter:
             path=str(Path(lockfile_path).expanduser()),
             content=_json_bytes(document),
             private=False,
+            expected_digest=expected_digest,
         )
 
 
@@ -252,16 +278,17 @@ def _resolved_path(value: str | None, *, default: Path) -> Path:
     return path.resolve(strict=False)
 
 
-def _read_json_object(path: Path) -> dict[str, object]:
+def _read_json_object(path: Path) -> tuple[dict[str, object], str]:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as err:
+        content = path.read_bytes()
+        payload = json.loads(content.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as err:
         msg = f"installation ownership state cannot be read: {path}"
         raise InstallationPersistenceError(msg) from err
     if not isinstance(payload, dict):
         msg = f"installation ownership state is malformed: {path}"
         raise InstallationPersistenceError(msg)
-    return cast("dict[str, object]", payload)
+    return cast("dict[str, object]", payload), _bytes_digest(content)
 
 
 def _owned_from_json(
@@ -296,6 +323,7 @@ def _owned_from_json(
             source=source,
             source_type=source_type,
             source_revision=_required_str(entry, "source_revision"),
+            source_branch=_required_str(entry, "source_branch"),
             index_digest=_required_str(entry, "index_digest"),
             index_schema_version=_required_int(entry, "index_schema_version"),
             skill_path=_required_str(entry, "skill_path"),
@@ -347,6 +375,7 @@ def _lock_owned_from_json(
             source=source,
             source_type=source_type,
             source_revision=_required_str(entry, "source_revision"),
+            source_branch=_required_str(entry, "source_branch"),
             index_digest=_required_str(entry, "index_digest"),
             index_schema_version=_required_int(entry, "index_schema_version"),
             skill_path=_required_str(entry, "skill_path"),
@@ -366,7 +395,7 @@ def _lock_owned_from_json(
 
 def _validate_lock_issues(value: object, *, path: Path) -> None:
     if not isinstance(value, list):
-        msg = f"ritebook.lock schema-v2 root is malformed: {path}"
+        msg = f"ritebook.lock schema-v3 root is malformed: {path}"
         raise InstallationPersistenceError(msg)
     for issue in value:
         if not isinstance(issue, dict):
@@ -448,6 +477,7 @@ def _common_entry_to_json(entry: OwnedInstallation) -> dict[str, object]:
         "source": entry.source,
         "source_type": entry.source_type,
         "source_revision": entry.source_revision,
+        "source_branch": entry.source_branch,
         "index_digest": entry.index_digest,
         "index_schema_version": entry.index_schema_version,
         "skill_path": entry.skill_path,
@@ -516,3 +546,7 @@ def _require_safe_source(source: str, source_type: str) -> None:
 
 def _json_bytes(document: dict[str, object]) -> bytes:
     return f"{json.dumps(document, indent=2)}\n".encode()
+
+
+def _bytes_digest(content: bytes) -> str:
+    return f"sha256:{hashlib.sha256(content).hexdigest()}"

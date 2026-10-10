@@ -9,6 +9,7 @@ from ritebook.features.skill_installation.application.dtos import (
     GeneratedStateFile,
     InstallableSkill,
     InstallationOperationPaths,
+    InstallationStateSnapshot,
     InstallationStatus,
     InstallationWorkflow,
     InstallFromRequirementsCommand,
@@ -74,6 +75,40 @@ def test_direct_install_establishes_ownership_after_transactional_placement(
     assert transactions.transaction.committed_files == (state.last_ownership_file,)
     assert state.read_calls == [state.direct_paths(None).ownership_path]
     assert order == ["validate", "plan"]
+
+
+def test_direct_install_attaches_ownership_snapshot_digest_to_state_candidate(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "skills" / "code-review"
+    state = _StateAdapter(
+        direct_root=tmp_path / "state",
+        ownership_digest=_OWNERSHIP_DIGEST,
+    )
+    transactions = _Transactions()
+    use_case = InstallSkill(
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(),),
+        ),
+        source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(),
+        installer=_Installer(
+            inspections={str(target): _inspection(target, exists=False)},
+        ),
+        state=state,
+        transactions=transactions,
+    )
+
+    use_case.execute(
+        InstallSkillCommand(
+            skill_reference="platform-skills/code-review",
+            target=str(target),
+        ),
+    )
+
+    [candidate] = transactions.transaction.committed_files
+    assert candidate.expected_digest == _OWNERSHIP_DIGEST
 
 
 def test_direct_install_rejects_committed_header_mismatch_before_target_planning(
@@ -326,6 +361,39 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
     )
 
 
+def test_sync_attaches_ownership_and_lockfile_snapshot_digests_to_state_candidates(
+    tmp_path: Path,
+) -> None:
+    state = _StateAdapter(
+        sync_root=tmp_path / ".ritebook",
+        ownership_digest=_OWNERSHIP_DIGEST,
+        lockfile_digest=_LOCKFILE_DIGEST,
+    )
+    transactions = _Transactions()
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(SkillRequirements(targets={}, skills=())),
+        state=state,
+        transactions=transactions,
+    )
+
+    use_case.execute(
+        InstallFromRequirementsCommand(
+            requirements_file=str(tmp_path / "ritebook.toml"),
+        ),
+    )
+
+    ownership_file, lockfile = transactions.transaction.committed_files
+    assert ownership_file.expected_digest == _OWNERSHIP_DIGEST
+    assert lockfile.expected_digest == _LOCKFILE_DIGEST
+    assert state.digest_read_calls == [
+        state.sync_paths(
+            requirements_file=str(tmp_path / "ritebook.toml"),
+            lockfile_path=None,
+        ).lockfile_path,
+    ]
+
+
 def test_sync_prunes_unchanged_obsolete_and_retains_locally_edited_obsolete(
     tmp_path: Path,
 ) -> None:
@@ -431,6 +499,7 @@ def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
         sync_root=tmp_path / ".ritebook",
         ownership_exists=False,
         lock_ownership=(locked,),
+        lockfile_digest=_LOCKFILE_DIGEST,
     )
     transactions = _Transactions()
     use_case = _sync_use_case(
@@ -465,12 +534,18 @@ def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
     assert result.unchanged_count == 1
     assert result.issues == ()
     assert transactions.transaction.replace_calls == []
+    ownership_file, lockfile = transactions.transaction.committed_files
+    assert ownership_file.expected_digest is None
+    assert lockfile.expected_digest == _LOCKFILE_DIGEST
+    assert state.digest_read_calls == []
     assert state.last_ownership_entries[0].canonical_target == str(target)
 
 
 _TREE_DIGEST = f"sha256:{'1' * 64}"
 _OLD_DIGEST = f"sha256:{'2' * 64}"
 _EDITED_DIGEST = f"sha256:{'3' * 64}"
+_OWNERSHIP_DIGEST = f"sha256:{'4' * 64}"
+_LOCKFILE_DIGEST = f"sha256:{'5' * 64}"
 
 
 class _RequirementsReader:
@@ -541,6 +616,7 @@ class _SourceResolver:
             source_type="git_url",
             repository_path="/snapshot",
             source_revision="a" * 40,
+            source_branch="refs/heads/main",
             index_digest=f"sha256:{'b' * 64}",
         )
 
@@ -625,13 +701,18 @@ class _StateAdapter:
         ownership: tuple[OwnedInstallation, ...] = (),
         ownership_exists: bool = True,
         lock_ownership: tuple[OwnedInstallation, ...] = (),
+        ownership_digest: str | None = None,
+        lockfile_digest: str | None = None,
     ) -> None:
         self.direct_root = direct_root
         self.sync_root = sync_root
         self.ownership = ownership
         self._ownership_exists = ownership_exists
         self.lock_ownership = lock_ownership
+        self.ownership_digest = ownership_digest
+        self.lockfile_digest = lockfile_digest
         self.read_calls: list[str] = []
+        self.digest_read_calls: list[str] = []
         self.last_ownership_entries: tuple[OwnedInstallation, ...] = ()
         self.last_lock_issues: tuple[ReconciliationIssue, ...] = ()
         self.last_ownership_file = GeneratedStateFile(
@@ -668,9 +749,9 @@ class _StateAdapter:
             lockfile_path=str(self.sync_root.parent / "ritebook.lock"),
         )
 
-    def read_ownership(self, ownership_path: str) -> tuple[OwnedInstallation, ...]:
+    def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
         self.read_calls.append(ownership_path)
-        return self.ownership
+        return InstallationStateSnapshot(self.ownership, self.ownership_digest)
 
     def ownership_exists(self, _ownership_path: str) -> bool:
         return self._ownership_exists
@@ -680,20 +761,27 @@ class _StateAdapter:
         _lockfile_path: str,
         *,
         requirements_file: str,
-    ) -> tuple[OwnedInstallation, ...]:
+    ) -> InstallationStateSnapshot:
         del requirements_file
-        return self.lock_ownership
+        return InstallationStateSnapshot(self.lock_ownership, self.lockfile_digest)
+
+    def read_state_digest(self, path: str) -> str | None:
+        self.digest_read_calls.append(path)
+        return self.lockfile_digest
 
     def ownership_file(
         self,
         entries: tuple[OwnedInstallation, ...],
         ownership_path: str,
+        *,
+        expected_digest: str | None,
     ) -> GeneratedStateFile:
         self.last_ownership_entries = entries
         self.last_ownership_file = GeneratedStateFile(
             path=ownership_path,
             content=b"ownership",
             private=True,
+            expected_digest=expected_digest,
         )
         return self.last_ownership_file
 
@@ -704,6 +792,7 @@ class _StateAdapter:
         lockfile_path: str,
         *,
         requirements_file: str,
+        expected_digest: str | None,
     ) -> GeneratedStateFile:
         del requirements_file
         self.last_ownership_entries = entries
@@ -712,6 +801,7 @@ class _StateAdapter:
             path=lockfile_path,
             content=b"lock",
             private=False,
+            expected_digest=expected_digest,
         )
         return self.last_lockfile
 
@@ -803,6 +893,7 @@ def _owned(
         source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,
         skill_path=f"skills/{skill_name}",

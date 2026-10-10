@@ -52,7 +52,7 @@ def test_json_installation_state_resolves_direct_and_sync_operation_paths(
     assert sync.lockfile_path == str(lockfile)
 
 
-def test_json_installation_state_round_trips_strict_schema_v2_ownership(
+def test_json_installation_state_round_trips_strict_schema_v3_ownership(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / ".ritebook" / "installations.json"
@@ -70,8 +70,10 @@ def test_json_installation_state_round_trips_strict_schema_v2_ownership(
     result = adapter.read_ownership(str(path))
     payload = _read_json(path)
 
-    assert result == tuple(sorted(entries, key=lambda entry: entry.target_id))
-    assert payload["schema_version"] == 2
+    assert result.entries == tuple(sorted(entries, key=lambda entry: entry.target_id))
+    assert result.digest == _bytes_digest(state_file.content)
+    assert payload["schema_version"] == 3
+    assert payload["installations"][0]["source_branch"] == "refs/heads/main"
     assert [entry["target_id"] for entry in payload["installations"]] == sorted(
         entry.target_id for entry in entries
     )
@@ -88,12 +90,33 @@ def test_json_installation_state_reports_ownership_ledger_presence(
     assert adapter.ownership_exists(str(path)) is False
 
     path.parent.mkdir(parents=True)
-    path.write_text('{"schema_version":2,"installations":[]}\n', encoding="utf-8")
+    path.write_text('{"schema_version":3,"installations":[]}\n', encoding="utf-8")
 
     assert adapter.ownership_exists(str(path)) is True
 
 
-def test_json_installation_state_bootstraps_sync_ownership_from_schema_v2_lock(
+def test_json_installation_state_reads_missing_state_as_an_absent_snapshot(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "missing.json"
+
+    snapshot = JsonInstallationStateAdapter().read_ownership(str(path))
+
+    assert snapshot.entries == ()
+    assert snapshot.digest is None
+
+
+def test_json_installation_state_reads_exact_raw_state_digest(tmp_path: Path) -> None:
+    path = tmp_path / "ritebook.lock"
+    content = b'{ "schema_version": 3 }\n'
+    path.write_bytes(content)
+    adapter = JsonInstallationStateAdapter()
+
+    assert adapter.read_state_digest(str(path)) == _bytes_digest(content)
+    assert adapter.read_state_digest(str(tmp_path / "missing.lock")) is None
+
+
+def test_json_installation_state_bootstraps_sync_ownership_from_schema_v3_lock(
     tmp_path: Path,
 ) -> None:
     requirements_file = tmp_path / "project" / "ritebook.toml"
@@ -113,7 +136,7 @@ def test_json_installation_state_bootstraps_sync_ownership_from_schema_v2_lock(
         requirements_file=str(requirements_file),
     )
 
-    assert result == (
+    assert result.entries == (
         OwnedInstallation(
             workflow=InstallationWorkflow.SYNC,
             requirement=entry.requirement,
@@ -127,6 +150,7 @@ def test_json_installation_state_bootstraps_sync_ownership_from_schema_v2_lock(
             source=entry.source,
             source_type=entry.source_type,
             source_revision=entry.source_revision,
+            source_branch=entry.source_branch,
             index_digest=entry.index_digest,
             index_schema_version=entry.index_schema_version,
             skill_path=entry.skill_path,
@@ -137,6 +161,20 @@ def test_json_installation_state_bootstraps_sync_ownership_from_schema_v2_lock(
             target_ref=entry.target_ref,
         ),
     )
+    assert result.digest == _bytes_digest(state_file.content)
+
+
+def test_json_installation_state_hashes_the_exact_bytes_it_parses(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "installations.json"
+    content = b'{ "schema_version": 3, "installations": [] }\n'
+    path.write_bytes(content)
+
+    snapshot = JsonInstallationStateAdapter().read_ownership(str(path))
+
+    assert snapshot.entries == ()
+    assert snapshot.digest == _bytes_digest(content)
 
 
 @pytest.mark.parametrize(
@@ -148,6 +186,7 @@ def test_json_installation_state_bootstraps_sync_ownership_from_schema_v2_lock(
         },
         {"target_id": f"sha256:{'e' * 64}"},
         {"source": "../local", "source_type": "local_git_repo"},
+        {"source_branch": None},
         {"unexpected": True},
     ],
 )
@@ -163,7 +202,7 @@ def test_json_installation_state_rejects_unsafe_lock_bootstrap_entries(
     lockfile_path.write_text(
         json.dumps(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "requirements_file": "ritebook.toml",
                 "state": "complete",
                 "skills": [entry],
@@ -187,6 +226,7 @@ def test_json_installation_state_rejects_unsafe_lock_bootstrap_entries(
     "scenario",
     [
         "legacy",
+        "schema-v2",
         "unknown-root",
         "unknown-entry",
     ],
@@ -198,23 +238,40 @@ def test_json_installation_state_rejects_legacy_or_unknown_ownership_fields(
     path = tmp_path / "installations.json"
     if scenario == "legacy":
         payload: dict[str, object] = {"schema_version": 1, "installations": []}
+    elif scenario == "schema-v2":
+        payload = {"schema_version": 2, "installations": []}
     elif scenario == "unknown-root":
         payload = {
-            "schema_version": 2,
+            "schema_version": 3,
             "installations": [],
             "unexpected": True,
         }
     else:
         payload = {
-            "schema_version": 2,
+            "schema_version": 3,
             "installations": [{**_owned_json(), "unexpected": True}],
         }
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(
         InstallationPersistenceError,
-        match=r"schema version 2|malformed",
+        match=r"schema version 3|malformed",
     ):
+        JsonInstallationStateAdapter().read_ownership(str(path))
+
+
+def test_json_installation_state_rejects_ownership_without_source_branch(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "installations.json"
+    entry = _owned_json()
+    del entry["source_branch"]
+    path.write_text(
+        json.dumps({"schema_version": 3, "installations": [entry]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(InstallationPersistenceError, match="malformed"):
         JsonInstallationStateAdapter().read_ownership(str(path))
 
 
@@ -240,7 +297,7 @@ def test_json_installation_state_renders_deterministic_complete_lockfile() -> No
     payload = cast("dict[str, Any]", json.loads(first.content))
 
     assert first.content == second.content
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert payload["state"] == "complete"
     assert payload["issues"] == []
     assert [entry["target_id"] for entry in payload["skills"]] == sorted(
@@ -320,6 +377,7 @@ def _owned(
         source=source,
         source_type=source_type,
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,
         skill_path=f"skills/{skill_name}",
@@ -344,6 +402,7 @@ def _owned_json() -> dict[str, object]:
         "source": entry.source,
         "source_type": entry.source_type,
         "source_revision": entry.source_revision,
+        "source_branch": entry.source_branch,
         "index_digest": entry.index_digest,
         "index_schema_version": entry.index_schema_version,
         "skill_path": entry.skill_path,
@@ -365,6 +424,7 @@ def _lock_entry_json(entry: OwnedInstallation) -> dict[str, object]:
         "source": entry.source,
         "source_type": entry.source_type,
         "source_revision": entry.source_revision,
+        "source_branch": entry.source_branch,
         "index_digest": entry.index_digest,
         "index_schema_version": entry.index_schema_version,
         "skill_path": entry.skill_path,
@@ -380,6 +440,10 @@ def _lock_entry_json(entry: OwnedInstallation) -> dict[str, object]:
 
 def _digest(value: str) -> str:
     return f"sha256:{hashlib.sha256(value.encode()).hexdigest()}"
+
+
+def _bytes_digest(value: bytes) -> str:
+    return f"sha256:{hashlib.sha256(value).hexdigest()}"
 
 
 def _read_json(path: Path) -> dict[str, Any]:

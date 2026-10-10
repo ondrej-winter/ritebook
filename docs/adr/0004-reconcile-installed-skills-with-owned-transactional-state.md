@@ -49,9 +49,10 @@ back to stale cached state when refresh fails.
   timestamps, uid/gid, and other machine-specific metadata.
 - Symlinks and special files are never valid managed skill-tree entries.
 - Repo-local sync stores portable provenance and reconciliation status in
-  `ritebook.lock` schema v2 and stores canonical machine paths and ownership in a
-  local schema-v2 ownership ledger.
-- On a fresh checkout where the local ledger is absent, a strict schema-v2
+  `ritebook.lock` schema v3 and stores canonical machine paths and ownership in a
+  local schema-v3 ownership ledger. Schema v3 adds the canonical source branch
+  required by ADR 0001.
+- On a fresh checkout where the local ledger is absent, a strict schema-v3
   `ritebook.lock` may bootstrap local ownership only for safe repository-relative
   targets. Replacement or pruning still requires the current target tree digest
   to match the lock entry's committed `installed_tree_digest`; a mismatch remains
@@ -101,13 +102,13 @@ back to stale cached state when refresh fails.
 
 ### Schema transition
 
-- New writes use schema version 2.
-- Schema-v1 state is parsed strictly enough to provide safe migration guidance but
-  is not treated as ownership evidence because it has no installed-tree digest.
+- New writes use schema version 3.
+- Schema-v1 and schema-v2 state are rejected without migration. Schema v1 lacks an
+  installed-tree digest; schema v2 lacks canonical source-branch provenance.
 - Ritebook does not silently adopt, replace, or prune a legacy target. Users must
   inspect and remove or relocate legacy target directories, then rerun install or
-  sync so schema-v2 ownership can be established from a known transaction.
-- Contribution consumes only materialized schema-v2 lock entries with verified
+  sync so schema-v3 ownership can be established from a known transaction.
+- Contribution consumes only materialized schema-v3 lock entries with verified
   provenance and an installed-tree digest. Non-materialized mixed-state entries
   are not publishable baselines.
 
@@ -132,8 +133,8 @@ back to stale cached state when refresh fails.
   writes, and recovery code.
 - Sync may complete only partially and return nonzero even though some targets
   were successfully reconciled.
-- Schema-v1 targets require explicit user cleanup before Ritebook can manage them
-  safely.
+- Legacy schema targets require explicit user cleanup before Ritebook can manage
+  them safely.
 - Very large skill trees incur content-hashing cost during inspection.
 
 ### Neutral

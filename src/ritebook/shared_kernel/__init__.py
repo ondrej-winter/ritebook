@@ -1,5 +1,6 @@
 """Shared pure domain concepts used across Ritebook feature slices."""
 
+from ritebook.shared_kernel.git_branches import require_canonical_git_branch
 from ritebook.shared_kernel.git_sources import (
     GIT_URL_SOURCE_TYPE,
     UNSAFE_GIT_SOURCE_MESSAGE,
@@ -73,6 +74,7 @@ __all__ = [
     "parse_canonical_utc_timestamp",
     "parse_schema_v1_catalog_bytes",
     "parse_strict_json_bytes",
+    "require_canonical_git_branch",
     "require_index_name",
     "require_kebab_case_identifier",
     "require_no_terminal_control_characters",

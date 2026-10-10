@@ -43,6 +43,7 @@ class IndexRegistrySkillCatalogAdapter:
             source=entry.source,
             source_type=entry.source_type.value,
             source_revision=entry.source_revision,
+            source_branch=entry.source_branch,
             index_digest=entry.index_digest,
             source_cache_path=entry.source_cache_path,
             cached_index_path=entry.cached_index_path,

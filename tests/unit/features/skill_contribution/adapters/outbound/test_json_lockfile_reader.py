@@ -25,6 +25,7 @@ def test_json_lockfile_reader_resolves_exact_requirement(tmp_path: Path) -> None
 
     assert result.requirement == "platform-skills/code-review"
     assert result.source_revision == "a" * 40
+    assert result.source_branch == "refs/heads/main"
     assert result.index_digest == f"sha256:{'b' * 64}"
     assert result.installed_tree_digest == f"sha256:{'c' * 64}"
     assert result.target == ".agents/skills/code-review"
@@ -297,12 +298,19 @@ def test_json_lockfile_reader_rejects_local_sources(
     assert source not in str(exc_info.value)
 
 
-def test_json_lockfile_reader_rejects_unsupported_schema(tmp_path: Path) -> None:
-    lockfile_path = write_lockfile(tmp_path, overrides={"schema_version": 1})
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_json_lockfile_reader_rejects_unsupported_schema(
+    tmp_path: Path,
+    schema_version: int,
+) -> None:
+    lockfile_path = write_lockfile(
+        tmp_path,
+        overrides={"schema_version": schema_version},
+    )
 
     with pytest.raises(
         ContributionLockfileReadError,
-        match="unsupported lockfile schema_version: 1",
+        match=rf"unsupported lockfile schema_version: {schema_version}",
     ):
         JsonContributionLockfileReader().resolve_entry(
             ContributionSkillReference.parse("platform-skills/code-review"),
@@ -340,6 +348,7 @@ def test_json_lockfile_reader_rejects_non_object_skill_entries(tmp_path: Path) -
         "source",
         "source_type",
         "source_revision",
+        "source_branch",
         "index_digest",
         "target_id",
         "installed_tree_digest",
@@ -406,7 +415,7 @@ def test_json_lockfile_reader_does_not_select_non_publishable_entry(
         {"issues": None},
     ],
 )
-def test_json_lockfile_reader_rejects_malformed_schema_v2_root(
+def test_json_lockfile_reader_rejects_malformed_schema_v3_root(
     tmp_path: Path,
     payload_override: dict[str, object],
 ) -> None:
@@ -419,7 +428,7 @@ def test_json_lockfile_reader_rejects_malformed_schema_v2_root(
         )
 
 
-def test_json_lockfile_reader_rejects_unknown_schema_v2_entry_fields(
+def test_json_lockfile_reader_rejects_unknown_schema_v3_entry_fields(
     tmp_path: Path,
 ) -> None:
     lockfile_path = write_lockfile(
@@ -454,7 +463,7 @@ def write_lockfile(
     overrides: dict[str, object] | None = None,
 ) -> Path:
     payload: dict[str, object] = {
-        "schema_version": 2,
+        "schema_version": 3,
         "requirements_file": "ritebook.toml",
         "state": "complete",
         "skills": skills if skills is not None else [lockfile_entry()],
@@ -477,6 +486,7 @@ def lockfile_entry(**overrides: object) -> dict[str, object]:
         "source": "git@example.com:example/skills.git",
         "source_type": "git_url",
         "source_revision": "a" * 40,
+        "source_branch": "refs/heads/main",
         "index_digest": f"sha256:{'b' * 64}",
         "index_schema_version": 1,
         "skill_path": "skills/code-review",

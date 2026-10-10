@@ -14,10 +14,11 @@ class IndexCachePort(Protocol):
         name: str,
         index_digest: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> str:
         """Return the immutable cache path for validated index contents."""
 
-    def write_index(
+    def write_index(  # noqa: PLR0913
         self,
         *,
         name: str,
@@ -25,6 +26,7 @@ class IndexCachePort(Protocol):
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,
+        registry_path: str | None = None,
     ) -> str:
         """Write an immutable cache generation and return its path."""
 
@@ -34,5 +36,6 @@ class IndexCachePort(Protocol):
         name: str,
         cached_index_path: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> None:
         """Remove an unreferenced cache generation when it is adapter-owned."""

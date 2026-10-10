@@ -1,4 +1,4 @@
-"""Read strict schema-v2 repo-local lockfiles for skill contribution."""
+"""Read strict schema-v3 repo-local lockfiles for skill contribution."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from ritebook.shared_kernel import require_safe_persisted_source
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_LOCKFILE_PATH = Path("ritebook.lock")
 LOCAL_GIT_REPO_SOURCE_TYPE = "local_git_repo"
 PUBLISHABLE_STATUSES = frozenset({"materialized", "local_changes"})
@@ -42,6 +42,7 @@ ENTRY_FIELDS = frozenset(
         "source",
         "source_type",
         "source_revision",
+        "source_branch",
         "index_digest",
         "index_schema_version",
         "skill_path",
@@ -64,7 +65,7 @@ class _ParsedEntry:
 
 
 class JsonContributionLockfileReader(ContributionLockfilePort):
-    """Read and resolve publishable entries from a schema-v2 `ritebook.lock`."""
+    """Read and resolve publishable entries from a schema-v3 `ritebook.lock`."""
 
     def resolve_entry(
         self,
@@ -98,7 +99,7 @@ def _read_entries(path: Path) -> tuple[_ParsedEntry, ...]:
         msg = f"unsupported lockfile schema_version: {schema_version}"
         raise ContributionLockfileReadError(msg)
     if set(payload) != ROOT_FIELDS:
-        msg = "ritebook.lock schema-v2 root is malformed"
+        msg = "ritebook.lock schema-v3 root is malformed"
         raise ContributionLockfileReadError(msg)
     if (
         not isinstance(payload.get("requirements_file"), str)
@@ -107,7 +108,7 @@ def _read_entries(path: Path) -> tuple[_ParsedEntry, ...]:
         msg = "ritebook.lock must contain a non-empty requirements_file"
         raise ContributionLockfileReadError(msg)
     if payload.get("state") not in {"complete", "partial"}:
-        msg = "ritebook.lock schema-v2 root is malformed"
+        msg = "ritebook.lock schema-v3 root is malformed"
         raise ContributionLockfileReadError(msg)
     _validate_issues(payload.get("issues"))
 
@@ -177,6 +178,7 @@ def _entry_from_json(entry: object, *, position: int) -> _ParsedEntry:
         field_name = missing_fields[0]
         if field_name in {
             "source_revision",
+            "source_branch",
             "index_digest",
             "installed_tree_digest",
         }:
@@ -245,6 +247,11 @@ def _entry_from_json(entry: object, *, position: int) -> _ParsedEntry:
                     "source_revision",
                     position=position,
                 ),
+                source_branch=_required_str(
+                    typed_entry,
+                    "source_branch",
+                    position=position,
+                ),
                 index_digest=_required_str(
                     typed_entry,
                     "index_digest",
@@ -285,6 +292,7 @@ def _required_str(
     if not isinstance(value, str) or not value:
         if field_name in {
             "source_revision",
+            "source_branch",
             "index_digest",
             "installed_tree_digest",
         }:

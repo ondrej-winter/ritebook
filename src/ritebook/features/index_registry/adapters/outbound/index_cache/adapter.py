@@ -8,9 +8,11 @@ import tempfile
 from contextlib import suppress
 from pathlib import Path
 
+from ritebook.features.index_registry.adapters.outbound.cache_paths import (
+    registry_cache_root,
+)
 from ritebook.features.index_registry.application.errors import IndexCacheError
 
-DEFAULT_CACHE_ROOT = "~/.cache/ritebook"
 SHA256_HEX_LENGTH = 64
 
 
@@ -23,14 +25,19 @@ class FilesystemIndexCache:
         name: str,
         index_digest: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> str:
         """Return a content-addressed cache path for a local index alias."""
         digest = _digest_hex(index_digest)
         return str(
-            _cache_root(cache_root) / "indexes" / name / digest / "ritebook-index.json",
+            registry_cache_root(cache_root, registry_path)
+            / "indexes"
+            / name
+            / digest
+            / "ritebook-index.json",
         )
 
-    def write_index(
+    def write_index(  # noqa: PLR0913
         self,
         *,
         name: str,
@@ -38,6 +45,7 @@ class FilesystemIndexCache:
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,
+        registry_path: str | None = None,
     ) -> str:
         """Write and synchronize one immutable cache generation."""
         _require_matching_digest(content, index_digest)
@@ -46,6 +54,7 @@ class FilesystemIndexCache:
                 name=name,
                 index_digest=index_digest,
                 cache_root=cache_root,
+                registry_path=registry_path,
             ),
         )
         alias_root = path.parent.parent
@@ -92,9 +101,10 @@ class FilesystemIndexCache:
         name: str,
         cached_index_path: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> None:
         """Remove a content-addressed generation owned by this cache root."""
-        alias_root = _cache_root(cache_root) / "indexes" / name
+        alias_root = registry_cache_root(cache_root, registry_path) / "indexes" / name
         path = Path(cached_index_path)
         if not _is_owned_generation(path, alias_root):
             return
@@ -104,10 +114,6 @@ class FilesystemIndexCache:
         except OSError as err:
             msg = f"unable to discard cached index generation for {name}"
             raise IndexCacheError(msg) from err
-
-
-def _cache_root(cache_root: str | None) -> Path:
-    return Path(cache_root or DEFAULT_CACHE_ROOT).expanduser()
 
 
 def _digest_hex(index_digest: str) -> str:

@@ -31,6 +31,10 @@ class IndexRegistryPersistenceError(IndexRegistryError):
     """Raised when registry metadata cannot be loaded or saved."""
 
 
+class IndexRegistryBusyError(IndexRegistryPersistenceError):
+    """Raised when another process owns the requested registry lock."""
+
+
 class IndexCacheError(IndexRegistryError):
     """Raised when cached index contents cannot be written."""
 

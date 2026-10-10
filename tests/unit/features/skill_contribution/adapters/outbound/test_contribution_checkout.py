@@ -184,6 +184,7 @@ def contribution_entry() -> ContributionLockfileEntry:
         source="git@example.com:example/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         skill_path="skills/code-review",
         skill_file="skills/code-review/SKILL.md",

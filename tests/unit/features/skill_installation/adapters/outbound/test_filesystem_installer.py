@@ -475,6 +475,7 @@ def resolved_source(repository_path: Path) -> ResolvedSkillSource:
         source_type="git_url",
         repository_path=str(repository_path),
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
     )
 

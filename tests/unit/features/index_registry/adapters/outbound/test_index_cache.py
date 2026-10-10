@@ -21,11 +21,17 @@ def test_index_cache_writes_content_addressed_generation(tmp_path: Path) -> None
         content=content,
         index_digest=digest,
         cache_root=str(tmp_path),
+        registry_path=str(tmp_path / "config" / "indexes.json"),
         preserve_path=None,
     )
 
+    namespace = hashlib.sha256(
+        str((tmp_path / "config" / "indexes.json").resolve()).encode(),
+    ).hexdigest()
     expected = (
         tmp_path
+        / "registries"
+        / namespace
         / "indexes"
         / "company-skills"
         / digest.removeprefix("sha256:")
@@ -73,7 +79,7 @@ def test_index_cache_rejects_content_that_does_not_match_digest(tmp_path: Path) 
             preserve_path=None,
         )
 
-    assert not (tmp_path / "indexes").exists()
+    assert not (tmp_path / "registries").exists()
 
 
 def test_index_cache_sync_failure_leaves_no_visible_generation(
@@ -98,7 +104,13 @@ def test_index_cache_sync_failure_leaves_no_visible_generation(
             preserve_path=None,
         )
 
-    alias_root = tmp_path / "indexes" / "company-skills"
+    alias_root = Path(
+        cache.cached_index_path(
+            name="company-skills",
+            index_digest=_digest(content),
+            cache_root=str(tmp_path),
+        ),
+    ).parent.parent
     assert list(alias_root.rglob("*")) == []
 
 
@@ -114,7 +126,7 @@ def test_index_cache_recovers_abandoned_generation_before_next_write(
         cache_root=str(tmp_path),
         preserve_path=None,
     )
-    orphan_directory = tmp_path / "indexes" / "company-skills" / ("f" * 64)
+    orphan_directory = Path(current_path).parent.parent / ("f" * 64)
     orphan_directory.mkdir()
     (orphan_directory / "ritebook-index.json").write_text("orphan", encoding="utf-8")
     current_directory = Path(current_path).parent

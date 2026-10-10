@@ -593,6 +593,7 @@ def contribution_entry(
         source=source,
         source_type=source_type,
         source_revision=source_revision,
+        source_branch="refs/heads/main",
         index_digest=index_digest,
         skill_path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from ritebook.features.skill_installation.application.dtos import (
         GeneratedStateFile,
         InstallationOperationPaths,
+        InstallationStateSnapshot,
         OwnedInstallation,
         ReconciliationIssue,
     )
@@ -27,8 +28,8 @@ class InstallationStatePort(Protocol):
     ) -> InstallationOperationPaths:
         """Resolve repository-sync operation paths."""
 
-    def read_ownership(self, ownership_path: str) -> tuple[OwnedInstallation, ...]:
-        """Read strict ownership state, or return an empty state when absent."""
+    def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
+        """Read strict ownership state and the digest of the exact parsed bytes."""
 
     def ownership_exists(self, ownership_path: str) -> bool:
         """Return whether a local ownership ledger exists."""
@@ -38,13 +39,18 @@ class InstallationStatePort(Protocol):
         lockfile_path: str,
         *,
         requirements_file: str,
-    ) -> tuple[OwnedInstallation, ...]:
-        """Read portable schema-v2 lock state as constrained sync ownership."""
+    ) -> InstallationStateSnapshot:
+        """Read lock state as constrained ownership with its exact-byte digest."""
+
+    def read_state_digest(self, path: str) -> str | None:
+        """Return the exact current file-byte digest, or `None` when absent."""
 
     def ownership_file(
         self,
         entries: tuple[OwnedInstallation, ...],
         ownership_path: str,
+        *,
+        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
         """Render a complete private ownership-state candidate."""
 
@@ -55,5 +61,6 @@ class InstallationStatePort(Protocol):
         lockfile_path: str,
         *,
         requirements_file: str,
+        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
         """Render a portable complete or mixed lockfile candidate."""

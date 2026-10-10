@@ -288,6 +288,7 @@ class FilesystemInstallationTransaction:
             msg = "Generated installation state was already committed."
             raise InstallationPersistenceError(msg)
         self._verify_remembered_directories()
+        _require_expected_state(files)
         self._prepare_state_backups(files)
         self._write_journal()
         try:
@@ -624,6 +625,21 @@ def _json_bytes(document: Mapping[str, object]) -> bytes:
 
 def _bytes_digest(content: bytes) -> str:
     return f"sha256:{hashlib.sha256(content).hexdigest()}"
+
+
+def _require_expected_state(files: tuple[GeneratedStateFile, ...]) -> None:
+    for state_file in files:
+        if state_file.expected_digest is None:
+            continue
+        path = Path(state_file.path)
+        try:
+            current = path.read_bytes()
+        except OSError as err:
+            msg = f"generated installation state changed concurrently: {path}"
+            raise InstallationPersistenceError(msg) from err
+        if _bytes_digest(current) != state_file.expected_digest:
+            msg = f"generated installation state changed concurrently: {path}"
+            raise InstallationPersistenceError(msg)
 
 
 def _sync_file(path: Path) -> None:

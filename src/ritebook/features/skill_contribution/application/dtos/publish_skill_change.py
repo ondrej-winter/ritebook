@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePosixPath
 
-from ritebook.shared_kernel import require_index_name, require_kebab_case_identifier
+from ritebook.shared_kernel import (
+    require_canonical_git_branch,
+    require_index_name,
+    require_kebab_case_identifier,
+)
 from ritebook.shared_kernel.catalog_paths import validate_catalog_path
 
 SAFE_FILE_SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -87,6 +91,7 @@ class ContributionLockfileEntry:
     source: str
     source_type: str
     source_revision: str
+    source_branch: str
     index_digest: str
     skill_path: str
     skill_file: str
@@ -104,6 +109,7 @@ class ContributionLockfileEntry:
         if not GIT_OBJECT_ID_PATTERN.fullmatch(self.source_revision):
             msg = "Source revision must be a full lowercase Git object ID."
             raise ValueError(msg)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
             msg = "Index digest must use sha256:<64 lowercase hex>."
             raise ValueError(msg)

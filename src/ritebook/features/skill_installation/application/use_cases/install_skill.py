@@ -77,7 +77,8 @@ class InstallSkill(InstallSkillPort):
             lock_path=paths.lock_path,
             journal_path=paths.journal_path,
         ) as transaction:
-            ownership = self._state.read_ownership(paths.ownership_path)
+            ownership_snapshot = self._state.read_ownership(paths.ownership_path)
+            ownership = ownership_snapshot.entries
             index = self._catalog.get_index(reference.index_name, command.registry_path)
             if index is None:
                 raise UnknownInstallIndexError(reference.index_name)
@@ -139,6 +140,7 @@ class InstallSkill(InstallSkillPort):
                     state_file = self._state.ownership_file(
                         updated,
                         paths.ownership_path,
+                        expected_digest=ownership_snapshot.digest,
                     )
                     transaction.commit_state((state_file,))
                 finally:
@@ -220,6 +222,7 @@ def _owned_entry(
         source=source.source,
         source_type=source.source_type,
         source_revision=source.source_revision,
+        source_branch=source.source_branch,
         index_digest=source.index_digest,
         index_schema_version=1,
         skill_path=repository_relative_source_path(skill.source_root, skill.path),

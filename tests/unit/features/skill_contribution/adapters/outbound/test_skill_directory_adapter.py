@@ -212,6 +212,7 @@ def contribution_lockfile_entry(
         source="git@example.com:example/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         skill_path=skill_path,
         skill_file=skill_file,
@@ -229,6 +230,7 @@ class UnsafeContributionEntry:
     source: str
     source_type: str
     source_revision: str
+    source_branch: str
     skill_path: str
     skill_file: str
     index_schema_version: int
@@ -251,6 +253,7 @@ def unsafe_contribution_entry(
             source="git@example.com:example/skills.git",
             source_type="git_url",
             source_revision="abc123",
+            source_branch="refs/heads/main",
             skill_path=skill_path,
             skill_file=skill_file,
             index_schema_version=1,

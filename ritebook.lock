@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "requirements_file": "ritebook.toml",
   "state": "partial",
   "skills": [
@@ -19,7 +19,8 @@
       "installed_tree_digest": "sha256:bde009d1c7059a17560f66956f9baf90afa688c6d8ccdc8bd88c85ecd2c5e077",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/performance-optimization",
@@ -37,7 +38,8 @@
       "installed_tree_digest": "sha256:ca5aeb58b9d50e9f1bac671e53f70b9b643abfba9fdc3d3efbc80a2ed618bf25",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/ci-cd-and-automation",
@@ -55,7 +57,8 @@
       "installed_tree_digest": "sha256:106f942eacae5a717a3291d135c44f26a2d4d866e915ea60dd07db21eac6cf2e",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/documentation-and-adrs",
@@ -73,7 +76,8 @@
       "installed_tree_digest": "sha256:e8e4986d3f4d69130d008d5b3c53a31e250e67e20d62c03a92c5d4125bc95da9",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/code-review-and-quality",
@@ -91,7 +95,8 @@
       "installed_tree_digest": "sha256:9ee24ebc162324f8410ae68e1e45e30cbb5b797bbd68beb991fc8e4f35e0048a",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/author-agent-skill",
@@ -109,7 +114,8 @@
       "installed_tree_digest": "sha256:00ec09e74fb8c5f1706d563b54139540299a9d41809a0cbfbb703b39ae609047",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/spec-driven-development",
@@ -127,7 +133,8 @@
       "installed_tree_digest": "sha256:6903b4b4b6c3b833b70c172b6630e5443740a189d95c19237b81e8088eb78b9e",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/run-local-quality-gate",
@@ -145,7 +152,8 @@
       "installed_tree_digest": "sha256:441d865870286b27809e6ee0e69aa2304f0ed233e380a79b5a09a5caa3763f24",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/hexagonal-vertical-slices",
@@ -163,7 +171,8 @@
       "installed_tree_digest": "sha256:ca1d126b288fc3f6689d76b96849ab030eb2025d84ffb4e8d56f7acf67da3f03",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/deprecation-and-migration",
@@ -181,7 +190,8 @@
       "installed_tree_digest": "sha256:5072f346941e12336abc1b8ef8836e7e241e4028eb5b3d8f48dde045b68ac6f6",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/incremental-implementation",
@@ -199,7 +209,8 @@
       "installed_tree_digest": "sha256:86bfa2bf4d345986cf5385a744543d030916ca0b2ec3b273f35cd498783e1a0d",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/planning-and-task-breakdown",
@@ -217,7 +228,8 @@
       "installed_tree_digest": "sha256:09595f903759b545ce443161573ed4499474b1d186819fbf214fc5be62b46f01",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/shipping-and-launch",
@@ -235,7 +247,8 @@
       "installed_tree_digest": "sha256:cf101f6fe065a162dec5d4cfa2cda320d9f09d4a8e90f53611c8a28491503735",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/doubt-driven-development",
@@ -253,7 +266,8 @@
       "installed_tree_digest": "sha256:c34e83f9610ae494623a74ec8082d2ced429b3019cb850030f9ae6a15711c9c1",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/author-agents-config",
@@ -271,7 +285,8 @@
       "installed_tree_digest": "sha256:12d5b46ec0f363ecdd6657c96904133969b0bbdb2c773b260000fcc6e67e89d0",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/test-driven-development",
@@ -289,7 +304,8 @@
       "installed_tree_digest": "sha256:2d3ae47f00272f1fe5cb8cfe14df9d9ebe7eab6e1c57a6f99779fedfe9fda54c",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/debugging-and-error-recovery",
@@ -307,7 +323,8 @@
       "installed_tree_digest": "sha256:a06370f519e3f49ea5526d5cbb9e36c060cdcd781a745dceaa0bfaa78cd3febe",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/frontend-ui-engineering",
@@ -325,7 +342,8 @@
       "installed_tree_digest": "sha256:875e62ad79cf8be97af416f5038bec7005ce1cbe7030215ab90293b25481f9e8",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/git-workflow-and-versioning",
@@ -343,7 +361,8 @@
       "installed_tree_digest": "sha256:553ed26c5d8f0171ca2c98a77594451cd4b44da15e06f1c140f7b31bf2273828",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/writing-and-editing/condensed-prose-refactor",
@@ -361,7 +380,8 @@
       "installed_tree_digest": "sha256:2eea6eb2a68b385a466889e5f670e05310b1a43de581a83f2d7086a4b1fd48a9",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/review-implementation-plan",
@@ -379,7 +399,8 @@
       "installed_tree_digest": "sha256:3ae736fb115c7ea529e9920fc229be1525a16e6b1461eb03663d91516b0ad0bc",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/interview-me",
@@ -397,7 +418,8 @@
       "installed_tree_digest": "sha256:407c7b03c4ea625c3b4f63968fadcdb0042baa080024a1f8d0b3b79d046d8e94",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/conventional-commits",
@@ -415,7 +437,8 @@
       "installed_tree_digest": "sha256:75d72c40f50432d578cce13386ce32737eafe287d7303788312bd9d0f594d792",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/security-and-hardening",
@@ -433,7 +456,8 @@
       "installed_tree_digest": "sha256:b786072d3760673bfb41b718bba539f57cbade11a0c3b9da57c76a444912451e",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/update-project-docs",
@@ -451,7 +475,8 @@
       "installed_tree_digest": "sha256:225ec6232ca81c55e0eb4a21f7154bac81c99544b9a789440740c52474baf0fe",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/source-driven-development",
@@ -469,7 +494,8 @@
       "installed_tree_digest": "sha256:76cb88093a12aeb93b9ac14bc75bd49bbdf73162113e22ab57f7eba2d7f2750b",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/context-engineering",
@@ -487,7 +513,8 @@
       "installed_tree_digest": "sha256:4e877b5b872717cbc2aaf8dc60a6458e503a1c19a2b13e2ca32ddd2cc3fe8ab2",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/code-simplification",
@@ -505,7 +532,8 @@
       "installed_tree_digest": "sha256:fd46d80bf1cce91da068bbf17631277065e46295b7003d52cfd775d623b0c099",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/browser-runtime-verification",
@@ -523,7 +551,8 @@
       "installed_tree_digest": "sha256:8df882b4849fda7c9f36b0a78cd3d568c3ed7f7778ddfc9ba35b5fdc3dd07a03",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/write-adr",
@@ -541,7 +570,8 @@
       "installed_tree_digest": "sha256:578bc6934e7d20f85838b30154c376eb5ff499ca4f27770dc66f419d2d0d3671",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/idea-refine",
@@ -559,7 +589,8 @@
       "installed_tree_digest": "sha256:cd3f96c1c59198d6eebf289f9e8ee85ed1a50f4458e2a503f5f026336fa7bfcc",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     },
     {
       "requirement": "ondrej-winter-ritebook-shelf/agnostic-software-development/add-observability",
@@ -577,7 +608,8 @@
       "installed_tree_digest": "sha256:2a2a954d93dab2a8acbe2c7fba98b23e716b679f1bdff1b242057e889fc09703",
       "desired": true,
       "status": "materialized",
-      "target_ref": "agents"
+      "target_ref": "agents",
+      "source_branch": "refs/heads/master"
     }
   ],
   "issues": [

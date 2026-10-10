@@ -120,6 +120,7 @@ def test_contribution_lockfile_entry_requires_mvp_provenance() -> None:
 
     assert entry.requirement == "platform-skills/code-review"
     assert entry.source_revision == "a" * 40
+    assert entry.source_branch == "refs/heads/main"
     assert entry.index_digest == f"sha256:{'b' * 64}"
     assert entry.installed_tree_digest == f"sha256:{'c' * 64}"
     assert entry.skill_path == "skills/code-review"
@@ -551,6 +552,7 @@ def _entry_kwargs() -> dict[str, object]:
         "source": "git@example.com:example/skills.git",
         "source_type": "git_url",
         "source_revision": "a" * 40,
+        "source_branch": "refs/heads/main",
         "index_digest": f"sha256:{'b' * 64}",
         "skill_path": "skills/code-review",
         "skill_file": "skills/code-review/SKILL.md",

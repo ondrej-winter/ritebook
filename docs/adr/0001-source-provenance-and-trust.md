@@ -35,6 +35,12 @@ the source locator and type, the full Git commit object ID, and a SHA-256 digest
 of the exact `ritebook-index.json` bytes read from that commit. Installation and
 contribution workflows must consume and verify that same immutable binding.
 
+For Git URL registrations, Ritebook will also persist the canonical full branch
+reference selected by the remote, in `refs/heads/<name>` form. Refresh follows
+that persisted branch rather than rediscovering a mutable default-branch alias.
+The branch is retrieval metadata, not immutable identity: the commit and exact
+index digest remain the binding that downstream consumers must verify.
+
 ### Canonical provenance fields
 
 The persisted binding consists of:
@@ -44,6 +50,10 @@ The persisted binding consists of:
   index validation; and
 - `index_digest`: `sha256:<lowercase-hex>`, computed over the exact raw bytes of
   root `ritebook-index.json` read from `source_revision`.
+- `source_branch`: the canonical `refs/heads/...` branch whose selected tip
+  produced `source_revision`. Git URL refresh fetches that branch; local-source
+  refresh reads that branch without checking out or mutating the user-owned
+  repository.
 
 Ritebook distinguishes three forms of a source locator:
 
@@ -67,6 +77,11 @@ binds the cached artifact to the index file at that state and detects cache
 corruption or incorrect pairing. Neither a branch name, tag, remote-tracking ref,
 working-tree `HEAD`, generation timestamp, nor source path is an immutable source
 identity.
+
+Contribution refresh may advance registry and installation provenance when the
+selected skill tree is byte-identical at the newly validated binding. That
+metadata-only refresh must compare and replace the exact installation snapshot;
+it must never silently retarget locally edited or concurrently changed state.
 
 ### Capture and cache rules
 
@@ -130,13 +145,13 @@ user must restore the repository/object or explicitly refresh and reinstall from
 a newly validated binding.
 
 ### Schema policy
-
-The pre-release schema-v1 registry, installation-registry, and lockfile contracts
-are updated in place to require the provenance fields. Files that lack them are
-rejected with guidance to regenerate local state using `add-index` or
-`update-index`, followed by installation as needed. Ritebook will not infer a
-binding from the source's current `HEAD`, silently upgrade on first install, or
-provide an automatic compatibility mode.
+The registry, direct-install registry, and requirements lockfile schemas may move
+in place to require the provenance fields. Registry schema v2 adds
+`source_branch`; generated installation and lock ownership schema v3 carries the
+same binding. Older schemas are rejected with guidance to regenerate local state
+using `indexes add` or `indexes update`, followed by installation or sync as
+needed. Ritebook will not infer a branch or binding from the source's current
+`HEAD`, silently upgrade on first use, or provide an automatic compatibility mode.
 
 This policy is a deliberate pre-release exception. Future compatibility-sensitive
 schema changes require an explicit version and migration decision.
@@ -147,6 +162,10 @@ schema changes require an explicit version and migration decision.
 
 - Cached metadata, installed bytes, generated state, and contribution baselines
   identify one committed repository state.
+- Git URL refresh follows one persisted canonical branch instead of rediscovering
+  a possibly changed remote default.
+- Byte-identical upstream movement can refresh stale installation provenance
+  without rewriting the installed target.
 - Mutable branches, tags, local working trees, and managed-clone `HEAD` cannot
   silently substitute unvalidated content.
 - The publisher index remains compact and reviewable.
@@ -159,7 +178,8 @@ schema changes require an explicit version and migration decision.
   are committed or discarded.
 - Local-source availability still depends on the user-owned repository retaining
   the bound commit object.
-- Existing pre-release schema-v1 local state must be regenerated.
+- Existing pre-release registry schema-v1 and installation schema-v2 local state
+  must be regenerated.
 - Registry, installation, and contribution adapters need exact-commit read or
   checkout capabilities rather than ordinary working-tree copies.
 

@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         GitSourcePort,
         IndexCachePort,
         IndexRegistryPort,
+        IndexRegistryTransaction,
         IndexSourceReaderPort,
     )
 
@@ -55,41 +56,49 @@ class UpdateIndex(UpdateIndexPort):
         if command.name is None:
             msg = "Update index requires either a name or all=True."
             raise ValueError(msg)
-        existing = self._registry.get(command.name, command.registry_path)
-        if existing is None:
-            raise UnknownIndexNameError(command.name)
-
-        return self._update_entry(existing, command)
+        with self._registry.write_transaction(command.registry_path) as registry:
+            existing = registry.get(command.name)
+            if existing is None:
+                raise UnknownIndexNameError(command.name)
+            return self._update_entry(existing, command, registry)
 
     def _execute_all(self, command: UpdateIndexCommand) -> UpdateIndexResult:
         updated_indexes: list[str] = []
+        updated_metadata: list[RegisteredIndex] = []
         failed_indexes: list[str] = []
         skill_count = 0
-        for existing in self._registry.list(command.registry_path):
-            try:
-                result = self._update_entry(existing, command)
-            except (IndexRegistryError, ValueError):
-                failed_indexes.append(existing.name)
-                continue
-            updated_indexes.append(existing.name)
-            skill_count += result.skill_count
+        with self._registry.write_transaction(command.registry_path) as registry:
+            for existing in registry.list():
+                try:
+                    result = self._update_entry(existing, command, registry)
+                except (IndexRegistryError, ValueError):
+                    failed_indexes.append(existing.name)
+                    continue
+                updated_indexes.append(existing.name)
+                if result.updated_index is not None:
+                    updated_metadata.append(result.updated_index)
+                skill_count += result.skill_count
         return UpdateIndexResult(
             name=None,
             skill_count=skill_count,
             updated_indexes=tuple(updated_indexes),
             failed_indexes=tuple(failed_indexes),
+            updated_indexes_metadata=tuple(updated_metadata),
         )
 
     def _update_entry(
         self,
         existing: RegisteredIndex,
         command: UpdateIndexCommand,
+        registry: IndexRegistryTransaction,
     ) -> UpdateIndexResult:
         """Refresh one registry entry and return its updated result."""
         prepared_source = self._git_source.refresh_source(
             source=existing.source,
+            source_branch=existing.source_branch,
             source_cache_path=existing.source_cache_path,
             cache_root=command.cache_root,
+            registry_path=command.registry_path,
         )
         published_index = self._index_reader.read_index(prepared_source.index_content)
         updated_at = _utc_timestamp(self._clock())
@@ -99,6 +108,7 @@ class UpdateIndex(UpdateIndexPort):
             index_digest=published_index.index_digest,
             cache_root=command.cache_root,
             preserve_path=existing.cached_index_path,
+            registry_path=command.registry_path,
         )
         entry = RegisteredIndex(
             name=existing.name,
@@ -107,6 +117,7 @@ class UpdateIndex(UpdateIndexPort):
             source=prepared_source.source,
             source_type=prepared_source.source_type,
             source_revision=prepared_source.source_revision,
+            source_branch=prepared_source.source_branch,
             index_digest=published_index.index_digest,
             source_cache_path=prepared_source.source_cache_path,
             cached_index_path=cached_index_path,
@@ -116,7 +127,7 @@ class UpdateIndex(UpdateIndexPort):
             updated_at=updated_at,
         )
         try:
-            self._registry.upsert(entry, command.registry_path)
+            registry.upsert(entry)
         except IndexRegistryError:
             if cached_index_path != existing.cached_index_path:
                 with suppress(IndexCacheError):
@@ -124,6 +135,7 @@ class UpdateIndex(UpdateIndexPort):
                         name=existing.name,
                         cached_index_path=cached_index_path,
                         cache_root=command.cache_root,
+                        registry_path=command.registry_path,
                     )
             raise
         if cached_index_path != existing.cached_index_path:
@@ -132,10 +144,12 @@ class UpdateIndex(UpdateIndexPort):
                     name=existing.name,
                     cached_index_path=existing.cached_index_path,
                     cache_root=command.cache_root,
+                    registry_path=command.registry_path,
                 )
         return UpdateIndexResult(
             name=existing.name,
             skill_count=published_index.skill_count,
+            updated_index=entry,
         )
 
 

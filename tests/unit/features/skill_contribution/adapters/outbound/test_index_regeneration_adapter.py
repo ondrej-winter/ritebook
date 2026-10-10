@@ -306,6 +306,7 @@ def contribution_entry(
         source="git@example.com:example/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         skill_path=skill_path,
         skill_file=f"{skill_path}/SKILL.md",

@@ -123,6 +123,7 @@ def test_publisher_json_index_and_index_registry_adapters_share_cacheable_index(
         index_digest=published.index_digest,
         cache_root=str(cache_root),
         preserve_path=None,
+        registry_path=str(registry_path),
     )
     registry = FilesystemIndexRegistry()
     registry.upsert(
@@ -172,6 +173,7 @@ def test_git_source_and_source_repository_adapters_resolve_real_git_revisions(
         source=prepared_local.source,
         source_type=prepared_local.source_type.value,
         source_revision=prepared_local.source_revision,
+        source_branch=prepared_local.source_branch,
         index_digest=(
             f"sha256:{hashlib.sha256(prepared_local.index_content).hexdigest()}"
         ),
@@ -208,6 +210,7 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         source_type="git_url",
         repository_path=str(repository),
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
     )
     skill = InstallableSkill(
@@ -253,8 +256,8 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
 
     assert (target / "SKILL.md").is_file()
     assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
-    assert state.read_ownership(paths.ownership_path) == (entry,)
-    assert '"schema_version": 2' in lockfile_path.read_text(encoding="utf-8")
+    assert state.read_ownership(paths.ownership_path).entries == (entry,)
+    assert '"schema_version": 3' in lockfile_path.read_text(encoding="utf-8")
     assert '"state": "complete"' in lockfile_path.read_text(encoding="utf-8")
 
 
@@ -358,6 +361,7 @@ def _registered_index(
     cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
     skill_count: int = 1,
     source_revision: str = "a" * 40,
+    source_branch: str | None = "refs/heads/main",
     index_digest: str = f"sha256:{'b' * 64}",
 ) -> RegisteredIndex:
     return RegisteredIndex(
@@ -367,6 +371,7 @@ def _registered_index(
         source=source,
         source_type=source_type,
         source_revision=source_revision,
+        source_branch=source_branch,
         index_digest=index_digest,
         source_cache_path=source_cache_path,
         cached_index_path=cached_index_path,
@@ -394,6 +399,7 @@ def _owned_installation(
         source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,
         skill_path="code-review",

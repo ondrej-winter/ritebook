@@ -15,6 +15,7 @@ class GitSourcePort(Protocol):
         self,
         source: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> PreparedIndexSource:
         """Prepare a user-supplied source for initial index reading."""
 
@@ -24,5 +25,7 @@ class GitSourcePort(Protocol):
         source: str,
         source_cache_path: str | None,
         cache_root: str | None,
+        source_branch: str | None = None,
+        registry_path: str | None = None,
     ) -> PreparedIndexSource:
         """Refresh or re-open a remembered source for update-index."""

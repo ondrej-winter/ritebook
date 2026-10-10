@@ -16,6 +16,40 @@ from ritebook.features.index_registry.application.dtos import (
     UpdateIndexResult,
 )
 
+
+def test_prepared_git_url_source_requires_canonical_branch() -> None:
+    with pytest.raises(ValueError, match="canonical Git branch"):
+        PreparedIndexSource(
+            source="git@example.com:company/skills.git",
+            source_type=IndexSourceType.GIT_URL,
+            repository_path="/cache/git/source-id",
+            source_revision="a" * 40,
+            index_content=b"{}",
+            source_cache_path="/cache/git/source-id",
+            source_branch="main",
+        )
+
+
+def test_registered_index_requires_canonical_branch() -> None:
+    with pytest.raises(ValueError, match="Source branch"):
+        RegisteredIndex(
+            name="company-skills",
+            published_name="company-skills",
+            alias_origin=AliasOrigin.PUBLISHED_NAME,
+            source="git@example.com:company/skills.git",
+            source_type=IndexSourceType.GIT_URL,
+            source_revision="a" * 40,
+            index_digest=f"sha256:{'b' * 64}",
+            source_cache_path="/cache/git/source-id",
+            cached_index_path="/cache/indexes/company-skills/index.json",
+            source_schema_version=1,
+            skill_count=1,
+            added_at="2026-10-09T12:00:00Z",
+            updated_at="2026-10-09T12:00:00Z",
+            source_branch="",
+        )
+
+
 SOURCE_REVISION = "a" * 40
 INDEX_DIGEST = f"sha256:{'b' * 64}"
 
@@ -57,6 +91,7 @@ def test_index_registry_dtos_reject_slash_separated_index_names() -> None:
             source="git@example.com:ondrej-winter/ritebook-shelf.git",
             source_type=IndexSourceType.GIT_URL,
             source_revision=SOURCE_REVISION,
+            source_branch="refs/heads/main",
             index_digest=INDEX_DIGEST,
             source_cache_path="/tmp/source-cache",
             cached_index_path="/tmp/cache/indexes/company-skills/ritebook-index.json",
@@ -198,6 +233,7 @@ def test_prepared_git_url_source_requires_cache_path() -> None:
             repository_path="/tmp/repo",
             source_revision=SOURCE_REVISION,
             index_content=b"{}",
+            source_branch="refs/heads/main",
         )
 
 
@@ -208,6 +244,7 @@ def test_prepared_local_source_rejects_cache_path() -> None:
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/tmp/repo",
             source_revision=SOURCE_REVISION,
+            source_branch="refs/heads/main",
             index_content=b"{}",
             source_cache_path="/tmp/cache",
         )
@@ -242,6 +279,7 @@ def test_registered_local_index_rejects_source_cache_path() -> None:
             source="/tmp/repo",
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             source_revision=SOURCE_REVISION,
+            source_branch="refs/heads/main",
             index_digest=INDEX_DIGEST,
             source_cache_path="/tmp/cache",
             cached_index_path="/tmp/cache/index.json",
@@ -260,6 +298,7 @@ def test_prepared_source_rejects_non_full_revision(source_revision: str) -> None
             source_type=IndexSourceType.LOCAL_GIT_REPO,
             repository_path="/tmp/repo",
             source_revision=source_revision,
+            source_branch="refs/heads/main",
             index_content=b"{}",
         )
 

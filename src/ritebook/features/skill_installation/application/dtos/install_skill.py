@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from ritebook.shared_kernel import (
     normalize_portable_description,
+    require_canonical_git_branch,
     require_index_name,
     require_kebab_case_identifier,
 )
@@ -17,7 +18,7 @@ SCHEMA_VERSION = 1
 TARGET_NICKNAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 INDEX_DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
-STATE_SCHEMA_VERSION = 2
+STATE_SCHEMA_VERSION = 3
 
 
 class InstallationWorkflow(StrEnum):
@@ -160,6 +161,7 @@ class RegisteredSkillIndex:
     source: str
     source_type: str
     source_revision: str
+    source_branch: str
     index_digest: str
     source_cache_path: str | None
     cached_index_path: str
@@ -173,6 +175,7 @@ class RegisteredSkillIndex:
         if not GIT_OBJECT_ID_PATTERN.fullmatch(self.source_revision):
             msg = "Source revision must be a full lowercase Git object ID."
             raise ValueError(msg)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         if not INDEX_DIGEST_PATTERN.fullmatch(self.index_digest):
             msg = "Index digest must use sha256:<64 lowercase hex>."
             raise ValueError(msg)
@@ -238,6 +241,7 @@ class ResolvedSkillSource:
     source_type: str
     repository_path: str
     source_revision: str
+    source_branch: str
     index_digest: str
 
     def __post_init__(self) -> None:
@@ -246,6 +250,7 @@ class ResolvedSkillSource:
         _require_non_empty(self.source_type, field_name="Index source type")
         _require_non_empty(self.repository_path, field_name="Repository path")
         _require_source_revision(self.source_revision)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         _require_index_digest(self.index_digest)
 
 
@@ -269,10 +274,26 @@ class GeneratedStateFile:
     path: str
     content: bytes
     private: bool
+    expected_digest: str | None = None
 
     def __post_init__(self) -> None:
         """Validate generated-state commit input."""
         _require_non_empty(self.path, field_name="Generated state path")
+        if self.expected_digest is not None:
+            _require_index_digest(self.expected_digest)
+
+
+@dataclass(frozen=True)
+class InstallationStateSnapshot:
+    """Parsed ownership entries paired with the exact source-byte digest."""
+
+    entries: tuple[OwnedInstallation, ...]
+    digest: str | None
+
+    def __post_init__(self) -> None:
+        """Validate an installation-state read result."""
+        if self.digest is not None:
+            _require_index_digest(self.digest)
 
 
 @dataclass(frozen=True)
@@ -339,6 +360,7 @@ class OwnedInstallation:
     source: str
     source_type: str
     source_revision: str
+    source_branch: str
     index_digest: str
     index_schema_version: int
     skill_path: str
@@ -359,6 +381,7 @@ class OwnedInstallation:
         _require_non_empty(self.source, field_name="Index source")
         _require_non_empty(self.source_type, field_name="Index source type")
         _require_source_revision(self.source_revision)
+        require_canonical_git_branch(self.source_branch, field_name="Source branch")
         _require_index_digest(self.index_digest)
         _require_non_empty(self.skill_path, field_name="Skill path")
         _require_non_empty(self.skill_file, field_name="Skill file")

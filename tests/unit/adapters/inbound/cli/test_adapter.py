@@ -303,6 +303,7 @@ def _owned_installation() -> OwnedInstallation:
         source="git@example.com:company/skills.git",
         source_type="git_url",
         source_revision="a" * 40,
+        source_branch="refs/heads/main",
         index_digest=f"sha256:{'b' * 64}",
         index_schema_version=1,
         skill_path="skills/code-review",

@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from ritebook.features.index_registry.application.dtos import (
     AliasOrigin,
     CachedSkillSummary,
@@ -21,16 +24,20 @@ class FakeGitSource:
             source_revision=SOURCE_REVISION,
             index_content=b'{"schema_version":1}\n',
             source_cache_path="/cache/git/source-id",
+            source_branch="refs/heads/main",
         )
-        self.prepare_calls: list[tuple[str, str | None]] = []
-        self.refresh_calls: list[tuple[str, str | None, str | None]] = []
+        self.prepare_calls: list[tuple[str, str | None, str | None]] = []
+        self.refresh_calls: list[
+            tuple[str, str | None, str | None, str | None, str | None]
+        ] = []
 
     def prepare_source(
         self,
         source: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> PreparedIndexSource:
-        self.prepare_calls.append((source, cache_root))
+        self.prepare_calls.append((source, cache_root, registry_path))
         return self.prepared
 
     def refresh_source(
@@ -39,8 +46,12 @@ class FakeGitSource:
         source: str,
         source_cache_path: str | None,
         cache_root: str | None,
+        source_branch: str | None = None,
+        registry_path: str | None = None,
     ) -> PreparedIndexSource:
-        self.refresh_calls.append((source, source_cache_path, cache_root))
+        self.refresh_calls.append(
+            (source, source_branch, source_cache_path, cache_root, registry_path),
+        )
         if self.prepared.source == "git@example.com:company/skills.git":
             index_name = source.removeprefix("git@example.com:company/").removesuffix(
                 ".git",
@@ -52,6 +63,7 @@ class FakeGitSource:
                 source_revision=UPDATED_SOURCE_REVISION,
                 index_content=index_name.encode(),
                 source_cache_path=source_cache_path or f"/cache/git/{index_name}",
+                source_branch=source_branch,
             )
         return self.prepared
 
@@ -119,20 +131,52 @@ class FakeRegistry:
         self.get_calls: list[tuple[str, str | None]] = []
         self.list_calls: list[str | None] = []
         self.upsert_calls: list[tuple[RegisteredIndex, str | None]] = []
+        self.transaction_paths: list[str | None] = []
+        self._transaction_path: str | None = None
 
-    def get(self, name: str, registry_path: str | None) -> RegisteredIndex | None:
+    def get(
+        self,
+        name: str,
+        registry_path: str | None = None,
+    ) -> RegisteredIndex | None:
+        if registry_path is None:
+            registry_path = self._transaction_path
         self.get_calls.append((name, registry_path))
         return self.entries.get(name)
 
-    def upsert(self, entry: RegisteredIndex, registry_path: str | None) -> None:
+    def upsert(
+        self,
+        entry: RegisteredIndex,
+        registry_path: str | None = None,
+    ) -> None:
         if self.upsert_error is not None:
             raise self.upsert_error
+        if registry_path is None:
+            registry_path = self._transaction_path
         self.entries[entry.name] = entry
         self.upsert_calls.append((entry, registry_path))
 
-    def list(self, registry_path: str | None) -> tuple[RegisteredIndex, ...]:
+    def list(
+        self,
+        registry_path: str | None = None,
+    ) -> tuple[RegisteredIndex, ...]:
+        if registry_path is None:
+            registry_path = self._transaction_path
         self.list_calls.append(registry_path)
         return tuple(self.entries[name] for name in sorted(self.entries))
+
+    @contextmanager
+    def write_transaction(
+        self,
+        registry_path: str | None,
+    ) -> Iterator["FakeRegistry"]:
+        self.transaction_paths.append(registry_path)
+        previous = self._transaction_path
+        self._transaction_path = registry_path
+        try:
+            yield self
+        finally:
+            self._transaction_path = previous
 
 
 class FakeCache:
@@ -147,7 +191,9 @@ class FakeCache:
         name: str,
         index_digest: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> str:
+        del registry_path
         digest = index_digest.removeprefix("sha256:")
         return f"{cache_root or '/cache'}/indexes/{name}/{digest}/ritebook-index.json"
 
@@ -159,7 +205,9 @@ class FakeCache:
         index_digest: str,
         cache_root: str | None,
         preserve_path: str | None,
+        registry_path: str | None = None,
     ) -> str:
+        del registry_path
         self.write_calls.append(
             (name, content, index_digest, cache_root, preserve_path),
         )
@@ -175,7 +223,9 @@ class FakeCache:
         name: str,
         cached_index_path: str,
         cache_root: str | None,
+        registry_path: str | None = None,
     ) -> None:
+        del registry_path
         self.discard_calls.append((name, cached_index_path, cache_root))
         if self.discard_error is not None:
             raise self.discard_error
@@ -190,6 +240,7 @@ def registered_index(
     source_type: IndexSourceType = IndexSourceType.GIT_URL,
     source_cache_path: str | None = "/cache/git/source-id",
     source_revision: str = SOURCE_REVISION,
+    source_branch: str | None = "refs/heads/main",
     index_digest: str = INDEX_DIGEST,
     cached_index_path: str = "/cache/indexes/company-skills/ritebook-index.json",
     source_schema_version: int = 1,
@@ -204,6 +255,7 @@ def registered_index(
         source=source,
         source_type=source_type,
         source_revision=source_revision,
+        source_branch=source_branch,
         index_digest=index_digest,
         source_cache_path=source_cache_path,
         cached_index_path=cached_index_path,

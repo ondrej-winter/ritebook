@@ -13,6 +13,7 @@ from ritebook.features.index_registry.application.dtos import (
     RegisteredIndex,
 )
 from ritebook.features.index_registry.application.errors import (
+    IndexRegistryBusyError,
     IndexRegistryPersistenceError,
 )
 
@@ -24,6 +25,16 @@ def test_filesystem_registry_reads_missing_registry_as_empty(tmp_path: Path) -> 
     registry = FilesystemIndexRegistry()
 
     assert registry.get("company-skills", str(tmp_path / "indexes.json")) is None
+
+
+def test_filesystem_registry_rejects_schema_v1_without_migration(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "indexes.json"
+    path.write_text('{"schema_version": 1, "indexes": []}\n', encoding="utf-8")
+
+    with pytest.raises(IndexRegistryPersistenceError, match="schema version 2"):
+        FilesystemIndexRegistry().list(str(path))
 
 
 def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> None:
@@ -42,6 +53,8 @@ def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> Non
     assert payload["indexes"][0]["source_revision"] == SOURCE_REVISION
     assert payload["indexes"][0]["index_digest"] == INDEX_DIGEST
     assert payload["indexes"][0]["alias_origin"] == "explicit"
+    assert payload["schema_version"] == 2
+    assert payload["indexes"][0]["source_branch"] == "refs/heads/main"
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
@@ -76,50 +89,50 @@ def test_filesystem_registry_preserves_unrelated_entries(tmp_path: Path) -> None
     assert zeta_entry.skill_count == 2
 
 
-@pytest.mark.parametrize(
-    ("name", "published_name", "expected_origin"),
-    [
-        (
-            "company-skills",
-            "company-skills",
-            AliasOrigin.PUBLISHED_NAME,
-        ),
-        (
-            "platform-skills",
-            "company-skills",
-            AliasOrigin.EXPLICIT,
-        ),
-    ],
-)
-def test_filesystem_registry_infers_legacy_alias_origin_and_persists_on_write(
+def test_filesystem_registry_write_transaction_preserves_unrelated_entries(
     tmp_path: Path,
-    name: str,
-    published_name: str,
-    expected_origin: AliasOrigin,
 ) -> None:
     path = tmp_path / "indexes.json"
     registry = FilesystemIndexRegistry()
-    registry.upsert(
-        entry(
-            name=name,
-            published_name=published_name,
-            alias_origin=expected_origin,
-        ),
-        str(path),
+    registry.upsert(entry(name="alpha-skills", skill_count=1), str(path))
+
+    with registry.write_transaction(str(path)) as transaction:
+        assert transaction.get("alpha-skills") == entry(
+            name="alpha-skills",
+            skill_count=1,
+        )
+        transaction.upsert(entry(name="zeta-skills", skill_count=2))
+
+    assert registry.list(str(path)) == (
+        entry(name="alpha-skills", skill_count=1),
+        entry(name="zeta-skills", skill_count=2),
     )
+
+
+def test_filesystem_registry_read_fails_when_writer_holds_lock(tmp_path: Path) -> None:
+    path = tmp_path / "indexes.json"
+    writer = FilesystemIndexRegistry(lock_timeout_seconds=0.01)
+    reader = FilesystemIndexRegistry(lock_timeout_seconds=0.01)
+
+    with (
+        writer.write_transaction(str(path)),
+        pytest.raises(IndexRegistryBusyError, match="already running"),
+    ):
+        reader.list(str(path))
+
+
+def test_filesystem_registry_rejects_schema_v2_entry_without_alias_origin(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(entry(), str(path))
     payload = json.loads(path.read_text(encoding="utf-8"))
     del payload["indexes"][0]["alias_origin"]
     path.write_text(json.dumps(payload), encoding="utf-8")
 
-    loaded = registry.get(name, str(path))
-
-    assert loaded is not None
-    assert loaded.alias_origin is expected_origin
-
-    registry.upsert(loaded, str(path))
-
-    migrated = json.loads(path.read_text(encoding="utf-8"))
-    assert migrated["indexes"][0]["alias_origin"] == expected_origin.value
+    with pytest.raises(IndexRegistryPersistenceError, match="malformed"):
+        registry.get("company-skills", str(path))
 
 
 def test_filesystem_registry_recovers_abandoned_temporary_file(tmp_path: Path) -> None:
@@ -169,7 +182,7 @@ def test_filesystem_registry_rejects_legacy_entries_without_provenance(
 
     with pytest.raises(
         IndexRegistryPersistenceError,
-        match="regenerate it with add-index",
+        match="malformed",
     ):
         registry.get("company-skills", str(path))
 
@@ -207,6 +220,7 @@ def entry(
         source="git@example.com:company/skills.git",
         source_type=IndexSourceType.GIT_URL,
         source_revision=SOURCE_REVISION,
+        source_branch="refs/heads/main",
         index_digest=INDEX_DIGEST,
         source_cache_path="/cache/git/source-id",
         cached_index_path=f"/cache/indexes/{name}/ritebook-index.json",

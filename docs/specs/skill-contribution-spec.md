@@ -3,11 +3,11 @@
 ## Status
 
 - State: Active
-- Revision: 2.4
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 publication and strict-catalog decisions.
-- Accepted by / on: User / 2026-10-07
+- Revision: 2.5
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6, October 7, and October 9, 2026 publication, strict-catalog, and canonical-branch provenance decisions.
+- Accepted by / on: User / 2026-10-09
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-07
+- Last reviewed: 2026-10-09
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
 - Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), [ADR 0004: Reconcile Installed Skills with Owned Transactional State](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
@@ -36,8 +36,8 @@ user-owned local source repositories.
 - Generated `ritebook.lock` records installed-skill provenance, including
   target identity, installed-tree digest, desired/materialization status,
   `requirement`, `index_name`, `target`, `source`, `source_type`,
-  `source_revision`, `index_digest`, `skill_path`, and `skill_file` for retained
-  requirements-file installs.
+  `source_revision`, `source_branch`, `index_digest`, `skill_path`, and `skill_file`
+  for retained requirements-file installs.
 - Installation persists the same commit and index-digest binding verified during
   index registration and source resolution, as required by
   [ADR 0001](../adr/0001-source-provenance-and-trust.md).
@@ -277,6 +277,9 @@ Required lockfile fields for each publishable entry:
   `local_git_repo` entries.
 - `source_revision`: required full commit object ID bound during index validation
   and used for installation.
+- `source_branch`: required canonical `refs/heads/...` branch retained from index
+  registration. It is retrieval metadata; immutable identity remains the commit
+  and exact index digest.
 - `index_digest`: required SHA-256 digest that both the exact cached index used to
   resolve the installation and root `ritebook-index.json` at `source_revision`
   were verified to match.
@@ -300,10 +303,11 @@ Contribution does not use a secondary permissive JSON parser. When existing inde
 metadata is needed, it uses the shared strict schema-v1 reader and keeps the
 provenance-derived root authoritative.
 
-Contribution reads strict schema-v2 lockfiles only. Schema-v1 files, unknown
-fields, issue-only entries, and non-publishable retained entries are rejected or
-ignored for selection; Ritebook does not infer missing provenance, ownership, or
-installed content from the source's current `HEAD`.
+Contribution reads strict schema-v3 lockfiles only. Schema-v1 and schema-v2 files,
+unknown fields, issue-only entries, and non-publishable retained entries are
+rejected or ignored for selection; Ritebook does not infer missing provenance,
+ownership, canonical branch, or installed content from the source's current
+`HEAD`.
 
 Legacy or hand-written lock entries with `source_type = "local_git_repo"` are
 rejected at lockfile ingestion before contribution workspace or Git operations.
@@ -561,6 +565,8 @@ docker run --rm ritebook-e2e
   secondary index parsing under ADR 0005.
 - October 7, 2026: Marked revision 2.4 implemented after provenance-derived root,
   nested-selector, inconsistent-provenance, and checkout-safety tests passed.
+- October 9, 2026: Revision 2.5 adopted strict schema-v3 installation lock state
+  with required canonical source-branch provenance.
 - October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
   publisher's exact validated-snapshot contract from ADR 0003.
 - OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,

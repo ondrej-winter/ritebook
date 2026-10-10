@@ -36,6 +36,12 @@ class RecordingRunner:
             stdout = b"?? untracked.txt\n"
         elif "rev-parse" in command:
             stdout = self.revision + b"\n"
+        elif "symbolic-ref" in command:
+            stdout = (
+                b"refs/remotes/origin/main\n"
+                if "refs/remotes/origin/HEAD" in command
+                else b"refs/heads/main\n"
+            )
         elif "show" in command:
             stdout = self.index_content
         return subprocess.CompletedProcess(command, returncode, stdout, b"")
@@ -54,6 +60,7 @@ def test_git_source_adapter_accepts_local_git_repo(tmp_path: Path) -> None:
     assert result.repository_path == str(tmp_path)
     assert result.source_cache_path is None
     assert result.source_revision == "a" * 40
+    assert result.source_branch == "refs/heads/main"
     assert result.index_content == b'{"schema_version":1}'
     assert runner.commands == [
         [
@@ -64,7 +71,22 @@ def test_git_source_adapter_accepts_local_git_repo(tmp_path: Path) -> None:
             "--porcelain=v1",
             "--untracked-files=all",
         ],
-        ["git", "-C", str(tmp_path), "rev-parse", "--verify", "HEAD^{commit}"],
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "symbolic-ref",
+            "--quiet",
+            "HEAD",
+        ],
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "rev-parse",
+            "--verify",
+            "refs/heads/main^{commit}",
+        ],
         [
             "git",
             "-C",
@@ -100,6 +122,7 @@ def test_git_source_adapter_clones_git_url_to_hashed_cache(tmp_path: Path) -> No
 
     assert result.source_type is IndexSourceType.GIT_URL
     assert result.source_cache_path is not None
+    assert result.source_branch == "refs/heads/main"
     assert "git@example.com" not in result.source_cache_path
     assert runner.commands == [
         [
@@ -113,9 +136,17 @@ def test_git_source_adapter_clones_git_url_to_hashed_cache(tmp_path: Path) -> No
             "git",
             "-C",
             result.source_cache_path,
+            "symbolic-ref",
+            "--quiet",
+            "refs/remotes/origin/HEAD",
+        ],
+        [
+            "git",
+            "-C",
+            result.source_cache_path,
             "rev-parse",
             "--verify",
-            "HEAD^{commit}",
+            "refs/remotes/origin/main^{commit}",
         ],
         [
             "git",
@@ -172,18 +203,27 @@ def test_git_source_adapter_refreshes_existing_clone(tmp_path: Path) -> None:
         source="git@example.com:company/skills.git",
         source_cache_path=str(clone_path),
         cache_root=str(tmp_path),
+        source_branch="refs/heads/main",
     )
 
     assert runner.commands == [
-        ["git", "-C", str(clone_path), "fetch", "--prune", "--tags"],
-        ["git", "-C", str(clone_path), "pull", "--ff-only"],
+        [
+            "git",
+            "-C",
+            str(clone_path),
+            "fetch",
+            "--prune",
+            "--tags",
+            "origin",
+            "+refs/heads/main:refs/remotes/origin/main",
+        ],
         [
             "git",
             "-C",
             str(clone_path),
             "rev-parse",
             "--verify",
-            "HEAD^{commit}",
+            "refs/remotes/origin/main^{commit}",
         ],
         [
             "git",
@@ -204,6 +244,7 @@ def test_git_source_adapter_reads_index_from_selected_revision(tmp_path: Path) -
         source="git@example.com:company/skills.git",
         source_cache_path=str(clone_path),
         cache_root=str(tmp_path),
+        source_branch="refs/heads/main",
     )
 
     assert result.source_revision == "b" * 40
@@ -220,6 +261,7 @@ def test_git_source_adapter_rejects_unavailable_source_revision(tmp_path: Path) 
             source="git@example.com:company/skills.git",
             source_cache_path=str(clone_path),
             cache_root=str(tmp_path),
+            source_branch="refs/heads/main",
         )
 
 

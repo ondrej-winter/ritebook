@@ -1,4 +1,4 @@
-"""Ownership-aware exact reconciliation from a requirements file."""
+"""Declaration-scoped installation from a requirements file."""
 
 from __future__ import annotations
 
@@ -94,11 +94,10 @@ class _ReconciliationOutcome:
     installed_count: int = 0
     updated_count: int = 0
     unchanged_count: int = 0
-    pruned_count: int = 0
 
 
 class InstallFromRequirements(InstallFromRequirementsPort):
-    """Refresh and exactly reconcile declared repository skill installations."""
+    """Refresh and install only declared repository skill targets."""
 
     def __init__(  # noqa: PLR0913
         self,
@@ -126,7 +125,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self,
         command: InstallFromRequirementsCommand,
     ) -> InstallFromRequirementsResult:
-        """Refresh indexes and reconcile owned targets with desired requirements."""
+        """Refresh indexes and process targets declared by the requirements file."""
         requirements = self._requirements_reader.read_requirements(
             command.requirements_file,
         )
@@ -180,21 +179,15 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                         force=command.force,
                         staged_trees=staged_trees,
                     )
-                    obsolete_outcome = self._reconcile_obsolete(
-                        ownership,
-                        desired,
-                        transaction,
-                    )
-
                     final_entries = tuple(
                         sorted(
-                            (*desired_outcome.entries, *obsolete_outcome.entries),
+                            desired_outcome.entries,
                             key=lambda entry: entry.target_id,
                         ),
                     )
                     final_issues = tuple(
                         sorted(
-                            (*desired_outcome.issues, *obsolete_outcome.issues),
+                            desired_outcome.issues,
                             key=lambda issue: (
                                 issue.target,
                                 issue.code,
@@ -226,7 +219,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             installed_count=desired_outcome.installed_count,
             updated_count=desired_outcome.updated_count,
             unchanged_count=desired_outcome.unchanged_count,
-            pruned_count=obsolete_outcome.pruned_count,
             ownership_entries=final_entries,
             issues=final_issues,
         )
@@ -249,7 +241,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         for item in desired:
             owner = ownership_by_target.get(item.planned_target.canonical_target)
             inspection = self._installer.inspect_target(item.planned_target)
-            if inspection.exists and owner is None:
+            if inspection.exists and owner is None and not force:
                 issues.append(
                     _issue(
                         "unmanaged-target",
@@ -262,6 +254,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 inspection.exists
                 and owner is not None
                 and inspection.installed_tree_digest != owner.installed_tree_digest
+                and not force
             ):
                 entries.append(
                     replace(
@@ -299,7 +292,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             transaction.replace_tree(
                 staged_path=staged.staged_path,
                 target_path=item.planned_target.canonical_target,
-                expected_digest=(owner.installed_tree_digest if inspection.exists and owner is not None else None),
+                expected_digest=(inspection.installed_tree_digest if inspection.exists else None),
             )
             entries.append(candidate)
             if inspection.exists:
@@ -313,39 +306,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             installed_count=installed_count,
             updated_count=updated_count,
             unchanged_count=unchanged_count,
-        )
-
-    def _reconcile_obsolete(
-        self,
-        ownership: tuple[OwnedInstallation, ...],
-        desired: tuple[_DesiredInstall, ...],
-        transaction: InstallationTransaction,
-    ) -> _ReconciliationOutcome:
-        desired_targets = {item.planned_target.canonical_target for item in desired}
-        entries: list[OwnedInstallation] = []
-        issues: list[ReconciliationIssue] = []
-        pruned_count = 0
-
-        for owner in ownership:
-            if owner.canonical_target in desired_targets:
-                continue
-            planned = self._installer.plan_target(owner.canonical_target)
-            inspection = self._installer.inspect_target(planned)
-            if inspection.exists and inspection.installed_tree_digest == owner.installed_tree_digest:
-                transaction.remove_tree(
-                    target_path=owner.canonical_target,
-                    expected_digest=owner.installed_tree_digest,
-                )
-                pruned_count += 1
-                continue
-            status = InstallationStatus.LOCAL_CHANGES if inspection.exists else InstallationStatus.RETAINED
-            entries.append(replace(owner, desired=False, status=status))
-            issues.append(_obsolete_issue(owner, exists=inspection.exists))
-
-        return _ReconciliationOutcome(
-            entries=tuple(entries),
-            issues=tuple(issues),
-            pruned_count=pruned_count,
         )
 
     def _desired_installations(
@@ -572,23 +532,6 @@ def _issue(code: str, item: _DesiredInstall, detail: str) -> ReconciliationIssue
         target=item.portable_target,
         requirement=item.reference.requirement,
         detail=detail,
-    )
-
-
-def _obsolete_issue(
-    owner: OwnedInstallation,
-    *,
-    exists: bool,
-) -> ReconciliationIssue:
-    return ReconciliationIssue(
-        code="local-changes" if exists else "missing-owned-target",
-        target=owner.target,
-        requirement=owner.requirement,
-        detail=(
-            "target has local changes and was preserved"
-            if exists
-            else "owned target is missing and requires inspection"
-        ),
     )
 
 

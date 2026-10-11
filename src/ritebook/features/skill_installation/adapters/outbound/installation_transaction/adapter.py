@@ -178,11 +178,11 @@ class FilesystemInstallationTransaction:
             exists = entry_metadata(target_parent_fd, target.name) is not None
             if expected_digest is None:
                 if exists:
-                    msg = f"target {target} exists without verified Ritebook ownership"
+                    msg = f"target {target} exists without an expected tree digest"
                     raise UnsafeInstallPathError(msg)
             else:
                 if not exists:
-                    msg = f"owned target is missing: {target}"
+                    msg = f"inspected target is missing: {target}"
                     raise InstallationPersistenceError(msg)
                 if (
                     canonical_tree_digest_at(
@@ -192,7 +192,7 @@ class FilesystemInstallationTransaction:
                     )
                     != expected_digest
                 ):
-                    msg = f"owned target has local changes: {target}"
+                    msg = f"installation target changed after inspection: {target}"
                     raise InstallationPersistenceError(msg)
 
             backup = target.parent / (f".{target.name}.ritebook-{self._transaction_id}.previous")
@@ -230,50 +230,6 @@ class FilesystemInstallationTransaction:
                 self._remember_directory(target.parent, target_parent_fd)
             except OSError as err:
                 msg = f"unable to replace installation target: {target}"
-                raise InstallationPersistenceError(msg) from err
-
-    def remove_tree(self, *, target_path: str, expected_digest: str) -> None:
-        """Remove an unchanged owned target while retaining it for rollback."""
-        target = _require_safe_mutation_target(Path(target_path))
-        with open_verified_directory(
-            target.parent,
-            create=False,
-            label=f"target parent for {target}",
-        ) as target_parent_fd:
-            if (
-                canonical_tree_digest_at(
-                    target_parent_fd,
-                    target.name,
-                    display_path=target,
-                )
-                != expected_digest
-            ):
-                msg = f"owned target has local changes: {target}"
-                raise InstallationPersistenceError(msg)
-            backup = target.parent / (f".{target.name}.ritebook-{self._transaction_id}.previous")
-            self._mutations.append(
-                {
-                    "kind": "remove",
-                    "target_path": str(target),
-                    "backup_path": str(backup),
-                    "had_prior": True,
-                },
-            )
-            self._phase = "targets_applied"
-            self._write_journal()
-            require_directory_identity(target.parent, target_parent_fd)
-            try:
-                rename_entry(
-                    target_parent_fd,
-                    target.name,
-                    target_parent_fd,
-                    backup.name,
-                )
-                sync_directory_descriptor(target_parent_fd)
-                require_directory_identity(target.parent, target_parent_fd)
-                self._remember_directory(target.parent, target_parent_fd)
-            except OSError as err:
-                msg = f"unable to remove installation target: {target}"
                 raise InstallationPersistenceError(msg) from err
 
     def commit_state(self, files: tuple[GeneratedStateFile, ...]) -> None:

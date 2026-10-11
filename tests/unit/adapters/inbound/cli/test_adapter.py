@@ -270,7 +270,6 @@ class FakeInstallFromRequirements:
             installed_count=3,
             updated_count=1,
             unchanged_count=2,
-            pruned_count=1,
             ownership_entries=(),
             issues=(),
         )
@@ -1861,9 +1860,7 @@ def test_install_maps_default_arguments_to_application_command() -> None:
     assert install_from_requirements.commands == [
         InstallFromRequirementsCommand(requirements_file="ritebook.toml"),
     ]
-    assert stdout.getvalue() == (
-        "Reconciled skills from ritebook.toml: installed 3, updated 1, unchanged 2, pruned 1\n"
-    )
+    assert stdout.getvalue() == ("Reconciled skills from ritebook.toml: installed 3, updated 1, unchanged 2\n")
     assert stderr.getvalue() == ""
 
 
@@ -1907,7 +1904,6 @@ def test_install_maps_overrides_to_application_command() -> None:
             installed_count=2,
             updated_count=0,
             unchanged_count=1,
-            pruned_count=0,
             ownership_entries=(),
             issues=(),
         ),
@@ -1943,9 +1939,7 @@ def test_install_maps_overrides_to_application_command() -> None:
             lockfile_path="/tmp/ritebook.lock",
         ),
     ]
-    assert stdout.getvalue() == (
-        "Reconciled skills from config/ritebook.toml: installed 2, updated 0, unchanged 1, pruned 0\n"
-    )
+    assert stdout.getvalue() == ("Reconciled skills from config/ritebook.toml: installed 2, updated 0, unchanged 1\n")
     assert stderr.getvalue() == ""
 
 
@@ -1961,7 +1955,6 @@ def test_install_reports_partial_reconciliation_and_returns_nonzero() -> None:
         installed_count=1,
         updated_count=0,
         unchanged_count=2,
-        pruned_count=1,
         ownership_entries=(),
         issues=(issue,),
     )
@@ -1978,9 +1971,7 @@ def test_install_reports_partial_reconciliation_and_returns_nonzero() -> None:
     )
 
     assert exit_code == 1
-    assert stdout.getvalue() == (
-        "Reconciled skills from ritebook.toml: installed 1, updated 0, unchanged 2, pruned 1\n"
-    )
+    assert stdout.getvalue() == ("Reconciled skills from ritebook.toml: installed 1, updated 0, unchanged 2\n")
     assert stderr.getvalue() == (
         "ritebook: issue: local-changes: .agents/skills/code-review: "
         r"target has local changes\nand was preserved" + "\n"

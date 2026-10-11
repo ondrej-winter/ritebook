@@ -87,7 +87,7 @@ registry commit point.
 
 - The publisher `ritebook-index.json` schema remains version 1.
 - Installation target transactions remain governed by
-  [ADR 0004](./0004-reconcile-installed-skills-with-owned-transactional-state.md).
+  [ADR 0007](./0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md).
 - Git commit and exact-index provenance remain governed by
   [ADR 0001](./0001-source-provenance-and-trust.md).
 

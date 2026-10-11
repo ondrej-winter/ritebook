@@ -68,7 +68,7 @@ def run_install(
     print(
         f"Reconciled skills from {result.requirements_file}: "
         f"installed {result.installed_count}, updated {result.updated_count}, "
-        f"unchanged {result.unchanged_count}, pruned {result.pruned_count}",
+        f"unchanged {result.unchanged_count}",
         file=stdout,
     )
     for issue in result.issues:

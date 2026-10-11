@@ -424,7 +424,6 @@ class InstallFromRequirementsResult:
     installed_count: int
     updated_count: int
     unchanged_count: int
-    pruned_count: int
     ownership_entries: tuple[OwnedInstallation, ...]
     issues: tuple[ReconciliationIssue, ...]
 
@@ -439,9 +438,6 @@ class InstallFromRequirementsResult:
             raise ValueError(msg)
         if self.unchanged_count < 0:
             msg = "Unchanged count must not be negative."
-            raise ValueError(msg)
-        if self.pruned_count < 0:
-            msg = "Pruned count must not be negative."
             raise ValueError(msg)
 
 

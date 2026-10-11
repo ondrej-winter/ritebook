@@ -3,44 +3,45 @@
 ## Status
 
 - State: Active
-- Revision: 3.2
-- Acceptance basis: User-approved October 6, 2026 exact-reconciliation plan, the October 7, 2026 committed-header coherence decision in ADR 0005, and the October 9, 2026 canonical-branch provenance decision in ADR 0001.
-- Accepted by / on: User / 2026-10-09
+- Revision: 3.3
+- Acceptance basis: User-approved October 11, 2026 declaration-scoped sync and explicit force-replacement decision in ADR 0007, plus the provenance and catalog decisions in ADRs 0001 and 0005.
+- Accepted by / on: User / 2026-10-11
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-09
+- Last reviewed: 2026-10-11
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
-- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0004](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: Revision 2.1 of this specification
+- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0007](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
+- Supersedes: Revision 3.2 of this specification
 
 ## Objective and Context
 
-Ritebook installs one exact skill into an explicit target and reconciles a
-repository's installed skills with declarations in `ritebook.toml`. Installation
-consumes registered Git-backed indexes and preserves the commit-and-index-digest
-binding defined by ADR 0001.
+Ritebook installs one exact skill into an explicit target and installs the skills
+currently declared by a repository in `ritebook.toml`. Installation consumes
+registered Git-backed indexes and preserves the commit-and-index-digest binding
+defined by ADR 0001.
 
-Revision 2.1 implemented sync as sequential copy followed by a full lockfile
-rewrite. It did not record ownership or installed bytes, could not prune safely,
-could overwrite unmanaged directories with `--force`, deleted backups before
-generated state committed, and allowed concurrent lost updates. Revision 3.0
-defines exact, ownership-aware reconciliation with deterministic tree digests,
-referenced-index refresh, exclusive locking, rollback, interruption recovery,
-truthful partial state, and schema-v2 generated state. Revision 3.2 advances
-generated installation state to schema v3 so the canonical source branch is
-retained with the immutable commit-and-index binding.
+Revision 3.0 introduced ownership-aware transactional installation with
+deterministic tree digests, referenced-index refresh, exclusive locking,
+rollback, interruption recovery, truthful partial state, and schema-v2 generated
+state. Revision 3.2 advanced generated installation state to schema v3 so the
+canonical source branch is retained with the immutable commit-and-index binding.
+Revision 3.3 makes `--force` an explicit authorization to replace an existing
+safe target even when it is unmanaged or locally modified, and scopes sync to
+current declarations so omitted directories are never pruned.
 
 ## Scope
 
-- In scope: exact direct install, exact repository reconciliation, referenced
-  index refresh, generated lock and ownership state, content identity, local-edit
-  preservation, safe pruning, locking, target/state transactions, interruption
-  recovery, path and symlink safety, deterministic output, CLI behavior, and
-  schema-v1 and schema-v2 migration rejection.
+- In scope: exact direct install, declaration-scoped repository sync, referenced
+  index refresh, generated lock and ownership state, content identity, default
+  local-edit and unmanaged-target preservation, explicit force replacement,
+  locking, target/state transactions, interruption recovery, path and symlink
+  safety, deterministic output, CLI behavior, and schema-v1 and schema-v2
+  migration rejection.
 - Out of scope: unregistered live sources, default direct-install destinations,
   dependency resolution between skills, publisher signatures, cross-host shared
-  ownership state, automatic adoption of legacy targets, and overriding local
-  edits or unmanaged content.
+  ownership state, automatic deletion of undeclared targets, and force overrides
+  for symlinks, special files, dangerous paths, unsafe ancestry, or invalid
+  provenance.
 
 ## Requirements
 
@@ -62,12 +63,14 @@ retained with the immutable commit-and-index binding.
 - Before target planning, staging, or mutation, Ritebook validates the selected
   committed `SKILL.md` through the linter's single-file API. Its validated `name`
   and normalized `description` must exactly match the selected index entry.
-- A missing target may be installed. An existing target may be replaced only when
-  the user passed `--force`, the target is already owned by the same direct-install
-  registry, and its current tree digest matches its last committed digest.
-- `--force` does not authorize replacement of unmanaged targets, locally modified
-  targets, symlinks, special files, dangerous paths, or targets whose ownership
-  cannot be verified.
+- A missing target may be installed. Without `--force`, any existing target is
+  preserved and direct install exits nonzero.
+- With `--force`, an existing normal directory is transactionally replaced even
+  when it is unmanaged or differs from its last committed digest. Successful
+  replacement establishes fresh ownership and the candidate tree digest.
+- `--force` does not authorize replacement of symlinks, regular files, special
+  files, dangerous paths, unsafe ancestry, invalid source trees, or targets that
+  changed after inspection.
 
 ### R2 — Requirements and portable target identity
 
@@ -125,25 +128,33 @@ retained with the immutable commit-and-index binding.
 
 ### R5 — Ownership and local state
 
-- Ritebook may replace or prune only a target recorded in schema-v3 ownership
-  state for the same canonical target and `target_id`.
 - Repository sync stores local ownership at
   `<requirements-file-directory>/.ritebook/installations.json`.
 - The repository-local ownership ledger contains canonical target paths and is
   local generated state. Projects must not commit `.ritebook/`.
-- When the local ledger is absent, sync may reconstruct it from the repository's
-  strict schema-v3 `ritebook.lock`. It resolves each portable target under the
-  requirements-file directory and treats the lock entry as ownership evidence
-  only when its path is safe and its current tree matches the recorded
-  `installed_tree_digest` before replacement or pruning.
-- A lock mismatch does not adopt the target. The target is preserved as local
-  changes, and unlisted existing targets remain unmanaged.
+- When the local ledger is absent, sync may reconstruct ownership for currently
+  desired entries from the repository's strict schema-v3 `ritebook.lock`. It
+  resolves each portable target under the requirements-file directory and treats
+  a matching desired entry as prior ownership evidence.
+- Existing valid schema-v3 lock or local-ledger entries with `desired: false`
+  remain readable but never establish local ownership. A path represented only
+  by such an entry is unmanaged when declared again.
+- Without `--force`, automatic replacement of an existing target requires
+  matching ownership and a current tree digest equal to the recorded
+  `installed_tree_digest`. A mismatch remains a local edit and an unlisted
+  existing target remains unmanaged.
+- With `--force`, prior ownership is not required. Ritebook uses the current
+  inspected tree digest as a race-detection snapshot and records ownership only
+  after target mutation and generated-state commit succeed.
 - Direct install stores ownership in
   `~/.config/ritebook/installations.json`, or the explicit
   `--installation-registry-path` override.
 - Ownership entries are sorted by `target_id` and record the owning workflow,
   requirement, target identity, canonical target, installed tree digest, and
   verified source provenance.
+- New sync ownership state contains only targets selected by the current
+  requirements file. Omitted prior entries are dropped from generated state
+  without inspecting, modifying, or deleting their directories.
 - Local ownership files use schema version 3, strict root and entry validation,
   no unknown fields, atomic same-directory replacement, and POSIX mode `0600`
   where supported.
@@ -151,28 +162,31 @@ retained with the immutable commit-and-index binding.
   current ownership evidence. Ritebook rejects them with instructions to inspect
   and remove or relocate legacy targets before reinstalling.
 
-### R6 — Exact reconciliation and safe pruning
+### R6 — Declaration-scoped sync and explicit force replacement
 
-For each desired resolved target, sync classifies current state under the
-operation lock:
+For each target resolved from the current requirements file, sync classifies the
+current state under the operation lock:
 
 - **missing:** install the candidate and establish ownership;
 - **owned and unchanged, candidate unchanged:** keep the target without rewriting
-  it;
+  it, unless `--force` requests rematerialization;
 - **owned and unchanged, candidate changed:** replace it transactionally;
-- **owned but locally modified:** preserve it and record a local-change issue;
-- **unmanaged existing target:** preserve it and record an unmanaged-target issue;
-- **unsafe or unverifiable:** preserve it and record a safety issue.
+- **owned but locally modified:** preserve it and record a local-change issue
+  without `--force`; replace it transactionally with `--force`;
+- **unmanaged existing target:** preserve it and record an unmanaged-target issue
+  without `--force`; replace it transactionally with `--force`;
+- **unsafe or unverifiable:** fail closed without replacing the target.
 
-For each previously owned target no longer desired:
+Targets not resolved from the current requirements file are outside the sync
+operation. Ritebook does not plan, inspect, modify, delete, or retain ownership
+metadata for them. Removing a declaration therefore leaves its directory
+untouched and removes its entry from newly generated sync state.
 
-- unchanged targets are pruned transactionally;
-- locally modified, unsafe, missing-with-inconsistent-state, or unverifiable
-  targets are retained and recorded as issues;
-- Ritebook never prunes a path based only on its location or name.
-
-`--force` may request rematerialization of an unchanged owned desired target. It
-does not change ownership, local-edit, pruning, or safety rules.
+Force replacement is exact and transactional: Ritebook stages the verified index
+candidate, revalidates the observed current tree digest immediately before
+mutation, retains the prior directory for rollback, places the candidate, and
+commits new ownership and lock state. `--force` does not relax source, target,
+symlink, special-file, path-containment, locking, or recovery checks.
 
 ### R7 — Transactions, locking, and recovery
 
@@ -185,18 +199,18 @@ does not change ownership, local-edit, pruning, or safety rules.
   generated-state work.
 - Each replacement is staged beside the target. Immediately before mutation,
   Ritebook revalidates symlink-free ancestry, target type, canonical identity,
-  ownership, and expected tree digest.
+  and the tree digest captured during inspection.
 - Tree hashing opens every ancestor and descendant directory without following
-  symlinks. Target replacement, backup, pruning, rollback, and interrupted-run
-  recovery use descriptor-relative mutation against verified parent directories;
-  journal entries retain stable path strings only for durable recovery guidance.
+  symlinks. Target replacement, backup, rollback, and interrupted-run recovery use
+  descriptor-relative mutation against verified parent directories; journal
+  entries retain stable path strings only for durable recovery guidance.
 - The prior target is moved to an installer-owned same-filesystem backup. The
   backup is retained until all generated-state files for the operation commit.
 - Ownership and lockfile reads compute a SHA-256 digest from the exact bytes they
   parse. Direct install attaches the ownership snapshot digest to its generated
   ownership candidate. Sync captures both the authoritative ownership snapshot
-  and the companion `ritebook.lock` snapshot before reconciliation, then attaches
-  the corresponding digests to both generated-state candidates.
+  and the companion `ritebook.lock` snapshot before processing declarations, then
+  attaches the corresponding digests to both generated-state candidates.
 - Immediately before state backup or replacement, the transaction compares each
   supplied snapshot digest with the current file bytes and fails without writing
   generated state when a file changed concurrently.
@@ -249,35 +263,35 @@ shape:
 }
 ```
 
-- `skills` describes actual retained Ritebook-owned materialized targets, not only
-  the latest desired candidates.
-- `desired` distinguishes current requirements from retained no-longer-desired
-  targets that could not be pruned safely.
+- `skills` describes only targets selected by the current requirements file that
+  Ritebook owns or preserved as locally modified owned targets.
+- New sync writes set `desired` to `true`. Valid older schema-v3 entries with
+  `desired: false` remain readable for compatibility but do not bootstrap local
+  ownership and are omitted by the next sync unless selected again.
 - `status` is `materialized` for an unchanged or successfully installed target,
-  `local_changes` for an edited retained target, or `retained` for another
-  retained owned target.
-- `issues` describes desired targets that could not be materialized and retained
-  targets requiring user action. Issues use stable codes and terminal-safe detail.
-- `state` is `complete` only when every desired target is materialized and every
-  no-longer-desired owned target is pruned. Otherwise it is `partial`.
+  or `local_changes` for a declared edited owned target preserved without force.
+- `issues` describes current declared targets that could not be materialized.
+  Issues use stable codes and terminal-safe detail.
+- `state` is `complete` only when every current declared target is materialized
+  and no issue remains. Undeclared directories do not make state partial.
 - Entries are sorted by `target_id`; issues are sorted by target and code.
 - The file contains no timestamps, canonical machine paths, credentials, or local
   repository sources. Re-running a complete no-change sync produces identical
   bytes.
 - Schema-v1 and schema-v2 lockfiles are rejected without automatic migration.
-  They do not authorize target replacement or pruning because they lack all
-  current ownership and canonical-branch provenance.
+  They cannot bootstrap current ownership or provenance. `--force` authorizes
+  target replacement but does not migrate invalid generated state.
 
 ### R9 — Partial reconciliation and CLI results
 
-- A target-specific install, update, or prune failure does not erase independent
-  successful target mutations.
-- After target processing, Ritebook commits ownership and lock state that exactly
-  describe the resulting owned targets and issues.
-- Sync exits zero only for complete reconciliation. It exits nonzero when any
-  desired target was skipped or failed, any obsolete owned target was retained,
-  state commit or recovery failed, or index refresh failed.
-- Success output reports installed, updated, unchanged, and pruned counts.
+- A declared target-specific skip does not erase independent successful target
+  mutations.
+- After processing current declarations, Ritebook commits ownership and lock state
+  that exactly describe current declared owned targets and issues.
+- Sync exits zero only when every current declaration is materialized. It exits
+  nonzero when any declared target was skipped or failed, state commit or recovery
+  failed, or index refresh failed.
+- Success output reports installed, updated, and unchanged counts.
 - Partial output reports those counts plus one terminal-safe diagnostic per issue.
 - CLI handlers translate command-construction, application, adapter-validation,
   and persistence errors without traceback leakage or terminal-control injection.
@@ -290,8 +304,8 @@ shape:
 - Only an exact `skills` entry with a safe Git URL source, verified provenance,
   `installed_tree_digest`, and a materialized or local-changes status is a valid
   contribution baseline.
-- Issue-only entries and retained no-longer-desired entries are not selected by
-  fallback.
+- Issue-only entries and entries with `desired: false` are not selected by
+  fallback. New sync writes do not retain undeclared entries.
 - Contribution continues to resolve the exact qualified `requirement`; it never
   falls back to skill name or repository-relative path.
 
@@ -313,12 +327,14 @@ shape:
 ## Implementation and Verification Evidence
 
 - ADR 0001 defines immutable source provenance.
-- ADR 0004 defines ownership, reconciliation, locking, transaction, recovery, and
-  schema-transition decisions.
-- Revision-3 implementation evidence must include focused unit and integration
-  tests for tree hashing, strict schema parsing, refresh failure, ownership,
-  unmanaged targets, local edits, pruning, partial state, idempotence, concurrent
-  processes, interruption recovery, symlink races, and CLI exit behavior.
+- ADR 0007 defines declaration-scoped sync, explicit force replacement, and the
+  transaction guarantees carried forward from ADR 0004.
+- Revision-3.3 implementation evidence includes focused unit and E2E tests for
+  force replacement of unmanaged and locally modified targets, default
+  preservation without force, undeclared-target non-mutation, generated-state
+  relinquishment, legacy undesired-entry migration, tree hashing, strict schema
+  parsing, refresh failure, idempotence, concurrent processes, interruption
+  recovery, symlink races, and CLI exit behavior.
 - Handoff requires the configured formatting, lint, type, import-boundary, full
   non-E2E test, package build, installed-wheel Docker E2E, real concurrent-process,
   and process-kill recovery checks when the environment supports them.
@@ -327,15 +343,15 @@ shape:
 
 | ID | Requirements | Scenario | Expected observable result |
 | --- | --- | --- | --- |
-| AC1 | R1, R4, R5, R7 | Direct install a missing target, reinstall unchanged owned content, modify it locally, and attempt unmanaged replacement. | Missing target installs with schema-v3 ownership; owned unchanged replacement is safe; local edits and unmanaged targets are preserved; success follows state commit. |
+| AC1 | R1, R4, R5, R7 | Direct install a missing target; retry existing unmanaged, unchanged owned, and locally modified owned targets with and without force. | Missing installs; every existing target is preserved without force; force replaces each safe directory from verified indexed content, records fresh ownership, and commits before success. |
 | AC2 | R2, R3 | Sync exact and collection requirements whose registered sources have advanced, then make one refresh fail. | Referenced aliases refresh before resolution; new committed content is selected; any refresh failure causes no target or install-state mutation and no stale fallback. |
 | AC3 | R4 | Hash equivalent trees with different creation order and timestamps, then change path, executable bit, bytes, or entry type. | Equivalent trees have one stable digest; every content-identity change changes the digest; symlinks and special files are rejected. |
-| AC4 | R5, R6 | Reconcile missing, unchanged, outdated, locally edited, unmanaged, and obsolete targets. | Ritebook installs, keeps, updates, preserves, skips, or prunes exactly according to ownership and digest rules. |
+| AC4 | R5, R6 | Sync missing, unchanged, outdated, locally edited, and unmanaged declared targets with and without force, while prior owned directories are omitted from the file. | Declared targets install, keep, update, preserve, or force-replace according to the rules; omitted directories are not inspected or mutated and disappear from newly generated sync state. |
 | AC5 | R7 | Inject failures before mutation, after backup, after target swap, during each state write, during rollback, and after process termination. | Prior state is restored or exact recovery artifacts remain; next-run recovery deterministically finalizes committed state or rolls back uncommitted state. |
 | AC6 | R7 | Run two real processes against the same ownership state and change generated state after its snapshot is read. | Only one holds the operation lock; no interleaved target/state transaction occurs; stale snapshot commits fail before generated-state replacement. |
-| AC7 | R8, R9 | Cause one target success, one local-edit skip, one unmanaged-target skip, and one prune success. | Lock schema v3 truthfully represents retained owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
+| AC7 | R8, R9 | Cause one target success, one local-edit skip, and one unmanaged-target skip. | Lock schema v3 contains only current declared owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
 | AC8 | R8 | Run a complete sync twice without source or target changes. | The second run mutates no targets and writes byte-identical lock and ownership state. |
-| AC9 | R5, R8, R10 | Present schema-v1 and schema-v2 lock and installation state, malformed schema-v3 documents, unknown fields, unsafe sources, and non-materialized contribution entries. | Readers reject them with safe migration or regeneration guidance and never infer ownership or provenance. |
+| AC9 | R5, R8, R10 | Present schema-v1 and schema-v2 lock and installation state, malformed schema-v3 documents, unknown fields, unsafe sources, legacy `desired: false` entries, and non-materialized contribution entries. | Invalid readers reject with safe migration or regeneration guidance; valid legacy undesired entries remain readable but cannot bootstrap ownership or contribution selection. |
 | AC10 | R1-R10 | Run all repository handoff gates and installed-wheel workflows. | Formatting, linting, typing, import contracts, tests, build, Docker E2E, concurrency, and interruption checks pass or an environmental limitation is reported exactly. |
 
 ## Assumptions
@@ -367,3 +383,7 @@ None.
 - October 9, 2026: Revision 3.2 propagated exact-byte ownership and lockfile
   snapshot digests into direct-install and sync generated-state candidates so the
   transaction compare-and-swap check rejects stale state before replacement.
+- October 11, 2026: Revision 3.3 adopted ADR 0007. Force now replaces an exact
+  safe declared or direct target even when unmanaged or locally modified; sync
+  processes only current declarations, never prunes omitted directories, and
+  writes only current declaration ownership state.

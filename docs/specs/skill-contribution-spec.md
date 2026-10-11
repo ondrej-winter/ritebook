@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.5
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6, October 7, and October 9, 2026 publication, strict-catalog, and canonical-branch provenance decisions.
-- Accepted by / on: User / 2026-10-09
+- Revision: 2.6
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6, October 7, October 9, and October 11, 2026 publication, strict-catalog, canonical-branch provenance, and declaration-scoped sync decisions.
+- Accepted by / on: User / 2026-10-11
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-09
+- Last reviewed: 2026-10-11
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), [ADR 0004: Reconcile Installed Skills with Owned Transactional State](../adr/0004-reconcile-installed-skills-with-owned-transactional-state.md), and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: Revision 2.2 of this specification
+- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0007: Scope Skill Sync to Declarations and Make Force Replacement Explicit](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
+- Supersedes: Revision 2.5 of this specification
 
 ## Objective and Context
 
@@ -288,8 +288,9 @@ Required lockfile fields for each publishable entry:
 - `index_schema_version`: publisher index schema version used at install time.
 - `installed_tree_digest`: canonical digest of the last committed installed tree.
 - `desired`: must be `true` for contribution selection.
-- `status`: must be `materialized` or `local_changes`; retained obsolete targets
-  are not publishable baselines.
+- `status`: must be `materialized` or `local_changes`; entries with
+  `desired: false` are not publishable baselines. New sync writes omit undeclared
+  entries.
 - `target_ref`: optional requirements target nickname.
 
 Catalog depth and segment validation applies to the selector encoded in
@@ -304,10 +305,9 @@ metadata is needed, it uses the shared strict schema-v1 reader and keeps the
 provenance-derived root authoritative.
 
 Contribution reads strict schema-v3 lockfiles only. Schema-v1 and schema-v2 files,
-unknown fields, issue-only entries, and non-publishable retained entries are
-rejected or ignored for selection; Ritebook does not infer missing provenance,
-ownership, canonical branch, or installed content from the source's current
-`HEAD`.
+unknown fields, issue-only entries, and entries with `desired: false` are rejected
+or ignored for selection; Ritebook does not infer missing provenance, ownership,
+canonical branch, or installed content from the source's current `HEAD`.
 
 Legacy or hand-written lock entries with `source_type = "local_git_repo"` are
 rejected at lockfile ingestion before contribution workspace or Git operations.
@@ -531,7 +531,7 @@ docker run --rm ritebook-e2e
 | AC3 | R3 | Prepare or reuse a contribution workspace, including unmarked, symlinked, dirty, and failure cases. | Only marked Ritebook-owned checkouts are reset or cleaned; source branches, managed index caches, user-owned repositories, and external symlink targets are not mutated. | Contribution-checkout and Git adapter tests. |
 | AC4 | R4 | Compare installed content with the locked revision and current upstream base, including changed-upstream, unavailable-commit, and digest-mismatch cases. | Contributions proceed only when the bound baseline is verified and the selected upstream path has not diverged; conflicts and unavailable provenance fail without copying or committing. | Application and Git workspace tests. |
 | AC5 | R5 | Prepare changed valid and invalid skill content. | Valid content is copied, linted, re-indexed from the exact successful snapshot, and committed on a deterministic review branch; validation or regeneration failure creates no commit; no second discovery or parse and no push occurs. | Validation, regeneration, Git, and application tests. |
-| AC6 | R6 | Read portable schema-v2, legacy, issue-only, retained, and locally sourced lock entries and resolve repository-relative source paths. | Required provenance, target identity, installed digest, desired flag, and publishable status are enforced; local-machine sources and schema-v1 state are rejected without disclosure; catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
+| AC6 | R6 | Read portable schema-v3, legacy-schema, issue-only, `desired: false`, and locally sourced lock entries and resolve repository-relative source paths. | Required provenance, target identity, installed digest, desired flag, and publishable status are enforced; local-machine sources and schema-v1 or schema-v2 state are rejected without disclosure; catalog depth is applied only to the qualified selector. | JSON lockfile and path-validation tests. |
 | AC7 | R1-R6 | Run the documented implementation handoff gates. | Application, adapter, CLI, formatting, linting, type, non-E2E, build, and network-disabled Docker E2E checks all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
 ## Assumptions
@@ -567,6 +567,9 @@ docker run --rm ritebook-e2e
   nested-selector, inconsistent-provenance, and checkout-safety tests passed.
 - October 9, 2026: Revision 2.5 adopted strict schema-v3 installation lock state
   with required canonical source-branch provenance.
+- October 11, 2026: Revision 2.6 aligned contribution selection with ADR 0007:
+  undeclared entries disappear from new sync state, while valid legacy
+  `desired: false` entries remain readable but are not publishable baselines.
 - October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
   publisher's exact validated-snapshot contract from ADR 0003.
 - OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,

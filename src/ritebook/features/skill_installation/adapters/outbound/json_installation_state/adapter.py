@@ -132,12 +132,13 @@ class JsonInstallationStateAdapter:
         if not isinstance(installations, list):
             msg = f"installation ownership state is malformed: {path}"
             raise InstallationPersistenceError(msg)
-        entries = tuple(
+        parsed_entries = tuple(
             _owned_from_json(entry, position=position, path=path) for position, entry in enumerate(installations)
         )
-        if len({entry.target_id for entry in entries}) != len(entries):
+        if len({entry.target_id for entry in parsed_entries}) != len(parsed_entries):
             msg = f"installation ownership state contains duplicate targets: {path}"
             raise InstallationPersistenceError(msg)
+        entries = tuple(entry for entry in parsed_entries if entry.desired)
         return InstallationStateSnapshot(
             entries=tuple(sorted(entries, key=lambda entry: entry.target_id)),
             digest=digest,
@@ -176,13 +177,14 @@ class JsonInstallationStateAdapter:
             msg = f"ritebook.lock schema-v3 root is malformed: {path}"
             raise InstallationPersistenceError(msg)
         root = Path(requirements_file).expanduser().resolve(strict=False).parent
-        entries = tuple(
+        parsed_entries = tuple(
             _lock_owned_from_json(entry, position=position, path=path, root=root)
             for position, entry in enumerate(skills)
         )
-        if len({entry.target_id for entry in entries}) != len(entries):
+        if len({entry.target_id for entry in parsed_entries}) != len(parsed_entries):
             msg = f"ritebook.lock contains duplicate target identities: {path}"
             raise InstallationPersistenceError(msg)
+        entries = tuple(entry for entry in parsed_entries if entry.desired)
         return InstallationStateSnapshot(
             entries=tuple(sorted(entries, key=lambda entry: entry.target_id)),
             digest=digest,

@@ -292,10 +292,12 @@ shorthand such as
 `platform-skills/browser/runtime-verification`.
 
 Ritebook copies the whole skill directory and creates missing target parent
-directories. An existing target can be replaced only when Ritebook already owns
-that exact target, its current tree still matches the last committed digest, and
-`--force` is provided. Unmanaged targets, locally edited owned targets, symlinks,
-special files, and dangerous paths are preserved or rejected:
+directories. Without `--force`, an existing target is preserved and direct
+install exits nonzero. With `--force`, Ritebook transactionally replaces the
+exact existing directory even when it is unmanaged or locally edited. The
+previous tree is retained for rollback until ownership state commits. Symlinks,
+regular files, special files, dangerous paths, unsafe ancestry, and targets that
+change after inspection are still rejected:
 
 Before planning or mutating targets, Ritebook validates the selected committed
 `SKILL.md` and requires its name and normalized description to match the
@@ -351,16 +353,16 @@ name = "company-agents/security-review"
 target_path = "shared-agent-skills/security-review"
 ```
 
-Refresh referenced indexes and exactly reconcile the default `ritebook.toml` in
-the current working directory:
+Refresh referenced indexes and process the skills declared by the default
+`ritebook.toml` in the current working directory:
 
 ```bash
 uv run ritebook skills sync
 ```
 
-Use `--file` to read a different requirements file, `--force` to rematerialize
-unchanged Ritebook-owned desired targets, and `--lockfile` to choose where
-generated lock state is written:
+Use `--file` to read a different requirements file, `--force` to replace any
+existing safe declared target directory with verified index content, and
+`--lockfile` to choose where generated lock state is written:
 
 ```bash
 uv run ritebook skills sync \
@@ -387,11 +389,25 @@ and `skills contribute` commands remain exact-only and never expand collections.
 Sync transactionally writes strict schema-v3 generated state to `ritebook.lock`
 and local ownership state to `.ritebook/installations.json`. Commit
 `ritebook.lock` when a repository uses `ritebook.toml`; do not commit `.ritebook/`.
-The lock records the actual retained Ritebook-owned targets, their installed-tree
-digests, whether each target is still desired, materialization status, and any
-reconciliation issues. Complete no-change syncs produce byte-identical lock state.
-Partial reconciliation preserves independent successful changes, writes truthful
-`state = "partial"` data, reports each issue, and exits nonzero.
+The generated files record only current declarations, their installed-tree
+digests, materialization status, and any current processing issues. Complete
+no-change syncs produce byte-identical lock state. Partial processing preserves
+independent successful changes, writes truthful `state = "partial"` data,
+reports each issue, and exits nonzero.
+
+Sync never deletes a directory merely because its entry was removed from
+`ritebook.toml`. The next sync leaves that directory untouched and removes it from
+generated sync ownership and lock state. Delete or archive an undeclared skill
+directory explicitly when it is no longer wanted. If the same path is declared
+again later, it is unmanaged and requires `--force` to replace.
+
+Older valid schema-v3 state may contain `desired: false` entries. Ritebook still
+parses those files, but such entries do not establish ownership and disappear
+from newly generated state unless the target is currently declared.
+
+`--force` is destructive for selected targets: it discards unmanaged contents and
+local edits at the exact selected directory after race-safe inspection. Review or
+back up valuable changes before using it.
 
 Schema-v1 and schema-v2 lockfiles and installation registries are rejected
 without automatic migration because they lack current ownership or canonical

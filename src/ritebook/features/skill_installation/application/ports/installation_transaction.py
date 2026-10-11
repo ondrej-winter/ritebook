@@ -20,10 +20,7 @@ class InstallationTransaction(Protocol):
         target_path: str,
         expected_digest: str | None,
     ) -> None:
-        """Place a staged tree while retaining prior target state."""
-
-    def remove_tree(self, *, target_path: str, expected_digest: str) -> None:
-        """Remove an unchanged owned tree while retaining it for rollback."""
+        """Place a staged tree after revalidating the inspected target digest."""
 
     def commit_state(self, files: tuple[GeneratedStateFile, ...]) -> None:
         """Commit all generated-state candidates."""

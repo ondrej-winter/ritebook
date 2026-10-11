@@ -77,6 +77,27 @@ def test_json_installation_state_round_trips_strict_schema_v3_ownership(
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
+def test_json_installation_state_does_not_restore_undesired_local_ownership(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / ".ritebook" / "installations.json"
+    adapter = JsonInstallationStateAdapter()
+    current = _owned(target=".agents/skills/current", skill_name="current")
+    legacy_undesired = _owned(
+        target=".agents/skills/removed",
+        skill_name="removed",
+        desired=False,
+    )
+    state_file = adapter.ownership_file((current, legacy_undesired), str(path))
+    path.parent.mkdir(parents=True)
+    path.write_bytes(state_file.content)
+
+    result = adapter.read_ownership(str(path))
+
+    assert [entry.skill_name for entry in result.entries] == ["current"]
+    assert result.digest == _bytes_digest(state_file.content)
+
+
 def test_json_installation_state_reports_ownership_ledger_presence(
     tmp_path: Path,
 ) -> None:
@@ -157,6 +178,35 @@ def test_json_installation_state_bootstraps_sync_ownership_from_schema_v3_lock(
             target_ref=entry.target_ref,
         ),
     )
+    assert result.digest == _bytes_digest(state_file.content)
+
+
+def test_json_installation_state_does_not_bootstrap_undesired_lock_entries(
+    tmp_path: Path,
+) -> None:
+    requirements_file = tmp_path / "project" / "ritebook.toml"
+    lockfile_path = requirements_file.parent / "ritebook.lock"
+    current = _owned(target=".agents/skills/current", skill_name="current")
+    legacy_undesired = _owned(
+        target=".agents/skills/removed",
+        skill_name="removed",
+        desired=False,
+    )
+    state_file = JsonInstallationStateAdapter().lockfile(
+        (current, legacy_undesired),
+        (),
+        str(lockfile_path),
+        requirements_file="ritebook.toml",
+    )
+    lockfile_path.parent.mkdir(parents=True)
+    lockfile_path.write_bytes(state_file.content)
+
+    result = JsonInstallationStateAdapter().read_lockfile_ownership(
+        str(lockfile_path),
+        requirements_file=str(requirements_file),
+    )
+
+    assert [entry.skill_name for entry in result.entries] == ["current"]
     assert result.digest == _bytes_digest(state_file.content)
 
 

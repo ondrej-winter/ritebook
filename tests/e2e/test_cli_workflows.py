@@ -795,9 +795,7 @@ target_path = ".agents/skills/tdd"
     )
 
     result.assert_success()
-    assert result.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0, pruned 0\n"
-    )
+    assert result.stdout == (f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0\n")
     assert (consumer_repo / ".claude" / "skills" / "code-review" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "tdd" / "notes.md").read_text(
         encoding="utf-8",
@@ -856,9 +854,7 @@ target_path = ".agents/skills/tdd"
     )
 
     second.assert_success()
-    assert second.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 0, updated 0, unchanged 2, pruned 0\n"
-    )
+    assert second.stdout == (f"Reconciled skills from {requirements_file}: installed 0, updated 0, unchanged 2\n")
     assert lockfile.read_bytes() == first_lock_bytes
     assert ownership_path.is_file()
 
@@ -926,7 +922,7 @@ target = "agents"
 
     install_result.assert_success()
     assert install_result.stdout == (
-        f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0, pruned 0\n"
+        f"Reconciled skills from {requirements_file}: installed 2, updated 0, unchanged 0\n"
     )
     assert (consumer_repo / ".agents" / "skills" / "alpha-tool" / "SKILL.md").is_file()
     assert (consumer_repo / ".agents" / "skills" / "zeta-tool" / "SKILL.md").is_file()
@@ -1023,7 +1019,7 @@ target = "claude"
     assert not lockfile.exists()
 
 
-def test_install_preserves_unmanaged_target_even_with_force(
+def test_sync_force_replaces_declared_targets_and_leaves_undeclared_targets(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -1036,6 +1032,7 @@ def test_install_preserves_unmanaged_target_even_with_force(
     consumer_repo = tmp_path / "consumer"
     requirements_file = consumer_repo / "ritebook.toml"
     lockfile = consumer_repo / "ritebook.lock"
+    ownership_path = consumer_repo / ".ritebook" / "installations.json"
     target = consumer_repo / ".claude" / "skills" / "code-review"
 
     write_valid_skill("code-review", "Helps review code changes.")
@@ -1067,23 +1064,45 @@ target = "claude"
         encoding="utf-8",
     )
 
-    result = run_cli(
+    unmanaged = run_cli(
         ["skills", "sync", "--force", "--registry-path", str(registry_path)],
         cwd=consumer_repo,
     )
 
-    result.assert_failure()
-    assert result.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 0, unchanged 0, pruned 0\n")
-    assert result.stderr == (
-        "ritebook: issue: unmanaged-target: .claude/skills/code-review: target exists but is not owned by Ritebook\n"
+    unmanaged.assert_success()
+    assert unmanaged.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 1, unchanged 0\n")
+    assert unmanaged.stderr == ""
+    assert not (target / "stale.md").exists()
+    assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
+    assert _read_json(lockfile)["state"] == "complete"
+
+    (target / "guide.md").write_text("local edit\n", encoding="utf-8")
+    (target / "local-only.md").write_text("discard me\n", encoding="utf-8")
+    modified = run_cli(
+        ["skills", "sync", "--force", "--registry-path", str(registry_path)],
+        cwd=consumer_repo,
     )
-    assert (target / "stale.md").read_text(encoding="utf-8") == "remove me\n"
-    assert not (target / "guide.md").exists()
-    lockfile_data = _read_json(lockfile)
-    assert lockfile_data["requirements_file"] == "ritebook.toml"
-    assert lockfile_data["state"] == "partial"
-    assert lockfile_data["skills"] == []
-    assert lockfile_data["issues"][0]["code"] == "unmanaged-target"
+
+    modified.assert_success()
+    assert modified.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 1, unchanged 0\n")
+    assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
+    assert not (target / "local-only.md").exists()
+
+    (target / "keep-after-removal.md").write_text("keep me\n", encoding="utf-8")
+    requirements_file.write_text(
+        'skills = []\n\n[targets]\nclaude = ".claude/skills"\n',
+        encoding="utf-8",
+    )
+    undeclared = run_cli(
+        ["skills", "sync", "--registry-path", str(registry_path)],
+        cwd=consumer_repo,
+    )
+
+    undeclared.assert_success()
+    assert undeclared.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 0, unchanged 0\n")
+    assert (target / "keep-after-removal.md").read_text(encoding="utf-8") == "keep me\n"
+    assert _read_json(lockfile)["skills"] == []
+    assert _read_json(ownership_path)["installations"] == []
 
 
 def test_install_does_not_write_lockfile_when_requirements_are_invalid(

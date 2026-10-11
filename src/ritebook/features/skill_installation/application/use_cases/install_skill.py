@@ -190,13 +190,13 @@ def _replacement_digest(
 ) -> str | None:
     if not exists:
         return None
+    if force:
+        return current_digest
     if owner is None:
         raise UnmanagedInstallTargetError(target)
     if current_digest != owner.installed_tree_digest:
         raise LocallyModifiedInstallTargetError(target)
-    if not force:
-        raise ExistingInstallTargetError(target)
-    return owner.installed_tree_digest
+    raise ExistingInstallTargetError(target)
 
 
 def _owned_entry(

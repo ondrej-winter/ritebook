@@ -1,7 +1,7 @@
 # 0004. Reconcile Installed Skills with Owned Transactional State
 
 Date: 2026-10-06
-Status: Accepted
+Status: Superseded by [0007](./0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
 
 ## Context
 

@@ -26,6 +26,7 @@ from ritebook.features.skill_installation.application.dtos import (
 )
 from ritebook.features.skill_installation.application.errors import (
     CommittedSkillMetadataMismatchError,
+    LocallyModifiedInstallTargetError,
     UnmanagedInstallTargetError,
 )
 from ritebook.features.skill_installation.application.use_cases import (
@@ -152,14 +153,18 @@ def test_direct_install_rejects_committed_header_mismatch_before_target_planning
     assert transactions.transaction.committed_files == ()
 
 
-def test_direct_install_force_refuses_unmanaged_existing_target(tmp_path: Path) -> None:
+def test_direct_install_without_force_preserves_unmanaged_existing_target(
+    tmp_path: Path,
+) -> None:
     target = tmp_path / "skills" / "code-review"
-    index = registered_skill_index(name="platform-skills")
     installer = _Installer(
         inspections={str(target): _inspection(target, exists=True, digest=_OLD_DIGEST)},
     )
     use_case = InstallSkill(
-        catalog=_Catalog(index=index, skills=(installable_skill(),)),
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(),),
+        ),
         source_resolver=_SourceResolver(),
         committed_skill_validator=_CommittedSkillValidator(),
         installer=installer,
@@ -172,7 +177,111 @@ def test_direct_install_force_refuses_unmanaged_existing_target(tmp_path: Path) 
             InstallSkillCommand(
                 skill_reference="platform-skills/code-review",
                 target=str(target),
-                force=True,
+            ),
+        )
+
+    assert installer.stage_calls == []
+
+
+def test_direct_install_force_replaces_unmanaged_existing_target(tmp_path: Path) -> None:
+    target = tmp_path / "skills" / "code-review"
+    index = registered_skill_index(name="platform-skills")
+    installer = _Installer(
+        inspections={str(target): _inspection(target, exists=True, digest=_OLD_DIGEST)},
+    )
+    transactions = _Transactions()
+    use_case = InstallSkill(
+        catalog=_Catalog(index=index, skills=(installable_skill(),)),
+        source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(),
+        installer=installer,
+        state=_StateAdapter(direct_root=tmp_path / "state"),
+        transactions=transactions,
+    )
+
+    result = use_case.execute(
+        InstallSkillCommand(
+            skill_reference="platform-skills/code-review",
+            target=str(target),
+            force=True,
+        ),
+    )
+
+    assert result.ownership_entry.canonical_target == str(target.resolve())
+    assert installer.stage_calls == ["code-review"]
+    assert transactions.transaction.replace_calls == [
+        ("/staged/code-review", str(target), _OLD_DIGEST),
+    ]
+
+
+def test_direct_install_force_replaces_locally_modified_owned_target(tmp_path: Path) -> None:
+    target = tmp_path / "skills" / "code-review"
+    installer = _Installer(
+        inspections={str(target): _inspection(target, exists=True, digest=_EDITED_DIGEST)},
+    )
+    state = _StateAdapter(
+        direct_root=tmp_path / "state",
+        ownership=(_owned(target, digest=_OLD_DIGEST, workflow=InstallationWorkflow.DIRECT),),
+    )
+    transactions = _Transactions()
+    use_case = InstallSkill(
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(),),
+        ),
+        source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(),
+        installer=installer,
+        state=state,
+        transactions=transactions,
+    )
+
+    use_case.execute(
+        InstallSkillCommand(
+            skill_reference="platform-skills/code-review",
+            target=str(target),
+            force=True,
+        ),
+    )
+
+    assert transactions.transaction.replace_calls == [
+        ("/staged/code-review", str(target), _EDITED_DIGEST),
+    ]
+
+
+def test_direct_install_without_force_preserves_locally_modified_owned_target(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "skills" / "code-review"
+    installer = _Installer(
+        inspections={str(target): _inspection(target, exists=True, digest=_EDITED_DIGEST)},
+    )
+    use_case = InstallSkill(
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(),),
+        ),
+        source_resolver=_SourceResolver(),
+        committed_skill_validator=_CommittedSkillValidator(),
+        installer=installer,
+        state=_StateAdapter(
+            direct_root=tmp_path / "state",
+            ownership=(
+                _owned(
+                    target,
+                    digest=_OLD_DIGEST,
+                    workflow=InstallationWorkflow.DIRECT,
+                ),
+            ),
+        ),
+        transactions=_Transactions(),
+    )
+
+    with pytest.raises(LocallyModifiedInstallTargetError, match="local changes"):
+        use_case.execute(
+            InstallSkillCommand(
+                skill_reference="platform-skills/code-review",
+                target=str(target),
             ),
         )
 
@@ -340,7 +449,6 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
     assert result.installed_count == 1
     assert result.updated_count == 0
     assert result.unchanged_count == 0
-    assert result.pruned_count == 0
     assert [issue.code for issue in result.issues] == ["unmanaged-target"]
     assert transactions.transaction.replace_calls == [
         ("/staged/code-review", str(missing), None),
@@ -351,6 +459,59 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
         state.last_ownership_file,
         state.last_lockfile,
     )
+
+
+def test_sync_force_replaces_unmanaged_and_locally_modified_declared_targets(
+    tmp_path: Path,
+) -> None:
+    unmanaged = tmp_path / ".agents/skills/code-review"
+    edited = tmp_path / ".agents/skills/security-review"
+    ownership = (_owned(edited, skill_name="security-review", digest=_OLD_DIGEST),)
+    index = registered_skill_index(name="platform-skills")
+    state = _StateAdapter(sync_root=tmp_path / ".ritebook", ownership=ownership)
+    transactions = _Transactions()
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": ".agents/skills"},
+                skills=(
+                    SkillRequirement(name="platform-skills/code-review", target="agents"),
+                    SkillRequirement(name="platform-skills/security-review", target="agents"),
+                ),
+            ),
+        ),
+        catalog=_Catalog(
+            index=index,
+            skills=(
+                installable_skill(),
+                installable_skill(name="security-review"),
+            ),
+        ),
+        installer=_Installer(
+            inspections={
+                str(unmanaged): _inspection(unmanaged, exists=True, digest=_OLD_DIGEST),
+                str(edited): _inspection(edited, exists=True, digest=_EDITED_DIGEST),
+            },
+        ),
+        state=state,
+        transactions=transactions,
+    )
+
+    result = use_case.execute(
+        InstallFromRequirementsCommand(
+            requirements_file=str(tmp_path / "ritebook.toml"),
+            force=True,
+        ),
+    )
+
+    assert result.updated_count == 2
+    assert result.issues == ()
+    assert transactions.transaction.replace_calls == [
+        ("/staged/code-review", str(unmanaged), _OLD_DIGEST),
+        ("/staged/security-review", str(edited), _EDITED_DIGEST),
+    ]
+    assert all(entry.status is InstallationStatus.MATERIALIZED for entry in state.last_ownership_entries)
 
 
 def test_sync_attaches_ownership_and_lockfile_snapshot_digests_to_state_candidates(
@@ -386,35 +547,19 @@ def test_sync_attaches_ownership_and_lockfile_snapshot_digests_to_state_candidat
     ]
 
 
-def test_sync_prunes_unchanged_obsolete_and_retains_locally_edited_obsolete(
+def test_sync_leaves_undeclared_previously_owned_targets_untouched(
     tmp_path: Path,
 ) -> None:
-    prune_target = tmp_path / ".agents/skills/prune-me"
-    edited_target = tmp_path / ".agents/skills/edited"
-    ownership = (
-        _owned(prune_target, skill_name="prune-me", digest=_OLD_DIGEST),
-        _owned(edited_target, skill_name="edited", digest=_OLD_DIGEST),
+    prior_target = tmp_path / ".agents/skills/prior"
+    state = _StateAdapter(
+        sync_root=tmp_path / ".ritebook",
+        ownership=(_owned(prior_target, skill_name="prior", digest=_OLD_DIGEST),),
     )
-    installer = _Installer(
-        inspections={
-            str(prune_target): _inspection(
-                prune_target,
-                exists=True,
-                digest=_OLD_DIGEST,
-            ),
-            str(edited_target): _inspection(
-                edited_target,
-                exists=True,
-                digest=_EDITED_DIGEST,
-            ),
-        },
-    )
-    state = _StateAdapter(sync_root=tmp_path / ".ritebook", ownership=ownership)
     transactions = _Transactions()
     use_case = _sync_use_case(
         tmp_path,
         reader=_RequirementsReader(SkillRequirements(targets={}, skills=())),
-        installer=installer,
+        installer=_Installer(inspections={}),
         state=state,
         transactions=transactions,
     )
@@ -425,20 +570,9 @@ def test_sync_prunes_unchanged_obsolete_and_retains_locally_edited_obsolete(
         ),
     )
 
-    assert result.pruned_count == 1
-    assert [issue.code for issue in result.issues] == ["local-changes"]
-    assert transactions.transaction.remove_calls == [
-        (str(prune_target), _OLD_DIGEST),
-    ]
-    assert state.last_ownership_entries == (
-        OwnedInstallation(
-            **{
-                **edited_target_entry(ownership[1]),
-                "desired": False,
-                "status": InstallationStatus.LOCAL_CHANGES,
-            },
-        ),
-    )
+    assert result.issues == ()
+    assert transactions.transaction.replace_calls == []
+    assert state.last_ownership_entries == ()
 
 
 def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
@@ -472,7 +606,6 @@ def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
     assert result.unchanged_count == 1
     assert result.issues == ()
     assert transactions.transaction.replace_calls == []
-    assert transactions.transaction.remove_calls == []
 
 
 def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
@@ -525,6 +658,55 @@ def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
     assert lockfile.expected_digest == _LOCKFILE_DIGEST
     assert state.digest_read_calls == []
     assert state.last_ownership_entries[0].canonical_target == str(target)
+
+
+def test_sync_does_not_bootstrap_ownership_from_legacy_undesired_lock_entry(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / ".agents/skills/code-review"
+    legacy_undesired = _owned(target, digest=_TREE_DIGEST, desired=False)
+    state = _StateAdapter(
+        sync_root=tmp_path / ".ritebook",
+        ownership_exists=False,
+        lock_ownership=(legacy_undesired,),
+        lockfile_digest=_LOCKFILE_DIGEST,
+    )
+    transactions = _Transactions()
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": ".agents/skills"},
+                skills=(
+                    SkillRequirement(
+                        name="platform-skills/code-review",
+                        target="agents",
+                    ),
+                ),
+            ),
+        ),
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(),),
+        ),
+        installer=_Installer(
+            inspections={
+                str(target): _inspection(target, exists=True, digest=_TREE_DIGEST),
+            },
+        ),
+        state=state,
+        transactions=transactions,
+    )
+
+    result = use_case.execute(
+        InstallFromRequirementsCommand(
+            requirements_file=str(tmp_path / "ritebook.toml"),
+        ),
+    )
+
+    assert [issue.code for issue in result.issues] == ["unmanaged-target"]
+    assert transactions.transaction.replace_calls == []
+    assert state.last_ownership_entries == ()
 
 
 _TREE_DIGEST = f"sha256:{'1' * 64}"
@@ -749,7 +931,8 @@ class _StateAdapter:
         requirements_file: str,
     ) -> InstallationStateSnapshot:
         del requirements_file
-        return InstallationStateSnapshot(self.lock_ownership, self.lockfile_digest)
+        ownership = tuple(entry for entry in self.lock_ownership if entry.desired)
+        return InstallationStateSnapshot(ownership, self.lockfile_digest)
 
     def read_state_digest(self, path: str) -> str | None:
         self.digest_read_calls.append(path)
@@ -795,7 +978,6 @@ class _StateAdapter:
 class _Transaction:
     def __init__(self) -> None:
         self.replace_calls: list[tuple[str, str, str | None]] = []
-        self.remove_calls: list[tuple[str, str]] = []
         self.committed_files: tuple[GeneratedStateFile, ...] = ()
 
     def replace_tree(
@@ -806,9 +988,6 @@ class _Transaction:
         expected_digest: str | None,
     ) -> None:
         self.replace_calls.append((staged_path, target_path, expected_digest))
-
-    def remove_tree(self, *, target_path: str, expected_digest: str) -> None:
-        self.remove_calls.append((target_path, expected_digest))
 
     def commit_state(self, files: tuple[GeneratedStateFile, ...]) -> None:
         self.committed_files = files
@@ -865,9 +1044,11 @@ def _owned(
     *,
     skill_name: str = "code-review",
     digest: str,
+    desired: bool = True,
+    workflow: InstallationWorkflow = InstallationWorkflow.SYNC,
 ) -> OwnedInstallation:
     return OwnedInstallation(
-        workflow=InstallationWorkflow.SYNC,
+        workflow=workflow,
         requirement=f"platform-skills/{skill_name}",
         index_name="platform-skills",
         skill_name=skill_name,
@@ -883,6 +1064,7 @@ def _owned(
         skill_path=f"skills/{skill_name}",
         skill_file=f"skills/{skill_name}/SKILL.md",
         installed_tree_digest=digest,
+        desired=desired,
         target_ref="agents",
     )
 

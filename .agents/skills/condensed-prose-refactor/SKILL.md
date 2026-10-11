@@ -2,8 +2,8 @@
 name: condensed-prose-refactor
 description: Refactor supplied prose for precision, compression, and force while preserving meaning, uncertainty, and voice. Use when asked to rewrite, condense, sharpen, simplify, make more intelligent, or aphorize existing text.
 metadata:
-  version: "1.1.2"
-  last-verified: "2026-09-30T20:31:51+02:00"
+  version: "1.2.0"
+  last-verified: "2026-10-11T16:24:19Z"
 ---
 
 # Condensed Prose Refactor
@@ -60,10 +60,12 @@ preserving the accuracy of what remains.
 ## Editing workflow
 
 1. Identify the source passage and distinguish it from the user's editing
-   instructions. Infer purpose and audience from available context. If no source
-   is available, ask for the text; do not invent it.
-2. Establish what must survive: claims, reasons, evidence, qualifications,
-   relationships, and any requested action. Note literal content protected below.
+   instructions, quoted examples, and prior drafts. Infer purpose and audience
+   from available context. If no source is available, ask for it; do not invent it.
+2. Establish a silent constraint ledger: claims, reasons, evidence,
+   qualifications, relationships, requested actions, protected literals, and any
+   required format or length. Preserve the boundaries and order of multiple items
+   unless the request permits consolidation.
 3. Fix the structure before polishing sentences. Bring a buried point forward,
    clarify references when unambiguous, and expose existing logical connections.
    Do not repair an unsupported leap by inventing a premise.
@@ -97,10 +99,16 @@ certainty or reach of a claim.
 
 ### Literal content and relationships
 
-Preserve direct quotations, code, identifiers, URLs, citation targets, and
-placeholders exactly unless editing them is requested. Keep citations attached
-to the claims they support. Edit surrounding prose without silently altering
-quoted errors or executable content.
+Preserve direct quotations, code and code fences, commands, identifiers, paths,
+URLs and link destinations, citation labels and targets, footnote markers,
+template tokens, placeholders, and data values exactly unless editing them is
+requested. Keep citations attached to the claims they support. Edit surrounding
+prose without silently altering quoted errors or executable content.
+
+Preserve functional Markdown, HTML, tables, lists, and document delimiters. Text
+inside those structures may be edited when it is ordinary prose; syntax and
+machine-significant values may not. Do not normalize spelling inside protected
+content merely for consistency.
 
 Retain apologies, gratitude, tact, or deliberate repetition when they serve the
 relationship or meaning. Shorter wording must not turn a request into an order,
@@ -113,6 +121,11 @@ preserve the ambiguity if a faithful edit is possible. If choosing a reading is
 necessary to complete the task, ask one focused question instead of guessing.
 Do not silently reconcile contradictions or correct suspected factual errors.
 A concise editorial note may flag a material unresolved issue after the rewrite.
+
+When the requested output language differs from the source language, translate
+and refactor the editable prose in one pass. Favor natural target-language idiom
+without changing the claim. Keep protected literals untranslated unless the user
+asks to localize them, and preserve intentionally foreign terms.
 
 Honor an explicit word or character limit when feasible, checking the actual
 length for a hard limit. If preserving required meaning makes the limit
@@ -136,12 +149,14 @@ questions, or “not merely X, but Y.” Keep source language that already earns
 place; do not apply a mechanical blacklist.
 
 For requested author influences, aphorisms, or a literary effect that benefits
-from a reference voice, read [Rhetorical techniques](references/rhetorical-techniques.md).
-Borrow techniques selectively and keep their influence unobtrusive. Do not
-import an author's doctrine or present generated text as their authentic writing.
+from an author reference, read [Rhetorical techniques](references/rhetorical-techniques.md).
+Translate an influence into one to three high-level techniques, such as plain
+syntax, compression, controlled contrast, or humane qualification. Do not copy
+signature phrases, recurring imagery, doctrine, or habitual conclusions, and do
+not present generated text as authentic writing by the referenced author.
 Routine editing does not require selecting an author.
 
-Do not use Franz Kafka as a reference voice or introduce bureaucratic dread,
+Do not use Franz Kafka as an author reference or introduce bureaucratic dread,
 procedural helplessness, neurotic passivity, or self-abasement for atmosphere.
 This exclusion governs added stylistic effects; preserve such experiences when
 they are already part of the source's meaning.
@@ -154,8 +169,9 @@ quotation marks, edit summary, praise, or an offer of another version.
 - If explanation is requested, give the rewrite followed by concise editorial
   decisions. Include a meaning-risk note only for a material unresolved issue.
 - If variants are requested, provide the requested number; if unspecified,
-  provide two meaningfully different versions. Label by function or intensity,
-  using author names only for requested author-specific variants.
+  provide two meaningfully different versions. Each variant must be independently
+  faithful, not a filler paraphrase. Label by function or intensity, using author
+  names only for requested author-specific variants.
 - A necessary clarification or material ambiguity/constraint note is an
   exception to rewrite-only output. Keep it brief; avoid routine caveats.
 
@@ -207,3 +223,24 @@ it harder for the team to see who is actually responsible for a decision.
 **Rewrite:** Sometimes, more rules make responsibility less visible.
 
 The wording is distilled; the qualification and direction of the claim survive.
+
+### Preserve functional markup
+
+**Source:** For instructions, please see [the migration guide](https://example.com/migrate)
+before running `db-migrate --apply`.
+
+**Rewrite:** Please see [the migration guide](https://example.com/migrate) before
+running `db-migrate --apply`.
+
+The editable prose is shorter; the link destination and command remain exact.
+
+### Preserve relational conditions
+
+**Source:** I wanted to ask whether you might be able to send the revised draft
+by Friday, if that timing still works for you.
+
+**Rewrite:** Would you be able to send the revised draft by Friday, if that timing
+still works for you?
+
+The request is tighter without becoming an order or losing the recipient's
+option to decline the timing.

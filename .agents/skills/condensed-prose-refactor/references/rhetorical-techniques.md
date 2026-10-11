@@ -1,14 +1,14 @@
 # Rhetorical Techniques
 
-Read this library when the user requests an author influence, aphorism, or a literary effect that benefits from these techniques. Ordinary editing needs only the main skill. The main skill’s fidelity rules and Kafka exclusion still apply.
+Read this library only when the user requests an author influence, aphorism, or literary effect that benefits from a reference. Ordinary editing needs only the main skill, whose fidelity rules and exclusions still apply.
 
-The writers are a library of rhetorical operations. Never import their doctrine, politics, theology, biography, habitual conclusions, or personal pathologies unless the user explicitly asks for them.
+Treat each writer as a mnemonic for transferable rhetorical techniques, not as a persona to simulate. Identify one to three useful techniques, apply only those supported by the source, and keep the result in the user's voice. Never import doctrine, politics, theology, biography, signature phrases, recurring imagery, habitual conclusions, or personal pathologies merely to evoke the writer.
 
-Never present generated text as a quotation from, or authentic writing by, any referenced author.
+Never present generated text as a quotation from, or authentic writing by, a referenced author. If the user did not request a named influence, route by technique rather than silently assigning one.
 
-## Core voices
+## Author associations
 
-- **George Orwell:** Plain language, concrete wording, honest syntax, removal of cliché and inflation. Use as the default structural base.
+- **George Orwell:** Plain language, concrete wording, honest syntax, removal of cliché and inflation.
 - **Baltasar Gracián:** Strategic compression, maxim-like economy, conceptual pressure.
 - **Blaise Pascal:** Concision, paradox, moral and epistemic acuity, proportion between certainty and doubt.
 - **François de La Rochefoucauld:** Exact analysis of motive, vanity, rationalization, and self-deception.
@@ -18,7 +18,7 @@ Never present generated text as a quotation from, or authentic writing by, any r
 - **Michel de Montaigne:** Humane intelligence, honest qualification, natural reflection, freedom from pomp.
 - **Jorge Luis Borges:** Conceptual density, elegant abstraction, and the occasional exact image.
 
-## Specialist voices
+## Additional associations
 
 Use these only when the material calls for their particular strength:
 
@@ -36,18 +36,18 @@ Use these only when the material calls for their particular strength:
 
 ## Routing by material
 
-Use these pairings only when they serve the requested effect. Choose one base voice and, if useful, one or two supporting voices; do not blend the entire set.
+Route by the effect the passage needs. Use the author associations only when the user requests one or when a named reference would genuinely help select a technique.
 
-| Material                       | Preferred references                   | Intended effect                                      |
-| ------------------------------ | -------------------------------------- | ---------------------------------------------------- |
-| Professional or technical      | Orwell + Schopenhauer or Gracián       | Clear, compact, exact                                |
-| Argument or criticism          | Orwell + Nietzsche or Kraus            | Direct, discriminating, forceful                     |
-| Psychological observation      | Jung + La Rochefoucauld or Canetti     | Motive, contradiction, self-deception                |
-| Strategy, power, or incentives | Gracián + Machiavelli or Jünger        | Unsparing causal realism                             |
-| Personal reflection            | Montaigne + Camus or Emerson           | Humane, lucid, self-possessed                        |
-| Philosophical exposition       | Pascal + Schopenhauer or Borges        | Compression with conceptual clarity                  |
-| Moral seriousness              | Pascal + Weil or Montaigne             | Precision without sermonizing                        |
-| Aphorism                       | Gracián + Pascal, Nietzsche, or Cioran | Maximum density and memorability                     |
-| Wit or paradox                 | Chesterton + Pascal or Kraus           | Clarifying reversal, not cleverness for its own sake |
+| Material                       | Preferred techniques                                           |
+| ------------------------------ | -------------------------------------------------------------- |
+| Professional or technical      | Plain wording, explicit logic, compact causal explanation      |
+| Argument or criticism          | Exact distinctions, direct verbs, controlled contrast          |
+| Psychological observation      | Supported motive analysis, contradiction, self-deception       |
+| Strategy, power, or incentives | Incentives, consequences, causal realism                       |
+| Personal reflection            | Honest qualification, humane cadence, freedom from pomp        |
+| Philosophical exposition       | Conceptual compression, orderly argument, exact qualification  |
+| Moral seriousness              | Austere attention and precision without sermonizing            |
+| Aphorism                       | Maximum density; paradox or reversal only when it clarifies    |
+| Wit or satire                  | Linguistic exactness and sparing, clarifying reversal          |
 
-Begin with Orwellian clarity. Add compression, force, or psychological depth only where the supplied thought supports it. A reference is permission to borrow a technique, never evidence for a new claim.
+Begin with plain clarity. Add compression, force, paradox, imagery, or psychological depth only where the supplied thought supports it. A reference author is permission to borrow a technique, never evidence for a new claim.

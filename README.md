@@ -128,9 +128,10 @@ the regular-file candidate count without writing an index file. See the
 [`Skill Linter` specification](docs/specs/skill-linter-spec.md) for the complete
 header and diagnostic contract.
 
-The repository's `.agents/skills` directory contains skills sourced from other
-repositories. Their owning collections validate them, so Ritebook's local and CI
-quality gates do not lint that directory.
+The repository's `.agents/` directory contains skills sourced from other
+repositories. Their owning collections validate them, so Ritebook's local,
+pre-commit, and CI quality gates exclude that tree from formatting, linting, type
+checking, tests, and file-hygiene hooks. The directory remains Git-tracked.
 
 ```bash
 uv run ritebook indexes publish --skills-root <path> --name <published-name>

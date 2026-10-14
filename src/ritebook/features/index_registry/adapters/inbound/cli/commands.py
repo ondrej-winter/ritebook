@@ -64,6 +64,7 @@ def run_update_index(
     command = UpdateIndexCommand(
         name=args.name,
         all=args.all,
+        force=args.force,
         registry_path=args.registry_path,
         cache_root=args.cache_root,
     )

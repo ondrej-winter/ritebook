@@ -193,3 +193,30 @@ def test_index_cache_discards_only_owned_generation(tmp_path: Path) -> None:
 def _digest(content: str | bytes) -> str:
     encoded = content.encode() if isinstance(content, str) else content
     return f"sha256:{hashlib.sha256(encoded).hexdigest()}"
+
+
+def test_index_cache_force_rewrites_existing_generation(tmp_path: Path) -> None:
+    cache = FilesystemIndexCache()
+    content = b"validated index"
+    digest = _digest(content)
+    path = Path(
+        cache.cached_index_path(
+            name="company-skills",
+            index_digest=digest,
+            cache_root=str(tmp_path),
+        ),
+    )
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"corrupt local bytes")
+
+    rewritten = cache.write_index(
+        name="company-skills",
+        content=content,
+        index_digest=digest,
+        cache_root=str(tmp_path),
+        preserve_path=str(path),
+        force=True,
+    )
+
+    assert rewritten == str(path)
+    assert path.read_bytes() == content

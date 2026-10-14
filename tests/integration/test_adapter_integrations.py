@@ -189,6 +189,51 @@ def test_git_source_and_source_repository_adapters_resolve_real_git_revisions(
     assert Path(prepared_clone.repository_path, "ritebook-index.json").is_file()
 
 
+def test_git_source_force_refresh_rebuilds_managed_clone(
+    tmp_path: Path,
+    git_repository: GitRepositoryFactory,
+) -> None:
+    repository = git_repository(tmp_path / "published-index")
+    index_path = repository.path / "ritebook-index.json"
+    index_path.write_text("initial index\n", encoding="utf-8")
+    repository.commit_all("Publish initial index")
+    source = repository.path.as_uri()
+    cache_root = tmp_path / "cache"
+    registry_path = tmp_path / "config" / "indexes.json"
+    adapter = GitSourceAdapter()
+    initial = adapter.prepare_source(source, str(cache_root), str(registry_path))
+    initial_path = Path(initial.source_cache_path or "")
+
+    index_path.write_text("refreshed index\n", encoding="utf-8")
+    refreshed_revision = repository.commit_all("Publish refreshed index")
+
+    rebuilt = adapter.refresh_source(
+        source=source,
+        source_cache_path=initial.source_cache_path,
+        cache_root=str(cache_root),
+        source_branch=initial.source_branch,
+        registry_path=str(registry_path),
+        force=True,
+    )
+    rebuilt_path = Path(rebuilt.source_cache_path or "")
+
+    assert rebuilt.source_revision == refreshed_revision
+    assert rebuilt.index_content == b"refreshed index\n"
+    assert rebuilt_path != initial_path
+    assert initial_path.is_dir()
+    assert rebuilt_path.is_dir()
+
+    adapter.discard_source(
+        source=source,
+        source_cache_path=str(initial_path),
+        cache_root=str(cache_root),
+        registry_path=str(registry_path),
+    )
+
+    assert not initial_path.exists()
+    assert rebuilt_path.is_dir()
+
+
 def test_installation_adapters_copy_skill_and_write_persistent_state(
     tmp_path: Path,
 ) -> None:

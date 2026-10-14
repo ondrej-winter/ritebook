@@ -227,6 +227,22 @@ Refresh a registered index from its remembered Git source:
 uv run ritebook indexes update platform-skills
 ```
 
+Force a clean rebuild of Ritebook-owned consumer state when the managed clone or
+cached index may be damaged:
+
+```bash
+uv run ritebook indexes update platform-skills --force
+uv run ritebook indexes update --all --force
+```
+
+For Git URL registrations, `--force` fetches through a fresh managed clone and
+switches the registry only after the committed root `ritebook-index.json` validates.
+For local repository registrations, it re-reads the clean committed repository but
+never deletes or mutates it. The previous coherent registry/cache binding remains
+usable if rebuilding fails. A superseded managed clone is removed only after no
+other registry alias references it. This flag repairs consumer state; it does not
+generate or publish an upstream index.
+
 List skills from all locally cached registered indexes:
 
 ```bash

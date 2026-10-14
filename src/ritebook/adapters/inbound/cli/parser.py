@@ -202,6 +202,11 @@ def _add_update_index_parser(
         help="Refresh all registered indexes.",
     )
     parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Rebuild managed source clones and cached index files.",
+    )
+    parser.add_argument(
         "--registry-path",
         metavar="PATH",
         help="Override the indexes.json registry path.",

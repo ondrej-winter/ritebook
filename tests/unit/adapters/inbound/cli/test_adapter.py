@@ -1185,6 +1185,26 @@ def test_update_index_maps_arguments_to_application_command() -> None:
     assert stderr.getvalue() == ""
 
 
+def test_update_index_force_maps_to_application_command() -> None:
+    update_index = FakeUpdateIndex(
+        UpdateIndexResult(name="platform-skills", skill_count=14),
+    )
+
+    exit_code = run(
+        ["indexes", "update", "platform-skills", "--force"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        update_index=update_index,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert update_index.commands == [
+        UpdateIndexCommand(name="platform-skills", force=True),
+    ]
+
+
 def test_indexes_update_maps_canonical_positional_alias_to_application_command() -> None:
     update_index = FakeUpdateIndex(
         UpdateIndexResult(name="platform-skills", skill_count=2),
@@ -1257,6 +1277,26 @@ def test_update_index_all_maps_arguments_to_application_command() -> None:
     ]
     assert stdout.getvalue() == ("Updated 2 index(es) with 17 total skill(s)\n")
     assert stderr.getvalue() == "Failed to update 1 index(es): beta-skills\n"
+
+
+def test_update_index_all_force_maps_to_application_command() -> None:
+    update_index = FakeUpdateIndex(
+        UpdateIndexResult(name=None, skill_count=0),
+    )
+
+    exit_code = run(
+        ["indexes", "update", "--all", "--force"],
+        linter=FakeLinter(),
+        publisher=FakePublisher(),
+        update_index=update_index,
+        stdout=StringIO(),
+        stderr=StringIO(),
+    )
+
+    assert exit_code == 0
+    assert update_index.commands == [
+        UpdateIndexCommand(all=True, force=True),
+    ]
 
 
 def test_update_index_requires_name_or_all_with_argparse_error() -> None:

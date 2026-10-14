@@ -19,7 +19,7 @@ class GitSourcePort(Protocol):
     ) -> PreparedIndexSource:
         """Prepare a user-supplied source for initial index reading."""
 
-    def refresh_source(
+    def refresh_source(  # noqa: PLR0913
         self,
         *,
         source: str,
@@ -27,5 +27,16 @@ class GitSourcePort(Protocol):
         cache_root: str | None,
         source_branch: str | None = None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> PreparedIndexSource:
-        """Refresh or re-open a remembered source for update-index."""
+        """Refresh or rebuild a remembered source for update-index."""
+
+    def discard_source(
+        self,
+        *,
+        source: str,
+        source_cache_path: str,
+        cache_root: str | None,
+        registry_path: str | None = None,
+    ) -> None:
+        """Remove an unreferenced managed clone when adapter-owned."""

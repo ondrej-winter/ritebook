@@ -51,6 +51,7 @@ class UpdateIndexCommand:
 
     name: str | None = None
     all: bool = False
+    force: bool = False
     registry_path: str | None = None
     cache_root: str | None = None
 

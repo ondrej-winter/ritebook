@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import subprocess
+import uuid
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from pathlib import Path
 
 from ritebook.features.index_registry.adapters.outbound.cache_paths import (
@@ -59,7 +62,7 @@ class GitSourceAdapter:
             source_cache_path=str(clone_path),
         )
 
-    def refresh_source(
+    def refresh_source(  # noqa: PLR0913
         self,
         *,
         source: str,
@@ -67,8 +70,9 @@ class GitSourceAdapter:
         cache_root: str | None,
         source_branch: str | None = None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> PreparedIndexSource:
-        """Refresh a remembered source for update-index."""
+        """Refresh or rebuild a remembered source for update-index."""
         source_path = Path(source).expanduser()
         if source_cache_path is None and source_path.exists():
             if source_branch is None:
@@ -80,18 +84,28 @@ class GitSourceAdapter:
             raise IndexSourceError(msg)
         _require_safe_git_url(source)
         clone_path = (
-            Path(source_cache_path).expanduser()
-            if source_cache_path
-            else _managed_clone_path(source, cache_root, registry_path)
+            _fresh_managed_clone_path(source, cache_root, registry_path)
+            if force
+            else (
+                Path(source_cache_path).expanduser()
+                if source_cache_path
+                else _managed_clone_path(source, cache_root, registry_path)
+            )
         )
-        if clone_path.exists():
-            self._refresh_clone(clone_path, source_branch)
-        else:
-            self._clone_source(source, clone_path)
-        source_revision, index_content = self._capture_candidate(
-            clone_path,
-            _remote_tracking_ref(source_branch),
-        )
+        try:
+            if clone_path.exists() and not force:
+                self._refresh_clone(clone_path, source_branch)
+            else:
+                self._clone_source(source, clone_path)
+            source_revision, index_content = self._capture_candidate(
+                clone_path,
+                _remote_tracking_ref(source_branch),
+            )
+        except (IndexSourceError, OSError):
+            if force:
+                with suppress(OSError):
+                    _discard_managed_clone(clone_path, source, cache_root, registry_path)
+            raise
         return PreparedIndexSource(
             source=source,
             source_type=IndexSourceType.GIT_URL,
@@ -101,6 +115,26 @@ class GitSourceAdapter:
             index_content=index_content,
             source_cache_path=str(clone_path),
         )
+
+    def discard_source(
+        self,
+        *,
+        source: str,
+        source_cache_path: str,
+        cache_root: str | None,
+        registry_path: str | None = None,
+    ) -> None:
+        """Remove an unreferenced managed clone when it belongs to this registry."""
+        try:
+            _discard_managed_clone(
+                Path(source_cache_path).expanduser(),
+                source,
+                cache_root,
+                registry_path,
+            )
+        except OSError as err:
+            msg = "unable to discard managed Git source"
+            raise IndexSourceError(msg) from err
 
     def _local_source(
         self,
@@ -253,6 +287,32 @@ def _managed_clone_path(
 ) -> Path:
     digest = hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
     return registry_cache_root(cache_root, registry_path) / "git" / digest
+
+
+def _fresh_managed_clone_path(
+    source: str,
+    cache_root: str | None,
+    registry_path: str | None,
+) -> Path:
+    base = _managed_clone_path(source, cache_root, registry_path)
+    return base.with_name(f"{base.name}.rebuild-{uuid.uuid4().hex}")
+
+
+def _discard_managed_clone(
+    path: Path,
+    source: str,
+    cache_root: str | None,
+    registry_path: str | None,
+) -> None:
+    expected_base = _managed_clone_path(source, cache_root, registry_path)
+    if path.parent != expected_base.parent or (
+        path.name != expected_base.name and not path.name.startswith(f"{expected_base.name}.rebuild-")
+    ):
+        return
+    if path.is_symlink():
+        path.unlink(missing_ok=True)
+    elif path.exists():
+        shutil.rmtree(path)
 
 
 def _remote_tracking_ref(source_branch: str) -> str:

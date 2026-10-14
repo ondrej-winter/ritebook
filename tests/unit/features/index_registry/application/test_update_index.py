@@ -163,6 +163,40 @@ def test_update_index_refreshes_local_git_repository_source() -> None:
     assert registry.entries["company-skills"].source_cache_path is None
 
 
+def test_update_index_force_rereads_local_repository_without_discarding_it() -> None:
+    existing = registered_index(
+        source="/repos/skills",
+        source_type=IndexSourceType.LOCAL_GIT_REPO,
+        source_cache_path=None,
+    )
+    registry = FakeRegistry([existing])
+    git_source = FakeGitSource(
+        PreparedIndexSource(
+            source=existing.source,
+            source_type=IndexSourceType.LOCAL_GIT_REPO,
+            repository_path=existing.source,
+            source_revision="d" * 40,
+            source_branch="refs/heads/main",
+            index_content=bytes('{"schema_version":1}\n', "utf-8"),
+        ),
+    )
+    cache = FakeCache()
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 10, 14, 12, 0, tzinfo=UTC),
+    )
+
+    use_case.execute(UpdateIndexCommand(name=existing.name, force=True))
+
+    assert git_source.refresh_force_values == [True]
+    assert cache.write_force_values == [True]
+    assert git_source.discard_calls == []
+    assert registry.entries[existing.name].source_cache_path is None
+
+
 def test_update_index_fails_for_unknown_name() -> None:
     use_case = UpdateIndex(
         git_source=FakeGitSource(),
@@ -435,3 +469,144 @@ def test_update_index_all_continues_after_failure() -> None:
         ("alpha-skills", alpha.cached_index_path, None),
         ("gamma-skills", gamma.cached_index_path, None),
     ]
+
+
+def test_update_index_all_propagates_force_to_each_entry() -> None:
+    existing = registered_index(
+        name="alpha-skills",
+        source="git@example.com:company/alpha-skills.git",
+    )
+    git_source = FakeGitSource()
+    cache = FakeCache()
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=FakeIndexReader(
+            published={
+                "alpha-skills": PublishedIndex(
+                    published_name="alpha-skills",
+                    schema_version=1,
+                    skill_count=1,
+                    cacheable_content=b"validated",
+                    index_digest=f"sha256:{'1' * 64}",
+                ),
+            },
+        ),
+        registry=FakeRegistry([existing]),
+        cache=cache,
+        clock=lambda: datetime(2026, 10, 14, 12, 0, tzinfo=UTC),
+    )
+
+    result = use_case.execute(UpdateIndexCommand(all=True, force=True))
+
+    assert result.failed_indexes == ()
+    assert git_source.refresh_force_values == [True]
+    assert cache.write_force_values == [True]
+
+
+def test_update_index_force_rebuilds_source_and_cached_index() -> None:
+    existing = registered_index(
+        source="git@example.com:company/force-skills.git",
+        source_cache_path="/cache/git/old-source",
+    )
+    registry = FakeRegistry([existing])
+    git_source = FakeGitSource(
+        PreparedIndexSource(
+            source=existing.source,
+            source_type=IndexSourceType.GIT_URL,
+            repository_path="/cache/git/fresh-source",
+            source_revision="d" * 40,
+            source_branch="refs/heads/main",
+            index_content=b'{"schema_version":1}\n',
+            source_cache_path="/cache/git/fresh-source",
+        ),
+    )
+    cache = FakeCache()
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 10, 14, 12, 0, tzinfo=UTC),
+    )
+
+    use_case.execute(UpdateIndexCommand(name=existing.name, force=True))
+
+    assert git_source.refresh_calls == [
+        (existing.source, existing.source_branch, existing.source_cache_path, None, None),
+    ]
+    assert git_source.refresh_force_values == [True]
+    assert cache.write_force_values == [True]
+    assert registry.entries[existing.name].source_cache_path == "/cache/git/fresh-source"
+    assert git_source.discard_calls == [(existing.source, existing.source_cache_path, None)]
+
+
+def test_update_index_force_keeps_source_clone_referenced_by_another_alias() -> None:
+    existing = registered_index(
+        source="git@example.com:company/force-skills.git",
+        source_cache_path="/cache/git/shared-source",
+    )
+    sibling = registered_index(
+        name="force-skills-alias",
+        alias_origin=AliasOrigin.EXPLICIT,
+        source=existing.source,
+        source_cache_path=existing.source_cache_path,
+    )
+    registry = FakeRegistry([existing, sibling])
+    git_source = FakeGitSource(
+        PreparedIndexSource(
+            source=existing.source,
+            source_type=IndexSourceType.GIT_URL,
+            repository_path="/cache/git/fresh-source",
+            source_revision="d" * 40,
+            source_branch="refs/heads/main",
+            index_content=b'{"schema_version":1}\n',
+            source_cache_path="/cache/git/fresh-source",
+        ),
+    )
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=FakeIndexReader(),
+        registry=registry,
+        cache=FakeCache(),
+        clock=lambda: datetime(2026, 10, 14, 12, 0, tzinfo=UTC),
+    )
+
+    use_case.execute(UpdateIndexCommand(name=existing.name, force=True))
+
+    assert registry.entries[existing.name].source_cache_path == "/cache/git/fresh-source"
+    assert registry.entries[sibling.name] == sibling
+    assert git_source.discard_calls == []
+
+
+def test_update_index_force_failure_preserves_binding_and_discards_fresh_source() -> None:
+    existing = registered_index(
+        source="git@example.com:company/force-skills.git",
+        source_cache_path="/cache/git/old-source",
+    )
+    registry = FakeRegistry([existing])
+    git_source = FakeGitSource(
+        PreparedIndexSource(
+            source=existing.source,
+            source_type=IndexSourceType.GIT_URL,
+            repository_path="/cache/git/fresh-source",
+            source_revision="d" * 40,
+            source_branch="refs/heads/main",
+            index_content=b"invalid",
+            source_cache_path="/cache/git/fresh-source",
+        ),
+    )
+    cache = FakeCache()
+    use_case = UpdateIndex(
+        git_source=git_source,
+        index_reader=FailingIndexReader(InvalidPublishedIndexError("invalid index")),
+        registry=registry,
+        cache=cache,
+        clock=lambda: datetime(2026, 10, 14, 12, 0, tzinfo=UTC),
+    )
+
+    with pytest.raises(InvalidPublishedIndexError, match="invalid index"):
+        use_case.execute(UpdateIndexCommand(name=existing.name, force=True))
+
+    assert registry.entries[existing.name] == existing
+    assert cache.write_calls == []
+    assert git_source.discard_calls == [(existing.source, "/cache/git/fresh-source", None)]

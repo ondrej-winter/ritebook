@@ -290,3 +290,68 @@ def test_git_source_adapter_does_not_expose_credential_bearing_git_failure(
 
     assert str(exc_info.value) == "git source operation failed"
     assert sentinel not in str(exc_info.value)
+
+
+def test_git_source_force_refresh_uses_fresh_managed_clone(tmp_path: Path) -> None:
+    clone_path = tmp_path / "registries" / ("a" * 64) / "git" / ("b" * 16)
+    clone_path.mkdir(parents=True)
+    runner = RecordingRunner()
+
+    result = GitSourceAdapter(runner).refresh_source(
+        source="git@example.com:company/skills.git",
+        source_cache_path=str(clone_path),
+        cache_root=str(tmp_path),
+        registry_path=str(tmp_path / "indexes.json"),
+        source_branch="refs/heads/main",
+        force=True,
+    )
+
+    assert clone_path.exists()
+    assert result.source_cache_path != str(clone_path)
+    assert runner.commands[0][:2] == ["git", "clone"]
+    assert runner.commands[0][-1] == result.source_cache_path
+
+
+def test_git_source_discards_only_registry_owned_managed_clone(tmp_path: Path) -> None:
+    registry_path = tmp_path / "indexes.json"
+    cache_root = tmp_path / "cache"
+    runner = RecordingRunner()
+    adapter = GitSourceAdapter(runner)
+    candidate = adapter.refresh_source(
+        source="git@example.com:company/skills.git",
+        source_cache_path=None,
+        cache_root=str(cache_root),
+        registry_path=str(registry_path),
+        source_branch="refs/heads/main",
+        force=True,
+    )
+    candidate_path = Path(candidate.source_cache_path or "")
+    candidate_path.mkdir(parents=True)
+    (candidate_path / "managed").write_text("owned", encoding="utf-8")
+    unrelated = tmp_path / "unrelated"
+    unrelated.mkdir()
+    sibling = candidate_path.with_name("0" * 16)
+    sibling.mkdir()
+
+    adapter.discard_source(
+        source="git@example.com:company/skills.git",
+        source_cache_path=str(candidate_path),
+        cache_root=str(cache_root),
+        registry_path=str(registry_path),
+    )
+    adapter.discard_source(
+        source="git@example.com:company/skills.git",
+        source_cache_path=str(unrelated),
+        cache_root=str(cache_root),
+        registry_path=str(registry_path),
+    )
+    adapter.discard_source(
+        source="git@example.com:company/skills.git",
+        source_cache_path=str(sibling),
+        cache_root=str(cache_root),
+        registry_path=str(registry_path),
+    )
+
+    assert not candidate_path.exists()
+    assert sibling.exists()
+    assert unrelated.exists()

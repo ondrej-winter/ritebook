@@ -114,6 +114,7 @@ def test_publisher_to_consumer_workflow_uses_local_git_cache(
             str(registry_path),
             "--cache-root",
             str(cache_root),
+            "--force",
         ],
     )
     update_result.assert_success()

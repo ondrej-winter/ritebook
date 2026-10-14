@@ -42,8 +42,9 @@ class FilesystemIndexCache:
         cache_root: str | None,
         preserve_path: str | None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> str:
-        """Write and synchronize one immutable cache generation."""
+        """Write and synchronize one content-addressed cache generation."""
         _require_matching_digest(content, index_digest)
         path = Path(
             self.cached_index_path(
@@ -60,7 +61,7 @@ class FilesystemIndexCache:
                 preserve_path=preserve_path,
                 candidate_path=str(path),
             )
-        if path.exists():
+        if path.exists() and not force:
             if path.read_bytes() != content:
                 msg = f"cached index generation does not match digest for {name}"
                 raise IndexCacheError(msg)

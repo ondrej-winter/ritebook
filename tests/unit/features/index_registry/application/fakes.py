@@ -28,6 +28,8 @@ class FakeGitSource:
         )
         self.prepare_calls: list[tuple[str, str | None, str | None]] = []
         self.refresh_calls: list[tuple[str, str | None, str | None, str | None, str | None]] = []
+        self.refresh_force_values: list[bool] = []
+        self.discard_calls: list[tuple[str, str, str | None]] = []
 
     def prepare_source(
         self,
@@ -46,10 +48,12 @@ class FakeGitSource:
         cache_root: str | None,
         source_branch: str | None = None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> PreparedIndexSource:
         self.refresh_calls.append(
             (source, source_branch, source_cache_path, cache_root, registry_path),
         )
+        self.refresh_force_values.append(force)
         if self.prepared.source == "git@example.com:company/skills.git":
             index_name = source.removeprefix("git@example.com:company/").removesuffix(
                 ".git",
@@ -64,6 +68,17 @@ class FakeGitSource:
                 source_branch=source_branch,
             )
         return self.prepared
+
+    def discard_source(
+        self,
+        *,
+        source: str,
+        source_cache_path: str,
+        cache_root: str | None,
+        registry_path: str | None = None,
+    ) -> None:
+        del cache_root
+        self.discard_calls.append((source, source_cache_path, registry_path))
 
 
 class FakeIndexReader:
@@ -182,6 +197,7 @@ class FakeCache:
         self.discard_error = discard_error
         self.write_calls: list[tuple[str, bytes, str, str | None, str | None]] = []
         self.discard_calls: list[tuple[str, str, str | None]] = []
+        self.write_force_values: list[bool] = []
 
     def cached_index_path(
         self,
@@ -204,8 +220,10 @@ class FakeCache:
         cache_root: str | None,
         preserve_path: str | None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> str:
         del registry_path
+        self.write_force_values.append(force)
         self.write_calls.append(
             (name, content, index_digest, cache_root, preserve_path),
         )

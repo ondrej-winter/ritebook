@@ -27,8 +27,9 @@ class IndexCachePort(Protocol):
         cache_root: str | None,
         preserve_path: str | None,
         registry_path: str | None = None,
+        force: bool = False,
     ) -> str:
-        """Write an immutable cache generation and return its path."""
+        """Write a synchronized content-addressed cache generation and return its path."""
 
     def discard_index(
         self,

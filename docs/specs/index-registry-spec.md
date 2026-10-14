@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.3
-- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision and October 12, 2026 Makefile workflow decision.
-- Accepted by / on: User / 2026-10-12
+- Revision: 2.4
+- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision, October 12, 2026 Makefile workflow decision, and October 14, 2026 consumer-state force-rebuild decision.
+- Accepted by / on: User / 2026-10-14
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-12
+- Last reviewed: 2026-10-14
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
 - Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: Revision 2.2 of this specification
+- Supersedes: Revision 2.3 of this specification
 
 ## Objective and Context
 
@@ -228,7 +228,9 @@ Example CLI shape:
 
 ```bash
 uv run ritebook indexes update platform-skills
+uv run ritebook indexes update platform-skills --force
 uv run ritebook indexes update --all
+uv run ritebook indexes update --all --force
 ```
 
 Requirements:
@@ -239,6 +241,12 @@ Requirements:
   managed cache.
 - For a local Git repository source, Ritebook reads the repository at the
   remembered local path.
+- `--force` is valid with either one local alias or `--all`. For a Git URL source,
+  Ritebook clones into a fresh registry-owned path rather than trusting or
+  mutating the currently registered managed clone.
+- For a local Git repository source, `--force` re-reads the remembered clean
+  committed state but never deletes, resets, cleans, or otherwise mutates the
+  user-owned repository.
 - Ritebook selects the candidate full commit object ID after refreshing or reading
   the source and reads root `ritebook-index.json` from that commit.
 - Ritebook validates and hashes those exact bytes before replacing the locally
@@ -249,6 +257,13 @@ Requirements:
   one coherent logical state.
 - If refresh, revision lookup, index read, validation, hashing, or persistence
   fails, Ritebook keeps the previous coherent binding intact.
+- A forced Git URL update switches `source_cache_path` only after candidate index
+  validation, cache synchronization, and registry replacement succeed. A failed
+  forced update best-effort removes its fresh unreferenced clone.
+- A successful forced update best-effort removes the superseded managed clone only
+  when no remaining registry alias references that exact `source_cache_path`.
+- Forced cache writing repairs the content-addressed generation even when the
+  validated digest is unchanged and the existing local bytes are damaged.
 - An over-deep candidate index is a validation failure; update preserves the
   previously registered cache, revision, digest, and metadata.
 - If the published name inside the refreshed `ritebook-index.json` changes,
@@ -259,6 +274,8 @@ Requirements:
 - If one index fails during `--all`, Ritebook continues updating the remaining
   indexes, reports failed local aliases to stderr, and returns a non-zero exit
   code after the batch completes.
+- `--force` repairs consumer-managed source and cache state only. It does not run
+  publisher-side index discovery or regenerate `ritebook-index.json`.
 
 ### R5 — Publisher index metadata
 
@@ -351,13 +368,18 @@ Registry schema-v1 provenance requirements follow
 
 #### Registry/cache commit protocol
 
-- Cached indexes are immutable, content-addressed generations. The directory name
-  is the lowercase SHA-256 hex from `index_digest`; the adapter verifies the exact
-  bytes again before writing that generation.
+- Cached indexes use content-addressed generations. Ordinary writes treat an
+  existing digest path as immutable and verify its exact bytes. Explicit
+  `indexes update --force` may atomically replace that path with the validated
+  bytes to repair local corruption. The directory name is the lowercase SHA-256
+  hex from `index_digest`.
 - Every cached read receives the registered digest, reads bytes, verifies the
   digest, and only then runs strict JSON and semantic validation.
 - `add-index --force` and `indexes update` preserve the generation referenced by the
   current registry entry while writing and synchronizing the candidate generation.
+- `indexes update --force` rewrites the validated content-addressed generation even
+  when its digest is unchanged, allowing damaged local bytes to be repaired before
+  the registry commit remains or becomes authoritative.
 - The deterministic registry file is the commit record. Ritebook writes and
   synchronizes a uniquely named same-directory temporary registry file, then
   atomically replaces `indexes.json` so readers see either the old entry or the new
@@ -372,6 +394,9 @@ Registry schema-v1 provenance requirements follow
 - Candidate and abandoned-generation cleanup is best-effort. The registry atomic
   replacement result remains authoritative and cleanup failure never rewrites or
   masks a successful registry commit.
+- Forced Git URL updates apply the same rule to managed clones: failed candidates
+  are best-effort discarded, and a superseded clone is discarded only after a
+  successful registry commit and only when no other alias still references it.
 - A process interruption may leave an unreferenced generation or adapter-owned
   temporary file. The next add or update for that local alias preserves the
   registry-referenced generation and the current candidate while deterministically
@@ -414,6 +439,10 @@ Registry schema-v1 provenance requirements follow
 - Ritebook manages its own cached clone.
 - `indexes add` clones the repository into Ritebook's cache area.
 - `indexes update` refreshes that managed clone from the remote.
+- `indexes update --force` clones the remembered source into a fresh uniquely named
+  registry-owned path, validates and caches from that clone, then atomically
+  switches the registry binding. It does not delete the prior clone while another
+  registry alias references the same path.
 - Advancing mutable refs in the managed clone does not replace the previous
   registry/cache binding until the candidate commit and index are validated and
   persisted coherently.
@@ -439,6 +468,8 @@ Registry schema-v1 provenance requirements follow
 - Ritebook does not own or mutate the local repository.
 - `indexes add` and `indexes update` reject staged, unstaged, or untracked changes and
   provide guidance to commit or discard them.
+- `indexes update --force` does not change that ownership boundary; it re-reads the
+  clean committed repository without deleting or modifying it.
 - Ritebook reads root `ritebook-index.json` from the selected commit object without
   checking out, resetting, or cleaning the user-owned repository.
 - Whether the local repository is up to date is the user's responsibility.
@@ -454,8 +485,8 @@ Registry commands:
 
 ```bash
 uv run ritebook indexes add --source <git-url-or-local-git-repo> [--alias <local-alias>] [--force]
-uv run ritebook indexes update <local-alias>
-uv run ritebook indexes update --all
+uv run ritebook indexes update <local-alias> [--force]
+uv run ritebook indexes update --all [--force]
 uv run ritebook indexes list
 ```
 
@@ -468,11 +499,13 @@ uv run ritebook indexes add \
   --cache-root <path>
 
 uv run ritebook indexes update <local-alias> \
+  [--force] \
   --registry-path <path> \
   --cache-root <path>
 
 uv run ritebook indexes update \
   --all \
+  [--force] \
   --registry-path <path> \
   --cache-root <path>
 
@@ -615,6 +648,13 @@ tests/unit/features/index_registry/
 - Refreshes all registered indexes when requested.
 - Continues after per-index failures during all-index updates and reports failed
   local aliases.
+- Propagates `--force` for one-alias and all-alias updates.
+- Rebuilds Git URL sources through fresh managed clones and repairs cached index
+  bytes even when the validated digest is unchanged.
+- Preserves the prior coherent binding and discards the fresh candidate when a
+  forced update fails.
+- Discards a superseded managed clone only when no other registry alias references
+  its exact path, while never discarding a local repository source.
 
 #### List indexes application tests
 
@@ -649,6 +689,10 @@ tests/unit/features/index_registry/
   detect cached-index digest mismatches.
 - Git adapter invokes Git non-interactively and reports clone/fetch failures
   clearly.
+- Git adapter forced refreshes use fresh registry-owned clone paths and cleanup
+  rejects paths outside the expected managed-clone namespace.
+- Index cache forced writes replace damaged bytes at an existing validated
+  content-addressed path.
 - Git adapter rejects standard-URL user-info before Git or managed-cache mutation,
   preserves scp-like SSH support, and does not expose credential-bearing Git
   output.
@@ -732,9 +776,9 @@ make verify
 | AC2 | R1 | Add an invalid, dirty, unsafe-credential, duplicate-alias, or over-deep source, with and without `--force`. | Invalid sources fail before coherent state changes; duplicate aliases require explicit replacement; published names remain unchanged by local aliases. | Boundary and failure-path tests. |
 | AC3 | R2 | List an empty or populated registry. | Output is deterministic by local alias, includes remembered metadata, and prints the documented empty result without source mutation. | List-index application and CLI tests. |
 | AC4 | R3 | List all or one cached index, with and without descriptions, while sources are offline. | Verified cached skills render in deterministic tree order; unknown aliases fail; descriptions are opt-in; empty results print `No skills found`; no Git or raw `SKILL.md` reads occur. | List-skills application, cached-reader, and CLI tests. |
-| AC5 | R4 | Update one or all indexes with successful and failing refresh, validation, or persistence paths. | Successful updates atomically replace the binding; failures preserve the previous coherent state; `--all` continues deterministically and returns non-zero after reporting failures. | Update-index application and adapter tests. |
+| AC5 | R4 | Update one or all indexes, with and without `--force`, across successful and failing refresh, validation, or persistence paths. | Successful updates atomically replace the binding; forced Git URL updates use fresh managed clones and repair same-digest cache bytes; failures preserve the previous coherent state; superseded clones remain while referenced by another alias; `--all` continues deterministically and returns non-zero after reporting failures. | Update-index application, CLI, cache, Git-adapter, integration, and E2E tests. |
 | AC6 | R5 | Add, update, or read publisher schema-v1 metadata. | The complete shared catalog contract is validated, publisher `index.name` is preserved, and local alias selection remains consumer-owned. | Publisher metadata and JSON-reader tests. |
-| AC7 | R6 | Write a candidate cache generation and registry replacement, including simulated failures and concurrent readers. | Cache generations remain immutable and content-addressed; the synchronized registry file is the atomic commit record; failed candidates do not invalidate referenced state. | Filesystem registry and index-cache tests. |
+| AC7 | R6 | Write a candidate cache generation and registry replacement, including simulated failures, forced repair, and concurrent readers. | Cache generations remain content-addressed and immutable during ordinary writes; explicit force repair may replace damaged bytes with validated bytes at the same digest path; the synchronized registry file is the atomic commit record; failed candidates do not invalidate referenced state. | Filesystem registry and index-cache tests. |
 | AC8 | R7 | Register duplicate published names or skill names at distinct aliases or paths. | Distinct local aliases and catalog paths remain valid; only duplicate local aliases require refusal or explicit replacement. | Application and reader duplicate tests. |
 | AC9 | R8 | Use Git URL and local repository sources, including dirty, missing, detached, unavailable, or credential-bearing cases. | Ritebook uses committed objects without mutating user repositories, rejects unsafe or unavailable state, and never infers required provenance from mutable refs. | Git-source adapter tests. |
 | AC10 | R9 | Invoke each documented registry and skill-list command and path override. | Arguments map to the owning use case and produce concise documented success or actionable error output. | CLI parser and adapter tests. |
@@ -753,6 +797,11 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 14, 2026: Revision 2.4 added `indexes update --force` for one alias or
+  `--all`. Forced Git URL updates use fresh managed clones, forced cache writes
+  repair same-digest generations, failures preserve the previous coherent
+  binding, shared clones remain until unreferenced, and local repositories retain
+  their non-mutation ownership boundary.
 - October 12, 2026: Revision 2.3 adopted `make verify` as the canonical complete
   handoff gate without changing registry behavior or the Docker E2E boundary.
 - October 2, 2026: Reformatted revision 2.1 to the current

@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from ritebook.features.index_registry.application.dtos import (
+    PreparedIndexSource,
     RegisteredIndex,
     UpdateIndexCommand,
     UpdateIndexResult,
@@ -14,6 +15,7 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.index_registry.application.errors import (
     IndexCacheError,
     IndexRegistryError,
+    IndexSourceError,
     UnknownIndexNameError,
 )
 from ritebook.features.index_registry.application.ports import UpdateIndexPort
@@ -99,7 +101,40 @@ class UpdateIndex(UpdateIndexPort):
             source_cache_path=existing.source_cache_path,
             cache_root=command.cache_root,
             registry_path=command.registry_path,
+            force=command.force,
         )
+        replacement_source = _replacement_source_cache_path(
+            existing,
+            prepared_source,
+            force=command.force,
+        )
+        committed = False
+        try:
+            result = self._commit_update(
+                existing,
+                prepared_source,
+                command,
+                registry,
+            )
+            committed = True
+            return result
+        finally:
+            if replacement_source is not None and not committed:
+                with suppress(IndexSourceError):
+                    self._git_source.discard_source(
+                        source=existing.source,
+                        source_cache_path=replacement_source,
+                        cache_root=command.cache_root,
+                        registry_path=command.registry_path,
+                    )
+
+    def _commit_update(
+        self,
+        existing: RegisteredIndex,
+        prepared_source: PreparedIndexSource,
+        command: UpdateIndexCommand,
+        registry: IndexRegistryTransaction,
+    ) -> UpdateIndexResult:
         published_index = self._index_reader.read_index(prepared_source.index_content)
         updated_at = _utc_timestamp(self._clock())
         cached_index_path = self._cache.write_index(
@@ -109,6 +144,7 @@ class UpdateIndex(UpdateIndexPort):
             cache_root=command.cache_root,
             preserve_path=existing.cached_index_path,
             registry_path=command.registry_path,
+            force=command.force,
         )
         entry = RegisteredIndex(
             name=existing.name,
@@ -146,11 +182,49 @@ class UpdateIndex(UpdateIndexPort):
                     cache_root=command.cache_root,
                     registry_path=command.registry_path,
                 )
+        if (
+            command.force
+            and existing.source_cache_path is not None
+            and existing.source_cache_path != prepared_source.source_cache_path
+            and not _source_cache_path_is_referenced(
+                registry,
+                existing.source_cache_path,
+            )
+        ):
+            with suppress(IndexSourceError):
+                self._git_source.discard_source(
+                    source=existing.source,
+                    source_cache_path=existing.source_cache_path,
+                    cache_root=command.cache_root,
+                    registry_path=command.registry_path,
+                )
         return UpdateIndexResult(
             name=existing.name,
             skill_count=published_index.skill_count,
             updated_index=entry,
         )
+
+
+def _replacement_source_cache_path(
+    existing: RegisteredIndex,
+    prepared_source: PreparedIndexSource,
+    *,
+    force: bool,
+) -> str | None:
+    if (
+        force
+        and prepared_source.source_cache_path is not None
+        and prepared_source.source_cache_path != existing.source_cache_path
+    ):
+        return prepared_source.source_cache_path
+    return None
+
+
+def _source_cache_path_is_referenced(
+    registry: IndexRegistryTransaction,
+    source_cache_path: str,
+) -> bool:
+    return any(entry.source_cache_path == source_cache_path for entry in registry.list())
 
 
 def _utc_timestamp(value: datetime) -> str:

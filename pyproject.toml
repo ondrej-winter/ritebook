@@ -37,12 +37,12 @@ Issues = "https://github.com/ondrej-winter/ritebook/issues"
 dev = [
     "fabrica>=0.0.33",
     "import-linter>=2.15",
-    "pre-commit>=4.6.2",
+    "pre-commit>=4.7.0",
     "pytest>=8.4.1",
     "pytest-xdist>=3.8.0",
     "python-semantic-release>=10.7.0",
     "ruff>=0.17.0",
-    "ty>=0.0.86",
+    "ty>=0.0.87",
     "types-pyyaml>=6.0.12.20260906",
 ]
 

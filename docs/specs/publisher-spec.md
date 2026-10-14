@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.3
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 publication decisions.
-- Accepted by / on: User / 2026-10-07
+- Revision: 2.4
+- Acceptance basis: Existing Active repository contract plus the user's approved October 6 and October 7, 2026 publication decisions and October 12, 2026 Makefile workflow decision.
+- Accepted by / on: User / 2026-10-12
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-07
+- Last reviewed: 2026-10-12
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Skill Linter](skill-linter-spec.md)
 - Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: None
+- Supersedes: Revision 2.3 of this specification
 
 ## Objective and Context
 
@@ -193,16 +193,10 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 
 ### Commands and validation
 
-When changing this workflow, use focused checks first, then the full local
-quality gate before handoff.
-
-- Format check: `uv run ruff format --check .`
-- Lint: `uv run ruff check .`
-- Type check: `uv run ty check src/ritebook`
-- Default tests: `uv run pytest` (Docker E2E is deselected unless explicitly enabled)
-- Build: `uv build`
-- Docker E2E: `docker build -f Dockerfile.e2e -t ritebook-e2e .` then
-  `docker run --rm ritebook-e2e`
+When changing this workflow, use focused checks first, then run `make verify`
+before handoff. The aggregate runs the standard formatting, linting, typing,
+import-contract, and non-E2E test checks, builds the distributions, and runs the
+clean installed-wheel Docker E2E gate.
 
 Adding `PyYAML` for frontmatter parsing must update both `pyproject.toml` and
 `uv.lock`.
@@ -277,7 +271,7 @@ network access.
 | AC3 | R3 | Ritebook serializes and replaces an index, including simulated write, flush, sync, replacement, or unsafe-symlink failures. | Schema-v1 fields and required descriptions are emitted with two-space deterministic JSON; failures preserve prior content and clean owned temporary files; no publisher provenance fields are embedded. | JSON writer and schema tests. |
 | AC4 | R4 | Invoke `indexes publish` with valid arguments, missing or invalid roots, and validation failures. | Arguments map to one explicit skills root and published name, success output is concise, and errors are actionable without exposing skill contents. | CLI adapter tests. |
 | AC5 | R1-R4 | Review source ownership and execute focused publisher tests. | The implementation follows vertical-slice hexagonal boundaries and covers precheck snapshot consumption, generation, output, and CLI behavior without a publisher discovery adapter. | Import-boundary checks and `uv run pytest tests/unit/features/publisher`. |
-| AC6 | R1-R4 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
+| AC6 | R1-R4 | Run the documented implementation handoff gates. | Formatting, linting, type checking, import contracts, non-E2E tests, package build, and Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
 ## Assumptions
 
@@ -293,6 +287,8 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 12, 2026: Revision 2.4 adopted `make verify` as the canonical complete
+  handoff gate without changing publisher behavior or the Docker E2E boundary.
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.

@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.2
-- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision.
-- Accepted by / on: User / 2026-10-07
+- Revision: 2.3
+- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision and October 12, 2026 Makefile workflow decision.
+- Accepted by / on: User / 2026-10-12
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-07
+- Last reviewed: 2026-10-12
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
 - Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: None
+- Supersedes: Revision 2.2 of this specification
 
 ## Objective and Context
 
@@ -675,13 +675,7 @@ tests/unit/features/index_registry/
 When changing this workflow, use focused tests first, then the full quality gate:
 
 ```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run ty check src/ritebook
-uv run pytest
-uv build
-docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
+make verify
 ```
 
 ## Constraints and Execution Boundaries
@@ -744,7 +738,7 @@ docker run --rm ritebook-e2e
 | AC8 | R7 | Register duplicate published names or skill names at distinct aliases or paths. | Distinct local aliases and catalog paths remain valid; only duplicate local aliases require refusal or explicit replacement. | Application and reader duplicate tests. |
 | AC9 | R8 | Use Git URL and local repository sources, including dirty, missing, detached, unavailable, or credential-bearing cases. | Ritebook uses committed objects without mutating user repositories, rejects unsafe or unavailable state, and never infers required provenance from mutable refs. | Git-source adapter tests. |
 | AC10 | R9 | Invoke each documented registry and skill-list command and path override. | Arguments map to the owning use case and produce concise documented success or actionable error output. | CLI parser and adapter tests. |
-| AC11 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, non-E2E tests, package build, and network-disabled Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
+| AC11 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, import contracts, non-E2E tests, package build, and Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 
 ## Assumptions
 
@@ -759,6 +753,8 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 12, 2026: Revision 2.3 adopted `make verify` as the canonical complete
+  handoff gate without changing registry behavior or the Docker E2E boundary.
 - October 2, 2026: Reformatted revision 2.1 to the current
   spec-driven-development template under the user's instruction. Requirement
   meaning, lifecycle state, and revision number were preserved.

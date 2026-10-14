@@ -21,30 +21,30 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: uv run ruff check . --fix
+        entry: make lint-fix
         language: system
         types: [python]
         pass_filenames: false
       - id: ruff-format
         name: ruff format
-        entry: uv run ruff format .
+        entry: make format
         language: system
         types: [python]
         pass_filenames: false
       - id: ty
         name: ty
-        entry: uv run ty check src/ritebook
+        entry: make type
         language: system
         types: [python]
         pass_filenames: false
       - id: import-linter
         name: import-linter
-        entry: uv run lint-imports
+        entry: make architecture
         language: system
         pass_filenames: false
       - id: pytest
         name: pytest
-        entry: uv run pytest
+        entry: make test
         language: system
         types: [python]
         pass_filenames: false

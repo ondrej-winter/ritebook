@@ -2,7 +2,7 @@
 *.py[cod]
 .DS_Store
 .cline-execution/
-.tmp/cline/
+.tmp/
 .coverage
 .import_linter_cache/
 .mypy_cache/

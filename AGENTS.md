@@ -103,7 +103,7 @@ point inward.
   feature ownership.
 - Keep sibling adapter structures consistent. Prefer semantic module names and
   lightweight `__init__.py` files without I/O or heavy imports.
-- Use `uv run lint-imports` to enforce configured import boundaries. Document any
+- Use `make architecture` to enforce configured import boundaries. Document any
   intentional architectural exception in an ADR or the owning specification.
 
 ## Python implementation standards
@@ -206,22 +206,24 @@ documentation:
 
 ## Development and validation
 
-Run project tooling through `uv` from the repository root. Install development
-dependencies with:
+Run project tooling through the repository `Makefile` from the repository root.
+Host development and CI require uv 0.13.0 or newer. Install the locked
+development dependencies with:
 
 ```bash
-uv sync --group dev
+make setup
 ```
 
 For implementation or tooling changes, run the configured local quality checks:
 
 ```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run ty check src/ritebook
-uv run lint-imports
-uv run pytest
+make quality
 ```
+
+`make quality` runs formatting validation, Ruff linting, ty type checking,
+Import Linter architecture contracts, and the default non-E2E pytest suite. Use
+the corresponding leaf targets when iterating or reproducing an individual CI
+failure.
 
 Plain pytest execution deselects Docker E2E tests. Only the clean Docker runner
 may opt in with `--run-e2e -m e2e`.
@@ -231,17 +233,22 @@ Ritebook uses `ty` as its required static type checker; do not add a parallel
 when changing `pyproject.toml`, pre-commit, CI, README, or specifications.
 
 Run focused tests first while iterating. For code, CLI behavior, dependency,
-packaging, or test-infrastructure changes, also run the clean installed-wheel
-Docker E2E gate before handoff when Docker is available:
+packaging, or test-infrastructure changes, run the complete local verification
+gate before handoff when Docker is available:
 
 ```bash
-docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
+make verify
 ```
 
-- `uv run pre-commit run --all-files` provides useful repository-wide feedback but
+- `make verify` runs `make quality`, builds the distributions, and builds and runs
+  the clean installed-wheel Docker E2E image. It fails rather than silently
+  skipping Docker when Docker is unavailable.
+- `make pre-commit` provides useful repository-wide feedback but
   does not replace the applicable quality gate.
-- Run `uv build` when packaging or release artifacts are affected.
+- Run `make build` when packaging or release artifacts are affected.
+- `make deps-audit` uses uv's preview audit command, requires network access, and
+  audits the locked runtime and development dependencies without updating the
+  lockfile.
 - Dependency changes must update `pyproject.toml` and `uv.lock` together.
 - Do not disable checks or use ad hoc final-run flags to conceal failures. Fix root
   causes or report the exact unverified check and reason.

@@ -15,54 +15,62 @@ specification defines the contract.
 ## Requirements
 
 - Python 3.13 or newer
-- [uv](https://docs.astral.sh/uv/) for dependency management and command
-  execution
+- [uv](https://docs.astral.sh/uv/) 0.13.0 or newer for host development and CI
+  dependency management and command execution
+- GNU Make for the shared local and CI task interface
 
 ## Development setup
 
 Install development dependencies:
 
 ```bash
-uv sync --group dev
+make setup
 ```
+
+Setup checks that `uv.lock` matches `pyproject.toml`; it does not update the
+lockfile implicitly.
 
 Install the Git pre-commit hook:
 
 ```bash
-uv run pre-commit install
+make install-hooks
 ```
 
 Run the pre-commit hooks across the full repository when changing the hook
 configuration or before opening a PR:
 
 ```bash
-uv run pre-commit run --all-files
+make pre-commit
 ```
 
 Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
 linting, ty type checking, Import Linter architecture contracts, and tests. It
 complements, but does not replace, the full local quality gate.
 
-Run local quality checks:
+Run the standard local quality gate:
 
 ```bash
-uv run ruff format .
-uv run ruff check .
-uv run ty check src/ritebook
-uv run lint-imports
-uv run pytest
+make quality
 ```
+
+This checks formatting, Ruff linting, ty types, Import Linter architecture
+contracts, and the default non-E2E pytest suite. Use `make help` to list the
+corresponding leaf targets and explicit formatting or lint-fix commands.
 
 Plain pytest execution deselects Docker E2E tests by default. The Docker image
 explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
 because it cannot establish the clean installed-wheel boundary.
 
-Run the mandatory Docker E2E gate before handoff:
+Run the complete local verification gate before handoff:
 
 ```bash
-docker build -f Dockerfile.e2e -t ritebook-e2e .
-docker run --rm ritebook-e2e
+make verify
 ```
+
+`make verify` runs the standard quality gate, checks lockfile freshness, builds
+the package distributions, and builds and runs Docker E2E. It fails if Docker is
+unavailable rather than silently omitting E2E. `make docker-e2e` runs only the
+Docker build and test steps.
 
 `Dockerfile.e2e` is a clean installed-wheel test boundary, not production
 packaging. It builds a wheel from the current source, installs that wheel and its
@@ -77,11 +85,21 @@ Ritebook state. Docker is the only supported E2E execution path. CI/CD uses the
 same build and run commands and runs Docker E2E as a mandatory quality gate in
 parallel with the non-E2E quality checks.
 
-Build the package distributions:
+Build the package distributions without running the other gates:
 
 ```bash
-uv build
+make build
 ```
+
+Audit locked runtime and development dependencies for known vulnerabilities and
+adverse package status:
+
+```bash
+make deps-audit
+```
+
+This target uses uv's preview audit command and requires network access. It does
+not update `uv.lock`.
 
 Print the installed Ritebook version:
 

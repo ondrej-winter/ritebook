@@ -3,12 +3,13 @@
 ## Status
 
 - State: Active
-- Revision: 3.1
+- Revision: 3.2
 - Acceptance basis: User-approved Docker E2E stress-test interview completed on
-  October 3, 2026.
-- Accepted by / on: User / 2026-10-03
+  October 3, 2026, and Makefile workflow audit interview completed on October 12,
+  2026.
+- Accepted by / on: User / 2026-10-12
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-05
+- Last reviewed: 2026-10-12
 - Implementation state: Implemented
 - Dependencies: [Skill Linter](skill-linter-spec.md),
   [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md),
@@ -16,7 +17,7 @@
   [Skill Contribution](skill-contribution-spec.md)
 - Associated ADRs:
   [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
-- Supersedes: Revision 3.0 of this specification
+- Supersedes: Revision 3.1 of this specification
 
 ## Objective and Context
 
@@ -207,6 +208,11 @@ The main CI/CD workflow must run a stably named `Docker E2E` job for pull reques
 and pushes to the release branch. It may run independently and in parallel with
 the standard quality job.
 
+The job's separately named build and run steps must invoke the repository-owned
+`make docker-e2e-build` and `make docker-e2e-run` targets. The standard quality
+job must likewise invoke repository-owned leaf targets so local and CI commands
+remain aligned without collapsing CI diagnostics into one aggregate step.
+
 A failed Docker E2E check must block pull-request merge through existing
 repository configuration. The repository-controlled release job must declare a
 workflow dependency on both the standard quality job and Docker E2E so it cannot
@@ -238,6 +244,12 @@ digest.
 The only supported E2E execution path is:
 
 ```bash
+make docker-e2e
+```
+
+The Makefile target delegates to the canonical Docker build and run commands:
+
+```bash
 docker build -f Dockerfile.e2e -t ritebook-e2e .
 docker run --rm ritebook-e2e
 ```
@@ -256,18 +268,19 @@ The standard quality and packaging checks remain separate; plain pytest
 automatically excludes Docker E2E:
 
 ```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run ty check src/ritebook
-uv run lint-imports
-uv run pytest
-uv build
+make quality
+make build
 ```
+
+`make verify` is the complete local aggregate for quality, package building, and
+Docker E2E. It must not silently skip Docker when Docker is unavailable.
 
 ### Project structure
 
 - `Dockerfile.e2e`: wheel build, locked test-tool environment, consumer install,
   and final non-root E2E image.
+- `Makefile`: shared local and CI targets for the standard quality checks,
+  distribution build, and separate Docker E2E build and run steps.
 - `conftest.py`: repository-level E2E classification, default deselection, and
   Docker-only `--run-e2e` enforcement.
 - `.dockerignore`: excludes developer state, credentials, caches, and generated
@@ -301,6 +314,8 @@ uv build
 - Require Docker-only `--run-e2e -m e2e -n auto` execution for the E2E suite.
 - Keep Docker E2E independent from the standard quality job and blocking for
   merge and release.
+- Keep the repository Makefile as the shared local and CI command interface while
+  preserving separately named CI steps and jobs.
 
 ### Changes requiring specification approval
 
@@ -329,11 +344,11 @@ uv build
 
 | ID | Requirement | Conditions and action | Expected observable result | Verification method |
 | --- | --- | --- | --- | --- |
-| AC1 | R1-R2 | Build `Dockerfile.e2e` from a clean repository context. | The build creates only a wheel for Ritebook, creates a locked test-tool environment without Ritebook, installs the wheel and metadata-resolved runtime dependencies into a separate consumer environment, and constructs the final stage without source or project metadata. | `docker build -f Dockerfile.e2e -t ritebook-e2e .` plus Dockerfile review. |
-| AC2 | R2, R5 | Run the container environment test in the final image. | The process is non-root; home and XDG paths are controlled and writable; test Python cannot import Ritebook; the `ritebook` script and imported package resolve from the consumer environment; `src/`, `pyproject.toml`, and `uv.lock` are absent. | `tests/e2e/test_container_environment.py` through `docker run --rm ritebook-e2e`. |
-| AC3 | R3-R4 | Run the full E2E suite against local temporary Git fixtures. | The installed CLI completes the required publisher, registry, listing, update, install, sync, and contribution workflows and verifies ADR 0001 commit/digest binding behavior. | `docker run --rm ritebook-e2e`. |
+| AC1 | R1-R2 | Build `Dockerfile.e2e` from a clean repository context. | The build creates only a wheel for Ritebook, creates a locked test-tool environment without Ritebook, installs the wheel and metadata-resolved runtime dependencies into a separate consumer environment, and constructs the final stage without source or project metadata. | `make docker-e2e-build` plus Dockerfile review. |
+| AC2 | R2, R5 | Run the container environment test in the final image. | The process is non-root; home and XDG paths are controlled and writable; test Python cannot import Ritebook; the `ritebook` script and imported package resolve from the consumer environment; `src/`, `pyproject.toml`, and `uv.lock` are absent. | `tests/e2e/test_container_environment.py` through `make docker-e2e-run`. |
+| AC3 | R3-R4 | Run the full E2E suite against local temporary Git fixtures. | The installed CLI completes the required publisher, registry, listing, update, install, sync, and contribution workflows and verifies ADR 0001 commit/digest binding behavior. | `make docker-e2e-run`. |
 | AC4 | R6 | Build and run with ordinary Docker networking and no credential injection. | The suite does not require `--network none`, credentials, private repositories, host mounts, or environment files; the currently required tests remain local-fixture based. | Docker/CI command review and E2E execution. |
-| AC5 | R7 | Run plain host pytest commands, attempt explicit host opt-in, and run the final image's default command. | Plain host pytest deselects E2E; host `--run-e2e` fails with Docker usage guidance; the image supplies its Docker-only signal and executes E2E with `--run-e2e -m e2e -n auto`; isolated tests pass without order or shared-state dependence; failures include readable command diagnostics in console output. | `uv run pytest`, `uv run pytest tests/e2e`, `uv run pytest --run-e2e -m e2e tests/e2e`, image command review, and `docker run --rm ritebook-e2e`. |
+| AC5 | R7 | Run plain host pytest commands, attempt explicit host opt-in, and run the final image's default command. | Plain host pytest deselects E2E; host `--run-e2e` fails with Docker usage guidance; the image supplies its Docker-only signal and executes E2E with `--run-e2e -m e2e -n auto`; isolated tests pass without order or shared-state dependence; failures include readable command diagnostics in console output. | `make test`, direct focused host pytest commands, image command review, and `make docker-e2e-run`. |
 | AC6 | R8 | Review and execute the main CI/CD workflow. | The stable `Docker E2E` job runs on PRs and release-branch pushes; release depends on both quality and Docker E2E; existing repository configuration blocks merge when the check fails. | Workflow review and CI execution; external ruleset proof is not required. |
 | AC7 | R9 | Review the image and documentation claims. | Commands and documentation describe Python 3.13/Linux/runner-architecture evidence, practical pins, and the explicit package/platform warranty boundaries without claiming reproducible or cross-platform proof. | Dockerfile, README, AGENTS, and specification review. |
 
@@ -357,6 +372,10 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 12, 2026: Revision 3.2 adopted the repository Makefile as the shared
+  local and CI command interface. CI retains separately named quality and Docker
+  E2E steps and the independent release-blocking jobs; `make verify` provides the
+  complete local aggregate without changing the clean installed-wheel boundary.
 - October 5, 2026: Corrected the active default-branch ruleset and operator
   guidance to retain the explicit repository-owner bypass required by the current
   solo-maintainer direct-push workflow. Required checks remain active for other

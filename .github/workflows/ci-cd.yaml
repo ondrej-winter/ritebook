@@ -22,35 +22,39 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+          version: "0.13"
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install dependencies
-        run: uv sync --frozen --group dev
+        run: make setup
 
       - name: Check formatting
-        run: uv run ruff format --check .
+        run: make format-check
 
       - name: Lint
-        run: uv run ruff check .
+        run: make lint
 
       - name: Type check
-        run: uv run ty check src/ritebook
+        run: make type
+
+      - name: Check architecture
+        run: make architecture
 
       - name: Test
-        run: uv run pytest
+        run: make test
 
       - name: Build distribution packages
-        run: uv build
+        run: make build
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v7
@@ -66,13 +70,13 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Build Docker E2E image
-        run: docker build -f Dockerfile.e2e -t ritebook-e2e .
+        run: make docker-e2e-build
 
       - name: Run Docker E2E tests
-        run: docker run --rm ritebook-e2e
+        run: make docker-e2e-run
 
   patch-release:
     name: Create patch release and publish to PyPI
@@ -98,7 +102,7 @@ jobs:
           permission-contents: write
 
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.release-token.outputs.token }}
@@ -115,17 +119,18 @@ jobs:
           fi
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v10.3.0
         with:
           enable-cache: true
+          version: "0.13"
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install dependencies
-        run: uv sync --frozen --group dev
+        run: make setup
 
       - name: Configure release author
         env:
@@ -141,7 +146,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.release-token.outputs.token }}
         run: |
-          uv run semantic-release version \
+          uv run --locked semantic-release version \
             --patch \
             --no-changelog \
             --no-push \

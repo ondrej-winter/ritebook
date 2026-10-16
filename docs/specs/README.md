@@ -1,181 +1,106 @@
-# Specification Governance
+# Specifications
 
-This directory is the canonical source for Ritebook's product, shared-contract,
-and supported-workflow requirements. Each specification uses the same lifecycle
-metadata so readers can distinguish the authority of the document from the
-completeness of its implementation.
+This directory owns Ritebook's current product, shared-contract, and verification
+requirements, with the rationale needed to maintain them. Read the owning
+specification before changing a supported workflow.
 
-## Authority and precedence
+## Catalog
 
-- An `Active` specification is the normative contract for the behavior it owns.
-- Feature code, tests, CLI help, generated artifacts, and user-facing
-  documentation must conform to their owning active specification. They provide
-  implementation or conformance evidence; they do not redefine the contract.
-- The root [`README.md`](../../README.md) owns setup and concise usage guidance.
-  It must link to the owning specification instead of duplicating detailed
-  product requirements.
-- [Architecture Decision Records](../adr/README.md) own durable decision
-  rationale, trade-offs, and consequences. A specification linked to an ADR must
-  implement that decision's outcome without copying its rationale wholesale.
-- If an active specification conflicts with code, tests, CLI help, or derived
-  documentation, correct the conflicting artifact in the same change. Do not
-  silently treat current implementation as a contract change.
-- If an active specification appears to conflict with an accepted ADR, stop and
-  reconcile both documents before implementation. Use a new ADR to change a
-  durable decision; then update or supersede the affected specification.
-
-Specifications stay in one flat directory while their filenames communicate
-ownership. Feature specifications map to vertical slices under
-`src/ritebook/features/`; shared specifications define contracts consumed by more
-than one slice; quality specifications govern cross-cutting validation
-infrastructure.
-
-## Specification catalog
-
-### Shared contract
-
-| Specification | Owner | Status | Implementation | Purpose |
+| Specification | Owner | State | Implementation | Purpose |
 | --- | --- | --- | --- | --- |
-| [Shared Catalog Contract](shared-catalog-contract-spec.md) | Shared kernel and consuming slices | Active | Implemented | Catalog identity, strict portable schema-v1 parsing, paths, index fields, provenance, and shared trust rules. |
+| [Shared Catalog Contract](shared-catalog-contract-spec.md) | Shared kernel and consuming slices | Active | Implemented | Catalog identity, schema-v1 parsing, source provenance, and shared trust rules. |
+| [Skill Linter](skill-linter-spec.md) | `skill_linter` | Active | Implemented | Portable headers, catalog discovery, diagnostics, and validated snapshots. |
+| [Publisher](publisher-spec.md) | `publisher` | Active | Implemented | Generate an index from one successful validation snapshot. |
+| [Index Registry](index-registry-spec.md) | `index_registry` | Active | Implemented | Registration, refresh, cache isolation, offline listing, and explicit recovery. |
+| [Skill Installation](skill-installation-spec.md) | `skill_installation` | Active | Implemented | Direct installation, declaration-scoped sync, ownership, and failure handling. |
+| [Skill Contribution](skill-contribution-spec.md) | `skill_contribution` | Active | Implemented | Prepare a local contribution from a lockfile-backed installed skill. |
+| [Docker E2E Testing](docker-e2e-testing-spec.md) | Cross-feature verification | Active | Implemented | Clean installed-wheel validation of release-critical CLI workflows. |
 
-### Feature slices
+The catalog provides navigation; each specification owns its metadata and
+dependencies. Update both when adding or removing a specification.
 
-| Specification | Slice | Status | Implementation | Direct dependencies |
-| --- | --- | --- | --- | --- |
-| [Skill Linter](skill-linter-spec.md) | `skill_linter` | Active | Implemented | Shared catalog contract |
-| [Publisher](publisher-spec.md) | `publisher` | Active | Implemented | Shared catalog contract; skill linter |
-| [Index Registry](index-registry-spec.md) | `index_registry` | Active | Implemented | Shared catalog contract |
-| [Skill Installation](skill-installation-spec.md) | `skill_installation` | Active | Implemented | Shared catalog contract; index registry |
-| [Skill Contribution](skill-contribution-spec.md) | `skill_contribution` | Active | Implemented | Shared catalog contract; installation; index registry; publisher |
+## Authority and ownership
 
-### Quality and infrastructure
+- An `Active` specification defines the contract for the behavior it owns. Code,
+  tests, CLI help, and derived documentation must conform to it; implementation
+  evidence does not silently redefine requirements.
+- Feature specifications own workflow rules, interfaces, side effects, failure
+  handling, and the rationale for their design. Put shared contracts in one named
+  specification when at least two slices consume them.
+- Explain current decisions and trade-offs under `Objective and Context`. Keep
+  normative outcomes in `Requirements` and `Constraints and Execution Boundaries`.
+  Do not maintain a second contract in separate decision records.
+- [`README.md`](../../README.md) owns setup and concise usage;
+  [`AGENTS.md`](../../AGENTS.md) owns repository policy. Specifications link to
+  those owners rather than copying their rules.
+- Maintain the current baseline in place. Remove obsolete narratives, amendment
+  chains, and completed execution logs after checking that current obligations
+  have an owner. Editorial cleanup must not change supported behavior.
 
-| Specification | Area | Status | Implementation | Purpose |
-| --- | --- | --- | --- | --- |
-| [Docker E2E Testing](docker-e2e-testing-spec.md) | Cross-feature quality gate | Active | Implemented | Clean installed-wheel validation of release-critical CLI workflows. |
+## Metadata
 
-The catalog is the navigation index, not a replacement for metadata in each
-specification. Update both when adding, retiring, or superseding a specification.
-
-## Required metadata
-
-Every specification must declare a `Status` section immediately after its title
-with these fields:
+Place a `Status` section immediately after the title with these exact fields:
 
 | Field | Meaning |
 | --- | --- |
-| `State` | Lifecycle state of the specification. |
-| `Revision` | Version of the specification contract, independent of file-format schema versions. |
-| `Acceptance basis` | Recorded instruction, decision, prior accepted state, or delegated authority that settles the requirements. |
-| `Accepted by / on` | Accepting person or role and date when known; unknown historical details must not be invented. |
-| `Owner` | Role accountable for review and follow-up. |
-| `Last reviewed` | Date the specification was checked against the repository, in `YYYY-MM-DD` format. |
-| `Implementation state` | Current implementation coverage of the normative behavior. |
-| `Dependencies` | Specifications whose contracts this workflow consumes, or `None`. |
-| `Associated ADRs` | Architecture decisions governing the specification, or `None`. |
-| `Supersedes` | Replaced specification or revision, or `None`. |
+| `State` | `Draft` for proposed requirements; `Active` for the current contract. |
+| `Revision` | Document contract version, independent of runtime file-format schemas. |
+| `Acceptance basis` | Existing active contract, explicit instruction, or delegated decision authority that settles the requirements. |
+| `Owner` | Role accountable for review and maintenance. |
+| `Last reviewed` | Date checked against relevant code, tests, CLI, and dependent contracts, in `YYYY-MM-DD` format. |
+| `Implementation state` | `Not started`, `Partially implemented`, or `Implemented`. |
+| `Dependencies` | Repository-relative links to consumed specifications, or `None`. |
 
-All specifications must use the exact field names above and link dependencies
-and ADRs with repository-relative Markdown links. Acceptance of requirements is
-separate from implementation readiness, verified completion, and authorization
-for external actions.
+Requirements acceptance and implementation coverage are separate. `Implemented`
+means the contract is represented in the current tree with identifiable evidence;
+it does not establish that every verification gate was executed. Partial coverage
+must identify remaining work and its owner or resolution condition.
 
-## Required specification structure
+## Structure
 
-Every feature, shared-contract, and quality specification must use the
-spec-driven-development template headings in this order:
+Use these headings in order:
 
 1. `Status`
 2. `Objective and Context`
 3. `Scope`
 4. `Requirements`
-5. `Implementation and Verification Evidence` when implementation evidence is
-   useful
+5. `Implementation and Verification Evidence`
 6. `Constraints and Execution Boundaries`
 7. `Acceptance Checks`
 8. `Assumptions`
 9. `Open Questions`
-10. `Revision and Handoff Notes`
 
-Feature-specific normative subsections may appear under `Requirements` when they
-make a contract easier to review, such as a schema, provenance, path-safety, or
-isolation contract. Requirement groups must use stable IDs when acceptance checks
-or downstream work reference them, and each group must state its basis.
+Use a `Design rationale` subsection where choices or trade-offs need explanation.
+Describe the current design directly, without requiring readers to reconstruct a
+timeline. Detailed contracts may use subsections for schemas, provenance, path
+safety, or isolation.
 
-Acceptance checks must map to requirement IDs and state an observable pass
-condition plus a verification method. They must cover relevant failure,
-compatibility, and boundary behavior rather than merely requiring that tests
-exist or pass.
+Requirements and acceptance checks use stable IDs. Each acceptance check names
+the requirement, starting conditions and action, observable pass condition, and
+verification method. Cover relevant failure, compatibility, and boundary cases;
+requiring tests to exist or pass is insufficient.
 
-Commands, source locations, test coverage, and other current-tree facts belong
-under `Implementation and Verification Evidence`; they do not redefine the
-requirements. Confirmed operating foundations may be recorded under
-`Assumptions`, which must state `None` when no material assumption remains.
-Likewise, use `None` under `Open Questions` when the current revision has no
-decision awaiting maintainer input. Every material question must identify its
-impact, blocking status, owner or needed evidence, and resolution condition.
+Implementation evidence identifies source ownership, test scenarios, and runnable
+commands. Keep it distinct from executed results: file existence and test
+definitions are structural evidence, while a passing gate requires an actual run.
+Report current run results and skipped checks in the task handoff rather than
+accumulating execution diaries in specifications.
 
-## Allowed lifecycle values
+Use `None` when no material assumption or open question remains. A current open
+question must identify its impact, blocking status, owner or needed evidence, and
+resolution condition. Uncommitted future ideas do not expand the supported scope.
 
-`State` must be one of:
+## Maintenance
 
-- `Draft`: under review and not yet authoritative.
-- `Active`: authoritative for current development and maintenance.
-- `Superseded`: replaced by another linked specification or decision.
-- `Retired`: no longer applicable and retained only for historical context.
-
-`Implementation state` must be one of:
-
-- `Not started`: no normative behavior has been implemented.
-- `Partially implemented`: some normative behavior is implemented, with remaining
-  work identified in the specification or a linked follow-up.
-- `Implemented`: the normative behavior is represented in the current tree and
-  has implementation evidence in tests, project structure, or validation notes.
-
-Lifecycle status and implementation state are independent. For example, an
-active specification may be only partially implemented, while a superseded
-specification may describe behavior that remains in the tree during migration.
-
-## Content classification
-
-- Normative requirements belong under `Requirements` and `Constraints and
-  Execution Boundaries` and use requirement language such as **must**, **must
-  not**, or an unambiguous imperative.
-- Current-state notes belong under `Objective and Context` or `Implementation and
-  Verification Evidence`. They describe evidence in the current tree and are not
-  additional requirements.
-- `Acceptance Checks` assess observable requirements; implementation mechanics
-  and detailed test construction remain evidence or derived planning material.
-- Deferred behavior must name its owner or link to a tracked follow-up.
-- Future ideas that are not commitments must be labeled as such and require a new
-  approved specification or plan item before implementation.
-- A superseded specification must link to its replacement in the metadata or at
-  the start of the document.
-
-## Shared contracts
-
-Cross-feature terminology and normative behavior belong in a named shared
-specification rather than in this governance file or repeated across feature
-specifications. The current shared catalog vocabulary, schema-v1 path model,
-compatibility-sensitive names, provenance binding, and trust rules are defined by
-the [Shared Catalog Contract](shared-catalog-contract-spec.md).
-
-Create another shared specification only when at least two slices consume one
-stable product contract. Generic architecture, tooling, and documentation policy
-belong in their existing project rules or ADRs instead.
-
-## Review process
-
-When behavior, dependencies, or architecture decisions change:
-
-1. Update the specification and its implementation evidence together.
-2. Recheck dependency and ADR links.
-3. Update `Revision` when normative behavior, compatibility, data format, or
-   an externally visible workflow changes materially. Editorial-only corrections
-   do not require a version increase.
-4. Set `Last reviewed` only after comparing the document with the current tree,
-   relevant tests, CLI surface, and linked contracts.
-5. Update `Implementation state` and identify any remaining work with an owner or
-   linked follow-up.
-6. Update the root README only when setup, supported usage, or operator guidance
-   changes; keep detailed requirements in the owning specification.
+1. Compare the affected contract with its implementation, tests, CLI help, and
+   dependent specifications. Surface material conflicts before choosing an
+   unsupported product outcome.
+2. Keep each obligation with its owning specification. Move necessary rationale
+   with it, and update references before removing redundant documents.
+3. For a behavior, compatibility, data-format, or supported-workflow change,
+   settle the requirement decision and update the contract, implementation
+   evidence, and acceptance checks together.
+4. Update `Revision` for material contract changes; editorial consolidation alone
+   does not require a version change. Set `Last reviewed` only after review.
+5. Check dependencies, metadata, catalog state, links, examples, and referenced
+   commands. Update the README when setup, usage, or operator guidance changes.

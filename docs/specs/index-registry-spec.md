@@ -4,14 +4,11 @@
 
 - State: Active
 - Revision: 2.5
-- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision, October 12, 2026 Makefile workflow decision, October 14, 2026 consumer-state force-rebuild decision, and October 16, 2026 legacy registry force-recovery decision.
-- Accepted by / on: User / 2026-10-16
+- Acceptance basis: Existing active registry, cache, and explicit source-recovery contract.
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
-- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0008](../adr/0008-rebuild-legacy-index-registrations-on-explicit-force.md).
-- Supersedes: Revision 2.4 of this specification
 
 ## Objective and Context
 
@@ -25,9 +22,20 @@ all cached copies later from their remembered Git sources. The registry is the
 consumer-side catalog foundation used by the implemented `skills list`,
 `skills install`, and requirements-file `skills sync` workflows.
 
+### Design rationale
+
+The registry file is the commit record for a validated source and cached index.
+Writing durable candidates before replacing that file prevents mixed bindings.
+Registry locks serialize read and write snapshots; namespacing caches by the
+canonical registry path prevents independent registries from claiming or cleaning
+each other's files.
+
+Legacy recovery rebuilds a binding from saved safe source locations. It preserves
+registrations for retry without treating old cached bytes or paths as authority.
+
 ### Current-state evidence
 
-- Ritebook already supports publisher-side skill index generation through
+- Ritebook supports publisher-side skill index generation through
   `indexes publish`.
 - Publisher indexes are written as root-level `ritebook-index.json` files.
 - Publisher schema v1 includes index metadata and skill entries with required
@@ -38,9 +46,9 @@ consumer-side catalog foundation used by the implemented `skills list`,
 - The registry supports `indexes add`, `indexes list`, `skills list`, and
   `indexes update`. The `skill_installation` slice consumes registered cached
   indexes for `skills install` and `skills sync`.
-- The current registry schema persists a full source revision and exact-index
-  digest and points to an immutable content-addressed cache generation.
-- [ADR 0001](../adr/0001-source-provenance-and-trust.md) defines the implemented
+- Registry schema v2 persists source revision, branch, and exact-index digest
+  and points to an immutable content-addressed cache generation.
+- [Shared Catalog Contract](shared-catalog-contract-spec.md) defines the implemented
   end-to-end provenance binding.
 - Internal skill distribution should primarily support Git repositories because
   company skills are expected to live in private Git repositories.
@@ -58,11 +66,9 @@ consumer-side catalog foundation used by the implemented `skills list`,
 
 ## Requirements
 
-The following requirement groups define the normative index-registry contract of revision 2.2.
+The following groups define the normative index-registry contract.
 
 ### R1 — Add index
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can register a curated skill index from either:
 
@@ -126,7 +132,7 @@ Requirements:
   from `ritebook-index.json`.
 - If `--alias` is provided, Ritebook uses it as the local registry namespace
   without changing the published name.
-- Registry schema v1 persists `alias_origin = "published_name"` for the default
+- Registry schema v2 persists `alias_origin = "published_name"` for the default
   and `alias_origin = "explicit"` for a supplied alias. Update preserves the
   origin while preserving the local alias.
 - Ritebook caches the exact validated index contents locally under the local
@@ -151,8 +157,6 @@ uv run ritebook indexes add --source <git-source> --alias <alias> --force
 
 ### R2 — List indexes
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 A user can list locally registered indexes.
 
 Example CLI shape:
@@ -172,8 +176,6 @@ Requirements:
   standard-URL user-info and never prints embedded credentials.
 
 ### R3 — List cached skills
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can browse all cached skills or filter by one local alias without network
 access:
@@ -219,8 +221,6 @@ Indexes
 ```
 
 ### R4 — Update index
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A user can refresh an existing registered index from its remembered Git source.
 
@@ -276,8 +276,7 @@ Requirements:
   code after the batch completes.
 - `--force` repairs consumer-managed source and cache state only. It does not run
   publisher-side index discovery or regenerate `ritebook-index.json`.
-- Under [ADR 0008](../adr/0008-rebuild-legacy-index-registrations-on-explicit-force.md),
-  explicit force also permits schema-v1 registry recovery. Validate saved aliases,
+- Explicit force also permits schema-v1 registry recovery. Validate saved aliases,
   source locations, and source types; rebuild selected entries from fresh
   committed content with newly discovered canonical branches. Do not reuse or
   delete paths from legacy entries, or infer provenance for their cached bytes.
@@ -291,8 +290,6 @@ Requirements:
 
 ### R5 — Publisher index metadata
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 The publisher index schema, published-name contract, and catalog path model are
 defined by the shared catalog contract. The registry validates that complete
 contract when adding, updating, or reading a cached index. It uses `index.name`
@@ -301,29 +298,27 @@ when the consumer chooses `--alias`.
 
 ### R6 — Local registry and cache
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 Ritebook maintains a local consumer registry and cached index contents.
 
 Recommended default location:
 
 ```text
 ~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
-~/.cache/ritebook/git/<source-cache-id>/
+~/.cache/ritebook/registries/<registry-id>/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
+~/.cache/ritebook/registries/<registry-id>/git/<source-cache-id>/
 ```
 
 Tests and automation should be able to override these paths with explicit CLI
 options or injected settings so unit tests do not mutate real user state.
 
-Example registry schema:
+Example current registry (schema v2):
 
 The existing registry `name` field stores the local alias; `published_name`
 stores publisher-owned metadata; `alias_origin` records how the alias was chosen.
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "indexes": [
     {
       "name": "platform-skills",
@@ -331,9 +326,10 @@ stores publisher-owned metadata; `alias_origin` records how the alias was chosen
       "alias_origin": "explicit",
       "source": "git@github.com:company/internal-skills.git",
       "source_type": "git_url",
-      "source_cache_path": "/Users/me/.cache/ritebook/git/<cache-id>",
-      "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
+      "source_cache_path": "/Users/me/.cache/ritebook/registries/<registry-id>/git/<cache-id>",
+      "cached_index_path": "/Users/me/.cache/ritebook/registries/<registry-id>/indexes/platform-skills/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
       "source_revision": "0123456789abcdef0123456789abcdef01234567",
+      "source_branch": "refs/heads/main",
       "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "source_schema_version": 1,
       "skill_count": 12,
@@ -354,8 +350,9 @@ For local repository sources:
   "source": "/absolute/path/to/internal-skills",
   "source_type": "local_git_repo",
   "source_cache_path": null,
-  "cached_index_path": "/Users/me/.cache/ritebook/indexes/platform-skills-local/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
+  "cached_index_path": "/Users/me/.cache/ritebook/registries/<registry-id>/indexes/platform-skills-local/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ritebook-index.json",
   "source_revision": "0123456789abcdef0123456789abcdef01234567",
+  "source_branch": "refs/heads/main",
   "index_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "source_schema_version": 1,
   "skill_count": 12,
@@ -364,11 +361,13 @@ For local repository sources:
 }
 ```
 
-Registry schema-v1 provenance requirements follow
-[ADR 0001](../adr/0001-source-provenance-and-trust.md):
+Registry provenance follows the
+[Shared Catalog Contract](shared-catalog-contract-spec.md):
 
 - `source_revision` is required and stores the full commit object ID whose root
   index was validated.
+- `source_branch` is required and stores the canonical `refs/heads/...` branch
+  selected during registration or explicit legacy recovery.
 - `index_digest` is required and binds `cached_index_path` to the exact validated
   index bytes.
 - Ordinary reads reject schema-v1 registries with guidance to run explicit force
@@ -376,6 +375,21 @@ Registry schema-v1 provenance requirements follow
   does not infer provenance for old bytes or silently migrate on first use.
 - Schema-v2 entries require `alias_origin`. Recovered legacy aliases are retained
   as explicit aliases, independently of the freshly discovered published name.
+
+#### Registry ownership and locking
+
+- Registry snapshots use a shared POSIX lock; add, update, recovery, and cleanup
+  use an exclusive lock. Acquisition is bounded and reports a busy error when
+  another operation holds the lock beyond the timeout.
+- The write transaction spans reading the registry, preparing Git and cache
+  candidates, committing metadata, and cleanup. Registry code does not wait for
+  installation or contribution-checkout locks.
+- Managed clones and index generations live beneath
+  `<cache-root>/registries/<registry-id>/`, where `<registry-id>` is the SHA-256
+  hex of the canonical registry path. Sharing a cache root does not grant a
+  registry ownership of another registry's namespace.
+- The registry replacement remains the commit point. Source or cache cleanup
+  failures do not reverse a committed binding.
 
 #### Registry/cache commit protocol
 
@@ -386,8 +400,8 @@ Registry schema-v1 provenance requirements follow
   hex from `index_digest`.
 - Every cached read receives the registered digest, reads bytes, verifies the
   digest, and only then runs strict JSON and semantic validation.
-- `add-index --force` and `indexes update` preserve the generation referenced by the
-  current registry entry while writing and synchronizing the candidate generation.
+- `indexes add --force` and `indexes update` preserve the current registry's
+  referenced generation while writing and synchronizing its candidate.
 - `indexes update --force` rewrites the validated content-addressed generation even
   when its digest is unchanged, allowing damaged local bytes to be repaired before
   the registry commit remains or becomes authoritative.
@@ -419,8 +433,6 @@ Registry schema-v1 provenance requirements follow
 
 ### R7 — Duplicate behavior
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 - Duplicate skill names are allowed across different indexes.
 - Duplicate skill names are also allowed within one index when their relative
   skill paths differ, such as `backend/code-review` and `frontend/code-review`.
@@ -443,8 +455,6 @@ Registry schema-v1 provenance requirements follow
 
 ### R8 — Git source behavior
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 #### Git URL sources
 
 - Ritebook manages its own cached clone.
@@ -457,8 +467,10 @@ Registry schema-v1 provenance requirements follow
 - Advancing mutable refs in the managed clone does not replace the previous
   registry/cache binding until the candidate commit and index are validated and
   persisted coherently.
-- A detached candidate commit is valid. Rewritten refs do not invalidate an
-  existing binding while its commit object remains available.
+- Registration records the canonical remote branch; normal refresh follows
+  that saved branch. Reading a bound commit does not require it to be checked
+  out. Rewritten refs do not invalidate an existing binding while its commit
+  object remains available.
 - If a bound commit is not available in the managed clone, Ritebook may fetch the
   remembered source to recover that exact object. If recovery fails, downstream
   use fails safely rather than substituting a current ref.
@@ -476,7 +488,9 @@ Registry schema-v1 provenance requirements follow
 #### Local Git repository sources
 
 - Ritebook validates that the path appears to be a Git repository.
-- Ritebook does not own or mutate the local repository.
+- Ritebook does not own or mutate the local repository. Registration requires
+  a checked-out branch to record canonical retrieval metadata; refresh reads
+  the saved branch without checking it out.
 - `indexes add` and `indexes update` reject staged, unstaged, or untracked changes and
   provide guidance to commit or discard them.
 - `indexes update --force` does not change that ownership boundary; it re-reads the
@@ -489,8 +503,6 @@ Registry schema-v1 provenance requirements follow
   the registration from a new clean committed state.
 
 ### R9 — CLI and workflow requirements
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 Registry commands:
 
@@ -552,68 +564,20 @@ Failed to update 1 index(es): platform-skills
 
 ### Project structure
 
-The implementation uses the `index_registry` vertical feature slice:
+- [`src/ritebook/features/index_registry/application/`](../../src/ritebook/features/index_registry/application/)
+  owns use cases, ports, DTOs, and application errors.
+- [`src/ritebook/features/index_registry/adapters/`](../../src/ritebook/features/index_registry/adapters/)
+  owns the feature CLI and outbound I/O.
+- [`tests/unit/features/index_registry/`](../../tests/unit/features/index_registry/)
+  mirrors feature ownership; [`tests/integration/`](../../tests/integration/)
+  and [`tests/e2e/`](../../tests/e2e/) verify real local workflows.
+- `src/ritebook/adapters/inbound/cli/parser.py` defines command arguments;
+  `src/ritebook/adapters/inbound/cli/adapter.py` dispatches to feature CLI facades;
+  `src/ritebook/cli.py` wires dependencies.
 
-```text
-src/ritebook/features/index_registry/
-├── application/
-│   ├── dtos/
-│   │   └── index_registry.py
-│   ├── ports/
-│   │   ├── add_index.py
-│   │   ├── cached_index_reader.py
-│   │   ├── list_indexes.py
-│   │   ├── list_skills.py
-│   │   ├── update_index.py
-│   │   ├── git_source.py
-│   │   ├── index_cache.py
-│   │   ├── index_registry.py
-│   │   └── index_source_reader.py
-│   └── use_cases/
-│       ├── add_index.py
-│       ├── list_indexes.py
-│       ├── list_skills.py
-│       └── update_index.py
-└── adapters/
-    ├── inbound/cli/
-    │   └── commands.py
-    └── outbound/
-        ├── filesystem_registry/
-        │   └── adapter.py
-        ├── git/
-        │   └── adapter.py
-        ├── index_cache/
-        │   └── adapter.py
-        └── json_index/
-            └── reader.py
-```
-
-CLI integration and composition root:
-
-- `src/ritebook/adapters/inbound/cli/parser.py`
-- `src/ritebook/features/index_registry/adapters/inbound/cli/commands.py`
-- `src/ritebook/adapters/inbound/cli/adapter.py`
-- `src/ritebook/cli.py`
-
-Publisher index metadata is implemented in:
-
-- `src/ritebook/features/publisher/domain/catalog.py`
-- `src/ritebook/features/publisher/adapters/outbound/json_index/writer.py`
-
-Tests should mirror source ownership:
-
-```text
-tests/unit/features/index_registry/
-├── application/
-│   ├── test_add_index.py
-│   ├── test_list_skills.py
-│   └── test_update_index.py
-└── adapters/outbound/
-    ├── test_filesystem_registry.py
-    ├── test_git_source.py
-    ├── test_index_cache.py
-    └── test_json_index_reader.py
-```
+Publisher catalog metadata lives in
+`src/ritebook/features/publisher/domain/catalog.py`; its JSON writer lives in
+`src/ritebook/features/publisher/adapters/outbound/json_index/writer.py`.
 
 ### Conventions
 
@@ -701,8 +665,8 @@ tests/unit/features/index_registry/
 - Content-addressed cache generations preserve the registry-referenced bytes until
   the registry commit succeeds and recover abandoned adapter-owned artifacts on the
   next mutation.
-- Registry/cache readers reject schema-v1 entries missing required provenance and
-  detect cached-index digest mismatches.
+- Ordinary registry readers reject schema-v1 registries and missing provenance;
+  cache readers detect digest mismatches.
 - Git adapter invokes Git non-interactively and reports clone/fetch failures
   clearly.
 - Git adapter forced refreshes use fresh registry-owned clone paths and cleanup
@@ -732,9 +696,10 @@ tests/unit/features/index_registry/
 
 ### Commands and validation
 
-When changing this workflow, use focused tests first, then the full quality gate:
+Run focused tests through the Makefile, then the complete verification gate:
 
 ```bash
+PYTEST_ADDOPTS='tests/unit/features/index_registry' make test
 make verify
 ```
 
@@ -750,7 +715,7 @@ make verify
 - Cache the current index contents locally.
 - Bind cached index contents to the selected full Git commit and exact-index
   SHA-256 digest according to
-  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
+  [Shared Catalog Contract](shared-catalog-contract-spec.md).
 - Use publisher index metadata as the default local alias.
 - Allow `--alias` to resolve published-name collisions without rewriting
   publisher metadata.
@@ -800,39 +765,15 @@ make verify
 | AC10 | R9 | Invoke each documented registry and skill-list command and path override. | Arguments map to the owning use case and produce concise documented success or actionable error output. | CLI parser and adapter tests. |
 | AC11 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, import contracts, non-E2E tests, package build, and Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
 | AC12 | R4, R6 | Force-update a schema-v1 registry, including partial failure and retry. | Saved aliases and safe sources rebuild into validated schema-v2 bindings; failed registrations remain saved; legacy paths stay untouched; ordinary reads remain strict. | Recovery integration, filesystem boundary, and installed-wheel Docker E2E tests. |
+| AC13 | R6 | Hold a registry writer lock, then attempt another snapshot; derive cache paths for two registries sharing one alias and cache root. | The competing read fails busy after its bounded timeout; each registry receives a distinct cache namespace derived from its canonical path. | Filesystem registry lock tests and adapter-level cache-path checks. |
 
 ## Assumptions
 
 - Git URLs and clean local Git repositories remain the supported index sources.
-- Schema version `1` and ADR 0001's commit-and-digest binding remain the
+- Publisher schema version `1` and the shared commit-and-digest binding remain the
   compatibility baseline.
 - Material unresolved assumptions: None.
 
 ## Open Questions
 
 None.
-
-## Revision and Handoff Notes
-
-- October 16, 2026: Revision 2.5 added explicit schema-v1 registry rebuilding from
-  saved source registrations, preserving failed entries for retry under ADR 0008.
-
-- October 14, 2026: Revision 2.4 added `indexes update --force` for one alias or
-  `--all`. Forced Git URL updates use fresh managed clones, forced cache writes
-  repair same-digest generations, failures preserve the previous coherent
-  binding, shared clones remain until unreferenced, and local repositories retain
-  their non-mutation ownership boundary.
-- October 12, 2026: Revision 2.3 adopted `make verify` as the canonical complete
-  handoff gate without changing registry behavior or the Docker E2E boundary.
-- October 2, 2026: Reformatted revision 2.1 to the current
-  spec-driven-development template under the user's instruction. Requirement
-  meaning, lifecycle state, and revision number were preserved.
-- October 7, 2026: Revision 2.2 adopted strict closed schema-v1 admission,
-  exact-byte digest-before-parse cache reads, persisted alias provenance with
-  conservative legacy inference, and best-effort post-commit cleanup.
-- October 7, 2026: Marked revision 2.2 implemented after exact-byte cache tests,
-  strict shared-reader coverage, alias migration, and candidate/superseded
-  generation cleanup behavior were verified.
-- Next authorized step: Treat this Active revision as canonical. Installation,
-  non-Git sources, listing side effects, or trust-policy additions require their
-  owning specification or an approved revision.

@@ -4,14 +4,11 @@
 
 - State: Active
 - Revision: 1.2
-- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict portable schema-v1 catalog decision.
-- Accepted by / on: User / 2026-10-07
+- Acceptance basis: Existing active catalog, provenance, and trust contract.
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-07
+- Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: None
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: None
 
 ## Objective and Context
 
@@ -23,6 +20,14 @@ Feature specifications depend on this contract instead of redefining its terms.
 They remain responsible for workflow-specific orchestration, persistence,
 diagnostics, and recovery behavior.
 
+### Design rationale
+
+One closed, bounded catalog contract prevents publishers and consumers from
+interpreting the same bytes differently. Exact-byte digests detect cache
+corruption and mismatched artifacts; Git commits identify the repository base
+needed by installation and contribution. Neither establishes publisher
+authenticity. Signatures and approval policy are separate concerns.
+
 ### Current-state evidence
 
 - Shared identifier and catalog-path rules are implemented under
@@ -30,7 +35,7 @@ diagnostics, and recovery behavior.
 - Publisher output and consumer index readers enforce the same schema-v1 catalog
   structure.
 - Registry, installation, and contribution state bind an exact publisher index to
-  a full Git commit and digest in accordance with ADR 0001.
+  a full Git commit and exact-index digest.
 - Feature-specific adapters add stricter filesystem and mutation checks where
   their workflows require them.
 
@@ -44,20 +49,18 @@ diagnostics, and recovery behavior.
 
 ## Requirements
 
-The following requirement groups define the normative shared contract of revision 1.2.
+The following groups define the normative shared contract.
 
 All consuming slices use the terminology, catalog structure, compatibility rules,
 and provenance requirements defined below rather than redefining them locally.
 
 ### R1 — Shared terminology and identity
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 - A **published name** is the publisher-owned stable identifier stored as
   `index.name` in `ritebook-index.json`. Application code may call this value
   `published_name`. Consumers must not rewrite it when choosing a local namespace.
 - A **local alias** is the consumer-owned namespace for a registered index. It
-  defaults to the published name, but `add-index --alias` may choose another value.
+  defaults to the published name, but `indexes add --alias` may choose another value.
 - A **catalog skill path** identifies one published skill relative to
   `skills_root`. In schema v1 it is `<skill>` or `<collection>/<skill>`.
 - A **catalog selector** is the catalog-relative portion after the local alias in a
@@ -75,8 +78,6 @@ and provenance requirements defined below rather than redefining them locally.
 
 ### R2 — Canonical identifiers
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 Published names, local aliases, skill directory names, and collection directory
 names must use the canonical Ritebook identifier form:
 
@@ -89,8 +90,6 @@ Feature adapters must reject invalid external identifiers before invoking an
 application use case.
 
 ### R3 — Catalog structure
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - A skill is a directory containing `SKILL.md`.
 - A catalog skill path contains exactly one or two non-empty safe POSIX segments:
@@ -112,8 +111,6 @@ limit safe repository-relative paths formed by prefixing a catalog path with
 `skills_root`.
 
 ### R4 — Publisher index schema v1
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 The canonical publisher artifact is the repository-root
 `ritebook-index.json`:
@@ -177,8 +174,6 @@ and `skill_file` equals `<path>/SKILL.md` exactly.
 
 ### R5 — Compatibility-sensitive names
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 The following schema and CLI names remain unchanged in version 1 even where their
 names are less specific than their semantics:
 
@@ -195,19 +190,25 @@ diagnostics must state the semantic role of these fields in the meantime.
 
 ### R6 — Source provenance contract
 
-**Basis:** Existing active Ritebook contract and ADR 0001.
-
-- A consumer registry entry must bind cached index bytes to both a full Git commit
-  in `source_revision` and a digest of the exact index bytes in `index_digest`.
-- A consumer must verify both values before trusting cached metadata or reading
-  skill content.
+- A consumer binding includes a validated `source` locator and `source_type`,
+  full Git commit object ID in `source_revision`, exact-index SHA-256 digest in
+  `index_digest`, and canonical `refs/heads/...` retrieval branch in
+  `source_branch`. The branch and locator retrieve content; the commit and digest
+  identify the validated repository state and artifact.
+- The digest covers the exact root `ritebook-index.json` bytes at the bound
+  commit. A working-tree `HEAD`, branch, tag, timestamp, or source path cannot
+  substitute for that binding.
+- A consumer must verify the commit-and-digest binding before trusting metadata
+  or reading skill content.
 - Installation must preserve that binding in generated state used by downstream
   contribution workflows.
 - Contribution must select the exact qualified lockfile requirement and use its
   recorded commit and digest. It must not fall back to a mutable source `HEAD`, a
   skill name, or a repository-relative path.
-- Missing provenance is an invalid pre-release schema-v1 state. Ritebook must give
-  regeneration guidance instead of inferring provenance from mutable sources.
+- Missing provenance is invalid. Ritebook must give regeneration or explicit
+  recovery guidance instead of inferring the identity of old bytes from mutable
+  sources. Publisher indexes use schema v1, registries use schema v2, and
+  installation state uses schema v3; each owning specification defines recovery.
 - The consumer-owned digest does not alter the publisher schema and does not by
   itself authenticate the publisher.
 - Consumers preserve the committed index as exact `bytes`, verify cached bytes
@@ -215,8 +216,6 @@ diagnostics must state the semantic role of these fields in the meantime.
   decoded-and-reencoded representation for the digest-bound artifact.
 
 ### R7 — Shared trust and path rules
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 - Treat publisher indexes, registry files, lockfiles, and installation manifests
   as untrusted external input at their reader boundaries.
@@ -239,8 +238,8 @@ diagnostics must state the semantic role of these fields in the meantime.
 
 ### Commands and validation
 
-- Test: `uv run pytest tests/unit/shared_kernel tests/unit/features/index_registry`
-- Lint and static checks: `uv run ruff check . && uv run ty check src/ritebook`
+- Focused tests: `PYTEST_ADDOPTS='tests/unit/shared_kernel tests/unit/features/index_registry' make test`
+- Quality gate: `make quality`
 - Manual verification: inspect a generated schema-v1 `ritebook-index.json` and
   verify consumers reject invalid catalog paths and provenance.
 
@@ -309,19 +308,3 @@ diagnostics must state the semantic role of these fields in the meantime.
 ## Open Questions
 
 None.
-
-## Revision and Handoff Notes
-
-- October 2, 2026: Reformatted revision 1.1 to the current
-  spec-driven-development template under the user's instruction. Requirement
-  meaning, lifecycle state, and revision number were preserved.
-- October 7, 2026: Revision 1.2 closed schema-v1 object shapes; added strict JSON
-  preflight, portable path/text/timestamp rules, exact-byte cache verification,
-  committed-header coherence, and the approved 16 MiB, depth-32, and 10,000-entry
-  resource limits under ADR 0005.
-- October 7, 2026: Marked revision 1.2 implemented after shared strict parsing,
-  publisher and consumer conformance, exact-byte provenance, alias migration,
-  committed-header validation, and contribution provenance were verified.
-- Next authorized step: Treat this Active revision as the canonical shared
-  contract. Any schema, compatibility, or provenance change requires a revised
-  specification and, where durable architecture changes, an ADR.

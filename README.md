@@ -1,16 +1,15 @@
 # ritebook
 
-Ritebook is a Python CLI for validating, publishing, registering, browsing, and
-installing Agent Skill indexes. It supports publisher workflows that generate
-reviewable `ritebook-index.json` files and consumer workflows that install skills
-from registered Git-backed indexes.
+Ritebook is a Python CLI for validating, installing, synchronizing, and
+contributing Agent Skills, and for publishing, registering, and browsing
+Git-backed skill indexes. Publishers generate reviewable `ritebook-index.json`
+files; consumers install skills from registered indexes.
 
 ## Specifications
 
-[`docs/specs/`](docs/specs/README.md) is the canonical source for Ritebook's
-product, shared-contract, and supported-workflow requirements. This README
-provides setup and usage guidance; when its examples need more detail, the owning
-specification defines the contract.
+This README covers setup and common workflows. [Specifications](docs/specs/README.md)
+define current contracts and their design rationale.
+[Repository instructions](AGENTS.md) govern agent contributions.
 
 ## Requirements
 
@@ -18,6 +17,8 @@ specification defines the contract.
 - [uv](https://docs.astral.sh/uv/) 0.13.0 or newer for host development and CI
   dependency management and command execution
 - GNU Make for the shared local and CI task interface
+- Git for index, installation, and contribution workflows
+- Docker for the complete verification gate
 
 ## Development setup
 
@@ -43,9 +44,8 @@ configuration or before opening a PR:
 make pre-commit
 ```
 
-Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
-linting, ty type checking, Import Linter architecture contracts, and tests. It
-complements, but does not replace, the full local quality gate.
+Pre-commit checks file hygiene, Ruff formatting and linting, ty types, Import
+Linter architecture contracts, and tests. It complements the full quality gate.
 
 The Ruff hooks check without rewriting Python files. Ruff, ty, and pytest run
 when Python files, `pyproject.toml`, `uv.lock`, `Makefile`, or
@@ -60,22 +60,18 @@ make quality
 This checks formatting, Ruff linting, ty types, Import Linter architecture
 contracts, and the default non-E2E pytest suite. Use `make help` to list the
 corresponding leaf targets and explicit formatting or lint-fix commands.
-Regression tests require the architecture graph to cover every Ritebook source
-module and verify that forbidden feature-core imports fail validation.
 
-`make architecture` enforces inward layer dependencies, shared-kernel and
-composition-root isolation, private slice boundaries, and an explicit I/O-library
-denylist. It includes imports under `TYPE_CHECKING`. Cross-slice callers use the
-public `application.ports`, `application.dtos`, and `application.errors` modules.
-The composition root wires implementations; the shared CLI dispatcher may import
-each slice's inbound CLI facade. Module contracts do not detect side effects
-through otherwise permitted APIs or dynamic imports; those still need code review.
+`make architecture` enforces inward dependencies, private slice boundaries,
+shared-kernel and composition-root isolation, and an explicit I/O-library denylist,
+including imports under `TYPE_CHECKING`. See [repository instructions](AGENTS.md)
+for boundary rules. Dynamic imports and side effects through permitted APIs still
+need code review.
 
 Plain pytest execution deselects Docker E2E tests by default. The Docker image
 explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
 because it cannot establish the clean installed-wheel boundary.
 
-Run the complete local verification gate before handoff:
+For implementation changes, run the complete verification gate before handoff:
 
 ```bash
 make verify
@@ -86,18 +82,12 @@ the package distributions, and builds and runs Docker E2E. It fails if Docker is
 unavailable rather than silently omitting E2E. `make docker-e2e` runs only the
 Docker build and test steps.
 
-`Dockerfile.e2e` is a clean installed-wheel test boundary, not production
-packaging. It builds a wheel from the current source, installs that wheel and its
-declared runtime dependencies into a consumer environment, and runs the E2E suite
-from a separate locked test-tool environment. The final image contains the E2E
-harness but not the project source, `pyproject.toml`, or `uv.lock`, so the tests
-invoke the installed `ritebook` console script directly. Tests run as an
-unprivileged user with a controlled writable home and use local Git repositories,
-explicit registry files, and explicit cache directories. Normal container
-networking is allowed, but the image receives no credentials or developer-local
-Ritebook state. Docker is the only supported E2E execution path. CI/CD uses the
-same build and run commands and runs Docker E2E as a mandatory quality gate in
-parallel with the non-E2E quality checks.
+`Dockerfile.e2e` tests an installed wheel in a clean consumer environment, with
+separate locked test tooling and no project source or developer-local state.
+Tests run unprivileged against local Git fixtures. CI runs the same Docker gate
+in parallel with non-E2E quality checks. The
+[Docker E2E specification](docs/specs/docker-e2e-testing-spec.md) defines isolation,
+networking, and the limits of this verification.
 
 Build the package distributions without running the other gates:
 
@@ -134,17 +124,15 @@ ritebook indexes <publish|add|list|update> ...
 
 ## Publisher skill index generation
 
-Maintainers can validate skill headers and generate a reviewable skill catalog
-index from an explicit skills root:
+Validate skill headers under an explicit skills root:
 
 ```bash
 uv run ritebook skills lint --root <path>
 ```
 
-The `skills lint` command iteratively finds visible `SKILL.md` candidates so
-invalid nested declarations are reported, then enforces the schema-v1 catalog
-layout. It does not follow symlinked skill directories or files; visible
-symlinked candidates are reported as validation issues.
+`skills lint` finds visible `SKILL.md` candidates and reports invalid nested
+declarations and symlinked candidates without following symlinks.
+
 A skill must be either `<skill>/SKILL.md` at the catalog root or
 `<collection>/<skill>/SKILL.md` one level below an implicit collection. Every
 catalog segment must be a canonical kebab-case identifier. A node cannot be both
@@ -153,46 +141,36 @@ invalid. The [Agent Skills specification](https://agentskills.io/specification) 
 the canonical baseline for portable skill headers. The minimal accepted header
 contains only `name` and `description`; Ritebook also supports the standard
 optional `license`, `compatibility`, `metadata`, and `allowed-tools` fields.
-Compatible collection profiles may require standard optional flat metadata, but
-nested metadata is invalid and every `metadata` value must be a string. YAML
-mapping keys must be unique. Frontmatter may span any number of lines but must be
-valid UTF-8 and at most 65,536 bytes including its delimiters and line endings.
-An empty catalog is valid. Successful lint runs report `Checked N skill(s)` using
-the regular-file candidate count without writing an index file. See the
-[`Skill Linter` specification](docs/specs/skill-linter-spec.md) for the complete
-header and diagnostic contract.
+Every `metadata` value must be a string; nested metadata is invalid. An empty
+catalog is valid. Successful lint runs report `Checked N skill(s)` without writing
+an index. The [Skill Linter specification](docs/specs/skill-linter-spec.md) defines
+the full header and diagnostic contract.
 
-The repository's `.agents/` directory contains skills sourced from other
-repositories. Their owning collections validate them, so Ritebook's local,
-pre-commit, and CI quality gates exclude that tree from formatting, linting, type
-checking, tests, and file-hygiene hooks. The directory remains Git-tracked.
+The Git-tracked `.agents/` tree contains externally sourced skills. Their owning
+collections validate them; Ritebook's local, pre-commit, and CI quality gates
+exclude the tree, including file-hygiene hooks.
+
+Generate an index from the validated catalog:
 
 ```bash
 uv run ritebook indexes publish --skills-root <path> --name <published-name>
 ```
 
-Run `indexes publish` from the repository directory that will contain the generated
-index. Ritebook always writes `ritebook-index.json` in that current directory.
-The required `--skills-root` may be relative or absolute, but it must resolve to
-that directory or one of its descendants. Ritebook serializes it as a portable
-repository-relative `skills_root`; equivalent relative and absolute inputs
-produce the same index paths. The `--name` option is required and must be a
-stable single-segment kebab-case identifier such as `company-skills`; slashes are
-not allowed because skill references use `<local-alias>/<skill-path>`. This
-published name is written to `ritebook-index.json` as `index.name` and becomes the
-default consumer local alias.
-The `indexes publish` command reuses the same validation flow as `skills lint` and
-refuses to write or overwrite `ritebook-index.json` when any discovered skill is
-invalid. When validation succeeds, publication consumes the exact immutable
-snapshot produced by that validation pass; it does not rescan skill files or
-reparse frontmatter. The success message reports the canonical output path
-`ritebook-index.json` relative to the invocation directory.
+Run `indexes publish` from the repository directory that will contain
+`ritebook-index.json`. The required `--skills-root` may be relative or absolute,
+but must resolve to that directory or a descendant. Ritebook stores it as a
+portable repository-relative `skills_root`. The required `--name` must be a stable
+single-segment kebab-case identifier such as `company-skills`. It becomes
+`index.name` in the generated index and the default consumer local alias.
+
+`indexes publish` uses the same validation flow as `skills lint`. It writes only
+when every discovered skill is valid, using that pass's immutable snapshot.
 
 Review the generated `ritebook-index.json` before committing it with the related
-skill changes. Schema v1 is a closed portable contract: consumers reject unknown
-or duplicate JSON members, non-standard JSON constants, unsafe or non-portable
-paths, invalid canonical UTC timestamps, non-normalized descriptions, excessive
-input above 16 MiB, nesting above depth 32, and catalogs above 10,000 skills.
+skill changes. The [publisher specification](docs/specs/publisher-spec.md) defines
+generation and output safety; the
+[shared catalog contract](docs/specs/shared-catalog-contract-spec.md) defines
+schema-v1 fields, paths, and input limits.
 
 ## Consumer index registry
 
@@ -233,9 +211,10 @@ changes only the local namespace used for cache paths, updates, listing, and
 skill references; it does not rewrite publisher metadata. If a project shares
 alias-based references in `ritebook.toml` or `ritebook.lock`, collaborators and
 CI must register the source with the same alias.
-Registry schema v1 records whether an alias came from the published name or an
-explicit `--alias`. Existing entries are inferred conservatively and gain the
-explicit origin on their next successful registry write.
+
+Registry schema v2 records whether an alias came from the published name or an
+explicit `--alias`. Legacy schema-v1 registries require the force recovery
+described below.
 
 Refresh a registered index from its remembered Git source:
 
@@ -267,6 +246,12 @@ schema v2 once all registrations are rebuilt. Ordinary reads remain unavailable
 until recovery completes. Use `--all` to finish a registry with multiple legacy
 entries. Legacy cache paths are left untouched.
 
+List registered indexes:
+
+```bash
+uv run ritebook indexes list
+```
+
 List skills from all locally cached registered indexes:
 
 ```bash
@@ -285,26 +270,23 @@ Show cached skill descriptions when available:
 uv run ritebook skills list --show-description
 ```
 
-The `skills list` command is offline-first: it reads the local registry and each
-selected registry entry's cached `ritebook-index.json` file only. It does not
-clone, fetch, pull, scan publisher skill directories, or read raw `SKILL.md`
-files. Ritebook verifies each cached file's exact bytes against its registered
-SHA-256 digest before decoding or parsing it.
+`skills list` works offline from the local registry and digest-verified cached
+indexes. It does not refresh sources or read skill files.
 
 Non-empty output is grouped by local alias in a deterministic tree:
 
 ```text
 Indexes
-├── platform-skills
-│   ├── skill-a
-│   └── browser/skill-b
-└── data-skills
-    └── query-helper
+├── data-skills
+│   └── query-helper
+└── platform-skills
+    ├── browser/skill-b
+    └── skill-a
 ```
 
-By default, the tree shows each skill's cached relative path, which can be copied
-after the local alias into `skills install`. With `--show-description`, Ritebook
-appends descriptions cached from publisher indexes when that metadata is present:
+The tree shows each skill's catalog-relative path. Append it to the local alias
+for `skills install`. With `--show-description`, Ritebook appends the cached
+description:
 
 ```text
 Indexes
@@ -322,6 +304,48 @@ When no registered cached skills are available, Ritebook prints:
 No skills found
 ```
 
+### Registry storage and overrides
+
+Default registry and cache locations:
+
+```text
+~/.config/ritebook/indexes.json
+~/.cache/ritebook/registries/<registry-id>/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
+~/.cache/ritebook/registries/<registry-id>/git/<source-cache-id>/
+```
+
+`<registry-id>` is the SHA-256 hex of the canonical registry path, separating
+caches even when registries share aliases and a cache root. Local aliases are
+single path-safe kebab-case segments. Each validated index is
+stored as an immutable generation under its alias, keyed by the lowercase SHA-256
+hex recorded in registry metadata. The registry file atomically switches to the
+new generation only after the complete cache file has been synchronized.
+
+Tests and automation can override these locations:
+
+```bash
+uv run ritebook indexes add \
+  --source <git-url-or-local-git-repo> \
+  --registry-path <path-to-indexes.json> \
+  --cache-root <cache-directory>
+
+uv run ritebook indexes update <local-alias> \
+  --registry-path <path-to-indexes.json> \
+  --cache-root <cache-directory>
+
+uv run ritebook skills list \
+  --registry-path <path-to-indexes.json>
+
+uv run ritebook skills list \
+  --index <local-alias> \
+  --registry-path <path-to-indexes.json>
+```
+
+Consumer registration requires published schema version `1` indexes to include
+`index.name` metadata. Legacy `ritebook-index.json` files without that metadata
+are rejected. The [Index Registry specification](docs/specs/index-registry-spec.md)
+defines registration, refresh, cache safety, and recovery.
+
 ## Consumer skill installation
 
 Ritebook installs skills from registered Git-backed indexes. Direct `skills
@@ -329,6 +353,8 @@ install` is offline against the currently registered commit-and-index binding.
 Repository `skills sync` refreshes every referenced local alias before resolving
 requirements and aborts without target or installation-state mutation if any
 refresh fails.
+
+### Install one skill
 
 Install one fully qualified skill into an explicit target path:
 
@@ -345,8 +371,7 @@ uv run ritebook skills install platform-skills/browser/runtime-verification \
   --target .claude/skills/runtime-verification
 ```
 
-`skills install` resolves that path exactly and never expands a collection. A
-shorthand such as
+`skills install` resolves that path exactly and never expands a collection.
 `platform-skills/runtime-verification` does not select
 `platform-skills/browser/runtime-verification`.
 
@@ -356,7 +381,7 @@ install exits nonzero. With `--force`, Ritebook transactionally replaces the
 exact existing directory even when it is unmanaged or locally edited. The
 previous tree is retained for rollback until ownership state commits. Symlinks,
 regular files, special files, dangerous paths, unsafe ancestry, and targets that
-change after inspection are still rejected:
+change after inspection are still rejected.
 
 Before planning or mutating targets, Ritebook validates the selected committed
 `SKILL.md` and requires its name and normalized description to match the
@@ -368,19 +393,17 @@ uv run ritebook skills install platform-skills/code-review \
   --force
 ```
 
-Direct `skills install` runs write generated user-level installation state to:
+Direct `skills install` writes user-level installation state to:
 
 ```text
 ~/.config/ritebook/installations.json
 ```
 
-Direct installation state uses strict schema version 3 and includes ownership,
-verified commit, canonical-branch, and index-digest provenance, and the canonical
-installed-tree digest. On POSIX platforms, Ritebook writes both `indexes.json`
-and `installations.json` with mode
-`0600`. Persisted source values never include standard-URL user-info, and `indexes
-list` defensively removes such user-info from displayed sources. Legacy or unsafe
-generated installation state is rejected and must be inspected and regenerated.
+Direct installation state uses strict schema version 3 and records ownership,
+verified source provenance, and the installed-tree digest. On POSIX, Ritebook
+writes `indexes.json` and `installations.json` with mode `0600`. Persisted sources
+exclude standard-URL user-info; `indexes list` also strips it from displayed
+sources. Legacy or unsafe installation state requires inspection and regeneration.
 
 Tests and automation can override both the index registry and direct-install
 state paths:
@@ -392,7 +415,9 @@ uv run ritebook skills install platform-skills/code-review \
   --installation-registry-path <path-to-installations.json>
 ```
 
-Repositories can declare repeatable skill installations in `ritebook.toml`:
+### Sync declared skills
+
+Declare repeatable repository installations in `ritebook.toml`:
 
 ```toml
 [targets]
@@ -460,6 +485,8 @@ preserves existing directories, even when they match the current index. Review
 every current declaration before a force rerun: sync `--force` replaces **all**
 selected targets, discarding local edits and unmanaged contents.
 
+### Sync failures and legacy state
+
 Run one mutating installation command at a time for the affected project and
 targets. Sync acquires no installation operation lock and provides no concurrent
 writer guarantee. Index-registry locking and direct-install recovery remain in
@@ -487,39 +514,28 @@ sync and direct-install contracts.
 
 Sync never deletes a directory merely because its entry was removed from
 `ritebook.toml`. The next sync leaves that directory untouched and removes it from
-generated lock state. Delete or archive an undeclared skill
-directory explicitly when it is no longer wanted. If the same path is declared
-again later, it is unmanaged and requires `--force` to replace.
+generated lock state. Delete or archive an undeclared skill directory when it is
+no longer wanted. If declared again later, the path is unmanaged and requires
+`--force` to replace.
 
 Older valid schema-v3 state may contain `desired: false` entries. Ritebook still
 parses those files, but such entries do not establish ownership and disappear
 from newly generated state unless the target is currently declared.
 
-`--force` is destructive for selected targets: it discards unmanaged contents and
-local edits at the exact selected directory after race-safe inspection. Review or
-back up valuable changes in every current declaration before using it with sync.
-
-Schema-v1 and schema-v2 lockfiles and installation registries are rejected
-without automatic migration because they lack current ownership or canonical
-source-branch provenance. Inspect and remove or relocate legacy targets, then
-rerun `skills sync` to generate schema-v3 state. Because `ritebook.lock` is
-shared, Ritebook does not force a private file mode; it rejects
-credential-bearing standard source URLs before
-writing instead.
-
-Each lock entry's `requirement` stores the exact catalog-qualified selector, such
-as `platform-skills/browser/runtime-verification`. Its `skill_path` and
-`skill_file` are different: they are safe paths relative to the source repository
-and include the published `skills_root`, such as
-`skills/browser/runtime-verification` and
-`skills/browser/runtime-verification/SKILL.md`.
+Schema-v1 and schema-v2 lockfiles and installation registries are rejected,
+including with `--force`; they lack current ownership or canonical source-branch
+provenance. Inspect and back up legacy state and targets, then move the rejected
+state file aside before reinstalling. A fresh `skills sync` installs missing
+targets and preserves existing directories until reviewed force replacement.
+Shared `ritebook.lock` files have no forced private mode; Ritebook rejects
+credential-bearing standard source URLs before writing.
 
 Shared `ritebook.lock` entries require indexes registered from portable Git URLs.
 An index registered from a local repository path remains available for browsing
-and direct `skills install`, but `ritebook skills sync` rejects it before copying because
-relative, absolute, missing, or moved machine-local paths are not commit-safe. To
-migrate, register the same published index from its Git URL (using the same local
-alias when applicable), then rerun `ritebook skills sync` to regenerate the lockfile.
+and direct `skills install`, but `ritebook skills sync` rejects it before copying
+because machine-local paths are not commit-safe. To migrate, register the same
+published index from its Git URL, keeping the local alias when applicable, then
+rerun `ritebook skills sync` to regenerate the lockfile.
 
 ## Contributing installed skill changes upstream
 
@@ -533,8 +549,8 @@ uv run ritebook skills contribute platform-skills/code-review
 The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
 path without falling back to `skill_name`. Collection-only references are not
 expanded. By default, Ritebook reads
-`ritebook.lock` from the current working directory and creates or reuses an isolated,
-Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
+`ritebook.lock` from the current working directory and creates or reuses an
+isolated Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
 automation can override both paths:
 
 ```bash
@@ -566,7 +582,9 @@ Next: cd /path/to/contributions/0123456789abcdef/platform-skills-code-review-012
 
 Ritebook does not run the suggested command, push any branch, or open a merge
 request or pull request. Inspect the checkout and commit before following the
-suggested next step.
+suggested next step. The
+[Skill Contribution specification](docs/specs/skill-contribution-spec.md) defines
+provenance checks, checkout ownership, and failure behavior.
 
 Contribution publishing accepts only desired schema-v3 lock entries with
 `materialized` or `local_changes` status, an installed-tree digest, and a portable
@@ -578,43 +596,6 @@ If the selected upstream skill path changed after the lockfile's
 `source_revision`, Ritebook stops instead of attempting to merge or overwrite the
 upstream change. Refresh/reinstall the skill and reconcile the changes manually
 before retrying.
-
-By default, Ritebook stores registry metadata and cached index contents under:
-
-```text
-~/.config/ritebook/indexes.json
-~/.cache/ritebook/indexes/<local-alias>/<sha256-hex>/ritebook-index.json
-~/.cache/ritebook/git/<source-cache-id>/
-```
-
-Local aliases are single path-safe kebab-case segments. Each validated index is
-stored as an immutable generation under its alias, keyed by the lowercase SHA-256
-hex recorded in registry metadata. The registry file atomically switches to the
-new generation only after the complete cache file has been synchronized.
-
-Tests and automation can override these locations:
-
-```bash
-uv run ritebook indexes add \
-  --source <git-url-or-local-git-repo> \
-  --registry-path <path-to-indexes.json> \
-  --cache-root <cache-directory>
-
-uv run ritebook indexes update <local-alias> \
-  --registry-path <path-to-indexes.json> \
-  --cache-root <cache-directory>
-
-uv run ritebook skills list \
-  --registry-path <path-to-indexes.json>
-
-uv run ritebook skills list \
-  --index <local-alias> \
-  --registry-path <path-to-indexes.json>
-```
-
-Consumer registration requires published schema version `1` indexes to include
-`index.name` metadata. Legacy `ritebook-index.json` files without that metadata
-are rejected instead of guessing a name.
 
 ## Publishing
 
@@ -668,9 +649,3 @@ project settings:
 - Repository name: `ritebook`
 - Workflow filename: `ci-cd.yaml`
 - Environment name: `pypi`
-
-## Architecture direction
-
-Future business capabilities should be implemented as vertical feature slices
-under `src/ritebook/features/`, keeping domain, application ports/use cases, and
-adapters separated according to hexagonal architecture principles.

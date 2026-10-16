@@ -4,38 +4,32 @@
 
 - State: Active
 - Revision: 3.4
-- Acceptance basis: User-confirmed October 16, 2026 interview outcome: remove project-local sync state, accept manual interruption repair, and leave concurrent-run prevention to users; recorded in ADR 0009. Unchanged contracts retain their basis in ADRs 0001, 0005, and 0007.
-- Accepted by / on: User / 2026-10-16
+- Acceptance basis: Existing active lockfile-only sync and transactional direct-install contracts.
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
-- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), [ADR 0007](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md), and [ADR 0009](../adr/0009-use-the-lockfile-as-the-only-project-sync-state.md)
-- Supersedes: Revision 3.3 of this specification
 
 ## Objective and Context
 
-Ritebook installs one exact skill into an explicit target and installs the skills
-currently declared by a repository in `ritebook.toml`. Installation consumes
-registered Git-backed indexes and preserves the commit-and-index-digest binding
-defined by ADR 0001.
+Ritebook installs one exact skill into an explicit target and synchronizes the
+skills declared in `ritebook.toml`. Both workflows use the verified source binding
+defined by the [Shared Catalog Contract](shared-catalog-contract-spec.md).
 
-Revision 3.0 introduced ownership-aware transactional installation with
-deterministic tree digests, referenced-index refresh, exclusive locking,
-rollback, interruption recovery, truthful partial state, and schema-v2 generated
-state. Revision 3.2 advanced generated installation state to schema v3 so the
-canonical source branch is retained with the immutable commit-and-index binding.
-Revision 3.3 makes `--force` an explicit authorization to replace an existing
-safe target even when it is unmanaged or locally modified, and scopes sync to
-current declarations so omitted directories are never pruned.
+### Design rationale
 
-Revision 3.4 makes `ritebook.lock` the sole persistent project-sync installation
-record. Sync no longer needs `.ritebook/`, an installation operation lock, or a
-durable recovery journal. Users serialize sync invocations and accept manual
-repair after interruption. Direct install and index-registry transactions retain
-their existing guarantees. Revision 3.4 is implemented and verified; evidence is
-recorded below and in the
-[implementation plan](../plans/project-sync-state-simplification-plan.md).
+The installed-tree digest records the last installed baseline. An index describes
+candidate content; matching it cannot prove prior ownership or distinguish local
+edits from an interrupted update.
+
+Project sync uses only the portable lockfile to avoid duplicate ownership state.
+This trades whole-sync rollback and automatic recovery for partial progress and
+manual repair. Users serialize mutating installation commands. Direct install
+retains its user-level ownership registry and recoverable transaction.
+
+Sync handles current declarations only. Removing a declaration relinquishes
+ownership without deleting files; destructive replacement requires explicit
+`--force` and still enforces path and source safety.
 
 ## Scope
 
@@ -51,7 +45,7 @@ recorded below and in the
   for symlinks, special files, dangerous paths, unsafe ancestry, or invalid
   provenance. Automatic whole-sync rollback, next-run journal recovery, sync
   concurrency coordination, changes to direct-install state, and changes to
-  index-registry locking are outside revision 3.4's implementation scope.
+  index-registry locking are outside the sync contract.
 
 ## Requirements
 
@@ -138,8 +132,6 @@ recorded below and in the
 
 ### R5 — Lockfile authority and direct-install ownership
 
-**Basis:** ADR 0009 for project sync; ADRs 0001 and 0007 for retained direct-install and provenance contracts.
-
 - Repository sync reads its installation baseline only from the selected strict
   schema-v3 `ritebook.lock`, including an explicit `--lockfile` override. It
   resolves portable targets relative to the requirements-file directory and
@@ -183,8 +175,6 @@ recorded below and in the
 
 ### R6 — Declaration-scoped sync and explicit force replacement
 
-**Basis:** ADR 0007's selection and force rules, amended by ADR 0009's sync execution model.
-
 For each target resolved from the current requirements file, sync classifies the
 current state against its lockfile baseline:
 
@@ -211,8 +201,6 @@ or inspection-snapshot checks. Sync does not promise a transaction spanning all
 targets and the lockfile. Direct install retains R7's transaction guarantees.
 
 ### R7 — Staged writes, sync interruption, and direct-install transactions
-
-**Basis:** ADR 0009 for sync; ADR 0007's retained ADR 0004 guarantees for direct install.
 
 #### Shared target protection
 
@@ -287,10 +275,9 @@ targets and the lockfile. Direct install retains R7's transaction guarantees.
 
 ### R8 — Truthful schema-v3 lock state
 
-**Basis:** Existing schema-v3 contract and ADR 0009's sole sync-state authority; no schema migration is required.
-
-`ritebook.lock` is portable, deterministic repository-shared state with this
-shape:
+`ritebook.lock` is portable, deterministic repository-shared state. In this
+example, source and content digests are illustrative; `target_id` is computed
+from the shown target path:
 
 ```json
 {
@@ -303,7 +290,7 @@ shape:
       "index_name": "platform-skills",
       "skill_name": "code-review",
       "target": ".claude/skills/code-review",
-      "target_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "target_id": "sha256:f7cbdcdef65a2824eae9956bc4be1fc8d86859db63584e2e203b9efae9381b87",
       "target_ref": "claude",
       "desired": true,
       "status": "materialized",
@@ -343,8 +330,6 @@ shape:
 
 ### R9 — Partial reconciliation and CLI results
 
-**Basis:** Existing partial-result contract, amended by the user-confirmed manual-repair and local-edit guidance in ADR 0009.
-
 - A declared target-specific skip does not erase independent successful target
   mutations.
 - After processing current declarations normally, Ritebook writes lock state
@@ -383,8 +368,6 @@ shape:
 
 ### R11 — Retire project-local sync state
 
-**Basis:** User-confirmed removal of `.ritebook/`, bounded to project sync, in ADR 0009.
-
 - Sync must not create `.ritebook/` for bookkeeping. The absence of that directory
   must have no effect on sync, contribution, or lockfile validation.
 - Existing `.ritebook/` contents are obsolete to new sync, regardless of their
@@ -404,27 +387,15 @@ shape:
 
 ## Implementation and Verification Evidence
 
-- ADR 0001 defines immutable source provenance.
-- ADR 0007 defines declaration-scoped sync and explicit force replacement.
-  ADR 0009 replaces its project-sync state and transaction guarantees while
-  retaining direct-install behavior.
-- Revision-3.3 implementation evidence includes focused unit and E2E tests for
-  force replacement of unmanaged and locally modified targets, default
-  preservation without force, undeclared-target non-mutation, generated-state
-  relinquishment, legacy undesired-entry migration, tree hashing, strict schema
-  parsing, refresh failure, idempotence, concurrent processes, interruption
-  recovery, symlink races, and CLI exit behavior.
-- Revision 3.4 is implemented. Sync uses only the selected lockfile, with a
-  separate staged filesystem writer and no installation lock, ledger, journal,
-  batch rollback, or next-run recovery. Direct-install transactions and index
-  registry locks retain their existing owners.
-- On October 16, 2026, `UV_CACHE_DIR=/private/tmp/ritebook-uv-cache make verify`
-  passed formatting, Ruff, ty, architecture contracts, all 789 default tests,
-  sdist/wheel builds, and all 26 clean installed-wheel Docker E2E tests. The cache
-  override avoids a sandbox restriction on the default uv cache. No required
-  check was skipped.
-- The completed [implementation plan](../plans/project-sync-state-simplification-plan.md)
-  records slice verification, fault-injection results, and review evidence.
+- `application/use_cases/install_from_requirements.py` in the installation slice
+  reads lockfile ownership and uses the dedicated `SyncWriterPort` for staged
+  target replacement and atomic lockfile writes.
+- `application/use_cases/install_skill.py` uses the direct-install ownership
+  registry and recoverable transaction. The composition root wires these
+  workflows separately.
+- The following source-based checks and installed-wheel scenarios cover current
+  behavior. Use `make verify` for a complete execution check; evidence from the
+  source tree alone does not establish that the Docker gate has passed.
 
 | Acceptance checks | Current evidence |
 | --- | --- |
@@ -436,7 +407,7 @@ shape:
 | AC6 | No-transaction application test, held legacy-lock integration fixture, composition-root assertions, and retained direct-install process-lock test. |
 | AC8, AC11, AC12 | `test_sync_workflows.py` and installed-wheel `test_sync_lockfile_is_portable_idempotent_and_authoritative` cover relocation, custom lockfiles, missing-lock partial progress/force, and unchanged legacy artifacts. |
 | AC9 | Strict state/contribution reader tests, undesired-entry reconciliation, and invalid-selected-lock integration cases with and without force. |
-| AC10 | The complete `make verify` result above. |
+| AC10 | `make verify` executes quality checks, package builds, and the clean installed-wheel Docker suite. |
 | AC13 | Source-CLI preserved-edit contribution and installed-wheel `test_publish_skill_change_creates_isolated_branch_and_commit` prepare a local contribution from preserved lockfile provenance without `.ritebook/`. |
 
 ## Constraints and Execution Boundaries
@@ -477,44 +448,14 @@ shape:
 ## Assumptions
 
 - Installation consumes only registered Git-backed indexes satisfying the shared
-  catalog contract and ADR 0001.
+  catalog and source-provenance contract.
 - The repository remains pre-release, so schema-v1 generated installation state
   may be rejected instead of automatically migrated.
 - Users serialize mutating installation commands and accept partial progress and
-  manual inspection/repair after interrupted sync. These are accepted constraints
-  from the October 16, 2026 interview, not guarantees supplied by hidden state.
+  manual inspection and repair after interrupted sync. Sync supplies no hidden
+  concurrency coordinator or automatic recovery.
 - Material unresolved assumptions: None.
 
 ## Open Questions
 
 None.
-
-## Revision and Handoff Notes
-
-- October 6, 2026: Revision 3.0 replaced install-and-rewrite sync with the
-  accepted exact-reconciliation contract in ADR 0004.
-- October 7, 2026: Marked revision 3.0 implemented after schema-v2 state,
-  ownership-aware reconciliation, referenced-index refresh, transactional target
-  and state commit, interruption recovery, partial CLI results, contribution
-  compatibility, and descriptor-bound symlink-race hardening were verified in the
-  tree.
-- October 7, 2026: Revision 3.1 added digest-before-parse and selected committed
-  header coherence before mutation under ADR 0005.
-- October 7, 2026: Marked revision 3.1 implemented after direct and sync
-  workflows validated all selected committed headers before target planning,
-  staging, mutation, or generated-state commit.
-- October 9, 2026: Revision 3.2 propagated exact-byte ownership and lockfile
-  snapshot digests into direct-install and sync generated-state candidates so the
-  transaction compare-and-swap check rejects stale state before replacement.
-- October 11, 2026: Revision 3.3 adopted ADR 0007. Force now replaces an exact
-  safe declared or direct target even when unmanaged or locally modified; sync
-  processes only current declarations, never prunes omitted directories, and
-  writes only current declaration ownership state.
-- October 16, 2026: Revision 3.4 adopted ADR 0009 after explicit user confirmation.
-  The lockfile becomes sync's only persistent installation record; project-local
-  ledgers, sync operation locks, durable journals, and automatic batch recovery
-  are removed from the contract. Existing targets without a lock baseline are
-  skipped unless forced. Direct install and registry locking remain unchanged.
-  Updated AC5/AC6 assess the new sync guarantees; AC1 retains direct-install
-  transaction coverage. Implementation and full verification completed on
-  October 16, 2026; see the evidence above.

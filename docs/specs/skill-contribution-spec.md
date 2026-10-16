@@ -4,14 +4,11 @@
 
 - State: Active
 - Revision: 2.7
-- Acceptance basis: Existing Active repository contract plus the user's approved October 6, October 7, October 9, October 11, and October 12, 2026 publication, strict-catalog, canonical-branch provenance, declaration-scoped sync, and Makefile workflow decisions.
-- Accepted by / on: User / 2026-10-12
+- Acceptance basis: Existing active local Git contribution contract.
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-12
+- Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md), [Skill Installation](skill-installation-spec.md), [Index Registry](index-registry-spec.md), and [Publisher](publisher-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md), [ADR 0003: Publish from Validated Skill Snapshots](../adr/0003-publish-from-validated-skill-snapshots.md), [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0007: Scope Skill Sync to Declarations and Make Force Replacement Explicit](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
-- Supersedes: Revision 2.6 of this specification
 
 ## Objective and Context
 
@@ -26,11 +23,22 @@ when a usable origin exists, or manual inspection guidance otherwise. It must no
 directly mutate canonical source branches, managed index cache clones, or
 user-owned local source repositories.
 
+### Design rationale
+
+Contribution uses the selected lockfile's immutable source binding and an
+isolated owned checkout. It compares the selected upstream path with the locked
+commit before copying edits, so unrelated upstream movement can be accepted
+without automatically merging changes to the same skill.
+
+The command fetches and prepares its contribution checkout. It does not refresh
+the index registry, rewrite installation provenance, or coordinate a registry
+handoff. Prepared branches and commits remain local for user review.
+
 ### Current-state evidence
 
-- Ritebook already supports Git-backed index registration and updates through
+- Ritebook supports Git-backed index registration and updates through
   `indexes add`, `indexes update`, and `indexes list`.
-- Ritebook already supports skill installation through direct `skills install` and
+- Ritebook supports skill installation through direct `skills install` and
   requirements-file `skills sync` workflows.
 - `ritebook.toml` can declare desired repo-local installed skills.
 - Generated `ritebook.lock` records installed-skill provenance, including
@@ -40,7 +48,7 @@ user-owned local source repositories.
   for retained requirements-file installs.
 - Installation persists the same commit and index-digest binding verified during
   index registration and source resolution, as required by
-  [ADR 0001](../adr/0001-source-provenance-and-trust.md).
+  [Shared Catalog Contract](shared-catalog-contract-spec.md).
 - Existing publisher workflows can validate skills and regenerate
   `ritebook-index.json`.
 - The workflow is implemented in the `skill_contribution` feature slice.
@@ -62,11 +70,9 @@ user-owned local source repositories.
 
 ## Requirements
 
-The following requirement groups define the normative contribution contract of revision 2.3.
+The following groups define the normative contribution contract.
 
 ### R1 — Contribute one installed skill change
-
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
 
 A developer can prepare a contribution for one repo-local installed skill:
 
@@ -123,8 +129,6 @@ Requirements:
 
 ### R2 — CLI shape
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 Initial command:
 
 ```bash
@@ -137,16 +141,6 @@ Path overrides:
 uv run ritebook skills contribute <local-alias>/<skill-path> \
   --lockfile <path-to-ritebook.lock> \
   --contribution-root <path-to-ritebook-owned-contribution-checkouts>
-```
-
-The following command shapes are uncommitted future ideas. Ritebook maintainers
-must approve a new specification or tracked implementation plan before adding
-them; they should remain compatible with the core workflow:
-
-```bash
-uv run ritebook skills contribute platform-skills/code-review --push
-uv run ritebook skills contribute platform-skills/code-review --open-mr
-uv run ritebook skills contribute platform-skills/code-review --base <branch-or-ref>
 ```
 
 Success output should be concise, for example:
@@ -178,8 +172,6 @@ ritebook: error: skill validation failed; contribution commit was not created
 
 ### R3 — Contribution checkout behavior
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 Ritebook must prepare the change in an isolated checkout it owns.
 
 Requirements:
@@ -210,8 +202,6 @@ and automation.
 
 ### R4 — Upstream comparison behavior
 
-**Basis:** Existing active Ritebook contract and ADR 0001.
-
 The locked `source_revision` is the verified installed baseline. Ritebook may
 compare and contribute against the current upstream base only after proving the
 selected skill path has not changed between that locked commit and the current
@@ -234,8 +224,6 @@ Requirements:
 
 ### R5 — Commit behavior
 
-**Basis:** Existing active Ritebook contract and the dependencies recorded in the Status section.
-
 Ritebook creates a normal Git commit in the isolated contribution checkout.
 
 Requirements:
@@ -257,10 +245,8 @@ Update code-review skill from Ritebook contribution
 
 ### R6 — Data and provenance requirements
 
-**Basis:** Existing active Ritebook contract, the installation lockfile contract, and ADR 0001.
-
 The MVP depends on the end-to-end provenance contract in
-[ADR 0001](../adr/0001-source-provenance-and-trust.md) and on lockfile provenance
+[Shared Catalog Contract](shared-catalog-contract-spec.md) and on lockfile provenance
 from requirements-file installation.
 
 Required lockfile fields for each publishable entry:
@@ -318,61 +304,16 @@ register the index from a Git URL and reinstall to regenerate `ritebook.lock`.
 
 ### Project structure
 
-The implementation uses the `skill_contribution` vertical feature slice:
-
-```text
-src/ritebook/features/skill_contribution/
-├── application/
-│   ├── dtos/
-│   │   └── publish_skill_change.py
-│   ├── ports/
-│   │   ├── publish_skill_change.py
-│   │   ├── contribution_checkout.py
-│   │   ├── contribution_lockfile.py
-│   │   ├── skill_change_detector.py
-│   │   ├── skill_directory.py
-│   │   ├── skill_source_workspace.py
-│   │   ├── skill_validator.py
-│   │   └── index_regenerator.py
-│   └── use_cases/
-│       └── publish_skill_change.py
-└── adapters/
-    └── outbound/
-        ├── contribution_checkout/
-        │   └── adapter.py
-        ├── git_workspace/
-        │   └── adapter.py
-        ├── index_regeneration/
-        │   └── adapter.py
-        ├── json_lockfile/
-        │   └── reader.py
-        ├── skill_directory/
-        │   └── adapter.py
-        └── validation/
-            └── adapter.py
-```
-
-CLI integration and composition root:
-
-- `src/ritebook/adapters/inbound/cli/parser.py`
-- `src/ritebook/features/skill_contribution/adapters/inbound/cli/commands.py`
-- `src/ritebook/adapters/inbound/cli/adapter.py`
-- `src/ritebook/cli.py`
-
-Tests should mirror source ownership:
-
-```text
-tests/unit/features/skill_contribution/
-├── application/
-│   └── test_publish_skill_change.py
-└── adapters/outbound/
-    ├── test_contribution_checkout.py
-    ├── test_git_workspace.py
-    ├── test_index_regeneration_adapter.py
-    ├── test_json_lockfile_reader.py
-    ├── test_skill_directory_adapter.py
-    └── test_validation_adapter.py
-```
+- [`src/ritebook/features/skill_contribution/application/`](../../src/ritebook/features/skill_contribution/application/)
+  owns use cases, ports, DTOs, and application errors.
+- [`src/ritebook/features/skill_contribution/adapters/`](../../src/ritebook/features/skill_contribution/adapters/)
+  owns the feature CLI and outbound I/O.
+- [`tests/unit/features/skill_contribution/`](../../tests/unit/features/skill_contribution/)
+  mirrors feature ownership; [`tests/integration/`](../../tests/integration/)
+  and [`tests/e2e/`](../../tests/e2e/) verify real local workflows.
+- `src/ritebook/adapters/inbound/cli/parser.py` defines command arguments;
+  `src/ritebook/adapters/inbound/cli/adapter.py` dispatches to feature CLI facades;
+  `src/ritebook/cli.py` wires dependencies.
 
 ### Conventions
 
@@ -468,12 +409,10 @@ the default suite.
 
 ### Commands and validation
 
-When changing this workflow, use focused tests first, then the full quality gate:
+Run focused tests through the Makefile, then the complete verification gate:
 
 ```bash
-uv run pytest tests/unit/features/skill_contribution/application
-uv run pytest tests/unit/features/skill_contribution/adapters/outbound
-uv run pytest tests/unit/adapters/inbound/cli/test_adapter.py
+PYTEST_ADDOPTS='tests/unit/features/skill_contribution tests/unit/adapters/inbound/cli/test_adapter.py' make test
 make verify
 ```
 
@@ -532,44 +471,11 @@ make verify
 
 - Contributions originate from requirements-file installs recorded in
   `ritebook.lock`, not ad hoc direct installations.
-- Git remains the supported contribution transport and ADR 0001's provenance
+- Git remains the supported contribution transport and the shared provenance
   binding remains required.
 - Material unresolved assumptions: None.
 
 ## Open Questions
 
-| Question | Impact / affected requirement or work | Blocks | Owner or evidence needed | Resolution / needed by |
-| --- | --- | --- | --- | --- |
-| OQ1: What validation evidence should a future MR body include? | Future extension of R2 and R5 for automated MR creation. | Non-blocking for the current local-commit workflow. | Ritebook maintainers and provider workflow requirements. | Resolve in an approved `--open-mr` specification before implementation. |
-| OQ2: Should a future command support `--base <branch-or-ref>`? | Future extension of R2 and R4 for repositories that do not use the detected default branch. | Non-blocking for the current detected-base workflow. | Ritebook maintainers and user workflow evidence. | Resolve before adding the option. |
-| OQ3: Which provider integration should a future `--open-mr` workflow support? | Future provider adapter and CLI scope. | Non-blocking for the platform-neutral Git core. | Ritebook maintainers, provider demand, and available CLI/API contracts. | Resolve in the provider-specific specification before implementation. |
-
-## Revision and Handoff Notes
-
-- October 12, 2026: Revision 2.7 adopted `make verify` as the canonical complete
-  handoff gate without changing contribution behavior or the Docker E2E boundary.
-- October 2, 2026: Reformatted revision 2.1 to the current
-  spec-driven-development template under the user's instruction. Requirement
-  meaning, lifecycle state, and revision number were preserved.
-- October 6, 2026: Revision 2.2 adopted validated-snapshot publication for
-  contribution index regeneration.
-- October 7, 2026: Revision 2.3 adopted strict schema-v2 installation lock state,
-  installed-tree digests, and publishable desired/status selection from Skill
-  Installation revision 3.0.
-- October 7, 2026: Revision 2.4 made contribution index regeneration derive
-  `skills_root` from verified lockfile provenance and prohibited permissive
-  secondary index parsing under ADR 0005.
-- October 7, 2026: Marked revision 2.4 implemented after provenance-derived root,
-  nested-selector, inconsistent-provenance, and checkout-safety tests passed.
-- October 9, 2026: Revision 2.5 adopted strict schema-v3 installation lock state
-  with required canonical source-branch provenance.
-- October 11, 2026: Revision 2.6 aligned contribution selection with ADR 0007:
-  undeclared entries disappear from new sync state, while valid legacy
-  `desired: false` entries remain readable but are not publishable baselines.
-- October 6, 2026: Revision 2.2 aligned contribution index regeneration with the
-  publisher's exact validated-snapshot contract from ADR 0003.
-- OQ1-OQ3 are non-blocking future-product decisions and do not authorize push,
-  MR/PR, base-selection, or provider-specific implementation.
-- Next authorized step: Treat this Active revision as canonical for the local
-  contribution workflow. Resolve the relevant open question in a revised
-  specification before implementing a future extension.
+None for the supported local-commit workflow. Push, MR/PR creation, provider
+integration, and explicit base selection require a revised specification.

@@ -4,21 +4,11 @@
 
 - State: Active
 - Revision: 3.3
-- Acceptance basis: User-approved Docker E2E stress-test interview completed on
-  October 3, 2026, and Makefile workflow audit interview completed on October 12,
-  2026, plus the user's October 16, 2026 package-audit fixes and import-contract
-  hardening request.
-- Accepted by / on: User / 2026-10-16
+- Acceptance basis: Existing active installed-wheel Docker verification contract.
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-16
 - Implementation state: Implemented
-- Dependencies: [Skill Linter](skill-linter-spec.md),
-  [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md),
-  [Skill Installation](skill-installation-spec.md), and
-  [Skill Contribution](skill-contribution-spec.md)
-- Associated ADRs:
-  [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
-- Supersedes: Revision 3.2 of this specification
+- Dependencies: [Skill Linter](skill-linter-spec.md), [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md), [Skill Installation](skill-installation-spec.md), and [Skill Contribution](skill-contribution-spec.md)
 
 ## Objective and Context
 
@@ -70,8 +60,6 @@ CPU architecture used by the mandatory CI job.
 
 ### R1 — Clean wheel build and consumer installation
 
-**Basis:** User-approved October 3, 2026 stress-test decision.
-
 The Docker build must create a Ritebook wheel from the repository commit under
 test with `uv build --wheel`. Only the built wheel may cross from the package
 build stage into the consumer installation stage. Docker E2E does not need to
@@ -90,8 +78,6 @@ It does not have to be byte-identical to the versioned distributions rebuilt by
 the later release job.
 
 ### R2 — Separate test-tool and consumer environments
-
-**Basis:** User-approved October 3, 2026 stress-test decision.
 
 The image must use separate Python environments for test tooling and the Ritebook
 consumer installation.
@@ -113,9 +99,6 @@ environment.
 
 ### R3 — Release-critical black-box workflow coverage
 
-**Basis:** Existing feature contracts retained under the approved clean-wheel
-boundary.
-
 E2E tests must invoke the installed `ritebook` console script as an external
 process rather than importing Ritebook application or domain services. The
 required baseline covers:
@@ -131,17 +114,15 @@ required baseline covers:
 
 The workflows must exercise real local filesystem and Git process boundaries.
 They must verify the commit and digest provenance required by
-[ADR 0001](../adr/0001-source-provenance-and-trust.md), including that installed
+[Shared Catalog Contract](shared-catalog-contract-spec.md), including that installed
 content comes from the validated commit and mismatched bindings fail before
 content is copied.
 
 The currently required scenarios must use temporary local Git repositories.
-Future scenarios may use anonymous public services, but revision 3.0 does not
-require a live-service test.
+Future scenarios may use anonymous public services; the supported suite does
+not require a live-service test.
 
 ### R4 — Risk-based coverage growth
-
-**Basis:** User-approved October 3, 2026 stress-test decision.
 
 A change must add or update Docker E2E coverage when it introduces or materially
 alters a release-critical CLI workflow spanning multiple real boundaries, such as
@@ -153,8 +134,6 @@ command variant or edge case. Narrow validation rules, exhaustive error matrices
 and ordinary edge cases belong primarily in unit or integration tests.
 
 ### R5 — Container user and state boundary
-
-**Basis:** User-approved October 3, 2026 stress-test decision.
 
 The final test stage must run as a non-root user. `HOME`, `XDG_CONFIG_HOME`, and
 `XDG_CACHE_HOME` must identify controlled, writable, image-owned directories.
@@ -168,8 +147,6 @@ keys, private repository access, or other service credentials.
 
 ### R6 — Network policy
 
-**Basis:** User-approved October 3, 2026 stress-test decision.
-
 Docker E2E runs with normal container networking. Image construction and runtime
 may access public dependency indexes, public Git repositories, or other anonymous
 public services. Tests requiring credentials or private services are prohibited.
@@ -181,8 +158,6 @@ platform and tool defaults apply unless an individual test chooses a narrower
 limit.
 
 ### R7 — Explicit opt-in, parallel, and isolated test execution
-
-**Basis:** User-approved October 3, 2026 stress-test decision.
 
 Repository-level pytest configuration must classify tests collected from
 `tests/e2e/` as `e2e` and deselect them unless `--run-e2e` is present. This makes
@@ -202,9 +177,6 @@ in the CI console. JUnit uploads, retained temporary repositories, container
 workspace archives, and other failure artifacts are not required.
 
 ### R8 — Mandatory CI gate
-
-**Basis:** User-approved October 3, 2026 stress-test decision and existing
-repository configuration.
 
 The main CI/CD workflow must run a stably named `Docker E2E` job for pull requests
 and pushes to the release branch. It may run independently and in parallel with
@@ -232,8 +204,6 @@ continue after either fails. Automated proof or auditing of the external GitHub
 ruleset is not required by this specification.
 
 ### R9 — Evidence and portability boundaries
-
-**Basis:** User-approved October 3, 2026 stress-test decision.
 
 The mandatory gate runs on Python 3.13 in a Linux container on the CI runner's
 CPU architecture, currently expected to be `amd64`. Passing the gate warrants
@@ -358,7 +328,7 @@ Docker E2E. It must not silently skip Docker when Docker is unavailable.
 | --- | --- | --- | --- | --- |
 | AC1 | R1-R2 | Build `Dockerfile.e2e` from a clean repository context. | The build creates only a wheel for Ritebook, creates a locked test-tool environment without Ritebook, installs the wheel and metadata-resolved runtime dependencies into a separate consumer environment, and constructs the final stage without source or project metadata. | `make docker-e2e-build` plus Dockerfile review. |
 | AC2 | R2, R5 | Run the container environment test in the final image. | The process is non-root; home and XDG paths are controlled and writable; test Python cannot import Ritebook; the `ritebook` script and imported package resolve from the consumer environment; `src/`, `pyproject.toml`, and `uv.lock` are absent. | `tests/e2e/test_container_environment.py` through `make docker-e2e-run`. |
-| AC3 | R3-R4 | Run the full E2E suite against local temporary Git fixtures. | The installed CLI completes the required publisher, registry, listing, update, install, sync, and contribution workflows and verifies ADR 0001 commit/digest binding behavior. | `make docker-e2e-run`. |
+| AC3 | R3-R4 | Run the full E2E suite against local temporary Git fixtures. | The installed CLI completes the required publisher, registry, listing, update, install, sync, and contribution workflows and verifies the shared commit-and-digest binding. | `make docker-e2e-run`. |
 | AC4 | R6 | Build and run with ordinary Docker networking and no credential injection. | The suite does not require `--network none`, credentials, private repositories, host mounts, or environment files; the currently required tests remain local-fixture based. | Docker/CI command review and E2E execution. |
 | AC5 | R7 | Run plain host pytest commands, attempt explicit host opt-in, and run the final image's default command. | Plain host pytest deselects E2E; host `--run-e2e` fails with Docker usage guidance; the image supplies its Docker-only signal and executes E2E with `--run-e2e -m e2e -n auto`; isolated tests pass without order or shared-state dependence; failures include readable command diagnostics in console output. | `make test`, direct focused host pytest commands, image command review, and `make docker-e2e-run`. |
 | AC6 | R8 | Review and execute the main CI/CD workflow. | The stable `Docker E2E` job runs on PRs and release-branch pushes; release depends on both quality and Docker E2E; existing repository configuration blocks merge when the check fails. | Workflow review and CI execution; external ruleset proof is not required. |
@@ -381,37 +351,3 @@ Docker E2E. It must not silently skip Docker when Docker is unavailable.
 ## Open Questions
 
 None.
-
-## Revision and Handoff Notes
-
-- October 16, 2026: Revision 3.3 excludes externally sourced skills from the
-  source distribution and strengthens import contracts for inward dependencies,
-  slice privacy, shared-kernel isolation, composition, and configured I/O
-  libraries. Type-checking imports remain subject to the same boundaries.
-- October 12, 2026: Revision 3.2 adopted the repository Makefile as the shared
-  local and CI command interface. CI retains separately named quality and Docker
-  E2E steps and the independent release-blocking jobs; `make verify` provides the
-  complete local aggregate without changing the clean installed-wheel boundary.
-- October 5, 2026: Corrected the active default-branch ruleset and operator
-  guidance to retain the explicit repository-owner bypass required by the current
-  solo-maintainer direct-push workflow. Required checks remain active for other
-  actors, and the release job still depends on both checks.
-- October 4, 2026: Implementation evidence added explicit Docker black-box
-  coverage for installation from the validated commit and for cached-index and
-  bound-commit digest mismatches failing before content is copied. The active
-  default-branch ruleset now requires the stable `Quality checks` and `Docker E2E`
-  checks.
-- October 3, 2026: Revision 3.1 made Docker E2E an affirmative pytest opt-in;
-  plain pytest now deselects E2E automatically, while the final image provides a
-  Docker-only environment signal and invokes `--run-e2e -m e2e -n auto`.
-- October 3, 2026: Revision 3.0 replaced source-project execution with a clean
-  installed-wheel boundary; separated locked test tooling from consumer-resolved
-  runtime dependencies; made Docker the only supported E2E path; allowed normal
-  anonymous networking; removed fixed UID and offline-route requirements; and
-  recorded merge, release, portability, diagnostics, timeout, and coverage-growth
-  decisions from the approved stress-test interview.
-- October 2, 2026: Revision 2.1 was normalized to the repository specification
-  template without changing its then-current behavior.
-- Next authorized step: Maintain the implementation and dependent documentation
-  against this Active revision. Material changes listed under specification
-  approval require a new accepted revision.

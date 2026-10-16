@@ -31,8 +31,7 @@ indexes.
 - `tests/unit/`, `tests/integration/`, and `tests/e2e/` hold each test level and
   should mirror source ownership where practical.
 - `docs/specs/` is the canonical source for product, shared-contract, and
-  supported-workflow requirements.
-- `docs/adr/` owns durable architectural rationale and decisions.
+  supported-workflow requirements and their design rationale.
 - `README.md` owns setup and concise usage guidance.
 - `pyproject.toml` and `uv.lock` own Python tooling and dependency configuration.
 - `ritebook.toml` declares skill requirements and targets; `ritebook.lock` records
@@ -54,19 +53,21 @@ indexes.
 - Use the narrowest relevant checks while iterating and the applicable broader
   gate before handoff.
 
-## Specifications and decision records
+## Specifications and rationale
 
 - Before changing supported behavior, read the owning active specification.
   Active specifications govern code, tests, CLI help, and derived documentation.
 - Update the owning specification and implementation evidence together when
   behavior, compatibility, data formats, or supported workflows change.
-- If an active specification conflicts with an accepted ADR, stop and reconcile
-  them. Record a changed durable decision in a new ADR, then update or supersede
-  the affected specification.
+- Keep material architecture, dependency, data, security, and boundary decisions
+  with their rationale and trade-offs in the owning specification. Use a shared
+  specification when several slices consume the same contract; do not duplicate
+  it in a separate decision record.
 - Update `README.md` when setup, supported usage, configuration, or operator
   guidance changes. Keep detailed product requirements in specifications.
-- Use `write-adr` to record material architecture, dependency, data, security, or
-  boundary decisions.
+- Maintain the current contract in place. Remove obsolete narratives and completed
+  execution logs after confirming that current obligations have a canonical owner.
+  Documentation cleanup does not authorize a change to supported behavior.
 
 ## Architecture boundaries
 
@@ -98,7 +99,7 @@ point inward.
 - Keep sibling adapter structures consistent. Prefer semantic module names and
   lightweight `__init__.py` files without I/O or heavy imports.
 - Use `make architecture` to enforce configured import boundaries. Document
-  intentional architectural exceptions in an ADR or the owning specification.
+  intentional architectural exceptions in the owning specification.
 
 ## Python implementation standards
 
@@ -153,7 +154,7 @@ point inward.
 - Keep metric labels and trace attributes low-cardinality. Logging restrictions on
   secrets and sensitive data also apply to metrics and traces.
 - Document new operational hooks, troubleshooting needs, alerts, or dashboards in
-  the README, an owning operational document, or an ADR as appropriate.
+  the README or an owning specification or operational document as appropriate.
 
 ## Testing
 
@@ -176,8 +177,8 @@ point inward.
 
 For changes to Ritebook skill validation, schema behavior, or related documentation:
 
-- Read `docs/adr/0002-adopt-agent-skills-as-canonical-skill-schema.md`, the owning
-  active specifications, and the current upstream
+- Read `docs/specs/skill-linter-spec.md`,
+  `docs/specs/shared-catalog-contract-spec.md`, and the current upstream
   [Agent Skills specification](https://agentskills.io/specification) before
   changing behavior. Deliberately adopt upstream changes through the active
   Ritebook specification, tests, authoring guidance, and validation evidence.

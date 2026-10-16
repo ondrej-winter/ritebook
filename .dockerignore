@@ -4,14 +4,21 @@
 .clinerules/
 .clineignore
 .clinerulesignore
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-.ty_cache/
-.venv/
-__pycache__/
-*.py[cod]
-*.pyo
+.cline-execution/
+.execution-logs/
+.ritebook/
+.tmp/
+
+# Match generated Python files at every depth, including inside COPY inputs.
+**/.import_linter_cache/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+**/.ty_cache/
+**/.venv/
+**/__pycache__/
+**/*.egg-info/
+**/*.py[cod]
 
 build/
 dist/
@@ -24,13 +31,12 @@ coverage.xml
 .idea/
 .vscode/
 
-.envrc
-.execution-logs/
 .python-version
 
-.env
-.env.*
-!.env.example
+**/.envrc
+**/.env
+**/.env.*
+!**/.env.example
 
 .cache/ritebook/
 .config/ritebook/

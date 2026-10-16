@@ -1,0 +1,1 @@
+"""Skill linter outbound adapters."""

@@ -2,267 +2,197 @@
 name: code-review-and-quality
 description: Review code, tests, documentation, and configuration across correctness, readability, architecture, security, performance, maintainability, and verification before merging or handing off a change.
 metadata:
-  version: "1.3.2"
-  last-verified: "2026-09-30T20:31:51+02:00"
+  version: "1.4.0"
+  last-verified: "2026-10-15T12:14:55Z"
 ---
 
 # Code Review and Quality
 
-Use this skill when reviewing a change written by yourself, another agent, or a
-human. The goal is to decide whether the change improves the project, identify
-issues with clear severity, and verify that the author’s evidence matches the
-risk of the change.
+Review a proposed change or an explicitly scoped audit. Identify actionable
+issues, test the evidence behind them, and give a verdict proportional to the
+risk. Apply the same standard to human- and agent-written work, including your
+own. Favor improvements that meet project requirements without demanding
+perfection or blocking on personal preference.
 
-Approve when the change improves overall code health and satisfies the project’s
-requirements and conventions. Do not block on personal preference, but do block
-on correctness, safety, maintainability, or verification gaps.
-
-## When to use this skill
-
-Use this skill when:
-
-- reviewing a proposed change before merge or handoff
-- reviewing generated code or agent-written code
-- checking a bug fix and its regression coverage
-- reviewing refactoring, migration, dependency, configuration, or documentation
-  changes
-- deciding whether a large change should be split
-
-## Review axes
-
-Use the local checklists for focused review prompts. Escalate to related skills
-when review findings need deeper follow-up work:
-
-- Use `security-and-hardening` when the review identifies security-sensitive
-  design, implementation, or remediation work that needs deeper analysis than the
-  checklist.
-- Use `performance-optimization` when the review identifies a suspected
-  bottleneck, regression, or performance requirement that needs
-  measurement-driven diagnosis.
-- Use `code-simplification` when the review identifies unnecessary complexity
-  that should be reduced while preserving behavior.
-
-### 1. Correctness
-
-Check whether the change does what it claims to do.
-
-- Does it match the task, specification, or acceptance criteria?
-- Are edge cases handled, such as empty, missing, boundary, repeated, malformed,
-  or concurrent inputs?
-- Are error paths handled, not only the happy path?
-- Do tests or examples cover the intended behavior?
-- Are there race conditions, ordering issues, state inconsistencies, or migration
-  hazards?
-
-### 2. Readability and simplicity
-
-Check whether a future maintainer can understand the change without the author
-explaining it.
-
-- Are names descriptive and consistent with local conventions?
-- Is control flow straightforward?
-- Is related behavior grouped behind clear module, component, or workflow
-  boundaries?
-- Are comments used for non-obvious intent rather than obvious mechanics?
-- Are abstractions earning their complexity?
-- Is dead code, stale compatibility glue, or temporary scaffolding left behind?
-
-### 3. Architecture and maintainability
-
-Check whether the change fits the system design.
-
-- Does it preserve established boundaries and dependency direction?
-- Does it introduce a new pattern, and is that pattern justified?
-- Is duplication acceptable, or should shared behavior be extracted?
-- Are public interfaces compatible or covered by a migration plan?
-- Does the change remain testable and observable?
-- Are configuration, secrets, generated files, and documentation kept in sync?
-
-### 4. Security
-
-Use `references/security-checklist.md` for detailed security prompts when the
-change touches trust boundaries, credentials, identity, input handling,
-dependencies, storage, networking, or deployment configuration.
-
-At minimum, check:
-
-- untrusted input is validated, encoded, or rejected at the right boundary
-- authorization is enforced where needed
-- secrets are not committed, logged, returned, or exposed in artifacts
-- external data is treated as untrusted before use in logic or rendering
-- dependency or runtime changes do not introduce known vulnerable versions
-- errors do not leak sensitive internals
-
-### 5. Performance
-
-Use `references/performance-checklist.md` for detailed performance prompts when
-the change affects hot paths, data volume, rendering, storage access, background
-work, startup, caching, or artifacts.
-
-At minimum, check:
-
-- repeated work, network calls, storage reads, or computations are bounded
-- loops, joins, queries, and data transformations scale with expected volume
-- list or stream operations have limits, pagination, batching, or backpressure
-- hot paths avoid unnecessary blocking work
-- caches have clear invalidation, size bounds, and fallback behavior
-- performance-sensitive claims include measurement or a stated rationale
-
-### 6. Verification
-
-Check whether the evidence matches the risk.
-
-- Which tests, builds, checks, or manual verification were run?
-- Would the verification catch a realistic regression?
-- Are screenshots, logs, benchmark notes, or migration dry runs included when
-  relevant?
-- Were failures investigated rather than ignored?
-- Is any skipped validation explicitly documented with a reason?
+Use this workflow for review of code, tests, refactoring, migrations, dependencies,
+configuration, or documentation. A request only to run checks belongs to
+`run-local-quality-gate`; a request to implement a feature does not by itself
+require a separate review artifact.
 
 ## Steps
 
-### 1. Understand the intent
+### 1. Establish the review scope
 
-Before reviewing details, identify:
+Read the request, applicable repository instructions, and relevant acceptance
+criteria. Identify the intended behavior, preserved contracts, and requested
+review format. Inspect existing working-tree changes before validation or editing.
 
-- what problem the change solves
-- what behavior should change
-- what should stay unchanged
-- what constraints or project conventions apply
-- what files, modules, interfaces, data, or workflows are affected
+Identify the exact target and comparison baseline: a patch, commit, branch range,
+staged changes, working-tree changes, or named files for an audit. For a branch
+review, verify the intended base and merge base instead of assuming the default
+branch or comparing with an arbitrary recent commit. Distinguish staged,
+unstaged, and relevant untracked files; preserve unrelated work. Record revisions
+where available, or describe the supplied snapshot and its limits.
 
-If the intent is unclear, ask for clarification before reviewing style details.
+Use available context to resolve intent. If a material ambiguity remains, ask a
+focused question and continue independent inspection. If the repository or base
+is unavailable, review the supplied material and state which integration or
+regression claims cannot be checked.
 
-### 2. Review tests and verification first
+A review request authorizes inspection and appropriate local validation. Make
+fixes only when requested or already authorized. A verdict is a recommendation;
+posting comments, submitting remote approval, merging, publishing, or creating
+commits requires authorization under the current task. Return the review in the
+requested channel; do not create a report file by default.
 
-Tests and validation reveal what the author believes matters.
+### 2. Map the change and its evidence
 
-Check:
+Read the full diff and enough surrounding code, callers, configuration, and
+contracts to understand affected behavior. Trace important inputs through state
+changes, outputs, and error paths. For an audit, map the requested component and
+its boundaries instead of inventing a change baseline.
 
-- tests exist when behavior changes
-- tests focus on observable behavior rather than implementation details
-- important edge cases and failure paths are covered
-- test names describe the behavior being protected
-- the reported validation commands are relevant and recent
+Inspect tests and reported validation early. Determine what they actually prove:
 
-### 3. Review the implementation across the axes
+- Do assertions check observable outcomes and fail for the relevant regression?
+- Do mocks or fixtures bypass the boundary at risk?
+- Are important failure, boundary, concurrency, and compatibility cases covered?
+- Do commands, CI results, or manual evidence apply to the reviewed revision and
+  relevant environment?
 
-Walk through changed files and assess correctness, readability, architecture,
-security, performance, and verification. Prefer concrete findings over vague
-opinions.
+Use risk to choose depth. Existing coverage or a focused manual check may suffice
+for a low-impact change; do not demand new tests for every edit. A bug fix needs
+evidence that catches the original failure, with any coverage gap explained.
 
-Good review comments include:
+Cover all changed handwritten logic within scope. For generated or mechanical
+changes, inspect the source, generation process, and representative output;
+state any sampling. Recommend splitting when unrelated work or mechanical churn
+obscures behavior enough to prevent a reliable review. Size or the need for
+several reviewers alone is not a defect. Record any area you could not assess.
 
-- what is wrong or risky
-- why it matters
-- where it occurs
-- a suggested fix or decision path when useful
-- severity or whether the comment is optional
+### 3. Inspect the relevant quality axes
 
-### 4. Categorize findings
+Use these prompts where the reviewed code or change presents risk; do not invent
+a finding in each category.
 
-Label feedback so the author knows what must change.
+- **Correctness:** requirements, empty or malformed inputs, boundaries, repeated
+  operations, error recovery, resource cleanup, concurrency, and data integrity.
+- **Readability and simplicity:** clear names and control flow, useful comments,
+  cohesive responsibilities, and abstractions justified by present needs.
+- **Architecture and compatibility:** dependency direction, public interfaces,
+  consumers, serialization, defaults, rollout order, migration safety,
+  observability, and documentation that matches behavior.
+- **Security:** trust boundaries, identity, authorization, secrets,
+  untrusted input, dependencies, or deployment settings. Read the
+  [security checklist](references/security-checklist.md) when these apply.
+- **Performance:** hot paths, queries, rendering, startup, data volume, queues,
+  caches, or artifacts. Read the
+  [performance checklist](references/performance-checklist.md) when these apply.
+- **Verification:** whether automated checks, manual observations, and static
+  reasoning address the actual failure modes and project requirements.
 
-Use simple severity labels such as:
+For dependency or runtime changes, inspect resolved versions and lockfiles,
+compatibility, maintenance status, license constraints, and build or operational
+cost. Check current advisories against the exact package and version using
+authoritative sources or configured tooling. Report unavailable evidence; do not
+claim a dependency is safe because no advisory was found. Consider an existing
+utility or platform feature when it meets the requirement without a new dependency.
 
-- `Critical`: blocks merge because it can cause security exposure, data loss,
-  broken behavior, or severe operational risk
-- `Required`: must be addressed before merge or handoff
-- `Suggestion`: likely improvement, but not required
-- `Nit`: minor style or wording issue the author may ignore
-- `FYI`: informational context only
+For removals and migrations, check callers, exports, configuration, dynamic
+registration, and supported consumers before calling code unused. A text search
+alone does not prove it is dead. Report uncertain cleanup separately; it blocks
+only when it causes a concrete problem or violates an applicable requirement.
+Do not expand the review into unrelated cleanup.
 
-Avoid ambiguous comments that make optional preferences look mandatory.
+### 4. Verify suspected issues
 
-### 5. Check change size and split risk
+Before reporting a defect, establish:
 
-Small focused changes are easier to review and safer to deploy.
+1. The specific location and realistic input, state, or sequence that triggers it.
+2. The affected behavior, user, consumer, or project requirement and concrete impact.
+3. Evidence from the code path, a focused reproduction, a contract, or relevant
+   documentation. Check surrounding guards, callers, and framework behavior that
+   might invalidate the concern.
+4. For a change review, how the change introduces, exposes, or worsens it compared
+   with the baseline. Keep unrelated pre-existing issues outside the verdict;
+   an explicitly requested audit may include existing defects.
 
-Ask for a split when:
+For maintainability or verification gaps, identify the specific complexity,
+unprotected failure mode, or unmet requirement rather than inventing runtime
+breakage. Verify unfamiliar or changing API behavior against primary
+documentation. Separate observations from inference and unresolved questions.
 
-- the change combines unrelated behavior
-- refactoring and feature work are mixed in ways that obscure behavior
-- multiple reviewers or domains are needed
-- generated or mechanical changes hide hand-written behavior changes
-- the diff is too large to review confidently
+Run the narrowest relevant local checks when practical, after inspecting their
+commands and side effects. Use an isolated temporary workspace when reproduction
+could disturb user work. Avoid auto-fix modes during review-only work and keep
+destructive or external operations within existing authorization.
 
-Accept large changes only when the review strategy is clear, such as complete
-file deletion, generated output, or a mechanical refactor with representative
-verification.
+Record commands, results, and the tested state. Distinguish checks you ran from
+author-reported or CI evidence, static reasoning, and checks not run. Investigate
+failures and attribute them to the change, baseline, environment, or an unresolved
+cause. An unavailable tool or service permits a static review with execution
+explicitly unverified; it is neither a passing check nor proof of a defect.
 
-### 6. Review dependency changes
+Discard concerns contradicted by evidence. If a plausible concern remains
+unresolved, state the question and missing evidence separately from confirmed
+findings. Do not fill a findings quota or turn hypothetical risks into blockers.
+Missing evidence warrants deferral when it prevents assessing a material risk.
 
-Before accepting a new dependency or runtime requirement, check:
+### 5. Prioritize actionable findings
 
-- whether the existing stack can solve the problem
-- maintenance activity and community health
-- license compatibility
-- security advisories or known vulnerable versions
-- size, startup, deployment, or operational impact
-- whether the dependency becomes part of a public or compatibility-sensitive
-  surface
+Use the project's required severity or priority scheme. Otherwise retain these
+simple labels, stating impact separately from whether the feedback blocks:
 
-Prefer standard library, platform features, and existing project utilities when
-they solve the problem clearly.
+- `Critical`: an urgent blocker with evidence of severe consequences, such as
+  exploitable security exposure, substantial data loss, or widespread outage.
+- `Required`: a concrete defect or unmet requirement that must be addressed before
+  merge or handoff, without implying critical impact.
+- `Suggestion`: a useful improvement that does not block.
+- `Nit`: optional style or wording feedback; omit unless useful or requested.
+- `FYI`: relevant context, not a defect or required action.
 
-### 7. Check dead code and cleanup
+Rank findings by impact and urgency. Give each a short title, precise file and
+line location when available, trigger, consequence, and supporting evidence.
+Explain why a blocker matters; include a focused remedy or decision path when
+helpful. Keep locations narrow, preferably on the changed lines responsible for
+the issue. For supplied excerpts, use their identifiers without inventing lines.
 
-After refactoring or migration, identify unreachable or unused code, stale docs,
-obsolete tests, deprecated configuration, and no-op compatibility shims.
+Report one finding per root cause, combining repeated manifestations where useful.
+Keep questions and optional improvements distinct. Uncertainty changes the claim
+and evidence needed; it does not automatically increase severity. Avoid vague
+warnings, speculative redesign, or personal preferences presented as requirements.
 
-Do not delete uncertain code silently. List what appears unused and ask for
-confirmation or evidence when ownership is unclear.
+### 6. Give the verdict and hand off
 
-Example:
+Honor the requested output format, including structured schemas and findings-only
+requests. Otherwise lead with prioritized findings, then concise evidence,
+limitations, and one verdict:
 
-```text
-Potential dead code:
-- `<old_helper>` appears replaced by `<new_helper>`
-- `<legacy_config_key>` has no remaining references
+- **Approve:** no blocking findings remain and evidence is sufficient for the
+  reviewed scope and risk. Nonblocking suggestions may remain.
+- **Request changes:** confirmed blocking defects or unmet requirements remain.
+- **Defer judgment:** missing context, coverage, or verification prevents a
+  responsible decision about a material risk. Name what would resolve it.
 
-Should these be removed in this change or tracked as follow-up cleanup?
-```
+If no actionable findings remain, say so explicitly. This is not a claim that the
+change is bug-free. State the reviewed scope, checks run and their outcomes,
+reported evidence, unreviewed areas, and relevant residual risks. Attribute risk
+acceptance only to an actual owner decision; otherwise describe it as unresolved.
 
-### 8. Decide and document the verdict
+Use the [review template](references/review-template.md) when a reusable Markdown
+report helps. Adapt it to the task; omit empty sections without hiding limitations.
+If fixes are authorized, re-review the resulting diff and rerun affected checks.
+If the target changes during review, refresh affected evidence before the verdict.
 
-End the review with a clear outcome:
+## Focused follow-up
 
-- approve when the change is safe enough and improves the project
-- request changes when required issues remain
-- defer judgment when context or verification is missing
+Check availability and route to related skills only when their own triggers apply:
 
-Include the validation evidence you considered and any accepted risks.
+- `security-and-hardening` for deeper security analysis.
+- `performance-optimization` for measurement-driven performance diagnosis.
+- `code-simplification` for authorized behavior-preserving cleanup.
+- `run-local-quality-gate` for broader configured checks, or
+  `browser-runtime-verification` for browser behavior evidence.
 
-## Review artifact
-
-Record the review in a concise artifact containing context, findings grouped by
-severity, validation evidence, accepted risks, and an explicit verdict. For a
-reusable Markdown template, see `references/review-template.md`.
-
-## See also
-
-- For focused security review guidance, see `references/security-checklist.md`.
-- For focused performance review guidance, see
-  `references/performance-checklist.md`.
-
-## Red flags
-
-- approval without evidence of review
-- review that only checks whether tests passed
-- generated or agent-written code accepted without extra scrutiny
-- security-sensitive change without security-focused review
-- large change that cannot be reviewed confidently
-- missing regression coverage for a bug fix
-- optional preferences presented as blockers
-- deferred cleanup accepted without ownership or follow-up
-- skipped validation omitted from the handoff
-
-## Output checklist
-
-- review intent and affected boundaries are clear
-- tests and verification were reviewed before implementation details
-- findings are concrete and severity-labeled
-- security and performance risks were considered where relevant
-- dependency and dead-code concerns were checked
-- final verdict is explicit
-- accepted risks and skipped validation are documented
+These are optional routes, not automatic remediation. If unavailable, continue
+the review within your evidence and report any material limitation.

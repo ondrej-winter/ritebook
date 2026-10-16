@@ -3,13 +3,14 @@
 ## Status
 
 - State: Active
-- Revision: 3.2
+- Revision: 3.3
 - Acceptance basis: User-approved Docker E2E stress-test interview completed on
   October 3, 2026, and Makefile workflow audit interview completed on October 12,
-  2026.
-- Accepted by / on: User / 2026-10-12
+  2026, plus the user's October 16, 2026 package-audit fixes and import-contract
+  hardening request.
+- Accepted by / on: User / 2026-10-16
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-12
+- Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: [Skill Linter](skill-linter-spec.md),
   [Publisher](publisher-spec.md), [Index Registry](index-registry-spec.md),
@@ -17,7 +18,7 @@
   [Skill Contribution](skill-contribution-spec.md)
 - Associated ADRs:
   [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md)
-- Supersedes: Revision 3.1 of this specification
+- Supersedes: Revision 3.2 of this specification
 
 ## Objective and Context
 
@@ -76,6 +77,7 @@ test with `uv build --wheel`. Only the built wheel may cross from the package
 build stage into the consumer installation stage. Docker E2E does not need to
 build or validate an sdist; the standard quality job remains responsible for
 building the configured distribution formats.
+The source distribution must exclude the externally sourced `.agents/` tree.
 
 The consumer environment must install the wheel non-editably and resolve runtime
 dependencies from the wheel's declared package metadata. `uv.lock` must not pin
@@ -212,6 +214,16 @@ The job's separately named build and run steps must invoke the repository-owned
 `make docker-e2e-build` and `make docker-e2e-run` targets. The standard quality
 job must likewise invoke repository-owned leaf targets so local and CI commands
 remain aligned without collapsing CI diagnostics into one aggregate step.
+The standard quality gate must verify that the architecture graph covers every
+Ritebook source module and that a forbidden feature-core import fails validation.
+Import contracts must include type-checking imports, enforce inward feature and
+application layers, isolate the shared kernel and composition root, protect
+private slice implementations, and reject configured I/O-library imports from
+core code. Cross-slice application ports, DTOs, and errors remain public; their
+implementation submodules remain private. The shared CLI dispatcher may import
+each slice's inbound CLI facade, while the composition root may wire concrete
+implementations. These module-level contracts do not prove API-call purity or
+detect dynamic imports.
 
 A failed Docker E2E check must block pull-request merge through existing
 repository configuration. The repository-controlled release job must declare a
@@ -281,7 +293,7 @@ Docker E2E. It must not silently skip Docker when Docker is unavailable.
   and final non-root E2E image.
 - `Makefile`: shared local and CI targets for the standard quality checks,
   distribution build, and separate Docker E2E build and run steps.
-- `conftest.py`: repository-level E2E classification, default deselection, and
+- `tests/conftest.py`: suite-wide E2E classification, default deselection, and
   Docker-only `--run-e2e` enforcement.
 - `.dockerignore`: excludes developer state, credentials, caches, and generated
   artifacts from the Docker build context.
@@ -372,6 +384,10 @@ None.
 
 ## Revision and Handoff Notes
 
+- October 16, 2026: Revision 3.3 excludes externally sourced skills from the
+  source distribution and strengthens import contracts for inward dependencies,
+  slice privacy, shared-kernel isolation, composition, and configured I/O
+  libraries. Type-checking imports remain subject to the same boundaries.
 - October 12, 2026: Revision 3.2 adopted the repository Makefile as the shared
   local and CI command interface. CI retains separately named quality and Docker
   E2E steps and the independent release-blocking jobs; `make verify` provides the

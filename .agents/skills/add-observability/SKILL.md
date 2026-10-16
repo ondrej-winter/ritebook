@@ -2,8 +2,8 @@
 name: add-observability
 description: Add logs, metrics, traces, profiling, or operational notes when a workflow needs better runtime visibility or measurable evidence without unsupported performance claims.
 metadata:
-  version: "1.3.3"
-  last-verified: "2026-10-01T09:34:17+02:00"
+  version: "1.4.0"
+  last-verified: "2026-10-15T10:19:44Z"
 ---
 
 # Add Observability
@@ -14,13 +14,22 @@ runbook notes.
 
 ## Execution boundary
 
-A completed observability change requires access to the relevant source or
-configuration plus representative runtime evidence showing that the signal is
-emitted, exported, queryable, safe, and operationally useful. Without that access,
-an observability contract or review may still be independently useful; label it
-design- or review-only and runtime-unverified, and do not implement speculative
-instrumentation or claim end-to-end validation. If the request requires working
-signals rather than a proposal, report the workflow as blocked.
+Instrumentation changes require inspected source or configuration. If those are
+unavailable, provide a grounded contract or review where useful; do not invent
+integration details. Profiling or inspection may use an existing runtime without
+source access.
+
+Match verification to the deliverable. A local log or profile needs captured
+runtime evidence; an exported signal needs evidence from the configured path and
+its consumer. A documentation-only change needs review of its instructions and
+queries, with unexecuted steps identified.
+
+Missing backend or runtime access does not prevent grounded implementation and
+available local checks. Label that result **implemented, verification incomplete**
+and state the remaining checks and access needed. A local capture does not prove
+backend delivery, and an unverified implementation does not satisfy a request for
+operational signals. Report blockers to that outcome while completing independent
+work.
 
 ## When to use this skill
 
@@ -74,7 +83,8 @@ for:
 Prefer the existing stack and naming conventions. Do not introduce a new
 observability dependency or vendor-specific system unless the project already
 uses it or the user explicitly requests it. Identify generated, user-controlled,
-or sensitive values before they enter telemetry.
+or sensitive values before they enter telemetry. Check APIs and semantic
+conventions against the project's installed versions before copying examples.
 
 ### 3. Write the telemetry contract
 
@@ -83,16 +93,20 @@ Define each proposed signal before implementing it. Record:
 - stable name and signal type
 - exact emission or measurement point
 - value, unit, severity, status, and success or failure semantics
-- attributes or labels and their allowed value sets
+- attributes or labels, permitted sources, and size or cardinality limits
 - correlation or propagation behavior
 - counting, aggregation, sampling, and missing-data behavior
 - expected query, dashboard, alert, investigation, or decision
 - owner and operational documentation when applicable
 
-Be explicit about retries and multi-stage work: decide whether the signal measures
-attempts, logical operations, completed operations, or more than one of these.
-Use `references/telemetry-design-checklist.md` for a reusable contract template
-and signal-specific review guidance.
+Be explicit about retries and multi-stage work: distinguish attempts from logical
+operations and define when each measurement starts and ends. Treat existing
+signal names, types, units, and labels as interfaces: inspect dependent queries
+and alerts before changing them.
+
+Keep the contract proportional to the change; a short task note may suffice.
+Use [Telemetry design and validation](references/telemetry-design-checklist.md)
+for a contract template and the relevant signal-specific checks.
 
 ### 4. Instrument meaningful boundaries
 
@@ -107,8 +121,9 @@ Prefer boundaries where a maintainer can localize behavior or take action:
 
 Cover every relevant exit path without changing the workflow's control flow or
 error semantics. Choose start- or completion-based counting deliberately and use
-it consistently. Propagate context across process boundaries and link causally
-related asynchronous work when the project supports it.
+it consistently. Propagate context across approved boundaries using the project's
+parentage and causal-link conventions; asynchronous execution alone does not
+require a new trace or link.
 
 Avoid low-value helper spans, per-iteration logs, or instrumentation already
 provided by automatic libraries. Check for duplicate counting and duplicate error
@@ -155,7 +170,8 @@ Telemetry must not silently become a new availability dependency. Use establishe
 bounded buffering, timeout, retry, sampling, and drop behavior. Exporter or
 collector failure should normally degrade visibility rather than fail the user
 workflow unless an explicit requirement says otherwise. Assess expected event
-volume, series cardinality, storage, retention, and runtime overhead.
+volume, series cardinality, storage, retention, and runtime overhead. Check
+existing pipeline health signals so dropped or delayed telemetry is visible.
 
 ### 7. Connect signals to operations
 
@@ -175,12 +191,15 @@ Document sampling, aggregation, retention, and missing-data limitations. Use
 
 ### 8. Validate end to end
 
-Exercise representative success and failure paths plus timeout, retry,
-cancellation, or partial-completion paths when relevant. Confirm:
+Select checks for the changed signals and their consumers. Use isolated workloads
+and test alert destinations; production failure injection or notifying responders
+requires explicit authorization. Exercise representative success and failure paths
+plus timeout, retry, cancellation, or partial completion when relevant. Confirm:
 
 - the signal is emitted at the intended boundary and not duplicated
 - values, units, severity, status, timestamps, and correlation are correct
-- labels and fields remain stable, bounded, and free of sensitive data
+- metric label cardinality and log or span field sizes stay within the contract,
+  and sensitive data is excluded
 - metrics can be queried and aggregated as intended, including zero or missing
   behavior
 - trace context survives relevant boundaries and sampling behaves as documented
@@ -188,12 +207,17 @@ cancellation, or partial-completion paths when relevant. Confirm:
 - telemetry pipeline failure does not break or materially delay the workflow
 - volume, cardinality, and overhead are acceptable under representative load
 - changed dashboards and alerts display, trigger, deduplicate, and recover as
-  intended when practical
+  intended in the test environment
 
-Record the commands, scenarios, queries, or captured output used as evidence.
-State what was not validated and why. If claiming a performance or reliability
-improvement, preserve comparable before-and-after measurements and their limits;
-otherwise describe the result as improved visibility.
+Use focused automated checks for construction and counting semantics where
+useful, plus runtime evidence for operational claims. Record the environment,
+commands, scenarios, queries, and captured output. Mark each relevant check as
+passed, failed, or not run with a reason; do not count a skipped check as
+verification. Remove temporary probes or document their owner and removal point.
+
+If claiming a performance or reliability improvement, preserve comparable
+before-and-after measurements and their limits; otherwise describe the result as
+added visibility and state how far it was verified.
 
 ## Common failure modes
 
@@ -209,13 +233,17 @@ otherwise describe the result as improved visibility.
 
 ## Output checklist
 
+Report the applicable items:
+
 - operational question, workflow, consumer, and response are explicit
 - existing stack, automatic instrumentation, and data boundaries were inspected
 - signal contracts define names, semantics, units, attributes, and counting rules
 - instrumentation covers meaningful boundaries without duplicates
 - sensitive data, cardinality, volume, cost, and failure behavior were reviewed
 - dashboards, alerts, runbooks, and ownership were updated when needed
-- success, failure, correlation, export, and degradation behavior were validated
+- relevant success, failure, correlation, export, and degradation checks have
+  recorded outcomes and an explicit verification environment
 - measurement claims include comparable evidence and limitations
-- the result is labeled implemented and verified, design- or review-only and
-  runtime-unverified, or blocked; a proposed signal is not reported as operational
+- the result is labeled implemented and verified within a stated scope,
+  implemented with verification incomplete, design- or review-only, or blocked;
+  remaining checks and access needs are explicit

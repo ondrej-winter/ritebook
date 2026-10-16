@@ -5,6 +5,7 @@ from ritebook.features.publisher.application.dtos.publish_index import (
     PublishIndexCommand,
     PublishIndexResult,
     PublishIndexValidationError,
+    SkillEntry,
     SkillPrecheckIssue,
     SkillPrecheckResult,
 )
@@ -14,6 +15,7 @@ __all__ = [
     "PublishIndexCommand",
     "PublishIndexResult",
     "PublishIndexValidationError",
+    "SkillEntry",
     "SkillPrecheckIssue",
     "SkillPrecheckResult",
 ]

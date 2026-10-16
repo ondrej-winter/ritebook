@@ -1,20 +1,30 @@
 ---
 name: run-python-tests
-description: Runs automated tests for a Python project using pytest.
+description: Run pytest-based automated tests when a Python project uses uv-managed development tooling.
+metadata:
+  version: "1.1.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Skill: Run Python Tests
 
-Use this skill to run automated tests for a Python project using `pytest`.
+Use this skill when a Python project runs its `pytest` test suite through `uv`.
 
 ## Prerequisites
 
 - `uv` is installed and configured for the project.
-- `pytest` is installed as a development dependency and configured in `pyproject.toml`.
+- `pytest` is installed as a development dependency and configured in
+  `pyproject.toml` or another supported pytest configuration file.
 
 ## Steps
 
-### 1. Run all tests
+### 1. Discover the project command and targets
+
+Inspect `pyproject.toml`, project documentation, and existing task definitions.
+Use the project's test command when one is defined. Otherwise, use the fallback
+commands below.
+
+### 2. Run all tests
 
 ```bash
 uv run pytest
@@ -22,7 +32,7 @@ uv run pytest
 
 This command executes all tests defined in the project.
 
-### 2. Run focused tests (optional)
+### 3. Run focused tests (optional)
 
 ```bash
 uv run pytest tests/<path_to_test_file>
@@ -30,6 +40,12 @@ uv run pytest -k "<pattern>"
 ```
 
 Use these commands to run a subset of tests during development.
+
+### 4. Verify and report the result
+
+After resolving any failures, re-run the full project-configured test suite. Report
+the command and targets used, whether the suite passed, and any tests that could not
+run with the reason.
 
 ## When tests fail
 

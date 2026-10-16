@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ritebook"
 version = "0.1.60"
-description = "A minimal placeholder package for the future Ritebook project."
+description = "A CLI for validating, publishing, and installing Agent Skills and Git-backed skill indexes."
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["ritebook"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -49,6 +49,9 @@ dev = [
 [tool.hatch.build.targets.wheel]
 packages = ["src/ritebook"]
 
+[tool.hatch.build.targets.sdist]
+exclude = ["/.agents"]
+
 [tool.semantic_release]
 assets = ["uv.lock"]
 build_command = "uv lock && uv build"
@@ -80,20 +83,33 @@ extend-exclude = [".agents"]
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "COM812",
-    "CPY001",
-    "D100",
-    "D104",
+    "COM812",  # missing-trailing-comma
+    "CPY001",  # missing-copyright-notice
+    "D100",  # undocumented-public-module
+    "D104",  # undocumented-public-package
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["D101", "D102", "D103", "D107", "DTZ001", "PLR0913", "PLR0917", "PLR2004", "S101", "S108"]
+"tests/**/*.py" = [
+    "D101",  # undocumented-public-class
+    "D102",  # undocumented-public-method
+    "D103",  # undocumented-public-function
+    "D107",  # undocumented-public-init
+    "DTZ001",  # call-datetime-without-tzinfo
+    "PLR0913",  # too-many-arguments
+    "PLR0917",  # too-many-positional-arguments
+    "PLR2004",  # magic-value-comparison
+    "S101",  # assert
+    "S108",  # hardcoded-temp-file
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.importlinter]
 root_package = "ritebook"
+include_external_packages = true
+exclude_type_checking_imports = false
 
 [[tool.importlinter.contracts]]
 name = "Feature cores do not import adapters"
@@ -106,6 +122,118 @@ forbidden_modules = [
     "ritebook.adapters",
     "ritebook.features.*.adapters",
 ]
+
+[[tool.importlinter.contracts]]
+name = "Feature layers point inward"
+type = "layers"
+containers = ["ritebook.features.*"]
+layers = ["adapters", "application", "(domain)"]
+exhaustive = true
+
+[[tool.importlinter.contracts]]
+name = "Application contracts do not import use cases"
+type = "layers"
+containers = ["ritebook.features.*.application"]
+layers = ["use_cases", "ports", "dtos", "errors"]
+exhaustive = true
+
+[[tool.importlinter.contracts]]
+name = "Domains do not import application code"
+type = "forbidden"
+source_modules = ["ritebook.features.*.domain"]
+forbidden_modules = ["ritebook.features.*.application"]
+
+[[tool.importlinter.contracts]]
+name = "Shared kernel does not import outer layers"
+type = "forbidden"
+source_modules = ["ritebook.shared_kernel"]
+forbidden_modules = ["ritebook.features", "ritebook.adapters", "ritebook.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Only the composition root depends on bootstrap"
+type = "forbidden"
+source_modules = ["ritebook.features", "ritebook.adapters", "ritebook.shared_kernel"]
+forbidden_modules = ["ritebook.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Core code does not import I/O libraries"
+type = "forbidden"
+source_modules = [
+    "ritebook.features.*.application",
+    "ritebook.features.*.domain",
+    "ritebook.shared_kernel",
+]
+# Keep this list explicit: pathlib and urllib also expose pure path/URL operations.
+forbidden_modules = [
+    "argparse", "fcntl", "filecmp", "ftplib", "http", "io", "os", "requests",
+    "shutil", "smtplib", "socket", "sqlite3", "ssl", "subprocess", "sys",
+    "tarfile", "tempfile", "yaml",
+]
+
+# Separate contracts bind each private subtree to its owning slice. Cross-slice
+# callers use the public application.ports, application.dtos, and errors modules.
+# Each exact ignore below permits the shared CLI to dispatch through a slice's
+# inbound CLI facade; it grants no access to the other adapter implementations.
+[[tool.importlinter.contracts]]
+name = "Index registry internals stay private"
+type = "protected"
+protected_modules = [
+    "ritebook.features.index_registry.adapters",
+    "ritebook.features.index_registry.application.use_cases",
+    "ritebook.features.index_registry.application.dtos.*",
+    "ritebook.features.index_registry.application.ports.*",
+]
+allowed_importers = ["ritebook.features.index_registry", "ritebook.cli"]
+ignore_imports = ["ritebook.adapters.inbound.cli.adapter -> ritebook.features.index_registry.adapters.inbound.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Publisher internals stay private"
+type = "protected"
+protected_modules = [
+    "ritebook.features.publisher.adapters",
+    "ritebook.features.publisher.application.use_cases",
+    "ritebook.features.publisher.application.dtos.*",
+    "ritebook.features.publisher.application.ports.*",
+    "ritebook.features.publisher.domain",
+]
+allowed_importers = ["ritebook.features.publisher", "ritebook.cli"]
+ignore_imports = ["ritebook.adapters.inbound.cli.adapter -> ritebook.features.publisher.adapters.inbound.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Skill contribution internals stay private"
+type = "protected"
+protected_modules = [
+    "ritebook.features.skill_contribution.adapters",
+    "ritebook.features.skill_contribution.application.use_cases",
+    "ritebook.features.skill_contribution.application.dtos.*",
+    "ritebook.features.skill_contribution.application.ports.*",
+]
+allowed_importers = ["ritebook.features.skill_contribution", "ritebook.cli"]
+ignore_imports = ["ritebook.adapters.inbound.cli.adapter -> ritebook.features.skill_contribution.adapters.inbound.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Skill installation internals stay private"
+type = "protected"
+protected_modules = [
+    "ritebook.features.skill_installation.adapters",
+    "ritebook.features.skill_installation.application.use_cases",
+    "ritebook.features.skill_installation.application.dtos.*",
+    "ritebook.features.skill_installation.application.ports.*",
+]
+allowed_importers = ["ritebook.features.skill_installation", "ritebook.cli"]
+ignore_imports = ["ritebook.adapters.inbound.cli.adapter -> ritebook.features.skill_installation.adapters.inbound.cli"]
+
+[[tool.importlinter.contracts]]
+name = "Skill linter internals stay private"
+type = "protected"
+protected_modules = [
+    "ritebook.features.skill_linter.adapters",
+    "ritebook.features.skill_linter.application.use_cases",
+    "ritebook.features.skill_linter.application.dtos.*",
+    "ritebook.features.skill_linter.application.ports.*",
+]
+allowed_importers = ["ritebook.features.skill_linter", "ritebook.cli"]
+ignore_imports = ["ritebook.adapters.inbound.cli.adapter -> ritebook.features.skill_linter.adapters.inbound.cli"]
 
 [tool.ty.src]
 include = ["src/ritebook"]

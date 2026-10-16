@@ -14,8 +14,9 @@ or consumer evidence.
   structured error contract.
 - Define authentication, authorization scope, tenant context, and what information
   may be revealed when access is denied.
-- For retriable writes, define idempotency keys, their scope, retention, replay
-  response, and conflict behavior.
+- For retriable writes, define how retries remain safe, whether through operation
+  semantics, idempotency keys, or conflict detection. When using idempotency keys,
+  define their scope, retention, replay response, and conflict behavior.
 - Define deadlines, cancellation propagation, retry guidance, rate limits, and
   whether a timeout can occur after a commit.
 - For reads, define caching, freshness, conditional requests, and consistency when

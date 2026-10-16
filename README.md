@@ -60,6 +60,16 @@ make quality
 This checks formatting, Ruff linting, ty types, Import Linter architecture
 contracts, and the default non-E2E pytest suite. Use `make help` to list the
 corresponding leaf targets and explicit formatting or lint-fix commands.
+Regression tests require the architecture graph to cover every Ritebook source
+module and verify that forbidden feature-core imports fail validation.
+
+`make architecture` enforces inward layer dependencies, shared-kernel and
+composition-root isolation, private slice boundaries, and an explicit I/O-library
+denylist. It includes imports under `TYPE_CHECKING`. Cross-slice callers use the
+public `application.ports`, `application.dtos`, and `application.errors` modules.
+The composition root wires implementations; the shared CLI dispatcher may import
+each slice's inbound CLI facade. Module contracts do not detect side effects
+through otherwise permitted APIs or dynamic imports; those still need code review.
 
 Plain pytest execution deselects Docker E2E tests by default. The Docker image
 explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
@@ -94,6 +104,8 @@ Build the package distributions without running the other gates:
 ```bash
 make build
 ```
+
+The source distribution excludes the externally sourced `.agents/` tree.
 
 Audit locked runtime and development dependencies for known vulnerabilities and
 adverse package status:

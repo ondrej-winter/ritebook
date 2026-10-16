@@ -2,7 +2,8 @@
 name: python-add-port
 description: Add a technology-agnostic inbound or outbound application port interface to the owning vertical slice in a Python hexagonal project for a new use case or dependency.
 metadata:
-  version: "1.0.0"
+  version: "1.0.3"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Add a Port
@@ -119,7 +120,8 @@ src/<app_name>/features/<feature_name>/application/dtos/
 - Keep ports in the application layer.
 - Do not import from `adapters/` or infrastructure libraries.
 - Do not embed framework request or response types in port method signatures.
-- Prefer domain objects and application DTOs from the owning slice's `application/dtos/` in method signatures.
+- Prefer domain objects and application DTOs from the owning slice's
+  `application/dtos/` in method signatures.
 - Keep each port narrowly focused on one use case or one dependency role.
 - Name methods by business intent, not transport or storage mechanics.
 

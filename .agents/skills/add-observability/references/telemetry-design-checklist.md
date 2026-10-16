@@ -17,17 +17,24 @@ Write one contract per signal or tightly related signal family.
 | Name and meaning | `<stable_name>`; `<plain_language_semantics>` |
 | Outcome semantics | `<success_failure_timeout_cancel_retry_rules>` |
 | Value and unit | `<value>`; `<base_or_project_standard_unit>` |
-| Attributes or labels | `<field>`: `<bounded_allowed_values_or_source>` |
+| Attributes or labels | `<field>`: `<allowed_source_size_limit_and_metric_cardinality_bound>` |
 | Correlation | `<request_trace_job_or_safe_domain_identifier>` |
 | Aggregation or sampling | `<temporality_distribution_sampling_or_rollup>` |
 | Missing-data behavior | `<zero_absent_delayed_dropped_or_unknown>` |
 | Operational surface | `<query_dashboard_alert_runbook_or_analysis>` |
 | Data handling | `<classification_redaction_retention_and_access>` |
 | Expected volume | `<events_or_series_and_growth_assumptions>` |
-| Validation evidence | `<test_scenario_query_or_capture_method>` |
+| Validation evidence | `<environment_scenario_query_or_capture>`; `<result_or_remaining_check>` |
 
 Reject or redesign a proposed signal when its meaning changes by call site, its
-values cannot be bounded or protected, or nobody can explain how it will be used.
+cost or data exposure cannot be controlled, or nobody can explain how it will be
+used. Bound metric label cardinality; bound log and span field sizes and apply
+data policy without excluding useful, permitted diagnostic identifiers.
+
+For a job that fails once then succeeds on retry, count two attempts (one failure,
+one success) and one logical operation (success). Keep these populations separate
+in rates. Define whether operation duration includes queue time and backoff;
+attempt duration measures only that attempt.
 
 ## Logs
 
@@ -54,14 +61,14 @@ values cannot be bounded or protected, or nobody can explain how it will be used
 - Give each metric one stable quantity and unit. Follow the project's naming and
   base-unit conventions.
 - Choose the measurement type deliberately:
-  - monotonic counter for completed events or accumulated amounts
+  - monotonic counter for events or accumulated amounts
   - gauge for state that can rise and fall
   - distribution or histogram for latency, size, age, and other value ranges
 - Define the counting point. Completion-based counts often align with duration
   and outcome metrics, but the project's existing convention takes precedence.
 - For ratios, ensure numerator and denominator cover the same population and time
-  semantics. Expose the underlying counts when practical instead of only a
-  precomputed percentage.
+  semantics. Aggregate their counts or rates before division; do not average
+  per-instance percentages. Define zero-denominator behavior.
 - For latency or size objectives, choose a distribution whose resolution or
   buckets distinguish acceptable from unacceptable outcomes. An average alone
   hides tail behavior.
@@ -71,29 +78,43 @@ values cannot be bounded or protected, or nobody can explain how it will be used
   Never use user IDs, email addresses, request IDs, timestamps, raw URLs, free-form
   errors, or other unbounded values as labels.
 - Estimate worst-case active series from the combinations of label values,
-  resources, and deployment scale. Start with fewer dimensions and add one only
-  for a concrete query.
-- Confirm the metric can be aggregated across processes or instances. Avoid
-  client-side values whose meaning is lost when summed or averaged.
+  resources, deployment scale, and the representation's bucket or quantile
+  series. Start with fewer dimensions and add one only for a concrete query.
+- Check cumulative versus delta temporality and restart behavior. For Prometheus
+  counter rates, apply [rate before aggregation](https://prometheus.io/docs/prometheus/latest/querying/functions/#rate)
+  so resets remain detectable.
+- Confirm aggregation across processes or instances. Merge compatible histogram
+  distributions before calculating a fleet percentile; do not average
+  per-instance percentiles. See [histograms and summaries](https://prometheus.io/docs/practices/histograms/).
 
 ## Traces
 
 - Create spans around meaningful operations, remote calls, and asynchronous
   producer or consumer work, not every helper function.
-- Preserve incoming context and propagate outgoing context with the established
-  mechanism. Use causal links when asynchronous work does not have a direct
-  parent-child lifetime.
+- Extract and inject context with the established propagator and the project's
+  trust-boundary policy. Validate untrusted incoming context and restrict outgoing
+  context and baggage to approved fields and destinations. Trace IDs and baggage
+  are not proof of identity or authorization. See
+  [propagation security](https://opentelemetry.io/docs/concepts/context-propagation/#security-best-practices).
+- Follow the stack's parent/link conventions. Use links for multiple causal
+  predecessors, batches, or work without one suitable parent. A child can outlive
+  its parent; asynchronous execution alone does not require a link. For
+  OpenTelemetry, check [span lifetime rules](https://opentelemetry.io/docs/specs/otel/trace/api/#end)
+  and [messaging conventions](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#consumer-spans).
 - Use the project's span kinds, names, status rules, semantic attributes, and
-  error-recording conventions.
+  error-recording conventions. Keep span names stable; put permitted diagnostic
+  identifiers in attributes.
 - Put stable query dimensions in attributes. Put time-ordered facts that belong to
   the operation in span events when supported.
 - Avoid full payloads, unrestricted SQL or query text, credentials, personal data,
-  and unbounded attributes.
+  and attributes without size or count limits.
 - Document head, tail, probability, or rule-based sampling and its blind spots.
   Ensure errors and slow operations receive the intended treatment where the
   stack supports it.
-- Keep unsampled metrics or another complete signal for exact traffic, success,
-  and error totals.
+- Use unsampled metrics for operational traffic and outcome rates, and document
+  collection gaps. Unsampled telemetry is not automatically lossless accounting;
+  exact totals require a source with the necessary delivery and durability
+  guarantees.
 - Check span volume, attribute size, fan-out, and exporter behavior under load.
 
 ## Profiles
@@ -107,8 +128,8 @@ values cannot be bounded or protected, or nobody can explain how it will be used
   reveal sensitive implementation or user information.
 - Compare like with like. A profile can localize cost but does not by itself prove
   a user-visible performance improvement.
-- Remove temporary probes or convert them into justified permanent signals before
-  handoff.
+- Remove temporary probes, document their owner and removal point, or justify
+  keeping them as permanent signals before handoff.
 
 ## Dashboards
 
@@ -152,13 +173,18 @@ values cannot be bounded or protected, or nobody can explain how it will be used
 | Retry | Attempts and logical operation are not accidentally double-counted |
 | Partial completion | Completed and incomplete work can be distinguished |
 | Concurrent work | Context does not leak across requests, jobs, or tenants |
+| Untrusted context | Malformed input is handled safely; outgoing context respects boundary policy |
 | Export unavailable | Workflow remains correct; buffering, drop, and recovery are bounded |
 | Sensitive input | Exported telemetry is redacted or omitted after the full pipeline |
 | High-cardinality input | Labels remain bounded and volume stays within expectations |
 | Representative load | Runtime overhead, event volume, and active series are acceptable |
+| Aggregation or restart | Counts, rates, distributions, and missing-data behavior remain meaningful |
 | Dashboard or alert | Query displays correctly; alert triggers, deduplicates, and recovers |
 
-Prefer automated tests for signal construction and counting semantics, plus at
-least one integration or runtime check of the configured telemetry path when
-practical. Report any backend, load, alert, or failure-mode validation that could
-not be performed.
+Select relevant rows rather than treating every row as mandatory. Use local
+captures or automated tests for signal construction and counting semantics, then
+exercise the configured path before claiming end-to-end verification. Use test
+alert destinations and isolated workloads; live responder notifications or
+production failure injection need explicit authorization. Record the environment,
+evidence, and result for each selected row, including checks not performed and
+what is needed to complete them. Local success does not verify an untested backend.

@@ -2,7 +2,7 @@
 
 Sibling of `author-agent-skill` for authoring shared repository instructions and
 maintaining minimal client adapters. It preserves the target repository's
-established canonical skill source instead of imposing a client-specific layout.
+established instruction and skill owners instead of imposing a new layout.
 For a fresh Cline project with no established ownership, it can bootstrap root
 `AGENTS.md`, canonical `.agents/skills/`, and a small exact `.clinerules/`
 scaffold while keeping shared policy out of client-only files.
@@ -15,8 +15,8 @@ For a Codex-compatible or shared Agent Skills installation, place this folder at
 .agents/skills/author-agents-config/
 ```
 
-The ZIP contains `author-agents-config/` as its top-level folder. Extract it into
-the selected client's documented skill root, not the repository root. Preserve
+For a ZIP distribution, ensure `author-agents-config/` is the top-level folder
+and extract it into the selected client's documented skill root. Preserve
 any existing folder of the same name rather than overwriting it blindly. Clients
 that do not discover `.agents/skills/` may require a supported projection or a
 different installation root.
@@ -50,7 +50,8 @@ procedure extraction.
 ```
 
 These are natural-language task examples, not a universal slash-command syntax.
-The agent infers init, update, sync, or audit from intent.
+The agent infers init, update, sync, or audit from intent. "Audit and improve"
+selects inspection followed by scoped updates; an audit alone remains read-only.
 
 ## Package
 
@@ -64,8 +65,9 @@ The agent infers init, update, sync, or audit from intent.
 For a fresh Cline project, copy the three bundled files unchanged into root
 `.clinerules/`, create a project-specific root `AGENTS.md`, use
 `.agents/skills/` as the canonical skill root, and merge `.tmp/cline/` into the
-project's ignore rules. If any corresponding project configuration already
-exists, reconcile it instead of overwriting it with the scaffold.
+project's ignore rules. This scaffold requires no established instruction or
+skill ownership and no existing scaffold destinations. Reconcile existing setups;
+missing individual files do not make them fresh.
 
 No automatic installer, runtime configuration, third-party dependencies, or
 cross-client generator is included. The core task needs repository-specific

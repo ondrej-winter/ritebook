@@ -61,7 +61,7 @@ RUN apt-get update \
 
 COPY --from=test-tools-builder /opt/test-venv/ /opt/test-venv/
 COPY --from=consumer-builder /opt/ritebook-venv/ /opt/ritebook-venv/
-COPY --chown=ritebook:ritebook conftest.py ./conftest.py
+COPY --chown=ritebook:ritebook tests/conftest.py ./tests/conftest.py
 COPY --chown=ritebook:ritebook tests/__init__.py ./tests/__init__.py
 COPY --chown=ritebook:ritebook tests/e2e/ ./tests/e2e/
 

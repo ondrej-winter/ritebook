@@ -2,7 +2,8 @@
 name: split-python-module
 description: Split a growing Python module or package while preserving behavior, boundaries, imports, public APIs, and reviewability when code has mixed responsibilities or needs clearer ownership.
 metadata:
-  version: "1.0.0"
+  version: "1.1.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Split a Python Module
@@ -34,7 +35,7 @@ Identify what makes the current module hard to maintain, for example:
 - repeated private sections that want separate ownership
 - public API and internal details tangled together
 
-State the target structure before editing.
+State the target structure and intended dependency direction before editing.
 
 ### 2. Choose the split pattern
 
@@ -56,11 +57,18 @@ Before moving code, identify:
 
 - public import paths that callers may rely on
 - package-level exports that should remain stable
+- string-based references in configuration, plugin registration, or dynamic imports
+- test patch targets and other references to module-qualified names
+- import-time initialization or registration that callers may rely on
 - any risk of circular imports after the split
 
 Preserve public import paths only when they are intentionally stable. If you
 keep them stable, update `__init__.py` or a dedicated compatibility module
 intentionally.
+
+Keep dependencies flowing in the intended direction. When two target modules
+need the same types or constants, prefer a small shared leaf module over
+reciprocal imports.
 
 ### 4. Move code in small, reviewable steps
 
@@ -89,6 +97,8 @@ If the module exposes a public API, verify:
 
 - imports still work as intended
 - call sites use the expected paths
+- dynamic imports, plugin registrations, and test patch targets still resolve
+- import-time behavior remains intentional
 - documentation or examples still match the visible surface
 
 If a compatibility break is intentional, document it clearly.
@@ -97,14 +107,21 @@ If a compatibility break is intentional, document it clearly.
 
 Run the narrowest checks that prove the split is safe:
 
+- import smoke tests for preserved public paths
 - impacted tests
 - lint or type checks for touched modules
+- a search for stale references to moved module-qualified names
 - broader quality gate before handoff when appropriate
+
+In the handoff, summarize the new module boundaries, compatibility decisions,
+and exact validation commands and results.
 
 ## Output checklist
 
 - each new module has one clear responsibility
 - imports are updated and non-circular
 - package exports are intentional
+- dynamic and module-qualified references are updated or preserved intentionally
 - no unrelated behavior changes were mixed into the split
 - compatibility-sensitive surfaces are preserved or documented
+- validation commands and results are reported

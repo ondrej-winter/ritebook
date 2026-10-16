@@ -2,7 +2,8 @@
 name: python-add-env-settings-adapter
 description: Add an environment-backed runtime settings adapter to a Python hexagonal vertical-slice app or library, using a configuration slice, application-owned settings DTOs, pydantic-settings adapter validation, and focused tests.
 metadata:
-  version: "1.0.0"
+  version: "1.0.3"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Add an Environment Settings Adapter
@@ -235,7 +236,8 @@ Preferred order:
 3. `uv run mypy .`,
 4. `uv run pytest`.
 
-When available, use `run-local-quality-gate` for the full validation pass.
+When available, use `run-python-quality-gate` for the full Python validation
+pass.
 
 ## Design checklist
 

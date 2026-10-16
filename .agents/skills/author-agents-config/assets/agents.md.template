@@ -15,10 +15,8 @@
 
 ## Git and external actions
 
-Local inspection, editing, and validation are allowed within the current task.
-Require explicit user authorization before creating commits, pushing, publishing,
-mutating remote systems, or running destructive commands. Preserve any stricter
-existing project policy.
+{{Preserve established authorization boundaries and explicit user decisions.}}
+{{For a fresh Cline bootstrap, use the default in SKILL.md step 4; otherwise omit unsupported policy.}}
 
 ## Required context
 

@@ -1,10 +1,10 @@
 """Adapter that exposes linter validation as publisher prechecks."""
 
 from ritebook.features.publisher.application.dtos import (
+    SkillEntry,
     SkillPrecheckIssue,
     SkillPrecheckResult,
 )
-from ritebook.features.publisher.domain import SkillEntry
 from ritebook.features.skill_linter.application.dtos import LintSkillsCommand
 from ritebook.features.skill_linter.application.ports import LintSkillsPort
 

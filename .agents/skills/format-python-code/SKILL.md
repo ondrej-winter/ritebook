@@ -2,17 +2,20 @@
 name: format-python-code
 description: Format Python code with ruff and apply safe auto-fixes when a Python project needs consistent style before linting, testing, or handoff.
 metadata:
-  version: "1.0.0"
+  version: "1.1.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
-# Skill: Format Python Code
+# Format Python Code
 
-Use this skill to format Python code and apply safe auto-fixes using `ruff` before linting, testing, or handing off changes.
+Use this skill to format Python code and apply safe auto-fixes using `ruff` before
+linting, testing, or handing off changes.
 
 ## Prerequisites
 
 - `uv` is installed and configured for the project.
-- `ruff` is installed as a development dependency and configured in `pyproject.toml`.
+- `ruff` is installed as a development dependency and configured in
+  `pyproject.toml` or a supported Ruff configuration file.
 
 ## Steps
 
@@ -23,13 +26,28 @@ uv run ruff check . --fix
 uv run ruff format .
 ```
 
-These commands will automatically reformat Python code and apply any safe linting auto-fixes.
+These commands reformat Python code and apply lint fixes that Ruff considers safe
+under the project's configuration. If the project defines narrower source or test
+paths, use those paths instead of `.`.
 
-### 2. Review the result
+### 2. Review and validate the result
 
-Review the changed files before continuing. Confirm that formatting and auto-fixes preserved the intended behavior, then continue with the `lint-python-code` step when linting or type checking is required.
+Review the changed files and confirm that formatting and auto-fixes preserved the
+intended behavior. Then run Ruff in check mode against the same target:
+
+```bash
+uv run ruff check .
+uv run ruff format . --check
+```
+
+Replace `.` consistently when narrower paths were formatted. Both commands must
+pass before handoff. Continue with the `lint-python-code` skill when broader
+linting or type checking is required.
 
 ## When formatting fails
 
-- If `ruff format .` produces unexpected changes, verify that the project's `pyproject.toml` ruff configuration is correct before overriding the formatter.
-- Unfixable lint violations reported by `ruff check . --fix` will be caught and addressed during the `lint-python-code` step.
+- If `ruff format` produces unexpected changes, verify the project's Ruff
+  configuration before overriding the formatter.
+- If `ruff check --fix` leaves violations, review and resolve them with the
+  `lint-python-code` skill rather than enabling unsafe fixes without justification.
+- Record any command that could not run and its error in the handoff notes.

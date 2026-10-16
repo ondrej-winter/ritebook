@@ -2,7 +2,8 @@
 name: write-pytest-tests
 description: Write or refactor Python tests when pytest-native style, focused scenarios, and deterministic setup are needed.
 metadata:
-  version: "1.0.0"
+  version: "1.1.2"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Write Pytest Tests
@@ -18,14 +19,21 @@ the target style is pytest-native rather than `unittest`-style.
 
 ## Steps
 
-### 1. Choose the smallest useful test scope
+### 1. Discover the project test conventions
+
+Before editing tests, inspect the project's pytest configuration, nearby tests,
+shared fixtures, markers, plugins, and documented test commands. Follow the
+existing test layout and naming conventions unless the task explicitly requires a
+change.
+
+### 2. Choose the smallest useful test scope
 
 - Prefer fast, isolated unit tests by default.
 - Use integration tests only for explicit boundaries that touch real I/O.
 - Keep each test deterministic and able to run in any order.
 - Test one behavior per test.
 
-### 2. Name the behavior clearly
+### 3. Name the behavior clearly
 
 Use scenario-based names that describe the expected outcome.
 
@@ -37,7 +45,7 @@ def test_applies_discount_for_vip_customer():
 Prefer names tied to behavior over names tied to helpers, internal methods, or
 implementation details.
 
-### 3. Structure tests with Arrange / Act / Assert
+### 4. Structure tests with Arrange / Act / Assert
 
 ```python
 def test_applies_discount_for_vip_customer():
@@ -57,7 +65,7 @@ def test_applies_discount_for_vip_customer():
 - If a test needs loops, branching, or complex helper logic, simplify it or
   replace repetition with parametrization.
 
-### 4. Use pytest-native tools for common patterns
+### 5. Use pytest-native tools for common patterns
 
 #### Exceptions
 
@@ -173,7 +181,7 @@ Use `monkeypatch` for environment and dependency patching. If the project
 allows pytest plugins, `pytest-mock`'s `mocker` can be used, but it is optional
 rather than core `pytest`.
 
-### 5. Assert observable outcomes
+### 6. Assert observable outcomes
 
 - Prefer assertions on returned values, raised exceptions, persisted state in a
   fake, emitted events, or externally visible side effects.
@@ -181,14 +189,14 @@ rather than core `pytest`.
 - Use interaction-based assertions only when verifying a real boundary or
   contract is clearer than asserting on fake state.
 
-### 6. Mock only true boundaries
+### 7. Mock only true boundaries
 
 - Mock or fake gateways, repositories, publishers, clocks, environment access,
   or similar boundaries when isolation is required.
 - Prefer small hand-written fakes or stubs over broad `MagicMock` chains.
 - Do not mock domain entities or value objects.
 
-### 7. Cover edge cases without making tests heavy
+### 8. Cover edge cases without making tests heavy
 
 - Cover the happy path plus failure, boundary, and invalid-input cases that
   matter.
@@ -196,7 +204,7 @@ rather than core `pytest`.
 - Keep tests readable and direct; do not duplicate production logic inside
   assertions or helpers.
 
-### 8. Avoid pytest anti-patterns
+### 9. Avoid pytest anti-patterns
 
 Do not introduce new:
 
@@ -208,7 +216,15 @@ Do not introduce new:
 - tests that rely on live services, ambient environment, wall-clock time, or
   shared developer state
 
-### 9. Run the affected tests
+### 10. Validate and report the tests
 
-Use the `run-python-tests` skill to run focused tests during development and
-the full test suite before handoff.
+Use the project's configured command to run the narrowest affected tests during
+development, then run the broader relevant suite before handoff. Follow the
+`run-python-tests` skill when it is available and applicable.
+
+For a new behavior or regression test, confirm that the test fails for the
+expected reason before the implementation change when practical. Do not weaken,
+skip, or delete a failing test merely to make the suite pass.
+
+Report the commands and targets used, whether they passed, and any validation that
+could not run with the reason.

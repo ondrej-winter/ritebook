@@ -1,8 +1,10 @@
 @AGENTS.md
 
 <!--
-Fallback adapter maintained through author-agents-config. Remove or omit this
-import when native AGENTS.md loading is verified and selected for the session.
+Fallback adapter maintained through author-agents-config. Use only when a
+project import is supported and native AGENTS.md loading is unavailable or displaced.
+Under claude-md-or-agents-md, leaving this file present suppresses native AGENTS.md
+loading even if the import is removed. Verify the entire loading path before migration.
 Shared project instructions belong in the adjacent AGENTS.md.
 Keep only genuinely Claude-specific behavior here.
 -->

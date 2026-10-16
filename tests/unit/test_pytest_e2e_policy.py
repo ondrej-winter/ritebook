@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-import conftest as pytest_policy
+from tests import conftest as pytest_policy
 
 
 def test_e2e_path_is_classified_for_explicit_opt_in() -> None:

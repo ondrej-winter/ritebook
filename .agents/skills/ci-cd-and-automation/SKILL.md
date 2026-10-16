@@ -2,255 +2,221 @@
 name: ci-cd-and-automation
 description: Design, review, or improve CI/CD and automation workflows for quality gates, deployment safety, rollback readiness, secrets handling, and feedback loops across any technology stack.
 metadata:
-  version: "1.6.3"
-  last-verified: "2026-10-01T09:34:17+02:00"
+  version: "1.7.0"
+  last-verified: "2026-10-15T11:28:40Z"
 ---
 
 # CI/CD and Automation
 
-Use this skill when setting up, reviewing, or changing automated workflows that
-build, test, verify, release, deploy, or maintain a project. The goal is to make
-verification repeatable, failures actionable, and releases reversible.
-
-CI/CD should enforce the project’s quality expectations without assuming a
-specific language, package manager, repository host, CI provider, deployment
-platform, or test framework.
+Design, review, or change workflows that build, test, release, deploy, or maintain
+a project. Make verification repeatable, failures actionable, and side effects
+recoverable. Use the project's tools and provider without assuming a language,
+package manager, repository host, or deployment platform.
 
 ## Execution boundary
 
-A design-only automation artifact may define triggers, jobs, commands,
-permissions, failure handling, and recovery without provider access. Label that
-result design-only and runtime-unverified, and keep unknown commands or provider
-details as explicit placeholders. Fully implemented automation requires editing
-the canonical configuration and validating syntax plus intended behavior in the
-applicable project or provider environment. If the request requires working
-automation and that execution is unavailable, report the workflow as blocked;
-do not claim that a proposed or merely parsed workflow runs correctly.
+Establish whether the request is for review, design, implementation, or execution.
+Review-only work produces findings and evidence without edits. A design may use
+explicit placeholders for unknown commands or provider details; an executable
+configuration must resolve them.
 
-## When to use this skill
+Local edits and validation can be completed without provider access. Report them
+as implemented and locally validated, with provider execution unverified. Claim
+runtime verification only for behavior actually observed at the relevant
+revision and environment. If requested execution is unavailable, mark that step
+blocked, explain what is missing, and continue independent work.
 
-Use this skill when you need to:
-
-- create or modify a CI pipeline
-- add automated quality gates
-- configure deployment, preview, staging, or release workflows
-- debug failed automated checks
-- improve feedback loops between CI failures and development work
-- add rollback, feature flag, dependency update, or scheduled maintenance
-  automation
-
-Do not use this skill to bypass project quality gates. If a gate is too noisy or
-too slow, fix the gate or document a temporary exception with ownership and an
-expiry condition.
-
-## Principles
-
-- Catch problems as early as practical. Prefer static checks before slower tests,
-  tests before staging, and staging before production.
-- Keep batches small. Smaller changes and frequent releases are easier to debug
-  and safer to roll back.
-- Make automation reproducible locally where practical. A failing CI step should
-  point to a command or procedure a maintainer can run before pushing again.
-- Treat secrets and deployment permissions as production-sensitive, even in test
-  pipelines.
-- Optimize slow pipelines by improving structure, caching, or test selection, not
-  by silently skipping important checks.
+Before dispatching or rerunning a workflow, inspect its downstream effects.
+Publishing, deployment, cleanup, credential changes, and remote policy changes
+must fit the user's scope and existing authorization. A request to edit or audit
+automation does not by itself authorize those operations. Use safe local checks
+or an authorized disposable environment where possible.
 
 ## Steps
 
-### 1. Identify the workflow and trigger
+### 1. Inspect the existing workflow and its consumers
 
-Define what automation is needed and when it runs.
+Read repository instructions, the working-tree diff, canonical workflow sources,
+reusable jobs and callers, project commands, and recent failure evidence when
+available. Identify generated configuration before editing it. Preserve unrelated
+changes, established tooling, and required-check names used by other systems.
 
-Capture:
+Record the intended events and source revision, target environments, inputs,
+runner constraints, permissions, artifacts, failure owners, and success signal.
+Inspect branch or merge protections and deployment policies when accessible;
+configuration files alone do not prove that a gate is enforced. If a check name
+or contract must change, coordinate its consumers within authorized scope and
+record any remaining external change.
 
-- trigger, such as proposed change, merge, tag, scheduled run, manual dispatch,
-  or deployment event
-- target environment, such as local verification, CI, staging, preview, or
-  production
-- required inputs, secrets, permissions, and artifacts
-- expected pass/fail signal
-- who owns failures and how they are handled
+Verify provider-specific syntax, event behavior, permissions, and plan/version
+limits against current primary documentation. Keep reusable guidance portable;
+use concrete provider configuration in the target project.
 
 ### 2. Define quality gates
 
-Use the project’s existing commands when available. If commands are missing,
-document placeholders in the design and call out that concrete tooling must be
-chosen before the gate can run.
+Choose gates appropriate to the change: formatting, linting, type/schema/contract
+checks, tests, builds, security scans, migrations, or generated-file drift. Use
+existing project commands and declared dependency versions, with an explicit
+working directory and setup. Do not assume globally installed checkers or replace
+an established checker as incidental CI cleanup. Resolve missing tooling choices
+before making the gate executable.
 
-Common gates include:
+Define which results are required and how they block merging or deployment.
+Preserve command exit codes through wrappers and log collection. Required failures
+must not become success through tolerated errors, pipelines, or aggregate jobs.
 
-- formatting or style check: `<format_check_command>`
-- lint or static analysis: `<lint_command>`
-- type, schema, or contract validation: `<contract_check_command>`
-- unit tests: `<unit_test_command>`
-- integration tests: `<integration_test_command>`
-- end-to-end or smoke tests: `<e2e_or_smoke_test_command>`
-- build or package verification: `<build_command>`
-- security, dependency, or image scan: `<security_scan_command>`
-- documentation, migration, or generated-file drift check:
-  `<repository_validation_command>`
+For each required gate, account for failure, cancellation, missing results, and
+unexpected skips. If using an aggregate gate, it must evaluate expected upstream
+outcomes even when dependencies fail or are skipped. Define exclusions explicitly
+and ensure branch/path filters and merge-queue events, when used, still produce
+the required signal. Provider skip semantics differ; for example, consult
+[GitHub's required-check guidance](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)
+when targeting GitHub Actions.
 
-Order fast deterministic checks before slower or environment-heavy checks.
+Prefer fast deterministic feedback before expensive or mutating stages; run
+independent checks in parallel where useful. Do not disable gates to make a run
+green. Record temporary exceptions with the risk, owner, and expiry condition.
 
-Use the project's configured type, schema, or contract checker. Run it through
-the project's declared dependency and command mechanism so local and CI execution
-use the same version; do not assume a globally installed executable. If a required
-checker has not been selected, require an explicit project- or technology-specific
-tooling decision before making the gate executable. Treat replacement of an
-established checker as an explicit migration rather than incidental CI cleanup.
+### 3. Separate untrusted work from privileged operations
 
-### 3. Keep provider configuration portable
+Trace who controls the source, event inputs, dependencies, artifacts, caches, and
+runner state consumed by each job. A successful upstream run does not establish
+trust. Keep untrusted builds and tests away from production credentials, write
+tokens, privileged runners, and deployment networks. Inspect effective permissions
+on downstream workflows too; they may differ from the initiating job.
 
-Use the project’s CI provider conventions, but keep the design independent of a
-single provider whenever possible.
+- Use least-privilege job permissions and separate test and production identities.
+  Prefer short-lived workload credentials when supported, constrained to the
+  intended repository, workflow/ref, audience, and environment.
+- Retrieve secrets from the project's secret store. Keep them out of source, logs,
+  caches, artifacts, and client output; masking alone is not a security boundary.
+- Treat event text and user inputs as data. Pass validated values through safely
+  quoted arguments or environment variables; do not interpolate them into scripts.
+- Pin third-party actions, plugins, and images to reviewed immutable versions
+  where supported, with an explicit update process.
+- Isolate persistent or self-hosted runners and shared writable state by trust
+  level. Prevent untrusted producers from supplying executable inputs to
+  privileged consumers through caches or artifacts.
 
-For each job, define:
+Apply the provider's current rules rather than assuming fork defaults are enough.
+For GitHub Actions, consult its
+[secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use)
+and the permissions of the actual workflow events.
 
-- checkout or source acquisition step
-- runtime, toolchain, or container setup
-- dependency installation or cache restoration
-- command to run
-- artifacts to collect on success or failure
-- secrets and permissions required
-- timeout and retry policy
-- concurrency and cancellation behavior for duplicate or superseded runs
-- trust, pinning, and update policy for third-party actions, images, or plugins
+### 4. Make jobs reproducible and failures actionable
 
-Provider-specific YAML, hosted runner names, and marketplace actions are examples,
-not portable requirements. Scope them as examples when documenting reusable skill
-guidance.
+Specify the source revision, runtime/toolchain versions, locked dependency
+installation, commands, job dependencies, and timeout. Caches are optional
+accelerators; a cold run must still work. Select cache keys and access boundaries
+that account for dependency locks, runtime/platform compatibility, and trust.
 
-### 4. Make failures actionable
+Collect useful logs and test/build reports on failure without masking the original
+result. Record the failing command, relevant environment details, local
+reproduction steps, and the next diagnostic action. Set artifact access and
+retention appropriate to their contents; redact sensitive evidence before sharing.
 
-When CI fails, preserve enough information for a maintainer or agent to reproduce
-and fix the issue.
+Retry only identified transient failures with a bound and a reason. Preserve
+failure evidence and distinguish infrastructure failures from deterministic or
+flaky checks. Do not rerun until green or treat a pass after retry as proof that
+flakiness is fixed. For operations with side effects, establish that replay is
+safe; otherwise reconcile or recover partial state before deciding whether to retry.
 
-For each failure path, include:
+### 5. Make deployments safe to promote, stop, and recover
 
-- the exact failing command or check name
-- relevant logs or artifacts
-- environment details that affect reproduction
-- whether the failure is deterministic or flaky
-- the local command or next diagnostic step
+Apply this step when the workflow releases or deploys. Identify the immutable
+artifact, source revision, producing run, and digest or equivalent identity.
+Verify the trusted producer and required checks before promotion; promote the
+same verified artifact between environments. An artifact name or successful
+download alone does not prove provenance.
 
-Useful failure prompts include:
+Define environment approvals, migration ordering and compatibility, smoke/health
+checks, monitoring thresholds and window, and the owner who acts on failure.
+Specify recovery: rollback, disablement, roll-forward, or compensation. Check
+that the recovery version remains compatible with migrated data; an application
+rollback does not necessarily reverse a migration. Where reversal is impossible,
+record the accepted risk and containment plan.
 
-```text
-The automated check `<check_name>` failed with this output:
-<error_output>
+Serialize operations that share deployment state across all entry points. Before
+mutation, check that the run is still eligible to deploy; serialization alone
+does not stop an older queued run from replacing a newer release. Treat an
+intentional rollback separately from stale-run prevention.
 
-Reproduce locally with `<local_command>`, fix the issue, and rerun the relevant
-quality gate before pushing again.
-```
+Cancel superseded verification jobs only when safe. For deployments and other
+writes, define safe interruption, cleanup, and resumption before enabling automatic
+cancellation or retries. Provider ordering and cancellation controls vary; see
+[GitLab's deployment-safety guidance](https://docs.gitlab.com/ci/environments/deployment_safety/)
+when targeting GitLab CI/CD.
 
-Do not normalize flaky failures by rerunning indefinitely. Track and fix the
-source of flakiness.
+Use previews, staged rollouts, canaries, or feature flags when they reduce the
+identified risk. Assign cleanup ownership and an expiry condition to temporary
+environments, flags, and release switches.
 
-### 5. Protect secrets and environments
+### 6. Bound maintenance automation
 
-Keep secrets out of committed files, logs, artifacts, and client-visible output.
+For dependency updates, scheduled suites, drift checks, reports, and cleanup,
+define the schedule/event, owner, allowed targets, expected output, and failure
+signal. For writes, define review requirements, duplicate-run behavior, recovery,
+and how to stop the automation. Prevent bot-triggered update loops.
 
-Check that:
+Exercise mutations in a dry run or disposable environment before enabling them
+against real resources. Check both intended changes and protected resources that
+must remain untouched. If safe execution is unavailable, keep writes disabled or
+default to a dry run in the configuration, and report the unverified behavior.
 
-- secrets come from the CI provider, vault, or deployment platform secret store
-- CI and production use separate credentials
-- least-privilege permissions are used for jobs and tokens
-- forks or untrusted changes cannot access sensitive secrets unexpectedly
-- test credentials are clearly scoped and cannot affect production resources
-- logs and artifacts do not expose credentials, tokens, or sensitive data
+### 7. Optimize without weakening enforcement
 
-Configuration templates may be committed, but real secrets must not be.
+Use measured queue time, job duration, and failure patterns to select changes.
+Consider caching, parallel jobs, sharding, or runner capacity. Selective checks
+must cover affected dependencies; fall back to broader checks when impact is
+uncertain. Verify that path filters and cache hits cannot bypass required gates.
 
-### 6. Design deployment and release safety
+Move non-critical work to scheduled runs only with an explicit coverage tradeoff
+and ownership. Preserve required checks for each proposed change. Record any
+deferred gate with its risk, owner, and follow-up or expiry condition.
 
-For deployment workflows, define:
+### 8. Verify configuration, behavior, and enforcement separately
 
-- artifact or version being deployed
-- how the same immutable artifact is promoted between environments
-- target environment and approval requirements
-- migration steps and ordering
-- smoke checks or health checks after deployment
-- monitoring window and success criteria
-- rollback or roll-forward procedure
-- concurrency rules that prevent overlapping deployments from corrupting state
-- ownership when deployment fails
+Start with the smallest relevant local checks: diff review, provider syntax/schema
+linting where available, and the project's affected commands. Inspect the rendered
+configuration when templates or reusable workflows affect what runs. A parse or
+lint pass proves neither provider execution nor policy enforcement.
 
-For risky or incomplete functionality, consider feature flags, staged rollout,
-canary deployment, or preview environments. Document the lifecycle and cleanup
-date for temporary flags or release switches.
+Within authorized scope, exercise representative paths in a safe environment:
 
-### 7. Automate maintenance carefully
+| Path | Evidence to inspect |
+| --- | --- |
+| Intended event and successful change | Correct revision, jobs, commands, and artifacts run. |
+| Deliberate failure in an isolated fixture | Failure reaches the blocking gate; deployment remains blocked. |
+| Filtered, skipped, cancelled, or missing work | Only defined exclusions pass; unexpected omissions cannot pass the gate. |
+| Untrusted contribution or downstream handoff | Effective permissions and input handling preserve the trust boundary. |
+| Duplicate, stale, retried, or interrupted mutation | No unintended replay, overlap, partial-state loss, or stale deployment. |
+| Unhealthy deployment | Health evidence reaches the owner and the recovery path works where safely testable. |
 
-Automation beyond CI can reduce operational toil when it has clear ownership.
+Choose paths relevant to the change. Do not inject failures into production or
+reveal real credentials to test a boundary. Inspect merge/deployment policy as
+well as job results before claiming enforcement. Record the revision/run and
+observed outcomes; distinguish executed checks from documentation review or a
+paper walkthrough. Missing provider access leaves runtime behavior unverified.
 
-Examples include:
+### 9. Hand off the result and its limits
 
-- dependency update proposals
-- vulnerability scans
-- scheduled test suites
-- generated documentation or schema drift checks
-- repository health reports
-- stale preview cleanup
+Summarize findings or changed files, workflow triggers, required gates, permissions,
+side effects, recovery, and failure ownership as relevant. Include validation
+commands/results and provider-run evidence when available. State the outcome:
 
-For each automation, define what it changes, who reviews the result, and how to
-recover if the automation behaves incorrectly. Test mutating automation with a
-dry-run mode, disposable environment, or tightly bounded scope when practical.
+- review-only, with findings and supporting evidence
+- design-only and runtime-unverified, with unresolved inputs/placeholders
+- implemented and locally validated, with provider execution unverified
+- implemented and runtime-verified, naming the observed revision and environment
 
-### 8. Optimize without weakening the gate
+If local validation is incomplete, say so instead of selecting a validated label.
+List blocked or deferred steps with the reason, risk, owner if known, and follow-up
+condition. Do not invent owners or claim a proposed workflow is working automation.
 
-When automation becomes too slow, improve the pipeline before removing checks.
+## Related workflows
 
-Prefer:
-
-- caching dependencies or build outputs with safe cache keys
-- splitting independent jobs to run in parallel
-- running only relevant checks for clearly scoped changes
-- sharding large test suites
-- moving slow non-critical checks to scheduled runs while keeping a representative
-  smoke check on each proposed change
-- using faster runners or build infrastructure when justified
-
-Document any skipped or deferred gate with the risk, owner, and expiry condition.
-
-### 9. Verify the automation itself
-
-After changing automation, verify that it runs in the intended environment.
-
-Confirm:
-
-- the workflow triggers on the intended events
-- workflow configuration syntax, schema, or provider linting passes when the
-  provider offers a non-destructive validation command
-- required gates run and block unsafe merges or deployments
-- secrets are not exposed
-- artifacts and logs are available when needed
-- rollback or recovery path is documented and tested where practical
-- mutating automation has been exercised safely before it can affect production
-- local reproduction instructions exist for likely failures
-- any gate that cannot be run before handoff is documented with the reason,
-  risk, owner, and follow-up condition
-
-## Red flags
-
-- no automated verification for changes that affect shipped behavior
-- quality gates disabled instead of fixed
-- CI-only failures that cannot be reproduced or diagnosed
-- secrets committed, logged, or exposed to untrusted jobs
-- deployment without health checks, monitoring, or rollback plan
-- production and test environments sharing credentials
-- long-running pipelines with no optimization plan
-- flaky tests treated as normal pipeline behavior
-
-## Output checklist
-
-- workflow trigger and owner are explicit
-- quality gates use project commands or clear placeholders
-- provider-specific configuration is scoped to the target project
-- failures produce actionable logs and reproduction steps
-- secrets and permissions follow least privilege
-- deployment workflows include health checks and rollback guidance
-- maintenance automation has review and recovery paths
-- validation was run or skipped validation is documented
-- the result is labeled implemented and verified, design-only and
-  runtime-unverified, or blocked; a design is not reported as working automation
+When available and their own triggers apply, route active failure diagnosis to
+`debugging-and-error-recovery`, use `run-local-quality-gate` for local verification,
+and hand off production launch readiness and execution to `shipping-and-launch`.
+These relationships do not automatically activate other skills. If unavailable,
+continue the CI/CD work supported here and report any unfulfilled dependency.

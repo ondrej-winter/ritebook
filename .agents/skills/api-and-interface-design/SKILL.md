@@ -2,8 +2,8 @@
 name: api-and-interface-design
 description: Design or review stable APIs and interfaces that are explicit, compatible, and hard to misuse. Use when creating or changing HTTP, event, library, module, CLI, component, schema, configuration, plugin, or other durable integration contracts.
 metadata:
-  version: "1.3.2"
-  last-verified: "2026-09-30T20:31:51+02:00"
+  version: "1.3.3"
+  last-verified: "2026-10-15T10:44:21Z"
 ---
 
 # API and Interface Design
@@ -101,9 +101,11 @@ Examples: <success and representative failure>
 ```
 
 Keep creation input, update input, returned output, and internal representation
-separate when they have different ownership or constraints. Do not require
-callers to send generated identifiers, timestamps, audit fields, or computed
-values owned by the provider.
+separate when they have different ownership or constraints. Do not let callers
+assign or overwrite provider-owned identifiers, timestamps, audit fields, or
+computed values. Callers may still need to return existing resource identifiers
+or opaque version tokens for targeting or concurrency checks; document these
+inputs explicitly.
 
 ### 4. Make the contract predictable and hard to misuse
 
@@ -140,7 +142,9 @@ For every caller-actionable failure, define:
 - the caller's recovery action
 
 Human-readable messages may change and should not be the only machine contract.
-Do not expose secrets, stack traces, queries, paths, or provider internals.
+Do not expose secrets or provider internals, such as stack traces, internal
+queries, or sensitive paths. Safe caller-visible filenames or paths may be
+included when needed to explain an error and support recovery.
 
 If callers can retry a state-changing operation, define idempotency, deduplication,
 or conflict behavior. A timeout or lost response does not prove that the provider

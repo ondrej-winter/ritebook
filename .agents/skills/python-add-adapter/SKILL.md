@@ -2,7 +2,8 @@
 name: python-add-adapter
 description: Add an inbound or outbound adapter to the owning vertical slice in a Python hexagonal project while keeping business logic in the application layer.
 metadata:
-  version: "1.0.0"
+  version: "1.0.3"
+  last-verified: "2026-09-30T20:31:51+02:00"
 ---
 
 # Add an Adapter
@@ -143,8 +144,8 @@ Useful checks often include:
 - `uv run mypy .`
 - `uv run pytest`
 
-When available, use `run-local-quality-gate` for the full validation pass before
-handoff.
+When available, use `run-python-quality-gate` for the full Python validation pass
+before handoff.
 
 ## Related skills
 

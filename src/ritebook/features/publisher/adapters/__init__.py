@@ -1,0 +1,1 @@
+"""Publisher I/O adapters."""

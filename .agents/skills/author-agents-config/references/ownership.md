@@ -28,6 +28,11 @@ Client discovery locations may be projections of that source; their existence
 does not make each projection independently authoritative. For a fresh setup,
 choose a source from explicit project intent and verified selected-client support.
 
+Preserve established instruction ownership too. A request to improve canonical
+`CLAUDE.md` does not itself authorize moving its policy into `AGENTS.md`. The
+placement model below applies to new configuration and authorized consolidation;
+ordinary updates retain the current owner.
+
 When Cline is selected for a genuinely fresh project with no existing ownership
 decision, this package defaults to root `AGENTS.md`, canonical `.agents/skills/`,
 and the exact bundled `.clinerules/` scaffold. `AGENTS.md` owns shared repository
@@ -112,10 +117,11 @@ migration has accounted for discovery. Without `author-agent-skill`, preserve th
 procedure and provide an extraction brief: intended trigger, destination concept,
 source location, and obligations that must remain ambient.
 
-Do not apply the fresh Cline scaffold over an existing `AGENTS.md`, `.clinerules/`,
-or `.cline/rules/` tree. Reconcile each existing file, preserve client-specific
-content, and require an explicit migration decision before changing layout or
-canonical skill ownership.
+Use the fresh Cline scaffold only when no instruction or skill ownership is
+established and every scaffold destination is absent. Missing individual files
+in an existing setup do not qualify. Reconcile existing configuration, preserve
+client-specific content, and require an explicit migration decision before
+changing layout or canonical ownership.
 
 Avoid turning an uncertain migration into another permanent active policy copy.
 Where replacement loading cannot be established, keep the existing path and

@@ -20,13 +20,17 @@ Inspect the final diff and actual files, not just the planned changes.
    Relevant overrides and loader limitations have been accounted for.
 6. Generated copies, if unavoidable, have real regeneration and drift checks. Static
    importers have not acquired an unnecessary generation framework.
-7. `sync` has left canonical policy and skill content unchanged. `audit` has written
-   no repository files. All modes preserve unrelated working-tree changes.
+7. `sync` has left canonical policy and skill content unchanged. Review-only
+   `audit` has written no repository files; review plus requested repairs used
+   `update`. All modes preserve unrelated working-tree changes and established
+   ownership unless migration was requested.
 8. No secrets, personal/global settings, approvals, hooks, application behavior,
    or CI behavior were changed outside explicit scope.
-9. A fresh Cline bootstrap copied all three bundled rule files byte-for-byte,
-   established root `AGENTS.md` and canonical `.agents/skills/`, and merged
-   `.tmp/cline/` into existing ignore rules without replacing them.
+9. A fresh Cline bootstrap met the whole-setup eligibility rule, copied all three
+   bundled rule files byte-for-byte, established root `AGENTS.md` with the explicit
+   authorization boundary and canonical `.agents/skills/`, and merged `.tmp/cline/`
+   into existing ignore rules without replacing them. Other setups did not gain
+   unsupported policy from the generic template.
 10. An existing Cline configuration was reconciled rather than overwritten. No
     duplicate rules or skill projection was added when native discovery sufficed.
 
@@ -89,16 +93,21 @@ Run them against disposable repositories or safe fixtures with an actual agent.
 | --- | --- |
 | Fresh repository; no clients specified | Evidence-backed shared instructions only; no kitchen-sink client scaffolding. |
 | Fresh repository; Codex selected | Native canonical paths; no redundant Codex policy adapter. |
+| Fresh non-Cline setup; authorization policy unspecified | Generic template adds no unsupported Git or external-action rules. |
 | Fresh repository; Cline selected | Root `AGENTS.md`, canonical `.agents/skills/`, exact three-file `.clinerules/` scaffold, and `.tmp/cline/` ignore coverage. |
 | Fresh Cline bootstrap repeated | Scaffold, shared policy, skill root, and ignore entry remain unchanged. |
 | Add Claude Code; native AGENTS.md supported and selected | No adapter; canonical policy and skill content unchanged. |
 | Add Claude Code; native AGENTS.md unavailable or displaced | Thin `@AGENTS.md` fallback; canonical policy and skill content unchanged. |
+| Claude import migration under `claude-md-or-agents-md` | Removing only the import is rejected as insufficient; retained Claude files and fallback sessions are accounted for before any authorized removal. |
 | Existing `.clinerules/` or `.cline/rules/` | Existing path and content preserved; no scaffold overwrite or speculative migration. |
 | Both Cline rule layouts exist | Combined loading and conflicts inspected; rules are not copied between layouts. |
 | Cline version includes `.agents/skills/` scanning | Canonical skills used directly; no `.cline/skills/` or `.clinerules/skills/` projection. |
-| Cline documentation and implementation source differ | Difference reported with source revision; runtime support not overstated. |
+| Cline documentation pages list different skill roots | Relevant pages identified; coverage differences do not establish scan order or installed runtime support. |
 | Audit requested with writable tools available | Findings only; no repository writes or "helpful" repairs. |
-| Existing CLAUDE.md mixes shared and client-only content | Authorized update moves shared policy without losing Claude-specific behavior. |
+| "Audit and improve this setup" | Inspection followed by scoped repairs in `update`; no redundant approval request or stop after findings. |
+| "Audit and suggest improvements; do not edit" | Findings and proposals only; explicit no-edit constraint wins. |
+| Narrow update to existing canonical CLAUDE.md | Existing owner improved; no implicit migration to AGENTS.md. |
+| Authorized consolidation of shared policy from CLAUDE.md | Shared policy moves to the agreed canonical source without losing Claude-specific behavior. |
 | Long workflow in existing rules; author-agent-skill unavailable | Procedure retained; extraction handoff reported; no silent deletion. |
 | Nested AGENTS.md; client starts at root | Actual discovery inspected; root import not assumed to expose all descendants. |
 | Copilot surface unspecified | No universal support claim; ambiguous adapter changes deferred. |
@@ -106,9 +115,10 @@ Run them against disposable repositories or safe fixtures with an actual agent.
 | Existing skill symlink, dirty files, or external link target | No duplicate copy, unrelated overwrite, or out-of-workspace write. |
 | Existing canonical skill root is not `.agents/skills/` | Existing ownership is preserved unless an explicit, verified migration is requested. |
 | Existing `AGENTS.md` or Cline rules contain project policy | Existing obligations reconciled individually; generic templates do not replace them. |
+| Existing AGENTS.md with individual Cline scaffold files absent | Existing setup reconciled; missing files do not trigger fresh bootstrap defaults. |
 | Current correct configuration run twice | No adapter timestamp/prose churn and no newly redundant files. |
 | "Fix this application test" with no config request | This skill is not selected merely because AGENTS.md exists. |
-| Sync requested but AGENTS.md is missing | Missing canonical dependency reported; no silent policy authoring. |
+| Sync requires AGENTS.md but that source is missing | Missing canonical dependency reported; no silent policy authoring. |
 
 ## Completion report
 

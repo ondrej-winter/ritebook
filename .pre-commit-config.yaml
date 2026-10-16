@@ -21,21 +21,21 @@ repos:
     hooks:
       - id: ruff-check
         name: ruff check
-        entry: make lint-fix
+        entry: make lint
         language: system
-        types: [python]
+        files: &python_checks '\.pyi?$|^(pyproject\.toml|uv\.lock|Makefile|\.pre-commit-config\.yaml)$'
         pass_filenames: false
       - id: ruff-format
-        name: ruff format
-        entry: make format
+        name: ruff format check
+        entry: make format-check
         language: system
-        types: [python]
+        files: *python_checks
         pass_filenames: false
       - id: ty
         name: ty
         entry: make type
         language: system
-        types: [python]
+        files: *python_checks
         pass_filenames: false
       - id: import-linter
         name: import-linter
@@ -46,5 +46,5 @@ repos:
         name: pytest
         entry: make test
         language: system
-        types: [python]
+        files: *python_checks
         pass_filenames: false

@@ -47,6 +47,10 @@ Pre-commit provides fast local feedback for file hygiene, Ruff formatting and
 linting, ty type checking, Import Linter architecture contracts, and tests. It
 complements, but does not replace, the full local quality gate.
 
+The Ruff hooks check without rewriting Python files. Ruff, ty, and pytest run
+when Python files, `pyproject.toml`, `uv.lock`, `Makefile`, or
+`.pre-commit-config.yaml` change.
+
 Run the standard local quality gate:
 
 ```bash

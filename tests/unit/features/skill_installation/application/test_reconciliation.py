@@ -26,6 +26,7 @@ from ritebook.features.skill_installation.application.dtos import (
 )
 from ritebook.features.skill_installation.application.errors import (
     CommittedSkillMetadataMismatchError,
+    InstallationPersistenceError,
     LocallyModifiedInstallTargetError,
     UnmanagedInstallTargetError,
 )
@@ -455,10 +456,7 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
     ]
     assert len(state.last_ownership_entries) == 1
     assert state.last_lock_issues == result.issues
-    assert transactions.transaction.committed_files == (
-        state.last_ownership_file,
-        state.last_lockfile,
-    )
+    assert transactions.transaction.committed_files == (state.last_lockfile,)
 
 
 def test_sync_force_replaces_unmanaged_and_locally_modified_declared_targets(
@@ -468,7 +466,7 @@ def test_sync_force_replaces_unmanaged_and_locally_modified_declared_targets(
     edited = tmp_path / ".agents/skills/security-review"
     ownership = (_owned(edited, skill_name="security-review", digest=_OLD_DIGEST),)
     index = registered_skill_index(name="platform-skills")
-    state = _StateAdapter(sync_root=tmp_path / ".ritebook", ownership=ownership)
+    state = _StateAdapter(sync_root=tmp_path / ".ritebook", lock_ownership=ownership)
     transactions = _Transactions()
     use_case = _sync_use_case(
         tmp_path,
@@ -514,7 +512,7 @@ def test_sync_force_replaces_unmanaged_and_locally_modified_declared_targets(
     assert all(entry.status is InstallationStatus.MATERIALIZED for entry in state.last_ownership_entries)
 
 
-def test_sync_attaches_ownership_and_lockfile_snapshot_digests_to_state_candidates(
+def test_sync_renders_only_selected_lockfile_snapshot(
     tmp_path: Path,
 ) -> None:
     state = _StateAdapter(
@@ -536,15 +534,10 @@ def test_sync_attaches_ownership_and_lockfile_snapshot_digests_to_state_candidat
         ),
     )
 
-    ownership_file, lockfile = transactions.transaction.committed_files
-    assert ownership_file.expected_digest == _OWNERSHIP_DIGEST
+    [lockfile] = transactions.transaction.committed_files
     assert lockfile.expected_digest == _LOCKFILE_DIGEST
-    assert state.digest_read_calls == [
-        state.sync_paths(
-            requirements_file=str(tmp_path / "ritebook.toml"),
-            lockfile_path=None,
-        ).lockfile_path,
-    ]
+    assert state.digest_read_calls == []
+    assert state.read_calls == []
 
 
 def test_sync_leaves_undeclared_previously_owned_targets_untouched(
@@ -579,7 +572,7 @@ def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
     target = tmp_path / ".agents/skills/code-review"
     existing = _owned(target, digest=_TREE_DIGEST)
     index = registered_skill_index(name="platform-skills")
-    state = _StateAdapter(sync_root=tmp_path / ".ritebook", ownership=(existing,))
+    state = _StateAdapter(sync_root=tmp_path / ".ritebook", lock_ownership=(existing,))
     transactions = _Transactions()
     use_case = _sync_use_case(
         tmp_path,
@@ -608,15 +601,21 @@ def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
     assert transactions.transaction.replace_calls == []
 
 
-def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
+@pytest.mark.parametrize("ledger_exists", [False, True])
+@pytest.mark.parametrize("modified", [False, True])
+def test_sync_uses_selected_lock_despite_conflicting_ledger(
     tmp_path: Path,
+    *,
+    ledger_exists: bool,
+    modified: bool,
 ) -> None:
     target = tmp_path / ".agents/skills/code-review"
     locked = _owned(target, digest=_TREE_DIGEST)
     index = registered_skill_index(name="platform-skills")
     state = _StateAdapter(
         sync_root=tmp_path / ".ritebook",
-        ownership_exists=False,
+        ownership_exists=ledger_exists,
+        ownership=(_owned(target, digest=_OLD_DIGEST),),
         lock_ownership=(locked,),
         lockfile_digest=_LOCKFILE_DIGEST,
     )
@@ -637,7 +636,7 @@ def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
         catalog=_Catalog(index=index, skills=(installable_skill(),)),
         installer=_Installer(
             inspections={
-                str(target): _inspection(target, exists=True, digest=_TREE_DIGEST),
+                str(target): _inspection(target, exists=True, digest=_EDITED_DIGEST if modified else _TREE_DIGEST),
             },
         ),
         state=state,
@@ -647,17 +646,77 @@ def test_sync_bootstraps_missing_local_ledger_from_matching_lock_state(
     result = use_case.execute(
         InstallFromRequirementsCommand(
             requirements_file=str(tmp_path / "ritebook.toml"),
+            lockfile_path=str(tmp_path / "custom.lock"),
         ),
     )
 
-    assert result.unchanged_count == 1
-    assert result.issues == ()
+    assert result.unchanged_count == int(not modified)
+    assert [issue.code for issue in result.issues] == (["local-changes"] if modified else [])
+    assert result.ownership_entries[0].installed_tree_digest == _TREE_DIGEST
     assert transactions.transaction.replace_calls == []
-    ownership_file, lockfile = transactions.transaction.committed_files
-    assert ownership_file.expected_digest is None
+    [lockfile] = transactions.transaction.committed_files
     assert lockfile.expected_digest == _LOCKFILE_DIGEST
+    assert lockfile.path == str(tmp_path / "custom.lock")
+    assert state.read_calls == []
     assert state.digest_read_calls == []
     assert state.last_ownership_entries[0].canonical_target == str(target)
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_sync_rejects_invalid_lock_despite_existing_ledger(
+    tmp_path: Path,
+    *,
+    force: bool,
+) -> None:
+    state = _InvalidLockState(sync_root=tmp_path / ".ritebook")
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(SkillRequirements(targets={}, skills=())),
+        state=state,
+    )
+
+    with pytest.raises(InstallationPersistenceError):
+        use_case.execute(
+            InstallFromRequirementsCommand(
+                requirements_file=str(tmp_path / "ritebook.toml"),
+                lockfile_path=str(tmp_path / "custom.lock"),
+                force=force,
+            )
+        )
+
+    assert state.read_calls == []
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_sync_missing_lock_never_adopts_matching_content_from_ledger(
+    tmp_path: Path,
+    *,
+    force: bool,
+) -> None:
+    target = tmp_path / ".agents/skills/code-review"
+    state = _StateAdapter(
+        sync_root=tmp_path / ".ritebook",
+        ownership=(_owned(target, digest=_TREE_DIGEST),),
+    )
+    transactions = _Transactions()
+    result = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": ".agents/skills"},
+                skills=(SkillRequirement(name="platform-skills/code-review", target="agents"),),
+            )
+        ),
+        catalog=_Catalog(index=registered_skill_index(name="platform-skills"), skills=(installable_skill(),)),
+        installer=_Installer(inspections={str(target): _inspection(target, exists=True, digest=_TREE_DIGEST)}),
+        state=state,
+        transactions=transactions,
+    ).execute(InstallFromRequirementsCommand(requirements_file=str(tmp_path / "ritebook.toml"), force=force))
+
+    assert result.unchanged_count == 0
+    assert result.updated_count == int(force)
+    assert [issue.code for issue in result.issues] == ([] if force else ["unmanaged-target"])
+    assert state.read_calls == []
 
 
 def test_sync_does_not_bootstrap_ownership_from_legacy_undesired_lock_entry(
@@ -908,13 +967,13 @@ class _StateAdapter:
         requirements_file: str,
         lockfile_path: str | None,
     ) -> InstallationOperationPaths:
-        del requirements_file, lockfile_path
+        del requirements_file
         assert self.sync_root is not None
         return InstallationOperationPaths(
             lock_path=str(self.sync_root / "install.lock"),
             journal_path=str(self.sync_root / "transaction.json"),
             ownership_path=str(self.sync_root / "installations.json"),
-            lockfile_path=str(self.sync_root.parent / "ritebook.lock"),
+            lockfile_path=lockfile_path or str(self.sync_root.parent / "ritebook.lock"),
         )
 
     def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
@@ -973,6 +1032,18 @@ class _StateAdapter:
             expected_digest=expected_digest,
         )
         return self.last_lockfile
+
+
+class _InvalidLockState(_StateAdapter):
+    def read_lockfile_ownership(
+        self,
+        _lockfile_path: str,
+        *,
+        requirements_file: str,
+    ) -> InstallationStateSnapshot:
+        del requirements_file
+        msg = "Invalid lockfile"
+        raise InstallationPersistenceError(msg)
 
 
 class _Transaction:

@@ -11,11 +11,10 @@ repair after interrupted syncs.
 especially R5-R11, and [ADR 0009](../adr/0009-use-the-lockfile-as-the-only-project-sync-state.md).
 Requirements were confirmed by the user on October 16, 2026.
 
-**Readiness:** Ready — outcomes, boundaries, source ownership, task dependencies,
-and verification commands are known. Implementation has not started.
+**Readiness:** Ready — implementation is underway; no blocking decisions remain.
 
-**Next action:** T1 when implementation is requested. This review updates only
-the plan; it does not request runtime changes or deletion of existing state.
+**Next action:** T2. The user authorized implementation and local slice commits
+without pushing on October 16, 2026.
 
 ## Scope and decisions
 
@@ -112,7 +111,7 @@ are implementation details; they must not become durable recovery state.
 
 ### T1: Use the selected lockfile for every sync baseline
 
-- [ ] **T1** — Make lockfile authority and missing-lock behavior executable.
+- [x] **T1** — Make lockfile authority and missing-lock behavior executable.
 
 **Outcome and basis:** Implement R5 and R8 without changing direct-install
 ownership. This is a complete reconciliation behavior change; the remaining
@@ -135,31 +134,36 @@ application calls and focused test expectations change together.
 
 **Acceptance criteria:**
 
-- [ ] **T1-AC1** — Every sync reads the selected schema-v3 lockfile, including a
+- [x] **T1-AC1** — Every sync reads the selected schema-v3 lockfile, including a
   custom path, and renders only a lockfile candidate. Reconciliation makes no
   ledger existence, ownership-read, or ownership-render calls; conflicting or
   malformed ledgers supply no baseline authority. Shared direct-install ownership
   methods remain available. Legacy transaction replay is removed in T2.
-- [ ] **T1-AC2** — With no lockfile, missing targets install while existing
+- [x] **T1-AC2** — With no lockfile, missing targets install while existing
   directories are skipped without force, even if they match index content. Force
   replaces only safe selected targets and establishes a verified baseline.
   Existing local edits retain their prior digest/provenance when skipped;
   undeclared directories remain outside reconciliation.
-- [ ] **T1-AC3** — Schema v3, strict invalid/legacy lock rejection even under
+- [x] **T1-AC3** — Schema v3, strict invalid/legacy lock rejection even under
   force, ignored `desired: false` ownership, partial issues, portable path
   resolution after checkout relocation, and deterministic no-change bytes remain
   valid. No companion ledger write is needed for contribution compatibility.
 
 **Verification:**
 
-- [ ] **T1-V1** — Add regression cases before changing orchestration. Run
+- [x] **T1-V1** — Add regression cases before changing orchestration. Run
   `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/features/skill_contribution' make test`.
   Expect all focused cases to pass, including direct-install tests; assertions
   must distinguish lockfile authority from the current ledger-first behavior.
   The directories are confirmed existing test roots.
 
-**Evidence and status:** Pending. The intermediate transaction adapter may still
-create lock/journal artifacts; T2 removes that dependency.
+**Evidence and status:** Complete. Regression tests first failed on ledger
+authority and duplicate state candidates. Focused installation/contribution tests
+passed (275 cases); `make quality` then passed all checks and 761 default tests,
+including the expanded regressions. Commands used
+`UV_CACHE_DIR=/private/tmp/ritebook-uv-cache` because the sandbox blocks the default
+cache. E2E ledger assertions now require no ledger. The intermediate transaction
+adapter still creates lock/journal artifacts; T2 removes that dependency.
 
 ### T2: Execute staged sync writes without a recovery transaction
 

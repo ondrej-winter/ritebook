@@ -144,21 +144,12 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 lock_path=paths.lock_path,
                 journal_path=paths.journal_path,
             ) as transaction:
-                if self._state.ownership_exists(paths.ownership_path):
-                    ownership_snapshot = self._state.read_ownership(
-                        paths.ownership_path,
-                    )
-                    ownership = ownership_snapshot.entries
-                    ownership_digest = ownership_snapshot.digest
-                    lockfile_digest = self._state.read_state_digest(paths.lockfile_path)
-                else:
-                    lockfile_snapshot = self._state.read_lockfile_ownership(
-                        paths.lockfile_path,
-                        requirements_file=command.requirements_file,
-                    )
-                    ownership = lockfile_snapshot.entries
-                    ownership_digest = None
-                    lockfile_digest = lockfile_snapshot.digest
+                lockfile_snapshot = self._state.read_lockfile_ownership(
+                    paths.lockfile_path,
+                    requirements_file=command.requirements_file,
+                )
+                ownership = lockfile_snapshot.entries
+                lockfile_digest = lockfile_snapshot.digest
                 aliases = _referenced_aliases(requirements.skills)
                 for alias in aliases:
                     self._index_refresher.refresh(alias, command.registry_path)
@@ -195,11 +186,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                             ),
                         ),
                     )
-                    ownership_file = self._state.ownership_file(
-                        final_entries,
-                        paths.ownership_path,
-                        expected_digest=ownership_digest,
-                    )
                     lockfile = self._state.lockfile(
                         final_entries,
                         final_issues,
@@ -209,7 +195,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                         ),
                         expected_digest=lockfile_digest,
                     )
-                    transaction.commit_state((ownership_file, lockfile))
+                    transaction.commit_state((lockfile,))
         finally:
             for staged in staged_trees:
                 self._installer.cleanup_staged(staged)

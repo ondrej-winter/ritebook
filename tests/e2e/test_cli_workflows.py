@@ -834,9 +834,7 @@ target_path = ".agents/skills/tdd"
     assert lock_entries["company-skills/test-driven-development"]["target"] == (".agents/skills/tdd")
     assert "target_ref" not in lock_entries["company-skills/test-driven-development"]
     ownership_path = consumer_repo / ".ritebook" / "installations.json"
-    ownership = _read_json(ownership_path)
-    assert ownership["schema_version"] == 3
-    assert len(ownership["installations"]) == 2
+    assert not ownership_path.exists()
 
     first_lock_bytes = lockfile.read_bytes()
     shutil.rmtree(consumer_repo / ".ritebook")
@@ -857,7 +855,7 @@ target_path = ".agents/skills/tdd"
     second.assert_success()
     assert second.stdout == (f"Reconciled skills from {requirements_file}: installed 0, updated 0, unchanged 2\n")
     assert lockfile.read_bytes() == first_lock_bytes
-    assert ownership_path.is_file()
+    assert not ownership_path.exists()
 
 
 def test_install_expands_collection_but_install_skill_keeps_exact_selection(
@@ -1103,7 +1101,7 @@ target = "claude"
     assert undeclared.stdout == ("Reconciled skills from ritebook.toml: installed 0, updated 0, unchanged 0\n")
     assert (target / "keep-after-removal.md").read_text(encoding="utf-8") == "keep me\n"
     assert _read_json(lockfile)["skills"] == []
-    assert _read_json(ownership_path)["installations"] == []
+    assert not ownership_path.exists()
 
 
 def test_install_does_not_write_lockfile_when_requirements_are_invalid(

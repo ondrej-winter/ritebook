@@ -414,9 +414,11 @@ shape:
   relinquishment, legacy undesired-entry migration, tree hashing, strict schema
   parsing, refresh failure, idempotence, concurrent processes, interruption
   recovery, symlink races, and CLI exit behavior.
-- Revision 3.4 is not implemented. Current sync still reads and writes the local
-  ledger and uses the shared recoverable transaction adapter. Existing passing
-  tests establish revision-3.3 behavior, not conformance to this revision.
+- Revision 3.4 is partially implemented: sync reads the selected lockfile on every
+  run and renders no companion ledger. Ledger-conflict, missing-lock, custom-path,
+  local-edit, and invalid-lock regressions pass; `make quality` passes with 761
+  default tests. Sync still uses the recoverable transaction adapter until T2.
+  These results do not establish full revision-3.4 conformance.
 - Remaining implementation and verification are owned by the
   [project-sync state simplification plan](../plans/project-sync-state-simplification-plan.md).
 - Implementation handoff requires `make verify`: formatting, lint, type,

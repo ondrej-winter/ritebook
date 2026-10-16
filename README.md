@@ -243,6 +243,14 @@ usable if rebuilding fails. A superseded managed clone is removed only after no
 other registry alias references it. This flag repairs consumer state; it does not
 generate or publish an upstream index.
 
+The same forced update recovers schema-v1 `indexes.json` registrations from their
+saved aliases and source locations. It discovers each source's current branch and
+rebuilds validated provenance. Failed registrations remain saved for retry; rerun
+`indexes update --all --force` after fixing their sources. The registry becomes
+schema v2 once all registrations are rebuilt. Ordinary reads remain unavailable
+until recovery completes. Use `--all` to finish a registry with multiple legacy
+entries. Legacy cache paths are left untouched.
+
 List skills from all locally cached registered indexes:
 
 ```bash
@@ -429,6 +437,11 @@ digests, materialization status, and any current processing issues. Complete
 no-change syncs produce byte-identical lock state. Partial processing preserves
 independent successful changes, writes truthful `state = "partial"` data,
 reports each issue, and exits nonzero.
+
+The local `.ritebook/` directory also holds the operation lock and transaction
+recovery data. Retain it while an operation is running or recovery is pending.
+When local ownership state is absent, sync can reconstruct it from a valid
+`ritebook.lock` and verified installed trees.
 
 Sync never deletes a directory merely because its entry was removed from
 `ritebook.toml`. The next sync leaves that directory untouched and removes it from

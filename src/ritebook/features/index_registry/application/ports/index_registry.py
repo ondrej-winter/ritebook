@@ -7,7 +7,20 @@ from typing import TYPE_CHECKING, Protocol
 if TYPE_CHECKING:
     from contextlib import AbstractContextManager
 
-    from ritebook.features.index_registry.application.dtos import RegisteredIndex
+    from ritebook.features.index_registry.application.dtos import RecoverableIndex, RegisteredIndex
+
+
+class IndexRegistryRecoveryTransaction(Protocol):
+    """Locked registrations available to explicit forced rebuilding only."""
+
+    def get(self, name: str) -> RegisteredIndex | RecoverableIndex | None:
+        """Return a current binding or a legacy source registration."""
+
+    def list(self) -> tuple[RegisteredIndex | RecoverableIndex, ...]:
+        """Return registrations in deterministic alias order."""
+
+    def upsert(self, entry: RegisteredIndex) -> None:
+        """Commit a validated binding while retaining unrecovered registrations."""
 
 
 class IndexRegistryTransaction(Protocol):
@@ -40,3 +53,9 @@ class IndexRegistryPort(Protocol):
         registry_path: str | None,
     ) -> AbstractContextManager[IndexRegistryTransaction]:
         """Open one bounded exclusive registry transaction."""
+
+    def recovery_transaction(
+        self,
+        registry_path: str | None,
+    ) -> AbstractContextManager[IndexRegistryRecoveryTransaction]:
+        """Open an exclusive transaction that also accepts legacy source locators."""

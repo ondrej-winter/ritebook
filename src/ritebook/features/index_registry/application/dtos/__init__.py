@@ -18,6 +18,7 @@ from ritebook.features.index_registry.application.dtos.index_registry import (
     UpdateIndexCommand,
     UpdateIndexResult,
 )
+from ritebook.features.index_registry.application.dtos.recovery import RecoverableIndex
 
 __all__ = [
     "AddIndexCommand",
@@ -32,6 +33,7 @@ __all__ = [
     "ListedIndexSkills",
     "PreparedIndexSource",
     "PublishedIndex",
+    "RecoverableIndex",
     "RegisteredIndex",
     "RegisteredIndexSummary",
     "UpdateIndexCommand",

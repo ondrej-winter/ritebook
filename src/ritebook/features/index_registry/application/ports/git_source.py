@@ -29,7 +29,7 @@ class GitSourcePort(Protocol):
         registry_path: str | None = None,
         force: bool = False,
     ) -> PreparedIndexSource:
-        """Refresh or rebuild a remembered source for update-index."""
+        """Refresh a source; force permits branch discovery for legacy rebuilding."""
 
     def discard_source(
         self,

@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from ritebook.features.index_registry.application.dtos import (
+    AliasOrigin,
     PreparedIndexSource,
+    RecoverableIndex,
     RegisteredIndex,
     UpdateIndexCommand,
     UpdateIndexResult,
@@ -22,11 +24,13 @@ from ritebook.features.index_registry.application.ports import UpdateIndexPort
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from contextlib import AbstractContextManager
 
     from ritebook.features.index_registry.application.ports import (
         GitSourcePort,
         IndexCachePort,
         IndexRegistryPort,
+        IndexRegistryRecoveryTransaction,
         IndexRegistryTransaction,
         IndexSourceReaderPort,
     )
@@ -58,7 +62,7 @@ class UpdateIndex(UpdateIndexPort):
         if command.name is None:
             msg = "Update index requires either a name or all=True."
             raise ValueError(msg)
-        with self._registry.write_transaction(command.registry_path) as registry:
+        with self._transaction(command) as registry:
             existing = registry.get(command.name)
             if existing is None:
                 raise UnknownIndexNameError(command.name)
@@ -69,7 +73,7 @@ class UpdateIndex(UpdateIndexPort):
         updated_metadata: list[RegisteredIndex] = []
         failed_indexes: list[str] = []
         skill_count = 0
-        with self._registry.write_transaction(command.registry_path) as registry:
+        with self._transaction(command) as registry:
             for existing in registry.list():
                 try:
                     result = self._update_entry(existing, command, registry)
@@ -88,17 +92,25 @@ class UpdateIndex(UpdateIndexPort):
             updated_indexes_metadata=tuple(updated_metadata),
         )
 
+    def _transaction(
+        self,
+        command: UpdateIndexCommand,
+    ) -> AbstractContextManager[IndexRegistryTransaction | IndexRegistryRecoveryTransaction]:
+        if command.force:
+            return self._registry.recovery_transaction(command.registry_path)
+        return self._registry.write_transaction(command.registry_path)
+
     def _update_entry(
         self,
-        existing: RegisteredIndex,
+        existing: RegisteredIndex | RecoverableIndex,
         command: UpdateIndexCommand,
-        registry: IndexRegistryTransaction,
+        registry: IndexRegistryTransaction | IndexRegistryRecoveryTransaction,
     ) -> UpdateIndexResult:
         """Refresh one registry entry and return its updated result."""
         prepared_source = self._git_source.refresh_source(
             source=existing.source,
-            source_branch=existing.source_branch,
-            source_cache_path=existing.source_cache_path,
+            source_branch=existing.source_branch if isinstance(existing, RegisteredIndex) else None,
+            source_cache_path=existing.source_cache_path if isinstance(existing, RegisteredIndex) else None,
             cache_root=command.cache_root,
             registry_path=command.registry_path,
             force=command.force,
@@ -130,26 +142,27 @@ class UpdateIndex(UpdateIndexPort):
 
     def _commit_update(
         self,
-        existing: RegisteredIndex,
+        existing: RegisteredIndex | RecoverableIndex,
         prepared_source: PreparedIndexSource,
         command: UpdateIndexCommand,
-        registry: IndexRegistryTransaction,
+        registry: IndexRegistryTransaction | IndexRegistryRecoveryTransaction,
     ) -> UpdateIndexResult:
         published_index = self._index_reader.read_index(prepared_source.index_content)
         updated_at = _utc_timestamp(self._clock())
+        previous_cache = existing.cached_index_path if isinstance(existing, RegisteredIndex) else None
         cached_index_path = self._cache.write_index(
             name=existing.name,
             content=published_index.cacheable_content,
             index_digest=published_index.index_digest,
             cache_root=command.cache_root,
-            preserve_path=existing.cached_index_path,
+            preserve_path=previous_cache,
             registry_path=command.registry_path,
             force=command.force,
         )
         entry = RegisteredIndex(
             name=existing.name,
             published_name=published_index.published_name,
-            alias_origin=existing.alias_origin,
+            alias_origin=existing.alias_origin if isinstance(existing, RegisteredIndex) else AliasOrigin.EXPLICIT,
             source=prepared_source.source,
             source_type=prepared_source.source_type,
             source_revision=prepared_source.source_revision,
@@ -159,13 +172,13 @@ class UpdateIndex(UpdateIndexPort):
             cached_index_path=cached_index_path,
             source_schema_version=published_index.schema_version,
             skill_count=published_index.skill_count,
-            added_at=existing.added_at,
+            added_at=existing.added_at if isinstance(existing, RegisteredIndex) else updated_at,
             updated_at=updated_at,
         )
         try:
             registry.upsert(entry)
         except IndexRegistryError:
-            if cached_index_path != existing.cached_index_path:
+            if cached_index_path != previous_cache:
                 with suppress(IndexCacheError):
                     self._cache.discard_index(
                         name=existing.name,
@@ -174,16 +187,17 @@ class UpdateIndex(UpdateIndexPort):
                         registry_path=command.registry_path,
                     )
             raise
-        if cached_index_path != existing.cached_index_path:
+        if previous_cache is not None and cached_index_path != previous_cache:
             with suppress(IndexCacheError):
                 self._cache.discard_index(
                     name=existing.name,
-                    cached_index_path=existing.cached_index_path,
+                    cached_index_path=previous_cache,
                     cache_root=command.cache_root,
                     registry_path=command.registry_path,
                 )
         if (
             command.force
+            and isinstance(existing, RegisteredIndex)
             and existing.source_cache_path is not None
             and existing.source_cache_path != prepared_source.source_cache_path
             and not _source_cache_path_is_referenced(
@@ -206,7 +220,7 @@ class UpdateIndex(UpdateIndexPort):
 
 
 def _replacement_source_cache_path(
-    existing: RegisteredIndex,
+    existing: RegisteredIndex | RecoverableIndex,
     prepared_source: PreparedIndexSource,
     *,
     force: bool,
@@ -214,17 +228,21 @@ def _replacement_source_cache_path(
     if (
         force
         and prepared_source.source_cache_path is not None
-        and prepared_source.source_cache_path != existing.source_cache_path
+        and (
+            not isinstance(existing, RegisteredIndex) or prepared_source.source_cache_path != existing.source_cache_path
+        )
     ):
         return prepared_source.source_cache_path
     return None
 
 
 def _source_cache_path_is_referenced(
-    registry: IndexRegistryTransaction,
+    registry: IndexRegistryTransaction | IndexRegistryRecoveryTransaction,
     source_cache_path: str,
 ) -> bool:
-    return any(entry.source_cache_path == source_cache_path for entry in registry.list())
+    return any(
+        isinstance(entry, RegisteredIndex) and entry.source_cache_path == source_cache_path for entry in registry.list()
+    )
 
 
 def _utc_timestamp(value: datetime) -> str:

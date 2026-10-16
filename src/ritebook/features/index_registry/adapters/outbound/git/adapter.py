@@ -75,11 +75,11 @@ class GitSourceAdapter:
         """Refresh or rebuild a remembered source for update-index."""
         source_path = Path(source).expanduser()
         if source_cache_path is None and source_path.exists():
-            if source_branch is None:
+            if source_branch is None and not force:
                 msg = "registered local Git index has no canonical source branch"
                 raise IndexSourceError(msg)
             return self._local_source(source_path, source_branch=source_branch)
-        if source_branch is None:
+        if source_branch is None and not force:
             msg = "registered Git URL index has no canonical source branch"
             raise IndexSourceError(msg)
         _require_safe_git_url(source)
@@ -93,18 +93,23 @@ class GitSourceAdapter:
             )
         )
         try:
-            if clone_path.exists() and not force:
+            if clone_path.exists() and not force and source_branch is not None:
                 self._refresh_clone(clone_path, source_branch)
             else:
                 self._clone_source(source, clone_path)
+            if source_branch is None:
+                source_branch = self._canonical_branch(clone_path)
             source_revision, index_content = self._capture_candidate(
                 clone_path,
                 _remote_tracking_ref(source_branch),
             )
-        except (IndexSourceError, OSError):
+        except (IndexSourceError, OSError) as err:
             if force:
                 with suppress(OSError):
                     _discard_managed_clone(clone_path, source, cache_root, registry_path)
+            if isinstance(err, OSError):
+                msg = "unable to prepare managed Git source"
+                raise IndexSourceError(msg) from err
             raise
         return PreparedIndexSource(
             source=source,

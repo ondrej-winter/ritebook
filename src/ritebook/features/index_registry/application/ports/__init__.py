@@ -10,6 +10,7 @@ from ritebook.features.index_registry.application.ports.index_cache import (
 )
 from ritebook.features.index_registry.application.ports.index_registry import (
     IndexRegistryPort,
+    IndexRegistryRecoveryTransaction,
     IndexRegistryTransaction,
 )
 from ritebook.features.index_registry.application.ports.index_source_reader import (
@@ -31,6 +32,7 @@ __all__ = [
     "GitSourcePort",
     "IndexCachePort",
     "IndexRegistryPort",
+    "IndexRegistryRecoveryTransaction",
     "IndexRegistryTransaction",
     "IndexSourceReaderPort",
     "ListIndexesPort",

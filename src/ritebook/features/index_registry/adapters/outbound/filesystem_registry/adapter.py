@@ -13,6 +13,7 @@ from typing import IO, TYPE_CHECKING, Any, cast
 from ritebook.features.index_registry.application.dtos import (
     AliasOrigin,
     IndexSourceType,
+    RecoverableIndex,
     RegisteredIndex,
 )
 from ritebook.features.index_registry.application.errors import (
@@ -85,6 +86,30 @@ class FilesystemIndexRegistry:
         """Open one bounded exclusive registry transaction."""
         return self._transaction(registry_path, exclusive=True)
 
+    @contextmanager
+    def recovery_transaction(
+        self,
+        registry_path: str | None,
+    ) -> Generator[_FilesystemIndexRegistryTransaction | _LegacyRegistryTransaction]:
+        """Allow explicit rebuilding of schema-v1 source registrations under lock."""
+        path = _registry_path(registry_path)
+        lock = _acquire_lock(
+            _lock_path(path),
+            exclusive=True,
+            timeout_seconds=self._lock_timeout_seconds,
+        )
+        try:
+            payload = _load_payload(path, allow_legacy=True)
+            if payload["schema_version"] == 1:
+                transaction = _LegacyRegistryTransaction(path=path, payload=payload)
+                yield transaction
+                if not transaction.list():
+                    _write_entries(path, {})
+            else:
+                yield _FilesystemIndexRegistryTransaction(path=path, entries=_parse_entries(payload, path))
+        finally:
+            _release_lock(lock)
+
     def _read_transaction(
         self,
         registry_path: str | None,
@@ -142,6 +167,58 @@ class _FilesystemIndexRegistryTransaction:
             raise
 
 
+class _LegacyRegistryTransaction:
+    """Retain raw failed registrations until all bindings have been rebuilt."""
+
+    def __init__(self, *, path: Path, payload: dict[str, Any]) -> None:
+        self._path = path
+        self._raw_entries: dict[str, dict[str, Any]] = {}
+        self._entries: dict[str, RegisteredIndex | RecoverableIndex] = {}
+        for raw in payload["indexes"]:
+            if not isinstance(raw, dict) or not all(
+                isinstance(raw.get(key), str) for key in ("name", "source", "source_type")
+            ):
+                msg = "legacy index registry has malformed source metadata"
+                raise IndexRegistryPersistenceError(msg)
+            try:
+                entry = RecoverableIndex(
+                    name=raw["name"],
+                    source=raw["source"],
+                    source_type=IndexSourceType(raw["source_type"]),
+                )
+            except (TypeError, ValueError, KeyError) as err:
+                msg = "legacy index registry has invalid aliases or unsafe source metadata"
+                raise IndexRegistryPersistenceError(msg) from err
+            if entry.name in self._entries:
+                msg = "legacy index registry contains duplicate aliases"
+                raise IndexRegistryPersistenceError(msg)
+            self._entries[entry.name] = entry
+            self._raw_entries[entry.name] = raw
+
+    def get(self, name: str) -> RegisteredIndex | RecoverableIndex | None:
+        """Return the validated binding or source locator."""
+        return self._entries.get(name)
+
+    def list(self) -> tuple[RegisteredIndex | RecoverableIndex, ...]:
+        """Return every registration in deterministic alias order."""
+        return tuple(self._entries[name] for name in sorted(self._entries))
+
+    def upsert(self, entry: RegisteredIndex) -> None:
+        """Persist progress without promoting incomplete registrations to schema v2."""
+        entries = {**self._entries, entry.name: entry}
+        raw_entries = {**self._raw_entries, entry.name: _entry_to_json(entry)}
+        version = 1 if any(isinstance(item, RecoverableIndex) for item in entries.values()) else SCHEMA_VERSION
+        _write_payload(
+            self._path,
+            {
+                "schema_version": version,
+                "indexes": [raw_entries[name] for name in sorted(raw_entries)],
+            },
+        )
+        self._entries = entries
+        self._raw_entries = raw_entries
+
+
 def _registry_path(registry_path: str | None) -> Path:
     return Path(registry_path or DEFAULT_REGISTRY_PATH).expanduser()
 
@@ -194,15 +271,27 @@ def _release_lock(lock: IO[str]) -> None:
 
 
 def _load_entries(path: Path) -> dict[str, RegisteredIndex]:
+    return _parse_entries(_load_payload(path), path)
+
+
+def _load_payload(path: Path, *, allow_legacy: bool = False) -> dict[str, Any]:
     if not path.exists():
-        return {}
+        return {"schema_version": SCHEMA_VERSION, "indexes": []}
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as err:
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as err:
         msg = f"unable to read index registry: {path}"
         raise IndexRegistryPersistenceError(msg) from err
-    if not isinstance(payload, dict) or payload.get("schema_version") != SCHEMA_VERSION:
-        msg = f"index registry requires schema version 2; regenerate it with ritebook indexes add: {path}"
+    versions = {1, SCHEMA_VERSION} if allow_legacy else {SCHEMA_VERSION}
+    if (
+        not isinstance(payload, dict)
+        or type(payload.get("schema_version")) is not int
+        or payload.get("schema_version") not in versions
+    ):
+        msg = (
+            "index registry requires schema version 2; "
+            f"recover schema v1 with ritebook indexes update --all --force: {path}"
+        )
         raise IndexRegistryPersistenceError(msg)
     if set(payload) != ROOT_FIELDS:
         msg = f"index registry root is malformed: {path}"
@@ -211,9 +300,13 @@ def _load_entries(path: Path) -> dict[str, RegisteredIndex]:
     if not isinstance(raw_entries, list):
         msg = f"index registry indexes must be an array: {path}"
         raise IndexRegistryPersistenceError(msg)
+    return payload
+
+
+def _parse_entries(payload: dict[str, Any], path: Path) -> dict[str, RegisteredIndex]:
     entries: dict[str, RegisteredIndex] = {}
     try:
-        for raw_entry in raw_entries:
+        for raw_entry in payload["indexes"]:
             entry = _entry_from_json(cast("dict[str, Any]", raw_entry))
             entries[entry.name] = entry
     except (TypeError, ValueError, KeyError) as err:
@@ -223,10 +316,14 @@ def _load_entries(path: Path) -> dict[str, RegisteredIndex]:
 
 
 def _write_entries(path: Path, entries: dict[str, RegisteredIndex]) -> None:
-    payload = {
+    payload: dict[str, object] = {
         "schema_version": SCHEMA_VERSION,
         "indexes": [_entry_to_json(entries[name]) for name in sorted(entries)],
     }
+    _write_payload(path, payload)
+
+
+def _write_payload(path: Path, payload: dict[str, object]) -> None:
     content = json.dumps(payload, indent=2) + "\n"
     temp_path: Path | None = None
     try:

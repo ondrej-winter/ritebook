@@ -10,6 +10,7 @@ from ritebook.features.index_registry.adapters.outbound.filesystem_registry impo
 from ritebook.features.index_registry.application.dtos import (
     AliasOrigin,
     IndexSourceType,
+    RecoverableIndex,
     RegisteredIndex,
 )
 from ritebook.features.index_registry.application.errors import (
@@ -35,6 +36,97 @@ def test_filesystem_registry_rejects_schema_v1_without_migration(
 
     with pytest.raises(IndexRegistryPersistenceError, match="schema version 2"):
         FilesystemIndexRegistry().list(str(path))
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        [{"name": "alpha", "source": "https://user:sentinel-secret@example.com/skills.git", "source_type": "git_url"}],
+        [{"name": "../outside", "source": "git@example.com:skills.git", "source_type": "git_url"}],
+        [{"name": "alpha", "source": "git@example.com:skills.git", "source_type": "unknown"}],
+        [{"name": "alpha", "source": 1, "source_type": "git_url"}],
+        [None],
+        [{"name": "alpha", "source": "git@example.com:skills.git", "source_type": "git_url"}] * 2,
+    ],
+)
+def test_recovery_rejects_unsafe_or_ambiguous_registrations_without_writing(
+    tmp_path: Path,
+    entries: list[object],
+) -> None:
+    path = tmp_path / "indexes.json"
+    original = json.dumps({"schema_version": 1, "indexes": entries}).encode()
+    path.write_bytes(original)
+
+    with (
+        pytest.raises(IndexRegistryPersistenceError) as error,
+        FilesystemIndexRegistry().recovery_transaction(str(path)),
+    ):
+        pytest.fail("invalid registrations must fail before opening the transaction")
+
+    assert "sentinel-secret" not in str(error.value)
+    assert path.read_bytes() == original
+
+
+def test_recovery_commit_failure_preserves_legacy_registration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "indexes.json"
+    original = json.dumps(
+        {
+            "schema_version": 1,
+            "indexes": [
+                {
+                    "name": "company-skills",
+                    "source": "git@example.com:skills.git",
+                    "source_type": "git_url",
+                }
+            ],
+        }
+    ).encode()
+    path.write_bytes(original)
+
+    def fail_replace(_source: Path, _destination: Path) -> None:
+        message = "injected registry commit failure"
+        raise OSError(message)
+
+    with FilesystemIndexRegistry().recovery_transaction(str(path)) as transaction:
+        monkeypatch.setattr(Path, "replace", fail_replace)
+        with pytest.raises(IndexRegistryPersistenceError):
+            transaction.upsert(entry())
+        assert path.read_bytes() == original
+        assert transaction.get("company-skills") is not None
+
+
+def test_recovery_does_not_relax_malformed_current_schema(tmp_path: Path) -> None:
+    path = tmp_path / "indexes.json"
+    original = b'{"schema_version":2,"indexes":[{"name":"alpha","source":"git@example.com:skills.git"}]}'
+    path.write_bytes(original)
+
+    with (
+        pytest.raises(IndexRegistryPersistenceError),
+        FilesystemIndexRegistry().recovery_transaction(str(path)),
+    ):
+        pytest.fail("current-schema validation must remain strict")
+
+    assert path.read_bytes() == original
+
+
+def test_recovery_ignores_all_legacy_fields_except_source_registration(tmp_path: Path) -> None:
+    path = tmp_path / "indexes.json"
+    registry = FilesystemIndexRegistry()
+    registry.upsert(entry(), str(path))
+    payload = json.loads(path.read_bytes())
+    payload["schema_version"] = 1
+    payload["indexes"][0]["source_branch"] = "invalid legacy branch"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with registry.recovery_transaction(str(path)) as transaction:
+        assert transaction.get("company-skills") == RecoverableIndex(
+            name="company-skills",
+            source="git@example.com:company/skills.git",
+            source_type=IndexSourceType.GIT_URL,
+        )
 
 
 def test_filesystem_registry_writes_deterministic_entries(tmp_path: Path) -> None:

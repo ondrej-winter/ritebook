@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 2.4
-- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision, October 12, 2026 Makefile workflow decision, and October 14, 2026 consumer-state force-rebuild decision.
-- Accepted by / on: User / 2026-10-14
+- Revision: 2.5
+- Acceptance basis: Existing Active repository contract plus the user's approved October 7, 2026 strict schema-v1 registry decision, October 12, 2026 Makefile workflow decision, October 14, 2026 consumer-state force-rebuild decision, and October 16, 2026 legacy registry force-recovery decision.
+- Accepted by / on: User / 2026-10-16
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-14
+- Last reviewed: 2026-10-16
 - Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md)
-- Associated ADRs: [ADR 0001: Bind Cached Indexes and Installed Skills to Git Commits](../adr/0001-source-provenance-and-trust.md) and [ADR 0005: Enforce a Strict Portable Schema-v1 Catalog Boundary](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md)
-- Supersedes: Revision 2.3 of this specification
+- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0008](../adr/0008-rebuild-legacy-index-registrations-on-explicit-force.md).
+- Supersedes: Revision 2.4 of this specification
 
 ## Objective and Context
 
@@ -276,6 +276,18 @@ Requirements:
   code after the batch completes.
 - `--force` repairs consumer-managed source and cache state only. It does not run
   publisher-side index discovery or regenerate `ritebook-index.json`.
+- Under [ADR 0008](../adr/0008-rebuild-legacy-index-registrations-on-explicit-force.md),
+  explicit force also permits schema-v1 registry recovery. Validate saved aliases,
+  source locations, and source types; rebuild selected entries from fresh
+  committed content with newly discovered canonical branches. Do not reuse or
+  delete paths from legacy entries, or infer provenance for their cached bytes.
+- Preserve failed legacy entries verbatim alongside successful rebuilt entries.
+  Keep schema v1 until every entry has been rebuilt in that run, then atomically
+  write schema v2. Ordinary consumers reject incomplete recovery. Rerun
+  `indexes update --all --force` after resolving failures to complete recovery.
+- Malformed JSON, unsupported versions, duplicate aliases, invalid aliases, and
+  unsafe source locators fail before Git or registry mutation. Force is not a
+  general registry salvage mode.
 
 ### R5 — Publisher index metadata
 
@@ -359,12 +371,11 @@ Registry schema-v1 provenance requirements follow
   index was validated.
 - `index_digest` is required and binds `cached_index_path` to the exact validated
   index bytes.
-- Pre-release schema-v1 registry files missing either field are rejected with
-  guidance to regenerate the registration. Ritebook does not infer provenance
-  from the source's current `HEAD` or silently migrate on first use.
-- Legacy schema-v1 entries without `alias_origin` remain readable. Readers infer
-  `published_name` when `name == published_name` and `explicit` otherwise, and the
-  next successful write persists the inferred value.
+- Ordinary reads reject schema-v1 registries with guidance to run explicit force
+  recovery. Recovery creates new bindings from validated committed content; it
+  does not infer provenance for old bytes or silently migrate on first use.
+- Schema-v2 entries require `alias_origin`. Recovered legacy aliases are retained
+  as explicit aliases, independently of the freshly discovered published name.
 
 #### Registry/cache commit protocol
 
@@ -655,6 +666,11 @@ tests/unit/features/index_registry/
   forced update fails.
 - Discards a superseded managed clone only when no other registry alias references
   its exact path, while never discarding a local repository source.
+- Legacy recovery integration tests exercise one-alias and all-alias forced
+  rebuilding for Git URLs and local repositories, partial failure and retry, and
+  empty registries. Filesystem tests cover unsafe sources, duplicate aliases,
+  malformed entries, and failed registry replacement. Docker E2E verifies the
+  installed CLI's legacy rejection, explicit recovery, and subsequent listing.
 
 #### List indexes application tests
 
@@ -783,6 +799,7 @@ make verify
 | AC9 | R8 | Use Git URL and local repository sources, including dirty, missing, detached, unavailable, or credential-bearing cases. | Ritebook uses committed objects without mutating user repositories, rejects unsafe or unavailable state, and never infers required provenance from mutable refs. | Git-source adapter tests. |
 | AC10 | R9 | Invoke each documented registry and skill-list command and path override. | Arguments map to the owning use case and produce concise documented success or actionable error output. | CLI parser and adapter tests. |
 | AC11 | R1-R9 | Run the documented implementation handoff gates. | Formatting, linting, type checking, import contracts, non-E2E tests, package build, and Docker E2E all succeed. | Commands recorded under Implementation and Verification Evidence. |
+| AC12 | R4, R6 | Force-update a schema-v1 registry, including partial failure and retry. | Saved aliases and safe sources rebuild into validated schema-v2 bindings; failed registrations remain saved; legacy paths stay untouched; ordinary reads remain strict. | Recovery integration, filesystem boundary, and installed-wheel Docker E2E tests. |
 
 ## Assumptions
 
@@ -796,6 +813,9 @@ make verify
 None.
 
 ## Revision and Handoff Notes
+
+- October 16, 2026: Revision 2.5 added explicit schema-v1 registry rebuilding from
+  saved source registrations, preserving failed entries for retry under ADR 0008.
 
 - October 14, 2026: Revision 2.4 added `indexes update --force` for one alias or
   `--all`. Forced Git URL updates use fresh managed clones, forced cache writes

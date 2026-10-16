@@ -3,6 +3,10 @@
 Date: 2026-07-21
 Status: Accepted
 
+Consumer registry regeneration guidance is amended by
+[ADR 0008](./0008-rebuild-legacy-index-registrations-on-explicit-force.md): explicit
+forced updates may rebuild legacy registrations from saved source locations.
+
 ## Context
 
 Ritebook registers a Git-backed `ritebook-index.json`, caches the validated index,

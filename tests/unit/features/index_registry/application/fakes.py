@@ -1,5 +1,5 @@
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 
 from ritebook.features.index_registry.application.dtos import (
     AliasOrigin,
@@ -190,6 +190,9 @@ class FakeRegistry:
             yield self
         finally:
             self._transaction_path = previous
+
+    def recovery_transaction(self, registry_path: str | None) -> AbstractContextManager["FakeRegistry"]:
+        return self.write_transaction(registry_path)
 
 
 class FakeCache:

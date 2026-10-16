@@ -4,6 +4,7 @@ from .committed_skill_validator import LinterCommittedSkillValidatorAdapter
 from .filesystem_installer import (
     FilesystemSkillInstallerAdapter,
 )
+from .filesystem_sync_writer import FilesystemSyncWriterAdapter
 from .index_refresher import IndexRegistryRefresherAdapter
 from .index_registry_catalog import (
     IndexRegistrySkillCatalogAdapter,
@@ -22,6 +23,7 @@ from .toml_requirements import (
 __all__ = [
     "FilesystemInstallationTransactionAdapter",
     "FilesystemSkillInstallerAdapter",
+    "FilesystemSyncWriterAdapter",
     "IndexRegistryRefresherAdapter",
     "IndexRegistrySkillCatalogAdapter",
     "JsonInstallationStateAdapter",

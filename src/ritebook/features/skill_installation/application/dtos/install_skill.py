@@ -322,20 +322,29 @@ class TargetInspection:
 
 
 @dataclass(frozen=True)
+class SyncPaths:
+    """Selected sync lockfile, with no companion ownership or recovery paths."""
+
+    lockfile_path: str
+
+    def __post_init__(self) -> None:
+        """Require a nonempty selected lockfile path."""
+        _require_non_empty(self.lockfile_path, field_name="Lockfile path")
+
+
+@dataclass(frozen=True)
 class InstallationOperationPaths:
     """Adapter-resolved paths for one locked installation operation."""
 
     lock_path: str
     journal_path: str
     ownership_path: str
-    lockfile_path: str | None = None
 
     def __post_init__(self) -> None:
         """Validate generated-state and transaction paths."""
         _require_non_empty(self.lock_path, field_name="Installation lock path")
         _require_non_empty(self.journal_path, field_name="Transaction journal path")
         _require_non_empty(self.ownership_path, field_name="Ownership state path")
-        _require_optional_non_empty(self.lockfile_path, field_name="Lockfile path")
 
 
 @dataclass(frozen=True)

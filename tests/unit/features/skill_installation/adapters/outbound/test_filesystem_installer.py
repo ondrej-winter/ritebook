@@ -197,6 +197,30 @@ def test_filesystem_installer_stage_failure_removes_partial_candidate(
     assert list(target_parent.iterdir()) == []
 
 
+def test_filesystem_installer_stage_failure_reports_retained_partial_candidate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository = repository_with_skill(tmp_path)
+    target = tmp_path / "targets" / "code-review"
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        msg = "injected failure"
+        raise OSError(msg)
+
+    monkeypatch.setattr(filesystem_installer.adapter, "_copy_directory", fail)
+    monkeypatch.setattr(filesystem_installer.adapter, "remove_entry", fail)
+    with pytest.raises(InstallationPersistenceError, match=r"stage replacement.*retained at") as error:
+        FilesystemSkillInstallerAdapter().stage(
+            source=resolved_source(repository),
+            skill=installable_skill(),
+            target=FilesystemSkillInstallerAdapter().plan_target(str(target)),
+        )
+    assert not target.exists()
+    [retained] = target.parent.iterdir()
+    assert str(retained) in str(error.value)
+
+
 def test_filesystem_installer_stage_rejects_symlink_ancestor_race(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

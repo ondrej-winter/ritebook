@@ -50,6 +50,7 @@ from ritebook.features.skill_contribution.application.use_cases import (
 from ritebook.features.skill_installation.adapters.outbound import (
     FilesystemInstallationTransactionAdapter,
     FilesystemSkillInstallerAdapter,
+    FilesystemSyncWriterAdapter,
     IndexRegistryRefresherAdapter,
     IndexRegistrySkillCatalogAdapter,
     JsonInstallationStateAdapter,
@@ -140,7 +141,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         committed_skill_validator=committed_skill_validator,
         installer=skill_installer,
         state=installation_state,
-        transactions=installation_transactions,
+        writer=FilesystemSyncWriterAdapter(),
     )
     contribution_skill_directory = FilesystemSkillDirectoryAdapter()
     publish_skill_change = PublishSkillChange(

@@ -13,7 +13,7 @@ Requirements were confirmed by the user on October 16, 2026.
 
 **Readiness:** Ready — implementation is underway; no blocking decisions remain.
 
-**Next action:** T2. The user authorized implementation and local slice commits
+**Next action:** T3. The user authorized implementation and local slice commits
 without pushing on October 16, 2026.
 
 ## Scope and decisions
@@ -167,7 +167,7 @@ adapter still creates lock/journal artifacts; T2 removes that dependency.
 
 ### T2: Execute staged sync writes without a recovery transaction
 
-- [ ] **T2** — Separate sync filesystem writes from direct-install transactions.
+- [x] **T2** — Separate sync filesystem writes from direct-install transactions.
 
 **Outcome and basis:** Implement R6/R7 and the no-bookkeeping portion of R11.
 Complete staged writes retain path protection while accepting partial progress.
@@ -224,11 +224,11 @@ leave direct-install transaction internals unchanged wherever practical.
 
 **Acceptance criteria:**
 
-- [ ] **T2-AC1** — Fresh, unchanged, force, partial, and failed syncs create no
+- [x] **T2-AC1** — Fresh, unchanged, force, partial, and failed syncs create no
   `.ritebook/` bookkeeping, acquire no sync installation lock, and write no
   journal anywhere. Complete staging precedes target mutation; target-digest,
   ancestry, containment, symlink, and special-file checks remain effective.
-- [ ] **T2-AC2** — Staging failure leaves its target unchanged. A later replacement
+- [x] **T2-AC2** — Staging failure leaves its target unchanged. A later replacement
   or lockfile-write failure does not roll back earlier completed targets. A
   failed pre-replacement lockfile write preserves the previous whole document
   or leaves the path absent. Partial state never labels a failed target as
@@ -236,13 +236,13 @@ leave direct-install transaction internals unchanged wherever practical.
   nonzero, including after lockfile replacement; a complete new lockfile may
   already exist in that case. Earlier failures remain visible if cleanup also
   fails, and cleanup attempts continue for other current-invocation artifacts.
-- [ ] **T2-AC3** — Direct install still uses its existing registry, operation lock,
+- [x] **T2-AC3** — Direct install still uses its existing registry, operation lock,
   journal, rollback, and next-run recovery. Index refresh still uses the published
   registry port and registry locks. An old held sync lock does not block sync.
 
 **Verification:**
 
-- [ ] **T2-V1** — Write fault-injection adapter and orchestration tests, then run
+- [x] **T2-V1** — Write fault-injection adapter and orchestration tests, then run
   `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/test_cli.py tests/integration/test_adapter_integrations.py tests/integration/test_installation_process_recovery.py' make test`.
   Expect staged/atomic writes, partial progress, no transaction calls from sync,
   and existing direct transaction/process tests to pass. Add a held legacy-lock
@@ -250,12 +250,20 @@ leave direct-install transaction internals unchanged wherever practical.
   Inject failures before and after directory placement, during local restoration,
   before and after lockfile replacement, and during staging/backup/temp cleanup.
   Inspect bytes and retained paths rather than only checking raised exceptions.
-- [ ] **T2-V2** — Run `make architecture`; expect all import contracts to pass.
+- [x] **T2-V2** — Run `make architecture`; expect all import contracts to pass.
   Inspect the composition root and published ports: direct install retains the
   recoverable transaction and sync receives only its writer and state contracts.
 
-**Evidence and status:** Pending. Scope includes changes to old sync rollback
-assertions; retain the same fault coverage with the new expected outcomes.
+**Evidence and status:** Complete. Sync receives `SyncWriterPort` and `SyncPaths`;
+direct install retains its recoverable transaction. The no-transaction and
+staging-cleanup regressions failed before their fixes. Fault tests cover current
+target restoration, failed restoration, backup cleanup, atomic lockfile failure,
+post-placement failures, and continued staging cleanup with a primary failure.
+A real held legacy lock and malformed ledger/journal remain untouched. The
+focused T2 command passed 159 cases before contract cleanup; the final
+`make quality` passed all checks, including architecture and 775 default tests.
+Commands used the writable temporary uv cache recorded under T1. Installed-wheel
+execution remains required at CP-FINAL-2.
 
 ### T3: Prove manual repair, explain skips, and retire legacy guidance
 

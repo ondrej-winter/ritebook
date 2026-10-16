@@ -39,14 +39,6 @@ def test_json_installation_state_resolves_direct_and_sync_operation_paths(
     assert direct.journal_path == str(
         direct_registry.parent / "installation-transaction.json",
     )
-    assert direct.lockfile_path is None
-    assert sync.ownership_path == str(
-        requirements_file.parent / ".ritebook" / "installations.json",
-    )
-    assert sync.lock_path == str(requirements_file.parent / ".ritebook" / "install.lock")
-    assert sync.journal_path == str(
-        requirements_file.parent / ".ritebook" / "transaction.json",
-    )
     assert sync.lockfile_path == str(lockfile)
 
 
@@ -98,20 +90,6 @@ def test_json_installation_state_does_not_restore_undesired_local_ownership(
     assert result.digest == _bytes_digest(state_file.content)
 
 
-def test_json_installation_state_reports_ownership_ledger_presence(
-    tmp_path: Path,
-) -> None:
-    path = tmp_path / ".ritebook" / "installations.json"
-    adapter = JsonInstallationStateAdapter()
-
-    assert adapter.ownership_exists(str(path)) is False
-
-    path.parent.mkdir(parents=True)
-    path.write_text('{"schema_version":3,"installations":[]}\n', encoding="utf-8")
-
-    assert adapter.ownership_exists(str(path)) is True
-
-
 def test_json_installation_state_reads_missing_state_as_an_absent_snapshot(
     tmp_path: Path,
 ) -> None:
@@ -121,16 +99,6 @@ def test_json_installation_state_reads_missing_state_as_an_absent_snapshot(
 
     assert snapshot.entries == ()
     assert snapshot.digest is None
-
-
-def test_json_installation_state_reads_exact_raw_state_digest(tmp_path: Path) -> None:
-    path = tmp_path / "ritebook.lock"
-    content = b'{ "schema_version": 3 }\n'
-    path.write_bytes(content)
-    adapter = JsonInstallationStateAdapter()
-
-    assert adapter.read_state_digest(str(path)) == _bytes_digest(content)
-    assert adapter.read_state_digest(str(tmp_path / "missing.lock")) is None
 
 
 def test_json_installation_state_bootstraps_sync_ownership_from_schema_v3_lock(

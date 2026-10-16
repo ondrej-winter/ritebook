@@ -22,6 +22,7 @@ from ritebook.features.skill_installation.application.dtos import (
     SkillRequirement,
     SkillRequirements,
     StagedSkillTree,
+    SyncPaths,
     TargetInspection,
 )
 from ritebook.features.skill_installation.application.errors import (
@@ -535,8 +536,7 @@ def test_sync_renders_only_selected_lockfile_snapshot(
     )
 
     [lockfile] = transactions.transaction.committed_files
-    assert lockfile.expected_digest == _LOCKFILE_DIGEST
-    assert state.digest_read_calls == []
+    assert lockfile.expected_digest is None
     assert state.read_calls == []
 
 
@@ -601,12 +601,80 @@ def test_sync_no_change_performs_no_target_mutation(tmp_path: Path) -> None:
     assert transactions.transaction.replace_calls == []
 
 
-@pytest.mark.parametrize("ledger_exists", [False, True])
+def test_sync_never_opens_a_recovery_transaction(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse_transaction(*, lock_path: str, journal_path: str) -> None:
+        del lock_path, journal_path
+        msg = "sync opened the recovery transaction"
+        raise AssertionError(msg)
+
+    transactions = _Transactions()
+    monkeypatch.setattr(transactions, "open", refuse_transaction)
+    result = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(SkillRequirements(targets={}, skills=())),
+        transactions=transactions,
+    ).execute(InstallFromRequirementsCommand(requirements_file=str(tmp_path / "ritebook.toml")))
+
+    assert result.issues == ()
+
+
+@pytest.mark.parametrize("lock_failure", [False, True])
+def test_sync_attempts_all_staging_cleanup_and_retains_primary_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    lock_failure: bool,
+) -> None:
+    names = ("code-review", "security-review")
+    installer = _Installer(
+        inspections={
+            str(tmp_path / "skills" / name): _inspection(tmp_path / "skills" / name, exists=False) for name in names
+        }
+    )
+    cleaned: list[str] = []
+
+    def fail_cleanup(staged: StagedSkillTree) -> None:
+        cleaned.append(staged.cleanup_path)
+        msg = f"staging retained at {staged.cleanup_path}"
+        raise InstallationPersistenceError(msg)
+
+    def fail_lock(_candidate: GeneratedStateFile) -> None:
+        msg = "primary lockfile write failure"
+        raise InstallationPersistenceError(msg)
+
+    transactions = _Transactions()
+    if lock_failure:
+        monkeypatch.setattr(transactions.transaction, "write_lockfile", fail_lock)
+    monkeypatch.setattr(installer, "cleanup_staged", fail_cleanup)
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": "skills"},
+                skills=tuple(SkillRequirement(name=f"platform-skills/{name}", target="agents") for name in names),
+            )
+        ),
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=tuple(installable_skill(name=name) for name in names),
+        ),
+        installer=installer,
+        transactions=transactions,
+    )
+    with pytest.raises(InstallationPersistenceError) as error:
+        use_case.execute(InstallFromRequirementsCommand(requirements_file=str(tmp_path / "ritebook.toml")))
+    assert cleaned == [f"/staged/{name}-root" for name in names]
+    assert all(path in str(error.value) for path in cleaned)
+    if lock_failure:
+        assert "primary lockfile write failure" in str(error.value)
+        assert transactions.transaction.committed_files == ()
+    assert len(transactions.transaction.replace_calls) == 2
+
+
 @pytest.mark.parametrize("modified", [False, True])
 def test_sync_uses_selected_lock_despite_conflicting_ledger(
     tmp_path: Path,
     *,
-    ledger_exists: bool,
     modified: bool,
 ) -> None:
     target = tmp_path / ".agents/skills/code-review"
@@ -614,7 +682,6 @@ def test_sync_uses_selected_lock_despite_conflicting_ledger(
     index = registered_skill_index(name="platform-skills")
     state = _StateAdapter(
         sync_root=tmp_path / ".ritebook",
-        ownership_exists=ledger_exists,
         ownership=(_owned(target, digest=_OLD_DIGEST),),
         lock_ownership=(locked,),
         lockfile_digest=_LOCKFILE_DIGEST,
@@ -655,10 +722,9 @@ def test_sync_uses_selected_lock_despite_conflicting_ledger(
     assert result.ownership_entries[0].installed_tree_digest == _TREE_DIGEST
     assert transactions.transaction.replace_calls == []
     [lockfile] = transactions.transaction.committed_files
-    assert lockfile.expected_digest == _LOCKFILE_DIGEST
+    assert lockfile.expected_digest is None
     assert lockfile.path == str(tmp_path / "custom.lock")
     assert state.read_calls == []
-    assert state.digest_read_calls == []
     assert state.last_ownership_entries[0].canonical_target == str(target)
 
 
@@ -726,7 +792,6 @@ def test_sync_does_not_bootstrap_ownership_from_legacy_undesired_lock_entry(
     legacy_undesired = _owned(target, digest=_TREE_DIGEST, desired=False)
     state = _StateAdapter(
         sync_root=tmp_path / ".ritebook",
-        ownership_exists=False,
         lock_ownership=(legacy_undesired,),
         lockfile_digest=_LOCKFILE_DIGEST,
     )
@@ -926,7 +991,6 @@ class _StateAdapter:
         direct_root: Path | None = None,
         sync_root: Path | None = None,
         ownership: tuple[OwnedInstallation, ...] = (),
-        ownership_exists: bool = True,
         lock_ownership: tuple[OwnedInstallation, ...] = (),
         ownership_digest: str | None = None,
         lockfile_digest: str | None = None,
@@ -934,12 +998,10 @@ class _StateAdapter:
         self.direct_root = direct_root
         self.sync_root = sync_root
         self.ownership = ownership
-        self._ownership_exists = ownership_exists
         self.lock_ownership = lock_ownership
         self.ownership_digest = ownership_digest
         self.lockfile_digest = lockfile_digest
         self.read_calls: list[str] = []
-        self.digest_read_calls: list[str] = []
         self.last_ownership_entries: tuple[OwnedInstallation, ...] = ()
         self.last_lock_issues: tuple[ReconciliationIssue, ...] = ()
         self.last_ownership_file = GeneratedStateFile(
@@ -966,22 +1028,16 @@ class _StateAdapter:
         *,
         requirements_file: str,
         lockfile_path: str | None,
-    ) -> InstallationOperationPaths:
+    ) -> SyncPaths:
         del requirements_file
         assert self.sync_root is not None
-        return InstallationOperationPaths(
-            lock_path=str(self.sync_root / "install.lock"),
-            journal_path=str(self.sync_root / "transaction.json"),
-            ownership_path=str(self.sync_root / "installations.json"),
+        return SyncPaths(
             lockfile_path=lockfile_path or str(self.sync_root.parent / "ritebook.lock"),
         )
 
     def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
         self.read_calls.append(ownership_path)
         return InstallationStateSnapshot(self.ownership, self.ownership_digest)
-
-    def ownership_exists(self, _ownership_path: str) -> bool:
-        return self._ownership_exists
 
     def read_lockfile_ownership(
         self,
@@ -992,10 +1048,6 @@ class _StateAdapter:
         del requirements_file
         ownership = tuple(entry for entry in self.lock_ownership if entry.desired)
         return InstallationStateSnapshot(ownership, self.lockfile_digest)
-
-    def read_state_digest(self, path: str) -> str | None:
-        self.digest_read_calls.append(path)
-        return self.lockfile_digest
 
     def ownership_file(
         self,
@@ -1020,7 +1072,6 @@ class _StateAdapter:
         lockfile_path: str,
         *,
         requirements_file: str,
-        expected_digest: str | None,
     ) -> GeneratedStateFile:
         del requirements_file
         self.last_ownership_entries = entries
@@ -1029,7 +1080,6 @@ class _StateAdapter:
             path=lockfile_path,
             content=b"lock",
             private=False,
-            expected_digest=expected_digest,
         )
         return self.last_lockfile
 
@@ -1059,6 +1109,9 @@ class _Transaction:
         expected_digest: str | None,
     ) -> None:
         self.replace_calls.append((staged_path, target_path, expected_digest))
+
+    def write_lockfile(self, candidate: GeneratedStateFile) -> None:
+        self.committed_files = (candidate,)
 
     def commit_state(self, files: tuple[GeneratedStateFile, ...]) -> None:
         self.committed_files = files
@@ -1093,7 +1146,7 @@ def _sync_use_case(
         committed_skill_validator=(committed_skill_validator or _CommittedSkillValidator()),
         installer=installer or _Installer(inspections={}),
         state=state or _StateAdapter(sync_root=tmp_path / ".ritebook"),
-        transactions=transactions or _Transactions(),
+        writer=(transactions or _Transactions()).transaction,
     )
 
 

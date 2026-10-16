@@ -21,6 +21,7 @@ from ritebook.features.skill_installation.application.dtos.install_skill import 
     SkillRequirement,
     SkillRequirements,
     StagedSkillTree,
+    SyncPaths,
     TargetInspection,
 )
 
@@ -45,5 +46,6 @@ __all__ = [
     "SkillRequirement",
     "SkillRequirements",
     "StagedSkillTree",
+    "SyncPaths",
     "TargetInspection",
 ]

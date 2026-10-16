@@ -417,8 +417,12 @@ shape:
 - Revision 3.4 is partially implemented: sync reads the selected lockfile on every
   run and renders no companion ledger. Ledger-conflict, missing-lock, custom-path,
   local-edit, and invalid-lock regressions pass; `make quality` passes with 761
-  default tests. Sync still uses the recoverable transaction adapter until T2.
-  These results do not establish full revision-3.4 conformance.
+  default tests.
+  T2 now separates journal-free sync writes from direct-install recovery.
+  Fault-injection, held legacy-lock, composition, and direct process-recovery
+  checks pass; `make quality` passes with 775 default tests. Diagnostics, operator
+  workflows, and installed-wheel evidence remain pending under T3 and the final
+  checkpoint.
 - Remaining implementation and verification are owned by the
   [project-sync state simplification plan](../plans/project-sync-state-simplification-plan.md).
 - Implementation handoff requires `make verify`: formatting, lint, type,

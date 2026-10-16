@@ -11,6 +11,7 @@ if TYPE_CHECKING:
         InstallationStateSnapshot,
         OwnedInstallation,
         ReconciliationIssue,
+        SyncPaths,
     )
 
 
@@ -25,14 +26,11 @@ class InstallationStatePort(Protocol):
         *,
         requirements_file: str,
         lockfile_path: str | None,
-    ) -> InstallationOperationPaths:
-        """Resolve repository-sync operation paths."""
+    ) -> SyncPaths:
+        """Resolve only the selected sync lockfile path."""
 
     def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
         """Read strict ownership state and the digest of the exact parsed bytes."""
-
-    def ownership_exists(self, ownership_path: str) -> bool:
-        """Return whether a local ownership ledger exists."""
 
     def read_lockfile_ownership(
         self,
@@ -41,9 +39,6 @@ class InstallationStatePort(Protocol):
         requirements_file: str,
     ) -> InstallationStateSnapshot:
         """Read lock state as constrained ownership with its exact-byte digest."""
-
-    def read_state_digest(self, path: str) -> str | None:
-        """Return the exact current file-byte digest, or `None` when absent."""
 
     def ownership_file(
         self,
@@ -61,6 +56,5 @@ class InstallationStatePort(Protocol):
         lockfile_path: str,
         *,
         requirements_file: str,
-        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
         """Render a portable complete or mixed lockfile candidate."""

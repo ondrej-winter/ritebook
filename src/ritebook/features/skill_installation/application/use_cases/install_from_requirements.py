@@ -20,7 +20,9 @@ from ritebook.features.skill_installation.application.errors import (
     CommittedSkillMetadataMismatchError,
     DuplicateInstallTargetError,
     DuplicateSkillRequirementError,
+    InstallationPersistenceError,
     InvalidSkillReferenceError,
+    SkillInstallationError,
     UndefinedInstallTargetError,
     UnknownInstallIndexError,
     UnknownInstallSkillError,
@@ -49,12 +51,11 @@ if TYPE_CHECKING:
         CommittedSkillValidatorPort,
         IndexRefresherPort,
         InstallationStatePort,
-        InstallationTransaction,
-        InstallationTransactionPort,
         RequirementsReaderPort,
         SkillCatalogPort,
         SkillInstallerPort,
         SkillSourcePort,
+        SyncWriterPort,
     )
 
 
@@ -109,7 +110,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         committed_skill_validator: CommittedSkillValidatorPort,
         installer: SkillInstallerPort,
         state: InstallationStatePort,
-        transactions: InstallationTransactionPort,
+        writer: SyncWriterPort,
     ) -> None:
         """Initialize reconciliation orchestration dependencies."""
         self._requirements_reader = requirements_reader
@@ -119,7 +120,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self._committed_skill_validator = committed_skill_validator
         self._installer = installer
         self._state = state
-        self._transactions = transactions
+        self._writer = writer
 
     def execute(
         self,
@@ -133,72 +134,78 @@ class InstallFromRequirements(InstallFromRequirementsPort):
             requirements_file=command.requirements_file,
             lockfile_path=command.lockfile_path,
         )
-        if paths.lockfile_path is None:
-            msg = "Sync operation paths must include a lockfile path."
-            raise ValueError(msg)
 
         staged_trees: list[StagedSkillTree] = []
+        failure: BaseException | None = None
 
         try:
-            with self._transactions.open(
-                lock_path=paths.lock_path,
-                journal_path=paths.journal_path,
-            ) as transaction:
-                lockfile_snapshot = self._state.read_lockfile_ownership(
-                    paths.lockfile_path,
-                    requirements_file=command.requirements_file,
-                )
-                ownership = lockfile_snapshot.entries
-                lockfile_digest = lockfile_snapshot.digest
-                aliases = _referenced_aliases(requirements.skills)
-                for alias in aliases:
-                    self._index_refresher.refresh(alias, command.registry_path)
+            lockfile_snapshot = self._state.read_lockfile_ownership(
+                paths.lockfile_path,
+                requirements_file=command.requirements_file,
+            )
+            ownership = lockfile_snapshot.entries
+            aliases = _referenced_aliases(requirements.skills)
+            for alias in aliases:
+                self._index_refresher.refresh(alias, command.registry_path)
 
-                with ExitStack() as source_stack:
-                    desired = self._desired_installations(
-                        command,
-                        requirements.skills,
-                        requirements.targets,
-                        source_stack,
-                    )
-                    _reject_conflicting_targets(desired)
-                    ownership_by_target = {entry.canonical_target: entry for entry in ownership}
-                    desired_outcome = self._reconcile_desired(
-                        desired,
-                        ownership_by_target,
-                        transaction,
-                        force=command.force,
-                        staged_trees=staged_trees,
-                    )
-                    final_entries = tuple(
-                        sorted(
-                            desired_outcome.entries,
-                            key=lambda entry: entry.target_id,
+            with ExitStack() as source_stack:
+                desired = self._desired_installations(
+                    command,
+                    requirements.skills,
+                    requirements.targets,
+                    source_stack,
+                )
+                _reject_conflicting_targets(desired)
+                ownership_by_target = {entry.canonical_target: entry for entry in ownership}
+                desired_outcome = self._reconcile_desired(
+                    desired,
+                    ownership_by_target,
+                    force=command.force,
+                    staged_trees=staged_trees,
+                )
+                final_entries = tuple(
+                    sorted(
+                        desired_outcome.entries,
+                        key=lambda entry: entry.target_id,
+                    ),
+                )
+                final_issues = tuple(
+                    sorted(
+                        desired_outcome.issues,
+                        key=lambda issue: (
+                            issue.target,
+                            issue.code,
+                            issue.requirement or "",
                         ),
-                    )
-                    final_issues = tuple(
-                        sorted(
-                            desired_outcome.issues,
-                            key=lambda issue: (
-                                issue.target,
-                                issue.code,
-                                issue.requirement or "",
-                            ),
-                        ),
-                    )
-                    lockfile = self._state.lockfile(
-                        final_entries,
-                        final_issues,
-                        paths.lockfile_path,
-                        requirements_file=_portable_requirements_file(
-                            command.requirements_file,
-                        ),
-                        expected_digest=lockfile_digest,
-                    )
-                    transaction.commit_state((lockfile,))
+                    ),
+                )
+                lockfile = self._state.lockfile(
+                    final_entries,
+                    final_issues,
+                    paths.lockfile_path,
+                    requirements_file=_portable_requirements_file(
+                        command.requirements_file,
+                    ),
+                )
+                self._writer.write_lockfile(lockfile)
+        except BaseException as err:
+            failure = err
+            raise
         finally:
+            cleanup_errors: list[str] = []
             for staged in staged_trees:
-                self._installer.cleanup_staged(staged)
+                try:
+                    self._installer.cleanup_staged(staged)
+                except SkillInstallationError as err:
+                    cleanup_errors.append(str(err))
+            if cleanup_errors:
+                detail = "; ".join(cleanup_errors)
+                if failure is None:
+                    raise InstallationPersistenceError(detail)
+                if isinstance(failure, SkillInstallationError):
+                    msg = f"{failure}; {detail}"
+                    raise InstallationPersistenceError(msg) from failure
+                failure.add_note(detail)
 
         return InstallFromRequirementsResult(
             requirements_file=command.requirements_file,
@@ -213,7 +220,6 @@ class InstallFromRequirements(InstallFromRequirementsPort):
         self,
         desired: tuple[_DesiredInstall, ...],
         ownership_by_target: dict[str, OwnedInstallation],
-        transaction: InstallationTransaction,
         *,
         force: bool,
         staged_trees: list[StagedSkillTree],
@@ -275,7 +281,7 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                 unchanged_count += 1
                 continue
 
-            transaction.replace_tree(
+            self._writer.replace_tree(
                 staged_path=staged.staged_path,
                 target_path=item.planned_target.canonical_target,
                 expected_digest=(inspection.installed_tree_digest if inspection.exists else None),

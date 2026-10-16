@@ -6,7 +6,6 @@ import os
 import secrets
 import shutil
 import stat
-from contextlib import suppress
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -119,11 +118,20 @@ class FilesystemSkillInstallerAdapter:
                     os.close(cleanup_fd)
                 require_directory_identity(target_path.parent, target_parent_fd)
             except BaseException as err:
-                metadata = entry_metadata(target_parent_fd, cleanup_name)
-                if metadata is not None:
-                    with suppress(OSError):
+                try:
+                    metadata = entry_metadata(target_parent_fd, cleanup_name)
+                    if metadata is not None:
                         remove_entry(target_parent_fd, cleanup_name, metadata)
                         sync_directory_descriptor(target_parent_fd)
+                except (OSError, UnsafeInstallPathError) as cleanup_error:
+                    msg = (
+                        f"unable to stage replacement for target {target_path}; "
+                        f"partial staging retained at {cleanup_path}"
+                    )
+                    if not isinstance(err, Exception):
+                        err.add_note(msg)
+                        raise err from cleanup_error
+                    raise InstallationPersistenceError(msg) from err
                 if isinstance(err, OSError):
                     msg = f"unable to stage replacement for target {target_path}"
                     raise InstallationPersistenceError(msg) from err

@@ -27,6 +27,8 @@ from ritebook.features.skill_installation.application.ports.skill_source import 
     SkillSourcePort,
 )
 
+from .sync_writer import SyncWriterPort
+
 InstallFromRequirementsPort = install_from_requirements.InstallFromRequirementsPort
 CommittedSkillValidatorPort = committed_skill_validator.CommittedSkillValidatorPort
 InstallationTransaction = installation_transaction.InstallationTransaction
@@ -44,4 +46,5 @@ __all__ = [
     "SkillCatalogPort",
     "SkillInstallerPort",
     "SkillSourcePort",
+    "SyncWriterPort",
 ]

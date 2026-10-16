@@ -26,6 +26,11 @@ from ritebook.features.skill_contribution.adapters.outbound.validation import (
 from ritebook.features.skill_contribution.application.use_cases import (
     PublishSkillChange,
 )
+from ritebook.features.skill_installation.adapters.outbound import (
+    FilesystemInstallationTransactionAdapter,
+    FilesystemSyncWriterAdapter,
+)
+from ritebook.features.skill_installation.application.use_cases import InstallFromRequirements, InstallSkill
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -53,6 +58,13 @@ def test_main_wires_skill_contribution_with_existing_application_ports(
     )
 
     assert exit_code == 17
+    sync = captured_ports["install_from_requirements"]
+    direct = captured_ports["install_skill"]
+    assert isinstance(sync, InstallFromRequirements)
+    assert isinstance(direct, InstallSkill)
+    assert isinstance(sync._writer, FilesystemSyncWriterAdapter)  # noqa: SLF001
+    assert not hasattr(sync, "_transactions")
+    assert isinstance(direct._transactions, FilesystemInstallationTransactionAdapter)  # noqa: SLF001
     assert set(captured_ports) == {
         "add_index",
         "install_from_requirements",

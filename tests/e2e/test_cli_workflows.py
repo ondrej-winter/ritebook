@@ -837,7 +837,7 @@ target_path = ".agents/skills/tdd"
     assert not ownership_path.exists()
 
     first_lock_bytes = lockfile.read_bytes()
-    shutil.rmtree(consumer_repo / ".ritebook")
+    assert not (consumer_repo / ".ritebook").exists()
     second = run_cli(
         [
             "skills",
@@ -956,7 +956,7 @@ target = "agents"
     assert not installation_registry.exists()
 
 
-def test_install_rolls_back_target_when_lockfile_commit_fails(
+def test_sync_keeps_completed_target_when_lockfile_commit_fails(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -1012,8 +1012,9 @@ target = "claude"
 
     result.assert_failure()
     assert result.stdout == ""
-    assert result.stderr == "ritebook: error: unable to commit generated installation state\n"
-    assert not target.exists()
+    assert "lockfile parent" in result.stderr
+    assert (target / "SKILL.md").is_file()
+    assert not (consumer_repo / ".ritebook").exists()
     assert blocked_parent.read_text(encoding="utf-8") == "not a directory\n"
     assert not lockfile.exists()
 

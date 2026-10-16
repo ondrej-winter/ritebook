@@ -14,6 +14,7 @@ from ritebook.features.skill_installation.application.dtos import (
     InstallationStatus,
     InstallationWorkflow,
     OwnedInstallation,
+    SyncPaths,
 )
 from ritebook.features.skill_installation.application.errors import (
     InstallationPersistenceError,
@@ -98,20 +99,14 @@ class JsonInstallationStateAdapter:
         *,
         requirements_file: str,
         lockfile_path: str | None,
-    ) -> InstallationOperationPaths:
-        """Resolve repository-local ownership, lock, journal, and lockfile paths."""
+    ) -> SyncPaths:
+        """Resolve the selected lockfile without project bookkeeping paths."""
         requirements = Path(requirements_file).expanduser().resolve(strict=False)
-        state_root = requirements.parent / ".ritebook"
         lockfile = _resolved_path(
             lockfile_path,
             default=requirements.parent / "ritebook.lock",
         )
-        return InstallationOperationPaths(
-            lock_path=str(state_root / "install.lock"),
-            journal_path=str(state_root / "transaction.json"),
-            ownership_path=str(state_root / "installations.json"),
-            lockfile_path=str(lockfile),
-        )
+        return SyncPaths(lockfile_path=str(lockfile))
 
     def read_ownership(self, ownership_path: str) -> InstallationStateSnapshot:
         """Read and strictly validate schema-v3 ownership state."""
@@ -143,10 +138,6 @@ class JsonInstallationStateAdapter:
             entries=tuple(sorted(entries, key=lambda entry: entry.target_id)),
             digest=digest,
         )
-
-    def ownership_exists(self, ownership_path: str) -> bool:
-        """Return whether a local ownership ledger exists."""
-        return Path(ownership_path).exists()
 
     def read_lockfile_ownership(
         self,
@@ -190,18 +181,6 @@ class JsonInstallationStateAdapter:
             digest=digest,
         )
 
-    def read_state_digest(self, path: str) -> str | None:
-        """Return the exact current file-byte digest without parsing its contents."""
-        state_path = Path(path)
-        if not state_path.exists():
-            return None
-        try:
-            content = state_path.read_bytes()
-        except OSError as err:
-            msg = f"generated installation state cannot be read: {state_path}"
-            raise InstallationPersistenceError(msg) from err
-        return _bytes_digest(content)
-
     def ownership_file(
         self,
         entries: tuple[OwnedInstallation, ...],
@@ -230,7 +209,6 @@ class JsonInstallationStateAdapter:
         lockfile_path: str,
         *,
         requirements_file: str,
-        expected_digest: str | None = None,
     ) -> GeneratedStateFile:
         """Render portable deterministic schema-v3 mixed reconciliation state."""
         for entry in entries:
@@ -259,7 +237,6 @@ class JsonInstallationStateAdapter:
             path=str(Path(lockfile_path).expanduser()),
             content=_json_bytes(document),
             private=False,
-            expected_digest=expected_digest,
         )
 
 

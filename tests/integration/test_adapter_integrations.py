@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ritebook.adapters.outbound.filesystem import discover_named_files
+from ritebook.cli import main
 from ritebook.features.index_registry.adapters.outbound.filesystem_registry import (
     FilesystemIndexRegistry,
 )
@@ -24,8 +26,8 @@ from ritebook.features.index_registry.application.dtos import (
 from ritebook.features.publisher.adapters.outbound.json_index import JsonIndexWriter
 from ritebook.features.publisher.domain import SkillCatalog
 from ritebook.features.skill_installation.adapters.outbound import (
-    FilesystemInstallationTransactionAdapter,
     FilesystemSkillInstallerAdapter,
+    FilesystemSyncWriterAdapter,
     IndexRegistrySkillCatalogAdapter,
     JsonInstallationStateAdapter,
     SourceRepositoryAdapter,
@@ -273,7 +275,6 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         target=planned_target.canonical_target,
         installed_tree_digest=staged.installed_tree_digest,
     )
-    ownership_file = state.ownership_file((entry,), paths.ownership_path)
     lockfile = state.lockfile(
         (entry,),
         (),
@@ -281,24 +282,41 @@ def test_installation_adapters_copy_skill_and_write_persistent_state(
         requirements_file="ritebook.toml",
     )
     try:
-        with FilesystemInstallationTransactionAdapter().open(
-            lock_path=paths.lock_path,
-            journal_path=paths.journal_path,
-        ) as transaction:
-            transaction.replace_tree(
-                staged_path=staged.staged_path,
-                target_path=planned_target.canonical_target,
-                expected_digest=None,
-            )
-            transaction.commit_state((ownership_file, lockfile))
+        writer = FilesystemSyncWriterAdapter()
+        writer.replace_tree(
+            staged_path=staged.staged_path,
+            target_path=planned_target.canonical_target,
+            expected_digest=None,
+        )
+        writer.write_lockfile(lockfile)
     finally:
         installer.cleanup_staged(staged)
 
     assert (target / "SKILL.md").is_file()
     assert (target / "guide.md").read_text(encoding="utf-8") == "# Review guide\n"
-    assert state.read_ownership(paths.ownership_path).entries == (entry,)
+    assert state.read_lockfile_ownership(paths.lockfile_path, requirements_file=str(requirements_file)).entries == (
+        entry,
+    )
+    assert not (requirements_file.parent / ".ritebook").exists()
     assert '"schema_version": 3' in lockfile_path.read_text(encoding="utf-8")
     assert '"state": "complete"' in lockfile_path.read_text(encoding="utf-8")
+
+
+def test_sync_ignores_a_held_legacy_installation_lock(tmp_path: Path) -> None:
+    requirements = tmp_path / "ritebook.toml"
+    requirements.write_text("skills = []\n")
+    legacy = tmp_path / ".ritebook"
+    legacy.mkdir()
+    (legacy / "installations.json").write_bytes(b"malformed old ledger")
+    (legacy / "transaction.json").write_bytes(b"malformed old journal")
+    lock = legacy / "install.lock"
+    lock.write_bytes(b"old lock")
+    before = {path.name: path.read_bytes() for path in legacy.iterdir()}
+    with lock.open("rb") as held:
+        fcntl.flock(held.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        assert main(["skills", "sync", "--file", str(requirements)]) == 0
+    assert {path.name: path.read_bytes() for path in legacy.iterdir()} == before
+    assert (tmp_path / "ritebook.lock").is_file()
 
 
 def test_requirements_and_catalog_bridge_adapters_read_real_registry_and_index(

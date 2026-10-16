@@ -429,29 +429,49 @@ target base by its final skill name; it cannot use `target_path`. Expansion neve
 matches deeper descendants or searches by `skills[].name`. Direct `skills install`
 and `skills contribute` commands remain exact-only and never expand collections.
 
-Sync transactionally writes strict schema-v3 generated state to `ritebook.lock`
-and local ownership state to `.ritebook/installations.json`. Commit
-`ritebook.lock` when a repository uses `ritebook.toml`; do not commit `.ritebook/`.
-The generated files record only current declarations, their installed-tree
-digests, materialization status, and any current processing issues. Complete
-no-change syncs produce byte-identical lock state. Partial processing preserves
-independent successful changes, writes truthful `state = "partial"` data,
-reports each issue, and exits nonzero.
+Sync uses the selected schema-v3 `ritebook.lock` as its only persistent
+installation record and creates no `.ritebook/` bookkeeping. Commit the lockfile
+when a repository uses `ritebook.toml`. It records current owned declarations,
+installed-tree digests, provenance, status, and processing issues. Complete
+no-change syncs produce byte-identical lock state. Skipped targets produce
+`state = "partial"`, diagnostics, and a nonzero exit while independent successful
+changes remain installed.
 
-The local `.ritebook/` directory also holds the operation lock and transaction
-recovery data. Retain it while an operation is running or recovery is pending.
-When local ownership state is absent, sync can reconstruct it from a valid
-`ritebook.lock` and verified installed trees.
+Locally modified skills are preserved with their recorded baseline. Diagnostics
+show how to prepare a local contribution or explicitly replace the skill with
+`--force`. If the selected lockfile is missing, sync installs missing targets but
+preserves existing directories, even when they match the current index. Review
+every current declaration before a force rerun: sync `--force` replaces **all**
+selected targets, discarding local edits and unmanaged contents.
 
-The accepted [installation specification, revision 3.4](docs/specs/skill-installation-spec.md)
-will remove `.ritebook/` bookkeeping and use the lockfile alone, with manual
-interruption repair and user-managed serialization of sync commands. This change
-is **not implemented yet**; the paragraphs above describe current behavior.
-See the [implementation plan](docs/plans/project-sync-state-simplification-plan.md).
+Run one mutating installation command at a time for the affected project and
+targets. Sync acquires no installation operation lock and provides no concurrent
+writer guarantee. Index-registry locking and direct-install recovery remain in
+place.
+
+Sync stages complete trees, revalidates each target, and atomically replaces the
+lockfile document. It has no whole-sync rollback or automatic next-run recovery.
+A failed or interrupted run may leave completed replacements with an older or
+absent lockfile, an absent target during a directory swap, or temporary sibling
+staging/previous-tree artifacts. Inspect targets, the lockfile, and reported
+retained paths; rerun normally to identify preserved mismatches or unmanaged
+targets. After reviewing or backing up valuable content in every declaration,
+use `--force` to establish verified baselines. Inspect interrupted-run artifacts
+before removing them; later syncs neither replay nor delete them automatically.
+
+Existing `.ritebook/` files are ignored and left untouched. Before retiring old
+state, finish any pending recovery with the previous Ritebook version or inspect
+and reconcile it manually. A journal, transaction data, or sibling backup may be
+the only copy of prior content. Once no old operation or recovery is pending,
+remove only confirmed obsolete generated ledgers, lock files, and completed
+recovery artifacts; preserve unrelated files. Do not delete the whole directory
+without inspecting its contents. See the
+[installation specification](docs/specs/skill-installation-spec.md) for the full
+sync and direct-install contracts.
 
 Sync never deletes a directory merely because its entry was removed from
 `ritebook.toml`. The next sync leaves that directory untouched and removes it from
-generated sync ownership and lock state. Delete or archive an undeclared skill
+generated lock state. Delete or archive an undeclared skill
 directory explicitly when it is no longer wanted. If the same path is declared
 again later, it is unmanaged and requires `--force` to replace.
 
@@ -461,7 +481,7 @@ from newly generated state unless the target is currently declared.
 
 `--force` is destructive for selected targets: it discards unmanaged contents and
 local edits at the exact selected directory after race-safe inspection. Review or
-back up valuable changes before using it.
+back up valuable changes in every current declaration before using it with sync.
 
 Schema-v1 and schema-v2 lockfiles and installation registries are rejected
 without automatic migration because they lack current ownership or canonical

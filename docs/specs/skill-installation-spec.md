@@ -8,7 +8,7 @@
 - Accepted by / on: User / 2026-10-16
 - Owner: Ritebook maintainers
 - Last reviewed: 2026-10-16
-- Implementation state: Partially implemented
+- Implementation state: Implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
 - Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), [ADR 0007](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md), and [ADR 0009](../adr/0009-use-the-lockfile-as-the-only-project-sync-state.md)
 - Supersedes: Revision 3.3 of this specification
@@ -33,8 +33,8 @@ Revision 3.4 makes `ritebook.lock` the sole persistent project-sync installation
 record. Sync no longer needs `.ritebook/`, an installation operation lock, or a
 durable recovery journal. Users serialize sync invocations and accept manual
 repair after interruption. Direct install and index-registry transactions retain
-their existing guarantees. This revision is accepted but not yet implemented;
-the remaining work is defined in the
+their existing guarantees. Revision 3.4 is implemented and verified; evidence is
+recorded below and in the
 [implementation plan](../plans/project-sync-state-simplification-plan.md).
 
 ## Scope
@@ -414,23 +414,30 @@ shape:
   relinquishment, legacy undesired-entry migration, tree hashing, strict schema
   parsing, refresh failure, idempotence, concurrent processes, interruption
   recovery, symlink races, and CLI exit behavior.
-- Revision 3.4 is partially implemented: sync reads the selected lockfile on every
-  run and renders no companion ledger. Ledger-conflict, missing-lock, custom-path,
-  local-edit, and invalid-lock regressions pass; `make quality` passes with 761
-  default tests.
-  T2 now separates journal-free sync writes from direct-install recovery.
-  Fault-injection, held legacy-lock, composition, and direct process-recovery
-  checks pass; `make quality` passes with 775 default tests. Diagnostics, operator
-  workflows, and installed-wheel evidence remain pending under T3 and the final
-  checkpoint.
-- Remaining implementation and verification are owned by the
-  [project-sync state simplification plan](../plans/project-sync-state-simplification-plan.md).
-- Implementation handoff requires `make verify`: formatting, lint, type,
-  import-boundary checks, default non-E2E tests, builds, and installed-wheel Docker
-  E2E tests. Direct-install concurrency and process-kill recovery tests remain;
-  sync interruption tests must prove conservative rerun behavior and manual
-  repair instead of automatic rollback. These checks have not been run for
-  revision 3.4.
+- Revision 3.4 is implemented. Sync uses only the selected lockfile, with a
+  separate staged filesystem writer and no installation lock, ledger, journal,
+  batch rollback, or next-run recovery. Direct-install transactions and index
+  registry locks retain their existing owners.
+- On October 16, 2026, `UV_CACHE_DIR=/private/tmp/ritebook-uv-cache make verify`
+  passed formatting, Ruff, ty, architecture contracts, all 789 default tests,
+  sdist/wheel builds, and all 26 clean installed-wheel Docker E2E tests. The cache
+  override avoids a sandbox restriction on the default uv cache. No required
+  check was skipped.
+- The completed [implementation plan](../plans/project-sync-state-simplification-plan.md)
+  records slice verification, fault-injection results, and review evidence.
+
+| Acceptance checks | Current evidence |
+| --- | --- |
+| AC1 | Direct-install reconciliation/transaction unit tests, `test_installation_process_recovery.py`, and installed-wheel direct-install workflows retain locking, rollback, and recovery coverage. |
+| AC2 | Reconciliation refresh ordering/failure tests, index-refresher tests, advancing-source interruption fixtures, and installed-wheel exact/collection selection. |
+| AC3 | Canonical tree digest and filesystem-installer tests retain content, path, executable-bit, symlink, and special-file checks. |
+| AC4, AC7 | Mixed successful/edited/unmanaged reconciliation, deterministic partial-state rendering, terminal-safe CLI tests, and installed-wheel force and contribution workflows. |
+| AC5 | Filesystem sync-writer/staging fault tests and `test_sync_interruption.py` prove individual restoration, retained artifacts, whole lockfile bytes, and conservative stale/absent-lock repair after process termination. |
+| AC6 | No-transaction application test, held legacy-lock integration fixture, composition-root assertions, and retained direct-install process-lock test. |
+| AC8, AC11, AC12 | `test_sync_workflows.py` and installed-wheel `test_sync_lockfile_is_portable_idempotent_and_authoritative` cover relocation, custom lockfiles, missing-lock partial progress/force, and unchanged legacy artifacts. |
+| AC9 | Strict state/contribution reader tests, undesired-entry reconciliation, and invalid-selected-lock integration cases with and without force. |
+| AC10 | The complete `make verify` result above. |
+| AC13 | Source-CLI preserved-edit contribution and installed-wheel `test_publish_skill_change_creates_isolated_branch_and_commit` prepare a local contribution from preserved lockfile provenance without `.ritebook/`. |
 
 ## Constraints and Execution Boundaries
 
@@ -448,9 +455,6 @@ shape:
 - Direct install may use a platform-specific advisory lock where supported, but
   unsupported locking must fail closed. Sync has no installation lock requirement
   and must not substitute a user-global sync lock or stale-lock protocol.
-- This handoff authorizes specifications and planning only. Runtime changes,
-  deletion of existing state, commits, and external actions are not part of this
-  documentation change.
 
 ## Acceptance Checks
 
@@ -512,4 +516,5 @@ None.
   are removed from the contract. Existing targets without a lock baseline are
   skipped unless forced. Direct install and registry locking remain unchanged.
   Updated AC5/AC6 assess the new sync guarantees; AC1 retains direct-install
-  transaction coverage. Implementation is pending the linked plan.
+  transaction coverage. Implementation and full verification completed on
+  October 16, 2026; see the evidence above.

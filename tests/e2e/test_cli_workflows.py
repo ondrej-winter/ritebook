@@ -735,7 +735,7 @@ def test_install_skill_force_replaces_unchanged_owned_target(
     assert installation_registry["installations"][0]["target"] == str(target.resolve())
 
 
-def test_install_reads_requirements_file_and_writes_lockfile(
+def test_sync_lockfile_is_portable_idempotent_and_authoritative(
     tmp_path: Path,
     run_cli: CliRunner,
     skills_root: Path,
@@ -856,6 +856,53 @@ target_path = ".agents/skills/tdd"
     assert second.stdout == (f"Reconciled skills from {requirements_file}: installed 0, updated 0, unchanged 2\n")
     assert lockfile.read_bytes() == first_lock_bytes
     assert not ownership_path.exists()
+    _assert_sync_relocation_and_missing_lock(run_cli, consumer_repo, registry_path, first_lock_bytes)
+
+
+def _assert_sync_relocation_and_missing_lock(
+    run_cli: CliRunner,
+    consumer: Path,
+    registry: Path,
+    baseline: bytes,
+) -> None:
+    relocated = consumer.with_name("relocated-consumer")
+    shutil.move(str(consumer), relocated)
+    lockfile = relocated / "custom.lock"
+    (relocated / "ritebook.lock").rename(lockfile)
+    arguments = ["skills", "sync", "--registry-path", str(registry), "--lockfile", str(lockfile)]
+    legacy = relocated / ".ritebook"
+    legacy.mkdir()
+    for name, content in {
+        "installations.json": b"malformed legacy ledger",
+        "transaction.json": b"unfinished old journal",
+        "install.lock": b"old lock",
+        "user.txt": b"preserve sentinel",
+    }.items():
+        (legacy / name).write_bytes(content)
+    before = {path.name: path.read_bytes() for path in legacy.iterdir()}
+    unchanged = run_cli(arguments, cwd=relocated)
+    unchanged.assert_success()
+    assert "unchanged 2" in unchanged.stdout
+    assert lockfile.read_bytes() == baseline
+    assert {path.name: path.read_bytes() for path in legacy.iterdir()} == before
+    lockfile.unlink()
+    shutil.rmtree(relocated / ".agents/skills/tdd")
+    edited = relocated / ".claude/skills/code-review/local.md"
+    edited.write_text("preserve without a baseline\n")
+    partial = run_cli(arguments, cwd=relocated)
+    partial.assert_failure()
+    assert "installed 1, updated 0, unchanged 0" in partial.stdout
+    assert "unmanaged-target" in partial.stderr
+    assert "--force" in partial.stderr
+    assert "contribute" not in partial.stderr
+    assert edited.read_text() == "preserve without a baseline\n"
+    assert _read_json(lockfile)["state"] == "partial"
+    repaired = run_cli([*arguments, "--force"], cwd=relocated)
+    repaired.assert_success()
+    assert "updated 2" in repaired.stdout
+    assert _read_json(lockfile)["state"] == "complete"
+    assert not edited.exists()
+    assert {path.name: path.read_bytes() for path in legacy.iterdir()} == before
 
 
 def test_install_expands_collection_but_install_skill_keeps_exact_selection(

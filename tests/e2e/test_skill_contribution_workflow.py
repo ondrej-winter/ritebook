@@ -55,6 +55,20 @@ def test_publish_skill_change_creates_isolated_branch_and_commit(
         skill_file,
         replacement="Helps review code changes carefully.",
     )
+    baseline = _read_json(installed.lockfile)["skills"][0]
+    skipped = run_cli(
+        ["skills", "sync", "--registry-path", str(registry_path), "--lockfile", str(installed.lockfile)],
+        cwd=installed.consumer_repository,
+    )
+    skipped.assert_failure()
+    assert "local-changes" in skipped.stderr
+    assert f"skills contribute {SKILL_REFERENCE} --lockfile {installed.lockfile}" in skipped.stderr
+    assert "Review every current declaration" in skipped.stderr
+    preserved = _read_json(installed.lockfile)["skills"][0]
+    assert preserved["installed_tree_digest"] == baseline["installed_tree_digest"]
+    assert preserved["source_revision"] == baseline["source_revision"]
+    assert preserved["status"] == "local_changes"
+    assert not (installed.consumer_repository / ".ritebook").exists()
 
     result = _publish_skill_change(run_cli, installed)
 

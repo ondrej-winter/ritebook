@@ -11,10 +11,10 @@ repair after interrupted syncs.
 especially R5-R11, and [ADR 0009](../adr/0009-use-the-lockfile-as-the-only-project-sync-state.md).
 Requirements were confirmed by the user on October 16, 2026.
 
-**Readiness:** Ready — implementation is underway; no blocking decisions remain.
+**Readiness:** Ready — all implementation and verification work is complete.
 
-**Next action:** T3. The user authorized implementation and local slice commits
-without pushing on October 16, 2026.
+**Next action:** None. The user authorized implementation and local slice
+commits without pushing on October 16, 2026.
 
 ## Scope and decisions
 
@@ -36,7 +36,7 @@ without pushing on October 16, 2026.
 - Preserve the index-recovery work and all unrelated working-tree changes.
   This plan does not modify installed `.agents/skills/` copies.
 
-## Inspected implementation and validation foundations
+## Inspected implementation and validation foundations (preparation snapshot)
 
 All paths below exist unless explicitly labeled **proposed**.
 
@@ -68,8 +68,9 @@ All paths below exist unless explicitly labeled **proposed**.
 - `Makefile` confirms `make test`, `make architecture`, `make quality`, and
   `make verify`. Run from the repository root with the locked development
   environment installed by `make setup`. Focus a `make test` invocation with
-  pytest's `PYTEST_ADDOPTS`, as listed under each task. These are planned checks,
-  not results obtained during this documentation change.
+  pytest's `PYTEST_ADDOPTS`, as listed under each task. These command and path
+  notes were preparation findings; actual results are recorded under each task
+  and the final checkpoint.
 
 ## Assumptions and unresolved questions
 
@@ -267,7 +268,7 @@ execution remains required at CP-FINAL-2.
 
 ### T3: Prove manual repair, explain skips, and retire legacy guidance
 
-- [ ] **T3** — Finish sync diagnostics, migration guidance, and operator workflows.
+- [x] **T3** — Finish sync diagnostics, migration guidance, and operator workflows.
 
 **Outcome and basis:** Complete R7/R9-R11 and AC5/AC7/AC11-AC13. This slice makes
 the accepted failure model observable through the real command.
@@ -301,14 +302,14 @@ results; the process fixture verifies the already implemented failure boundary.
 
 **Acceptance criteria:**
 
-- [ ] **T3-AC1** — Modified owned skills are preserved with their old baseline.
+- [x] **T3-AC1** — Modified owned skills are preserved with their old baseline.
   Diagnostics explain destructive `--force` and exact `skills contribute`
   guidance. Unmanaged or missing-lock skips explain force without inventing a
   contribution baseline. No diagnostic promises automatic push or MR creation.
   Guidance includes the selected custom `--lockfile` where needed. Explain that
   sync `--force` applies to all current declarations, so users review every
   selected target before a force rerun.
-- [ ] **T3-AC2** — Terminate sync after a completed replacement and before lockfile
+- [x] **T3-AC2** — Terminate sync after a completed replacement and before lockfile
   writing. The next normal run preserves mismatched or unmanaged content,
   reports the uncertainty, and neither rolls back nor silently adopts it. A
   reviewed force rerun repairs the installation and creates a valid lockfile.
@@ -319,11 +320,11 @@ results; the process fixture verifies the already implemented failure boundary.
   executing the composed sync use case through the real writer, with a test-only
   pause before lockfile writing. Reruns exercise the normal CLI. Bound waits and
   reap the child in fixture cleanup; add no production pause switch.
-- [ ] **T3-AC3** — Sync workflows create no `.ritebook/` and work after checkout
+- [x] **T3-AC3** — Sync workflows create no `.ritebook/` and work after checkout
   relocation and with custom lockfile paths. Conflicting/malformed old
   ledgers, journals, and unrelated sentinels are ignored and remain byte-identical.
   A preserved local edit remains contributable using only schema-v3 lock state.
-- [ ] **T3-AC4** — Replace the README's current transaction description and pending
+- [x] **T3-AC4** — Replace the README's current transaction description and pending
   note with implemented behavior, one-command-at-a-time responsibility,
   interruption/force guidance, and manual retirement instructions. Resolve old
   pending recovery with the previous version or manual inspection before deleting
@@ -332,41 +333,67 @@ results; the process fixture verifies the already implemented failure boundary.
 
 **Verification:**
 
-- [ ] **T3-V1** — Run
+- [x] **T3-V1** — Run
   `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/features/skill_contribution tests/unit/adapters/inbound/cli/test_adapter.py tests/unit/test_cli.py tests/integration' make test`.
   Expect exact diagnostics, deterministic interrupted-sync repair, untouched old
   artifacts, source-CLI filesystem/contribution workflows for T3-AC3, and retained
   direct-install/registry recovery coverage to pass.
-- [ ] **T3-V2** — Review installed-wheel assertions for AC4-AC13; their execution
+- [x] **T3-V2** — Review installed-wheel assertions for AC4-AC13; their execution
   gates overall completion at CP-FINAL-2. Review README/spec links and guidance
   against the actual CLI, especially contribution's local-only behavior and
   legacy cleanup.
 
-**Evidence and status:** Pending. Do not delete the developer's actual `.ritebook/`
-folder or modify a real user registry to demonstrate migration; use fixtures.
+**Evidence and status:** Complete; installed-wheel results are recorded at CP-FINAL-2.
+The focused T3 command passed 390 cases, followed by `make quality` with 788
+default tests after diagnostic and regression additions. Tests exercise both
+stale-lock and absent-lock process kills through the composed sync writer,
+normal rerun preservation, reviewed force repair, custom-lockfile relocation,
+byte-identical legacy artifacts, and contribution without a ledger. Diagnostic
+regressions failed before their fixes, including the exact recorded reference
+after a declaration changes. README now documents serialization, manual repair,
+and inspected legacy retirement. Installed-wheel assertions cover portability,
+missing-lock partial progress/force, legacy artifacts, preserved edits and local
+contribution, target preservation after lockfile failure, and direct install.
+All migration checks use fixtures; no real legacy state was deleted.
 
 ### Final handoff checkpoint
 
 **Prerequisites:** T1-T3 and their focused checks/reviews are complete. The shared
 installed-wheel execution gate follows at CP-FINAL-2.
 
-- [ ] **CP-FINAL-1** — Inspect the complete diff and requirement mapping. Each
+- [x] **CP-FINAL-1** — Inspect the complete diff and requirement mapping. Each
   installation AC1-AC13 has focused evidence or a named installed-wheel assertion
   awaiting CP-FINAL-2. Direct-install and registry guarantees remain owned, and no
   hidden sync ledger, lock, journal, or recovery protocol replaces `.ritebook/`.
   Preserve unrelated changes.
-- [ ] **CP-FINAL-2** — Run `make verify` from the repository root. Require format,
+- [x] **CP-FINAL-2** — Run `make verify` from the repository root. Require format,
   Ruff, ty, import contracts, default non-E2E tests, package builds, and the clean
   installed-wheel Docker E2E suite to pass. Docker must be available; any missing
   or failed check remains unverified and blocks claiming full completion.
-- [ ] **CP-FINAL-3** — Apply `condensed-prose-refactor` to changed prose, run
+- [x] **CP-FINAL-3** — Apply `condensed-prose-refactor` to changed prose, run
   `git diff --check`, check local Markdown links, and inspect final status. Record
   actual validation evidence in the spec and this plan, then update implementation
   metadata and remove the documentation-only execution boundary before marking
   work done.
 
-**Evidence and status:** Pending. These are implementation checks; passing tests
-from the earlier index-recovery work do not prove this contract.
+**Evidence and status:** Complete on October 16, 2026.
+
+- CP-FINAL-1: Self-review approved the source, tests, documentation, and acceptance
+  mapping. The owning specification records concrete evidence for AC1-AC13.
+  Review added a combined success/edit/unmanaged case and an explicit
+  refresh-failure non-mutation guard; all 26 reconciliation cases passed. No
+  required findings remain. Direct-install transactions, registry recovery,
+  installed skills, and dependencies were preserved. Accepted risks remain
+  manual interruption repair and unsupported overlapping mutating commands.
+- CP-FINAL-2: `UV_CACHE_DIR=/private/tmp/ritebook-uv-cache make verify` passed all
+  formatting, Ruff, ty, architecture, 789 default tests, sdist/wheel builds, and
+  26 clean Docker installed-wheel tests. Docker access used the approved
+  sandbox escalation. No required check was skipped.
+- CP-FINAL-3: Changed prose received the `condensed-prose-refactor` pass. All five
+  changed Markdown files and 26 local links were checked; all 21 progress IDs are
+  unique and complete. `git diff --check` passes. Implementation metadata and
+  guidance now describe verified behavior; the documentation-only boundary is
+  removed. No project legacy data was deleted and no remote action was taken.
 
 ## Risks and fallback
 
@@ -414,3 +441,8 @@ from the earlier index-recovery work do not prove this contract.
   one readiness label remains, and both local Markdown links resolve. Final prose
   reviewed with `condensed-prose-refactor`; `git diff --check` passes. No runtime
   tests or `make verify` were run because this review changes only the plan.
+
+- October 16, 2026 implementation: T1, T2, T3, and the final checkpoint are
+  complete. Each slice is committed locally; no push was requested or performed.
+  Historical preparation notes above describe the earlier documentation-only
+  stage, not current implementation status.

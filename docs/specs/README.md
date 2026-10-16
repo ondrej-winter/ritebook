@@ -45,7 +45,7 @@ infrastructure.
 | [Skill Linter](skill-linter-spec.md) | `skill_linter` | Active | Implemented | Shared catalog contract |
 | [Publisher](publisher-spec.md) | `publisher` | Active | Implemented | Shared catalog contract; skill linter |
 | [Index Registry](index-registry-spec.md) | `index_registry` | Active | Implemented | Shared catalog contract |
-| [Skill Installation](skill-installation-spec.md) | `skill_installation` | Active | Partially implemented: revision 3.4 sync simplification pending | Shared catalog contract; index registry |
+| [Skill Installation](skill-installation-spec.md) | `skill_installation` | Active | Implemented | Shared catalog contract; index registry |
 | [Skill Contribution](skill-contribution-spec.md) | `skill_contribution` | Active | Implemented | Shared catalog contract; installation; index registry; publisher |
 
 ### Quality and infrastructure

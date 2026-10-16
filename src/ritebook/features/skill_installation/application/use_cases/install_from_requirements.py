@@ -256,10 +256,11 @@ class InstallFromRequirements(InstallFromRequirementsPort):
                     ),
                 )
                 issues.append(
-                    _issue(
-                        "local-changes",
-                        item,
-                        "target has local changes and was preserved",
+                    ReconciliationIssue(
+                        code="local-changes",
+                        target=item.portable_target,
+                        detail="target has local changes and was preserved",
+                        requirement=owner.requirement,
                     ),
                 )
                 continue

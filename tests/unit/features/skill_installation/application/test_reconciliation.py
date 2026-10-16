@@ -27,6 +27,7 @@ from ritebook.features.skill_installation.application.dtos import (
 )
 from ritebook.features.skill_installation.application.errors import (
     CommittedSkillMetadataMismatchError,
+    IndexRefreshError,
     InstallationPersistenceError,
     LocallyModifiedInstallTargetError,
     UnmanagedInstallTargetError,
@@ -404,11 +405,12 @@ def test_sync_refreshes_referenced_aliases_before_catalog_reads(tmp_path: Path) 
     assert all(value == "refresh" for value in order[:first_catalog_read])
 
 
-def test_sync_commits_successful_target_and_reports_unmanaged_skip(
+def test_sync_commits_successful_target_and_preserves_edited_and_unmanaged_targets(
     tmp_path: Path,
 ) -> None:
     missing = tmp_path / ".agents/skills/code-review"
     unmanaged = tmp_path / ".agents/skills/security-review"
+    edited = tmp_path / ".agents/skills/api-review"
     index = registered_skill_index(name="platform-skills")
     reader = _RequirementsReader(
         SkillRequirements(
@@ -416,6 +418,7 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
             skills=(
                 SkillRequirement(name="platform-skills/code-review", target="agents"),
                 SkillRequirement(name="platform-skills/security-review", target="agents"),
+                SkillRequirement(name="platform-skills/api-review", target="agents"),
             ),
         ),
     )
@@ -423,9 +426,11 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
         inspections={
             str(missing): _inspection(missing, exists=False),
             str(unmanaged): _inspection(unmanaged, exists=True, digest=_OLD_DIGEST),
+            str(edited): _inspection(edited, exists=True, digest=_EDITED_DIGEST),
         },
     )
-    state = _StateAdapter(sync_root=tmp_path / ".ritebook")
+    baseline = _owned(edited, skill_name="api-review", digest=_OLD_DIGEST)
+    state = _StateAdapter(sync_root=tmp_path / ".ritebook", lock_ownership=(baseline,))
     transactions = _Transactions()
     use_case = _sync_use_case(
         tmp_path,
@@ -435,6 +440,7 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
             skills=(
                 installable_skill(),
                 installable_skill(name="security-review"),
+                installable_skill(name="api-review"),
             ),
         ),
         installer=installer,
@@ -451,13 +457,49 @@ def test_sync_commits_successful_target_and_reports_unmanaged_skip(
     assert result.installed_count == 1
     assert result.updated_count == 0
     assert result.unchanged_count == 0
-    assert [issue.code for issue in result.issues] == ["unmanaged-target"]
+    assert [issue.code for issue in result.issues] == ["local-changes", "unmanaged-target"]
     assert transactions.transaction.replace_calls == [
         ("/staged/code-review", str(missing), None),
     ]
-    assert len(state.last_ownership_entries) == 1
+    assert len(state.last_ownership_entries) == 2
+    [preserved] = [entry for entry in state.last_ownership_entries if entry.status is InstallationStatus.LOCAL_CHANGES]
+    assert preserved.installed_tree_digest == baseline.installed_tree_digest
+    assert preserved.source_revision == baseline.source_revision
     assert state.last_lock_issues == result.issues
     assert transactions.transaction.committed_files == (state.last_lockfile,)
+
+
+def test_sync_refresh_failure_changes_no_targets_or_lockfile_candidate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    refresher = _Refresher()
+    installer = _Installer(inspections={})
+    transactions = _Transactions()
+
+    def fail_refresh(_alias: str, _registry: str | None) -> None:
+        msg = "referenced index refresh failed"
+        raise IndexRefreshError(msg)
+
+    monkeypatch.setattr(refresher, "refresh", fail_refresh)
+    use_case = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": "skills"},
+                skills=(SkillRequirement(name="platform-skills/code-review", target="agents"),),
+            )
+        ),
+        refresher=refresher,
+        installer=installer,
+        transactions=transactions,
+    )
+    with pytest.raises(IndexRefreshError):
+        use_case.execute(InstallFromRequirementsCommand(requirements_file=str(tmp_path / "ritebook.toml")))
+    assert installer.plan_calls == []
+    assert installer.stage_calls == []
+    assert transactions.transaction.replace_calls == []
+    assert transactions.transaction.committed_files == ()
 
 
 def test_sync_force_replaces_unmanaged_and_locally_modified_declared_targets(
@@ -726,6 +768,28 @@ def test_sync_uses_selected_lock_despite_conflicting_ledger(
     assert lockfile.path == str(tmp_path / "custom.lock")
     assert state.read_calls == []
     assert state.last_ownership_entries[0].canonical_target == str(target)
+
+
+def test_sync_local_change_guidance_keeps_the_recorded_requirement(tmp_path: Path) -> None:
+    target = tmp_path / "skills/code-review"
+    baseline = _owned(target, digest=_OLD_DIGEST)
+    result = _sync_use_case(
+        tmp_path,
+        reader=_RequirementsReader(
+            SkillRequirements(
+                targets={"agents": "skills"},
+                skills=(SkillRequirement(name="platform-skills/new-collection/code-review", target="agents"),),
+            )
+        ),
+        catalog=_Catalog(
+            index=registered_skill_index(name="platform-skills"),
+            skills=(installable_skill(path="new-collection/code-review"),),
+        ),
+        installer=_Installer(inspections={str(target): _inspection(target, exists=True, digest=_EDITED_DIGEST)}),
+        state=_StateAdapter(sync_root=tmp_path / ".ritebook", lock_ownership=(baseline,)),
+    ).execute(InstallFromRequirementsCommand(requirements_file=str(tmp_path / "ritebook.toml")))
+    assert result.ownership_entries[0].requirement == baseline.requirement
+    assert result.issues[0].requirement == baseline.requirement
 
 
 @pytest.mark.parametrize("force", [False, True])

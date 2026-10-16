@@ -2014,7 +2014,12 @@ def test_install_reports_partial_reconciliation_and_returns_nonzero() -> None:
     assert stdout.getvalue() == ("Reconciled skills from ritebook.toml: installed 1, updated 0, unchanged 2\n")
     assert stderr.getvalue() == (
         "ritebook: issue: local-changes: .agents/skills/code-review: "
-        r"target has local changes\nand was preserved" + "\n"
+        r"target has local changes\nand was preserved; --force destructively replaces all selected targets. "
+        "Review every current declaration before rerunning sync with --force. "
+        "Prepare a local contribution with "
+        f"cd {Path.cwd()} && ritebook skills contribute platform-skills/code-review "
+        f"--lockfile {Path.cwd() / 'ritebook.lock'}"
+        " (manual push/review follows).\n"
     )
     assert stderr.getvalue().count("\n") == 1
 
@@ -2037,8 +2042,9 @@ def test_install_translates_application_errors() -> None:
     assert stderr.getvalue() == ("ritebook: error: unknown local alias: platform-skills\n")
 
 
-def test_install_translates_transaction_recovery_failure() -> None:
+def test_sync_reports_possible_partial_progress_on_persistence_failure() -> None:
     stderr = StringIO()
+    stdout = StringIO()
 
     exit_code = run(
         ["skills", "sync", "--file", "ritebook.toml"],
@@ -2046,17 +2052,111 @@ def test_install_translates_transaction_recovery_failure() -> None:
         publisher=FakePublisher(),
         install_from_requirements=FailingInstallFromRequirements(
             InstallationPersistenceError(
-                "interrupted installation recovery failed; recover using journal .ritebook/transaction.json",
+                "unable to write sync lockfile\ninspect retained temporary data",
             ),
         ),
-        stdout=StringIO(),
+        stdout=stdout,
         stderr=stderr,
     )
 
     assert exit_code == 1
-    assert stderr.getvalue() == (
-        "ritebook: error: interrupted installation recovery failed; recover using journal .ritebook/transaction.json\n"
+    assert r"unable to write sync lockfile\ninspect retained temporary data" in stderr.getvalue()
+    assert "may have partially completed" in stderr.getvalue()
+    assert "Inspect targets and the lockfile" in stderr.getvalue()
+    assert "--force" in stderr.getvalue()
+    assert stderr.getvalue().count("\n") == 1
+    assert stdout.getvalue() == ""
+
+
+def test_sync_escapes_requirements_path_in_result_summary() -> None:
+    stdout = StringIO()
+    result = InstallFromRequirementsResult(
+        requirements_file="project\x1b[31m\n.toml",
+        installed_count=0,
+        updated_count=0,
+        unchanged_count=0,
+        ownership_entries=(),
+        issues=(),
     )
+    assert (
+        run(
+            ["skills", "sync"],
+            linter=FakeLinter(),
+            publisher=FakePublisher(),
+            install_from_requirements=FakeInstallFromRequirements(result),
+            stdout=stdout,
+            stderr=StringIO(),
+        )
+        == 0
+    )
+    assert "\x1b" not in stdout.getvalue()
+    assert stdout.getvalue().count("\n") == 1
+
+
+def test_sync_unmanaged_guidance_does_not_invent_contribution_baseline() -> None:
+    stderr = StringIO()
+    result = InstallFromRequirementsResult(
+        requirements_file="ritebook.toml",
+        installed_count=0,
+        updated_count=0,
+        unchanged_count=0,
+        ownership_entries=(),
+        issues=(
+            ReconciliationIssue(
+                code="unmanaged-target",
+                target="skills/code-review",
+                detail="preserved",
+                requirement="platform-skills/code-review",
+            ),
+        ),
+    )
+    assert (
+        run(
+            ["skills", "sync"],
+            linter=FakeLinter(),
+            publisher=FakePublisher(),
+            install_from_requirements=FakeInstallFromRequirements(result),
+            stdout=StringIO(),
+            stderr=stderr,
+        )
+        == 1
+    )
+    assert "--force destructively replaces all selected targets" in stderr.getvalue()
+    assert "Review every current declaration" in stderr.getvalue()
+    assert "contribute" not in stderr.getvalue()
+
+
+def test_sync_contribution_guidance_includes_custom_lockfile_and_escapes_controls() -> None:
+    stderr = StringIO()
+    result = InstallFromRequirementsResult(
+        requirements_file="ritebook.toml",
+        installed_count=0,
+        updated_count=0,
+        unchanged_count=0,
+        ownership_entries=(),
+        issues=(
+            ReconciliationIssue(
+                code="local-changes",
+                target="skills/code-review",
+                detail="preserved",
+                requirement="platform-skills/code-review",
+            ),
+        ),
+    )
+    assert (
+        run(
+            ["skills", "sync", "--lockfile", "custom\nlock.json"],
+            linter=FakeLinter(),
+            publisher=FakePublisher(),
+            install_from_requirements=FakeInstallFromRequirements(result),
+            stdout=StringIO(),
+            stderr=stderr,
+        )
+        == 1
+    )
+    assert "skills contribute platform-skills/code-review --lockfile" in stderr.getvalue()
+    assert r"custom\nlock.json" in stderr.getvalue()
+    assert stderr.getvalue().count("\n") == 1
 
 
 def test_lint_skills_maps_arguments_to_application_command() -> None:

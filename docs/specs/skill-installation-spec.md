@@ -3,15 +3,15 @@
 ## Status
 
 - State: Active
-- Revision: 3.3
-- Acceptance basis: User-approved October 11, 2026 declaration-scoped sync and explicit force-replacement decision in ADR 0007, plus the provenance and catalog decisions in ADRs 0001 and 0005.
-- Accepted by / on: User / 2026-10-11
+- Revision: 3.4
+- Acceptance basis: User-confirmed October 16, 2026 interview outcome: remove project-local sync state, accept manual interruption repair, and leave concurrent-run prevention to users; recorded in ADR 0009. Unchanged contracts retain their basis in ADRs 0001, 0005, and 0007.
+- Accepted by / on: User / 2026-10-16
 - Owner: Ritebook maintainers
-- Last reviewed: 2026-10-11
-- Implementation state: Implemented
+- Last reviewed: 2026-10-16
+- Implementation state: Partially implemented
 - Dependencies: [Shared Catalog Contract](shared-catalog-contract-spec.md) and [Index Registry](index-registry-spec.md)
-- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), and [ADR 0007](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
-- Supersedes: Revision 3.2 of this specification
+- Associated ADRs: [ADR 0001](../adr/0001-source-provenance-and-trust.md), [ADR 0005](../adr/0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md), [ADR 0007](../adr/0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md), and [ADR 0009](../adr/0009-use-the-lockfile-as-the-only-project-sync-state.md)
+- Supersedes: Revision 3.3 of this specification
 
 ## Objective and Context
 
@@ -29,19 +29,29 @@ Revision 3.3 makes `--force` an explicit authorization to replace an existing
 safe target even when it is unmanaged or locally modified, and scopes sync to
 current declarations so omitted directories are never pruned.
 
+Revision 3.4 makes `ritebook.lock` the sole persistent project-sync installation
+record. Sync no longer needs `.ritebook/`, an installation operation lock, or a
+durable recovery journal. Users serialize sync invocations and accept manual
+repair after interruption. Direct install and index-registry transactions retain
+their existing guarantees. This revision is accepted but not yet implemented;
+the remaining work is defined in the
+[implementation plan](../plans/project-sync-state-simplification-plan.md).
+
 ## Scope
 
 - In scope: exact direct install, declaration-scoped repository sync, referenced
   index refresh, generated lock and ownership state, content identity, default
   local-edit and unmanaged-target preservation, explicit force replacement,
-  locking, target/state transactions, interruption recovery, path and symlink
-  safety, deterministic output, CLI behavior, and schema-v1 and schema-v2
-  migration rejection.
+  direct-install locking and recovery, sync partial completion and manual repair,
+  retirement of project-local sync state, path and symlink safety, deterministic
+  output, CLI behavior, and schema-v1 and schema-v2 migration rejection.
 - Out of scope: unregistered live sources, default direct-install destinations,
   dependency resolution between skills, publisher signatures, cross-host shared
   ownership state, automatic deletion of undeclared targets, and force overrides
   for symlinks, special files, dangerous paths, unsafe ancestry, or invalid
-  provenance.
+  provenance. Automatic whole-sync rollback, next-run journal recovery, sync
+  concurrency coordination, changes to direct-install state, and changes to
+  index-registry locking are outside revision 3.4's implementation scope.
 
 ## Requirements
 
@@ -126,55 +136,66 @@ current declarations so omitted directories are never pruned.
 - The same algorithm is used for staged candidates, installed targets, ownership
   checks, local-edit detection, and contribution baselines.
 
-### R5 — Ownership and local state
+### R5 — Lockfile authority and direct-install ownership
 
-- Repository sync stores local ownership at
-  `<requirements-file-directory>/.ritebook/installations.json`.
-- The repository-local ownership ledger contains canonical target paths and is
-  local generated state. Projects must not commit `.ritebook/`.
-- When the local ledger is absent, sync may reconstruct ownership for currently
-  desired entries from the repository's strict schema-v3 `ritebook.lock`. It
-  resolves each portable target under the requirements-file directory and treats
-  a matching desired entry as prior ownership evidence.
-- Existing valid schema-v3 lock or local-ledger entries with `desired: false`
-  remain readable but never establish local ownership. A path represented only
-  by such an entry is unmanaged when declared again.
+**Basis:** ADR 0009 for project sync; ADRs 0001 and 0007 for retained direct-install and provenance contracts.
+
+- Repository sync reads its installation baseline only from the selected strict
+  schema-v3 `ritebook.lock`, including an explicit `--lockfile` override. It
+  resolves portable targets relative to the requirements-file directory and
+  derives canonical machine paths in memory.
+- An index supplies verified candidate content and provenance. It does not
+  establish prior installation ownership or authorize replacing existing files,
+  even when those files match the current candidate.
+- Sync must not read, create, update, or depend on a separate installation ledger,
+  journal, or sync operation-lock file, either in `.ritebook/` or elsewhere.
+- Valid schema-v3 lock entries with `desired: false` remain readable but never
+  establish ownership. A path represented only by such an entry is unmanaged
+  when declared again.
+- When the lockfile is absent, sync has no prior ownership evidence. It installs
+  missing targets and skips existing directories without `--force`. It records
+  the skips as issues and exits nonzero; force may establish a new baseline for
+  safe replaced directories.
 - Without `--force`, automatic replacement of an existing target requires
   matching ownership and a current tree digest equal to the recorded
   `installed_tree_digest`. A mismatch remains a local edit and an unlisted
   existing target remains unmanaged.
 - With `--force`, prior ownership is not required. Ritebook uses the current
   inspected tree digest as a race-detection snapshot and records ownership only
-  after target mutation and generated-state commit succeed.
+  after target replacement and the lockfile write succeed. A skipped modified
+  target retains its prior baseline digest and provenance; sync must not adopt
+  the modified bytes as a newly installed baseline.
 - Direct install stores ownership in
   `~/.config/ritebook/installations.json`, or the explicit
   `--installation-registry-path` override.
-- Ownership entries are sorted by `target_id` and record the owning workflow,
-  requirement, target identity, canonical target, installed tree digest, and
-  verified source provenance.
-- New sync ownership state contains only targets selected by the current
+- Direct-install ownership entries are sorted by `target_id` and record the
+  owning workflow, requirement, target identity, canonical target, installed tree
+  digest, and verified source provenance.
+- New sync lock state contains only targets selected by the current
   requirements file. Omitted prior entries are dropped from generated state
   without inspecting, modifying, or deleting their directories.
-- Local ownership files use schema version 3, strict root and entry validation,
-  no unknown fields, atomic same-directory replacement, and POSIX mode `0600`
-  where supported.
-- Schema-v1 and schema-v2 installation registries or ownership files are not
+- Direct-install ownership files use schema version 3, strict root and entry
+  validation, no unknown fields, atomic same-directory replacement, and POSIX
+  mode `0600` where supported.
+- Schema-v1 and schema-v2 direct-install registries are not
   current ownership evidence. Ritebook rejects them with instructions to inspect
   and remove or relocate legacy targets before reinstalling.
 
 ### R6 — Declaration-scoped sync and explicit force replacement
 
+**Basis:** ADR 0007's selection and force rules, amended by ADR 0009's sync execution model.
+
 For each target resolved from the current requirements file, sync classifies the
-current state under the operation lock:
+current state against its lockfile baseline:
 
 - **missing:** install the candidate and establish ownership;
 - **owned and unchanged, candidate unchanged:** keep the target without rewriting
   it, unless `--force` requests rematerialization;
-- **owned and unchanged, candidate changed:** replace it transactionally;
+- **owned and unchanged, candidate changed:** replace it from the staged candidate;
 - **owned but locally modified:** preserve it and record a local-change issue
-  without `--force`; replace it transactionally with `--force`;
+  without `--force`; replace it with `--force`;
 - **unmanaged existing target:** preserve it and record an unmanaged-target issue
-  without `--force`; replace it transactionally with `--force`;
+  without `--force`; replace it with `--force`;
 - **unsafe or unverifiable:** fail closed without replacing the target.
 
 Targets not resolved from the current requirements file are outside the sync
@@ -182,35 +203,71 @@ operation. Ritebook does not plan, inspect, modify, delete, or retain ownership
 metadata for them. Removing a declaration therefore leaves its directory
 untouched and removes its entry from newly generated sync state.
 
-Force replacement is exact and transactional: Ritebook stages the verified index
-candidate, revalidates the observed current tree digest immediately before
-mutation, retains the prior directory for rollback, places the candidate, and
-commits new ownership and lock state. `--force` does not relax source, target,
-symlink, special-file, path-containment, locking, or recovery checks.
+Force replacement is exact: Ritebook stages the verified index candidate,
+revalidates the observed current tree digest immediately before mutation,
+replaces the selected directory, and records its baseline in the lockfile.
+`--force` does not relax source, target, symlink, special-file, path-containment,
+or inspection-snapshot checks. Sync does not promise a transaction spanning all
+targets and the lockfile. Direct install retains R7's transaction guarantees.
 
-### R7 — Transactions, locking, and recovery
+### R7 — Staged writes, sync interruption, and direct-install transactions
 
-- Direct install and sync acquire an exclusive operation lock before reading
-  ownership state. The lock remains held through refresh, target inspection,
-  mutation, generated-state commit, and finalization.
-- Lock acquisition is bounded and a conflicting live operation produces a
-  user-facing error. All installation workflows use the same deterministic lock
-  order: operation lock, then index-registry refresh operations, then target and
-  generated-state work.
+**Basis:** ADR 0009 for sync; ADR 0007's retained ADR 0004 guarantees for direct install.
+
+#### Shared target protection
+
 - Each replacement is staged beside the target. Immediately before mutation,
   Ritebook revalidates symlink-free ancestry, target type, canonical identity,
   and the tree digest captured during inspection.
 - Tree hashing opens every ancestor and descendant directory without following
-  symlinks. Target replacement, backup, rollback, and interrupted-run recovery use
-  descriptor-relative mutation against verified parent directories; journal
-  entries retain stable path strings only for durable recovery guidance.
+  symlinks. Replacement uses descriptor-relative mutation against verified parent
+  directories. Removing sync transactions does not weaken these path protections.
+
+#### Project sync
+
+- Sync stages and validates complete candidate content before replacing its
+  target; it must not copy candidate files into a live target incrementally.
+- Sync writes the lockfile by atomic same-directory replacement. A failed write
+  before replacement preserves the previous complete file, or leaves it absent
+  if no file existed. The lockfile schema and deterministic ordering do not change.
+- Sync does not acquire an installation operation lock, implement an alternative
+  concurrency coordinator, or promise compare-and-swap protection of lockfile
+  writes. Users must run one mutating installation command at a time for the
+  affected targets and project. Overlapping invocations are unsupported.
+- Index refresh still uses the index registry's independent transaction and
+  locking protocol. This does not serialize sync target mutations.
+- Sync does not persist a recovery journal, retain batch-wide rollback state, or
+  automatically recover earlier invocations. Completed replacements may remain
+  after a later target failure, lockfile-write failure, or process interruption.
+- A later sync compares current targets with the available lockfile baseline.
+  Mismatches are preserved and reported as local changes; existing directories
+  without a baseline are preserved and reported as unmanaged. Neither matching
+  current index content nor a suspected interrupted run authorizes adoption.
+- On handled failure, diagnostics must explain possible partial progress and
+  manual repair. After interruption, users inspect affected content and rerun;
+  force replacement is an explicit choice after review, not an automatic retry.
+- Temporary staging and per-target replacement artifacts may exist beside a
+  target. Clean up artifacts belonging to the current invocation when possible;
+  report retained paths on handled cleanup failures. Interrupted runs may require
+  manual inspection and cleanup. There is no cross-target atomicity guarantee
+  or guarantee that a target is continuously present during replacement.
+
+#### Direct install
+
+- Direct install acquires an exclusive operation lock before reading
+  ownership state. The lock remains held through refresh, target inspection,
+  mutation, generated-state commit, and finalization.
+- Lock acquisition is bounded and a conflicting live operation produces a
+  user-facing error. Direct install acquires its operation lock before registry
+  access and target or generated-state work.
+- Backup, rollback, and interrupted-run recovery use descriptor-relative mutation
+  against verified parent directories; journal entries retain stable path strings
+  only for durable recovery guidance.
 - The prior target is moved to an installer-owned same-filesystem backup. The
   backup is retained until all generated-state files for the operation commit.
-- Ownership and lockfile reads compute a SHA-256 digest from the exact bytes they
-  parse. Direct install attaches the ownership snapshot digest to its generated
-  ownership candidate. Sync captures both the authoritative ownership snapshot
-  and the companion `ritebook.lock` snapshot before processing declarations, then
-  attaches the corresponding digests to both generated-state candidates.
+- Ownership reads compute a SHA-256 digest from the exact bytes they parse.
+  Direct install attaches the ownership snapshot digest to its generated
+  ownership candidate.
 - Immediately before state backup or replacement, the transaction compares each
   supplied snapshot digest with the current file bytes and fails without writing
   generated state when a file changed concurrently.
@@ -229,6 +286,8 @@ symlink, special-file, path-containment, locking, or recovery checks.
   and prior-state snapshots.
 
 ### R8 — Truthful schema-v3 lock state
+
+**Basis:** Existing schema-v3 contract and ADR 0009's sole sync-state authority; no schema migration is required.
 
 `ritebook.lock` is portable, deterministic repository-shared state with this
 shape:
@@ -266,7 +325,7 @@ shape:
 - `skills` describes only targets selected by the current requirements file that
   Ritebook owns or preserved as locally modified owned targets.
 - New sync writes set `desired` to `true`. Valid older schema-v3 entries with
-  `desired: false` remain readable for compatibility but do not bootstrap local
+  `desired: false` remain readable for compatibility but do not establish sync
   ownership and are omitted by the next sync unless selected again.
 - `status` is `materialized` for an unchanged or successfully installed target,
   or `local_changes` for a declared edited owned target preserved without force.
@@ -284,19 +343,32 @@ shape:
 
 ### R9 — Partial reconciliation and CLI results
 
+**Basis:** Existing partial-result contract, amended by the user-confirmed manual-repair and local-edit guidance in ADR 0009.
+
 - A declared target-specific skip does not erase independent successful target
   mutations.
-- After processing current declarations, Ritebook commits ownership and lock state
-  that exactly describe current declared owned targets and issues.
+- After processing current declarations normally, Ritebook writes lock state
+  describing current declared owned targets and issues. Sync writes no companion
+  ownership file. Handled per-target failures must not be recorded as materialized
+  successes.
 - Sync exits zero only when every current declaration is materialized. It exits
-  nonzero when any declared target was skipped or failed, state commit or recovery
-  failed, or index refresh failed.
+  nonzero when any declared target was skipped or failed, lockfile persistence or
+  cleanup failed, or index refresh failed. A fatal error may leave the previous
+  lockfile and already changed targets; output must not claim batch rollback.
 - Success output reports installed, updated, and unchanged counts.
 - Partial output reports those counts plus one terminal-safe diagnostic per issue.
+- A local-change skip explains that `--force` overwrites the selected skill and
+  that `skills contribute <qualified-reference>` can prepare an upstream change
+  when a valid lockfile baseline exists. The contribution workflow prepares a
+  local commit and manual push/review instructions; diagnostics must not promise
+  automatic merge-request creation.
+- An unmanaged-target skip explains that the directory was preserved and force
+  can establish a new baseline. Missing-lockfile guidance must not suggest
+  contributing an entry that has no recorded baseline.
 - CLI handlers translate command-construction, application, adapter-validation,
   and persistence errors without traceback leakage or terminal-control injection.
-- Direct install reports success only after ownership state commits and transaction
-  artifacts are finalized.
+- Direct install reports success only after ownership state commits and
+  transaction artifacts are finalized.
 
 ### R10 — Contribution compatibility
 
@@ -309,6 +381,51 @@ shape:
 - Contribution continues to resolve the exact qualified `requirement`; it never
   falls back to skill name or repository-relative path.
 
+### R11 — Retire project-local sync state
+
+**Basis:** User-confirmed removal of `.ritebook/`, bounded to project sync, in ADR 0009.
+
+- Sync must not create `.ritebook/` for bookkeeping. The absence of that directory
+  must have no effect on sync, contribution, or lockfile validation.
+- Existing `.ritebook/` contents are obsolete to new sync, regardless of their
+  format. Sync must not consult, migrate, replay, modify, or automatically delete
+  them. The selected lockfile remains authoritative even if an old ledger
+  disagrees with it or contains malformed data.
+- Upgrade guidance must distinguish disposable old ledgers and lock files from
+  possible recovery journals and backups. Users with an unfinished old operation
+  resolve it with the previous version or inspect and repair it manually before
+  removing old artifacts. New sync does not infer recovery instructions from
+  those files.
+- After confirming that no old operation or recovery remains pending, users may
+  remove obsolete generated `.ritebook/` data. Preserve unrelated files; no new
+  automatic cleanup command is required.
+- Direct-install registries, locks, and journals, and index-registry locking and
+  provenance, retain their existing contracts.
+
+## Implementation and Verification Evidence
+
+- ADR 0001 defines immutable source provenance.
+- ADR 0007 defines declaration-scoped sync and explicit force replacement.
+  ADR 0009 replaces its project-sync state and transaction guarantees while
+  retaining direct-install behavior.
+- Revision-3.3 implementation evidence includes focused unit and E2E tests for
+  force replacement of unmanaged and locally modified targets, default
+  preservation without force, undeclared-target non-mutation, generated-state
+  relinquishment, legacy undesired-entry migration, tree hashing, strict schema
+  parsing, refresh failure, idempotence, concurrent processes, interruption
+  recovery, symlink races, and CLI exit behavior.
+- Revision 3.4 is not implemented. Current sync still reads and writes the local
+  ledger and uses the shared recoverable transaction adapter. Existing passing
+  tests establish revision-3.3 behavior, not conformance to this revision.
+- Remaining implementation and verification are owned by the
+  [project-sync state simplification plan](../plans/project-sync-state-simplification-plan.md).
+- Implementation handoff requires `make verify`: formatting, lint, type,
+  import-boundary checks, default non-E2E tests, builds, and installed-wheel Docker
+  E2E tests. Direct-install concurrency and process-kill recovery tests remain;
+  sync interruption tests must prove conservative rerun behavior and manual
+  repair instead of automatic rollback. These checks have not been run for
+  revision 3.4.
+
 ## Constraints and Execution Boundaries
 
 - Domain and application code remain independent of JSON, TOML, Git commands,
@@ -320,39 +437,32 @@ shape:
 - Production diagnostics do not reveal Git credentials, raw state payloads, raw
   index bytes, raw skill contents, or terminal controls.
 - Target mutation uses same-filesystem atomic rename semantics. Cross-device
-  target replacement is unsupported.
-- The implementation may use a platform-specific advisory lock where supported,
-  but unsupported locking must fail closed rather than run unlocked.
-
-## Implementation and Verification Evidence
-
-- ADR 0001 defines immutable source provenance.
-- ADR 0007 defines declaration-scoped sync, explicit force replacement, and the
-  transaction guarantees carried forward from ADR 0004.
-- Revision-3.3 implementation evidence includes focused unit and E2E tests for
-  force replacement of unmanaged and locally modified targets, default
-  preservation without force, undeclared-target non-mutation, generated-state
-  relinquishment, legacy undesired-entry migration, tree hashing, strict schema
-  parsing, refresh failure, idempotence, concurrent processes, interruption
-  recovery, symlink races, and CLI exit behavior.
-- Handoff requires the configured formatting, lint, type, import-boundary, full
-  non-E2E test, package build, installed-wheel Docker E2E, real concurrent-process,
-  and process-kill recovery checks when the environment supports them.
+  target replacement is unsupported. A directory replacement may use multiple
+  renames; it is not a whole-sync atomic operation.
+- Direct install may use a platform-specific advisory lock where supported, but
+  unsupported locking must fail closed. Sync has no installation lock requirement
+  and must not substitute a user-global sync lock or stale-lock protocol.
+- This handoff authorizes specifications and planning only. Runtime changes,
+  deletion of existing state, commits, and external actions are not part of this
+  documentation change.
 
 ## Acceptance Checks
 
-| ID | Requirements | Scenario | Expected observable result |
-| --- | --- | --- | --- |
-| AC1 | R1, R4, R5, R7 | Direct install a missing target; retry existing unmanaged, unchanged owned, and locally modified owned targets with and without force. | Missing installs; every existing target is preserved without force; force replaces each safe directory from verified indexed content, records fresh ownership, and commits before success. |
-| AC2 | R2, R3 | Sync exact and collection requirements whose registered sources have advanced, then make one refresh fail. | Referenced aliases refresh before resolution; new committed content is selected; any refresh failure causes no target or install-state mutation and no stale fallback. |
-| AC3 | R4 | Hash equivalent trees with different creation order and timestamps, then change path, executable bit, bytes, or entry type. | Equivalent trees have one stable digest; every content-identity change changes the digest; symlinks and special files are rejected. |
-| AC4 | R5, R6 | Sync missing, unchanged, outdated, locally edited, and unmanaged declared targets with and without force, while prior owned directories are omitted from the file. | Declared targets install, keep, update, preserve, or force-replace according to the rules; omitted directories are not inspected or mutated and disappear from newly generated sync state. |
-| AC5 | R7 | Inject failures before mutation, after backup, after target swap, during each state write, during rollback, and after process termination. | Prior state is restored or exact recovery artifacts remain; next-run recovery deterministically finalizes committed state or rolls back uncommitted state. |
-| AC6 | R7 | Run two real processes against the same ownership state and change generated state after its snapshot is read. | Only one holds the operation lock; no interleaved target/state transaction occurs; stale snapshot commits fail before generated-state replacement. |
-| AC7 | R8, R9 | Cause one target success, one local-edit skip, and one unmanaged-target skip. | Lock schema v3 contains only current declared owned targets and sorted issues, state is `partial`, successful changes persist, and CLI exits nonzero. |
-| AC8 | R8 | Run a complete sync twice without source or target changes. | The second run mutates no targets and writes byte-identical lock and ownership state. |
-| AC9 | R5, R8, R10 | Present schema-v1 and schema-v2 lock and installation state, malformed schema-v3 documents, unknown fields, unsafe sources, legacy `desired: false` entries, and non-materialized contribution entries. | Invalid readers reject with safe migration or regeneration guidance; valid legacy undesired entries remain readable but cannot bootstrap ownership or contribution selection. |
-| AC10 | R1-R10 | Run all repository handoff gates and installed-wheel workflows. | Formatting, linting, typing, import contracts, tests, build, Docker E2E, concurrency, and interruption checks pass or an environmental limitation is reported exactly. |
+| ID | Requirements | Scenario | Expected observable result | Verification method |
+| --- | --- | --- | --- | --- |
+| AC1 | R1, R4, R5, R7 | Direct install missing and existing targets with and without force; inject state-write failures and terminate a process. | Existing targets remain without force; force records verified replacement; existing direct-install rollback and next-run recovery guarantees hold. | Direct-install application, adapter, process integration, and installed-wheel tests. |
+| AC2 | R2, R3 | Sync exact and collection requirements after sources advance, then fail one refresh. | Aliases refresh before resolution; selected content is verified; refresh failure changes no targets or installation state and has no stale fallback. | Application fakes and local-Git integration/E2E tests. |
+| AC3 | R4 | Vary tree creation order, timestamps, paths, executable bits, bytes, and entry types. | Equivalent trees hash identically; content-identity changes alter the digest; symlinks and special files fail. | Existing canonical-tree and filesystem adapter tests. |
+| AC4 | R5, R6 | Sync missing, unchanged, outdated, modified, and unmanaged declared targets, with and without force; omit prior declarations. | Rules govern each selected target; omitted directories are untouched and omitted from new state; preserved edits retain the old baseline. | Reconciliation unit tests and installed-wheel sync tests. |
+| AC5 | R7, R9 | Fail staging, a later target replacement, or lockfile persistence; kill sync after an installed target changes but before lockfile replacement. | No incomplete candidate is copied into a live target; earlier replacements may remain; lockfile bytes remain whole; rerun preserves mismatches or unmanaged targets and permits reviewed force repair without journal recovery. | Filesystem fault injection and a deterministic process-kill sync integration test. |
+| AC6 | R7, R11 | Exercise sync with no local state directory and with an old operation-lock file held; inspect its ports and wiring. | Sync acquires no installation operation lock or alternative coordinator and does not use the transaction journal. Concurrent sync correctness is not promised; direct-install locks still work. | Sync orchestration spy/fake tests, held legacy-lock integration fixture, and direct-install process-lock regression test. |
+| AC7 | R8, R9 | Combine a successful target, local edits, and an unmanaged directory. | Lock schema v3 records only current owned targets and sorted issues with partial state; success remains; exit is nonzero; edits suggest force or contribution, and unmanaged content suggests force without inventing a contribution baseline. | Application, CLI diagnostic, and installed-wheel tests. |
+| AC8 | R8, R11 | Run a complete sync twice, including a relocated checkout and a custom lockfile path. | No-change sync mutates no targets, produces byte-identical portable lock state, and creates no `.ritebook/` bookkeeping directory. | Local filesystem integration and installed-wheel tests. |
+| AC9 | R5, R8, R10 | Supply legacy or malformed selected lockfiles, unsafe sources, unknown fields, undesired entries, and issue-only contribution state. | Strict readers retain rejection behavior even with force; undesired entries establish no ownership or contribution baseline. | State-reader, contribution-reader, and application tests. |
+| AC10 | R1-R11 | Run the complete implementation handoff gate. | Required formatting, lint, typing, import contracts, tests, package builds, and Docker E2E pass; unavailable checks are explicitly reported as unverified. | `make verify` from the repository root. |
+| AC11 | R5, R8, R9 | Delete the selected lockfile while both missing and existing declared skills are present; rerun with and without force. | Missing targets install; existing directories remain and are reported without force; force establishes a new verified baseline; existing old ledgers cannot override this rule. | Reconciliation tests and installed-wheel missing-lockfile workflow. |
+| AC12 | R5, R11 | Present conflicting or malformed old `.ritebook/` ledgers, journals, and unrelated sentinel files; read upgrade guidance. | Sync ignores and leaves all old contents unchanged; a valid selected lockfile governs installation; docs distinguish pending old recovery from disposable state and describe manual retirement. | Filesystem integration/E2E tests plus documentation review. |
+| AC13 | R9, R10, R11 | Edit a lockfile-backed skill, sync, and prepare a contribution without `.ritebook/`. | Sync preserves edits and prior provenance; contribution uses the unchanged schema-v3 baseline and produces its existing local workflow without automatic push or MR creation. | Installed-wheel sync/contribution workflow. |
 
 ## Assumptions
 
@@ -360,6 +470,9 @@ shape:
   catalog contract and ADR 0001.
 - The repository remains pre-release, so schema-v1 generated installation state
   may be rejected instead of automatically migrated.
+- Users serialize mutating installation commands and accept partial progress and
+  manual inspection/repair after interrupted sync. These are accepted constraints
+  from the October 16, 2026 interview, not guarantees supplied by hidden state.
 - Material unresolved assumptions: None.
 
 ## Open Questions
@@ -387,3 +500,10 @@ None.
   safe declared or direct target even when unmanaged or locally modified; sync
   processes only current declarations, never prunes omitted directories, and
   writes only current declaration ownership state.
+- October 16, 2026: Revision 3.4 adopted ADR 0009 after explicit user confirmation.
+  The lockfile becomes sync's only persistent installation record; project-local
+  ledgers, sync operation locks, durable journals, and automatic batch recovery
+  are removed from the contract. Existing targets without a lock baseline are
+  skipped unless forced. Direct install and registry locking remain unchanged.
+  Updated AC5/AC6 assess the new sync guarantees; AC1 retains direct-install
+  transaction coverage. Implementation is pending the linked plan.

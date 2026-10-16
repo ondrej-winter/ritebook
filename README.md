@@ -443,6 +443,12 @@ recovery data. Retain it while an operation is running or recovery is pending.
 When local ownership state is absent, sync can reconstruct it from a valid
 `ritebook.lock` and verified installed trees.
 
+The accepted [installation specification, revision 3.4](docs/specs/skill-installation-spec.md)
+will remove `.ritebook/` bookkeeping and use the lockfile alone, with manual
+interruption repair and user-managed serialization of sync commands. This change
+is **not implemented yet**; the paragraphs above describe current behavior.
+See the [implementation plan](docs/plans/project-sync-state-simplification-plan.md).
+
 Sync never deletes a directory merely because its entry was removed from
 `ritebook.toml`. The next sync leaves that directory untouched and removes it from
 generated sync ownership and lock state. Delete or archive an undeclared skill

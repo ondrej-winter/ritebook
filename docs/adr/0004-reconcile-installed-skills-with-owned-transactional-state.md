@@ -3,6 +3,11 @@
 Date: 2026-10-06
 Status: Superseded by [0007](./0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md)
 
+The project-sync ledger, locking, and recovery guarantees carried forward by
+ADR 0007 are subsequently amended by
+[ADR 0009](./0009-use-the-lockfile-as-the-only-project-sync-state.md).
+Direct-install guarantees remain governed by ADR 0007.
+
 ## Context
 
 Ritebook's original `skills sync` workflow planned a set of copies, installed

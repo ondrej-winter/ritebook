@@ -3,6 +3,11 @@
 Date: 2026-10-11
 Status: Accepted
 
+Project-sync state, locking, rollback, and recovery are amended by
+[ADR 0009](./0009-use-the-lockfile-as-the-only-project-sync-state.md).
+The declaration-scoped selection and force rules below remain accepted;
+direct-install transaction guarantees are unchanged.
+
 ## Context
 
 ADR 0004 made installation ownership-aware and transactional. It also treated

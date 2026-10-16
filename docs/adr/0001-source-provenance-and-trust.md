@@ -7,6 +7,11 @@ Consumer registry regeneration guidance is amended by
 [ADR 0008](./0008-rebuild-legacy-index-registrations-on-explicit-force.md): explicit
 forced updates may rebuild legacy registrations from saved source locations.
 
+Project-sync installation state is amended by
+[ADR 0009](./0009-use-the-lockfile-as-the-only-project-sync-state.md): the portable
+lockfile remains authoritative without a companion local ledger. The provenance
+binding below is unchanged.
+
 ## Context
 
 Ritebook registers a Git-backed `ritebook-index.json`, caches the validated index,

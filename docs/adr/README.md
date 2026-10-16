@@ -8,5 +8,6 @@
 | [0004](./0004-reconcile-installed-skills-with-owned-transactional-state.md) | Reconcile Installed Skills with Owned Transactional State | 2026-10-06 | Superseded by 0007 |
 | [0005](./0005-enforce-a-strict-portable-schema-v1-catalog-boundary.md) | Enforce a Strict Portable Schema-v1 Catalog Boundary | 2026-10-07 | Accepted |
 | [0006](./0006-serialize-registry-state-and-namespace-cache-ownership.md) | Serialize Registry State and Namespace Cache Ownership | 2026-10-09 | Accepted |
-| [0007](./0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md) | Scope Skill Sync to Declarations and Make Force Replacement Explicit | 2026-10-11 | Accepted |
+| [0007](./0007-scope-skill-sync-to-declarations-and-make-force-replacement-explicit.md) | Scope Skill Sync to Declarations and Make Force Replacement Explicit | 2026-10-11 | Accepted; sync state amended by 0009 |
 | [0008](./0008-rebuild-legacy-index-registrations-on-explicit-force.md) | Rebuild Legacy Index Registrations on Explicit Force | 2026-10-16 | Accepted |
+| [0009](./0009-use-the-lockfile-as-the-only-project-sync-state.md) | Use the Lockfile as the Only Project Sync State | 2026-10-16 | Accepted; implementation pending |

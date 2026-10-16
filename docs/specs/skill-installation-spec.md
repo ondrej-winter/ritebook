@@ -127,8 +127,8 @@ ownership without deleting files; destructive replacement requires explicit
   are excluded.
 - Symlinks, sockets, devices, fifos, and other special files make a source or
   managed target invalid.
-- The same algorithm is used for staged candidates, installed targets, ownership
-  checks, local-edit detection, and contribution baselines.
+- Staged candidates, installed targets, ownership checks, local-edit detection,
+  and contribution baselines all use the same algorithm.
 
 ### R5 — Lockfile authority and direct-install ownership
 
@@ -136,9 +136,9 @@ ownership without deleting files; destructive replacement requires explicit
   schema-v3 `ritebook.lock`, including an explicit `--lockfile` override. It
   resolves portable targets relative to the requirements-file directory and
   derives canonical machine paths in memory.
-- An index supplies verified candidate content and provenance. It does not
-  establish prior installation ownership or authorize replacing existing files,
-  even when those files match the current candidate.
+- An index supplies verified candidate content and provenance, but establishes no
+  prior installation ownership or authority to replace existing files, even when
+  they match the current candidate.
 - Sync must not read, create, update, or depend on a separate installation ledger,
   journal, or sync operation-lock file, either in `.ritebook/` or elsewhere.
 - Valid schema-v3 lock entries with `desired: false` remain readable but never
@@ -188,10 +188,10 @@ current state against its lockfile baseline:
   without `--force`; replace it with `--force`;
 - **unsafe or unverifiable:** fail closed without replacing the target.
 
-Targets not resolved from the current requirements file are outside the sync
-operation. Ritebook does not plan, inspect, modify, delete, or retain ownership
-metadata for them. Removing a declaration therefore leaves its directory
-untouched and removes its entry from newly generated sync state.
+Targets not resolved from the current requirements file are outside sync's scope:
+Ritebook does not plan, inspect, modify, delete, or retain ownership metadata for
+them. Removing a declaration leaves its directory untouched and removes its entry
+from newly generated sync state.
 
 Force replacement is exact: Ritebook stages the verified index candidate,
 revalidates the observed current tree digest immediately before mutation,
@@ -309,8 +309,8 @@ from the shown target path:
 }
 ```
 
-- `skills` describes only targets selected by the current requirements file that
-  Ritebook owns or preserved as locally modified owned targets.
+- `skills` describes only currently declared targets that Ritebook owns, including
+  locally modified owned targets preserved by sync.
 - New sync writes set `desired` to `true`. Valid older schema-v3 entries with
   `desired: false` remain readable for compatibility but do not establish sync
   ownership and are omitted by the next sync unless selected again.
@@ -330,8 +330,7 @@ from the shown target path:
 
 ### R9 — Partial reconciliation and CLI results
 
-- A declared target-specific skip does not erase independent successful target
-  mutations.
+- Skipping a declared target does not erase independent successful target mutations.
 - After processing current declarations normally, Ritebook writes lock state
   describing current declared owned targets and issues. Sync writes no companion
   ownership file. Handled per-target failures must not be recorded as materialized
@@ -393,9 +392,9 @@ from the shown target path:
 - `application/use_cases/install_skill.py` uses the direct-install ownership
   registry and recoverable transaction. The composition root wires these
   workflows separately.
-- The following source-based checks and installed-wheel scenarios cover current
-  behavior. Use `make verify` for a complete execution check; evidence from the
-  source tree alone does not establish that the Docker gate has passed.
+- The source-based checks and installed-wheel scenarios below cover current
+  behavior. Run `make verify` for complete verification; source-tree evidence
+  alone does not establish a passing Docker gate.
 
 | Acceptance checks | Current evidence |
 | --- | --- |

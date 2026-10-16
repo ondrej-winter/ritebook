@@ -12,15 +12,10 @@
 
 ## Objective and Context
 
-Ritebook provides a publisher-side workflow for corporate skill maintainers
-to generate a deterministic index of approved internal agent skills from a
-private repository. The index gives maintainers a reviewable catalog artifact
-that supports consumer-side listing and installation without ad hoc shell
-scripts.
-
-The primary user is a skill maintainer or curator inside a company. The workflow
-supports controlled internal skill curation and downstream developer
-installation.
+Ritebook lets corporate skill maintainers and curators generate a deterministic,
+reviewable index of approved internal agent skills from a private repository.
+The workflow supports controlled internal curation and downstream developer
+listing and installation without ad hoc shell scripts.
 
 ### Design rationale
 
@@ -49,10 +44,8 @@ a second traversal from publishing data that did not pass validation.
 
 ## Requirements
 
-The following groups define the normative publisher contract.
-
-Ritebook generates or updates a JSON index file for a maintainer-controlled
-skills repository.
+The requirements below govern JSON index generation and updates for a
+maintainer-controlled skills repository.
 
 ### R1 — Publisher workflow
 
@@ -94,8 +87,8 @@ skills repository.
   timestamp, skill-entry coherence, and confirmed resource bounds before
   serialization.
 - Hidden directories under the skills root are skipped by default in the MVP.
-- Missing or unreadable skills root paths must produce clear user-facing errors at the
-  adapter boundary.
+- Missing or unreadable skills roots must produce clear user-facing errors at
+  the adapter boundary.
 - Catalog-structure failures must identify the offending path and whether it is
   over-deep or combines skill and collection roles.
 
@@ -105,8 +98,7 @@ skills repository.
 - The index must be valid JSON.
 - The index uses the exact closed schema-v1 object shapes from the shared catalog
   contract and emits no extension members.
-- The index must include a schema version so future versions can evolve without
-  ambiguity.
+- The index must include a schema version to support unambiguous evolution.
 - The index must include enough data for future consumer commands to list and
   locate skills.
 - The index must be pretty-printed with two-space indentation for pull request
@@ -122,8 +114,8 @@ skills repository.
 - Serialization, temporary-write, flush, synchronization, or replacement failure
   must leave prior valid index content unchanged. Ritebook-owned temporary files
   must be removed after handled failures.
-- Schema v1 requires every published skill to have a valid `SKILL.md` header, but
-  it does not need to include the full parsed header in `ritebook-index.json`.
+- Schema v1 requires a valid `SKILL.md` header for every published skill, but need
+  not include the full parsed header in `ritebook-index.json`.
 - Schema v1 does not include publisher-generated per-skill or repository content
   hashes. After the generated index is committed, consumers compute an
   `index_digest` over the exact committed index bytes and bind it to that Git
@@ -189,8 +181,8 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 
 ### Commands and validation
 
-When changing this workflow, use focused checks first, then run `make verify`
-before handoff. The aggregate runs the standard formatting, linting, typing,
+When changing this workflow, run focused checks, then `make verify` before
+handoff. It runs the standard formatting, linting, typing,
 import-contract, and non-E2E test checks, builds the distributions, and runs the
 clean installed-wheel Docker E2E gate.
 
@@ -215,7 +207,7 @@ The MVP should be covered primarily with fast, deterministic unit tests.
   failure preservation and cleanup, permission-safe unique temporary files, and
   symlink rejection.
 - CLI adapter tests verify argument mapping, clear errors for missing root paths,
-  publisher show-stopper behavior, and user-facing success output.
+  publication blocking on validation failure, and user-facing success output.
 
 Default tests must not rely on live external services, global developer state, or
 network access.

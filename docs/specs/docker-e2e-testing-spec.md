@@ -16,7 +16,7 @@ Provide a mandatory Docker end-to-end quality gate that proves Ritebook's
 release-critical CLI workflows through a clean, consumer-style installation of a
 wheel built from the commit under test.
 
-The gate exists to catch failures that source-based tests can miss, including
+The gate is designed to catch failures that source-based tests can miss, including
 wheel-content omissions, invalid console-script packaging, incomplete runtime
 dependency declarations, and regressions across real CLI, filesystem, Git,
 registry, cache, installation, lockfile, and publisher boundaries. Docker is the
@@ -24,8 +24,8 @@ only supported E2E execution path; unit and integration tests provide faster
 source-based feedback outside this boundary.
 
 The Docker image is test infrastructure, not a production runtime image. Its
-evidence is intentionally bounded to the Python version, operating system, and
-CPU architecture used by the mandatory CI job.
+evidence covers only the Python version, operating system, and CPU architecture
+used by the mandatory CI job.
 
 ### Current-state evidence
 
@@ -73,9 +73,8 @@ the consumer environment's runtime dependency versions. This intentionally makes
 the gate sensitive to incomplete or incompatible runtime dependency declarations
 and to current compatible dependency resolution.
 
-The wheel tested by Docker E2E may be independently built from the same commit.
-It does not have to be byte-identical to the versioned distributions rebuilt by
-the later release job.
+Docker E2E may test an independently built same-commit wheel; it need not be
+byte-identical to the versioned distributions rebuilt by the later release job.
 
 ### R2 — Separate test-tool and consumer environments
 
@@ -118,9 +117,9 @@ They must verify the commit and digest provenance required by
 content comes from the validated commit and mismatched bindings fail before
 content is copied.
 
-The currently required scenarios must use temporary local Git repositories.
-Future scenarios may use anonymous public services; the supported suite does
-not require a live-service test.
+Currently required scenarios must use temporary local Git repositories. Future
+scenarios may use anonymous public services; the supported suite requires no
+live-service test.
 
 ### R4 — Risk-based coverage growth
 
@@ -129,16 +128,15 @@ alters a release-critical CLI workflow spanning multiple real boundaries, such a
 CLI parsing, filesystem state, Git, generated metadata, package installation, or
 subprocess behavior.
 
-Docker E2E must remain a curated high-signal suite rather than duplicate every
-command variant or edge case. Narrow validation rules, exhaustive error matrices,
-and ordinary edge cases belong primarily in unit or integration tests.
+Docker E2E must remain a curated high-signal suite. Narrow validation rules,
+exhaustive error matrices, and ordinary command variants and edge cases belong
+primarily in unit or integration tests.
 
 ### R5 — Container user and state boundary
 
 The final test stage must run as a non-root user. `HOME`, `XDG_CONFIG_HOME`, and
 `XDG_CACHE_HOME` must identify controlled, writable, image-owned directories.
-The username, numeric UID, and exact absolute paths are implementation details,
-not portable requirements.
+The username, numeric UID, and exact absolute paths are implementation details.
 
 E2E workflow fixtures must use explicit temporary registry and cache paths and
 must not read or write developer-local Ritebook state. The image must not receive
@@ -160,9 +158,9 @@ limit.
 ### R7 — Explicit opt-in, parallel, and isolated test execution
 
 Repository-level pytest configuration must classify tests collected from
-`tests/e2e/` as `e2e` and deselect them unless `--run-e2e` is present. This makes
-plain `pytest` the standard non-E2E command without relying on repeated negative
-marker expressions.
+`tests/e2e/` as `e2e` and deselect them unless `--run-e2e` is present. Plain
+`pytest` is thus the standard non-E2E command without repeated negative marker
+expressions.
 
 The final image must identify itself with the Docker-only
 `RITEBOOK_DOCKER_E2E=1` environment signal and invoke pytest with explicit
@@ -209,9 +207,9 @@ The mandatory gate runs on Python 3.13 in a Linux container on the CI runner's
 CPU architecture, currently expected to be `amd64`. Passing the gate warrants
 only that evidenced environment.
 
-Ritebook remains expected to work on later supported Python versions, other
-operating systems, and other CPU architectures. Platform-specific failures are
-product bugs, but this Docker gate alone does not warrant those environments.
+Ritebook is expected to work on later supported Python versions, other operating
+systems, and other CPU architectures. Platform-specific failures are product
+bugs, but this Docker gate alone does not warrant those environments.
 
 The Dockerfile may use practical version-oriented pins, including named Python
 3.13 slim images and a versioned `uv` image. Mutable base-image contents, current

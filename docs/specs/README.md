@@ -1,7 +1,7 @@
 # Specifications
 
 This directory owns Ritebook's current product, shared-contract, and verification
-requirements, with the rationale needed to maintain them. Read the owning
+requirements and the rationale needed to maintain them. Read the owning
 specification before changing a supported workflow.
 
 ## Catalog
@@ -28,8 +28,8 @@ dependencies. Update both when adding or removing a specification.
   handling, and the rationale for their design. Put shared contracts in one named
   specification when at least two slices consume them.
 - Explain current decisions and trade-offs under `Objective and Context`. Keep
-  normative outcomes in `Requirements` and `Constraints and Execution Boundaries`.
-  Do not maintain a second contract in separate decision records.
+  normative outcomes in `Requirements` and `Constraints and Execution Boundaries`,
+  without a second contract in separate decision records.
 - [`README.md`](../../README.md) owns setup and concise usage;
   [`AGENTS.md`](../../AGENTS.md) owns repository policy. Specifications link to
   those owners rather than copying their rules.
@@ -52,8 +52,8 @@ Place a `Status` section immediately after the title with these exact fields:
 | `Dependencies` | Repository-relative links to consumed specifications, or `None`. |
 
 Requirements acceptance and implementation coverage are separate. `Implemented`
-means the contract is represented in the current tree with identifiable evidence;
-it does not establish that every verification gate was executed. Partial coverage
+means the current tree represents the contract with identifiable evidence;
+it does not establish that every verification gate ran. Partial coverage
 must identify remaining work and its owner or resolution condition.
 
 ## Structure
@@ -81,8 +81,8 @@ verification method. Cover relevant failure, compatibility, and boundary cases;
 requiring tests to exist or pass is insufficient.
 
 Implementation evidence identifies source ownership, test scenarios, and runnable
-commands. Keep it distinct from executed results: file existence and test
-definitions are structural evidence, while a passing gate requires an actual run.
+commands. Distinguish it from executed results: files and test definitions provide
+structural evidence; a passing gate requires an actual run.
 Report current run results and skipped checks in the task handoff rather than
 accumulating execution diaries in specifications.
 

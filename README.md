@@ -37,7 +37,7 @@ Install the Git pre-commit hook:
 make install-hooks
 ```
 
-Run the pre-commit hooks across the full repository when changing the hook
+Run pre-commit across the repository when changing the hook
 configuration or before opening a PR:
 
 ```bash
@@ -58,8 +58,8 @@ make quality
 ```
 
 This checks formatting, Ruff linting, ty types, Import Linter architecture
-contracts, and the default non-E2E pytest suite. Use `make help` to list the
-corresponding leaf targets and explicit formatting or lint-fix commands.
+contracts, and the default non-E2E pytest suite. `make help` lists the
+corresponding leaf targets and formatting or lint-fix commands.
 
 `make architecture` enforces inward dependencies, private slice boundaries,
 shared-kernel and composition-root isolation, and an explicit I/O-library denylist,
@@ -67,7 +67,7 @@ including imports under `TYPE_CHECKING`. See [repository instructions](AGENTS.md
 for boundary rules. Dynamic imports and side effects through permitted APIs still
 need code review.
 
-Plain pytest execution deselects Docker E2E tests by default. The Docker image
+Plain pytest deselects Docker E2E tests by default. The Docker image
 explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
 because it cannot establish the clean installed-wheel boundary.
 
@@ -78,9 +78,8 @@ make verify
 ```
 
 `make verify` runs the standard quality gate, checks lockfile freshness, builds
-the package distributions, and builds and runs Docker E2E. It fails if Docker is
-unavailable rather than silently omitting E2E. `make docker-e2e` runs only the
-Docker build and test steps.
+distributions, and builds and runs Docker E2E. It fails if Docker is unavailable.
+`make docker-e2e` runs only the Docker build and test steps.
 
 `Dockerfile.e2e` tests an installed wheel in a clean consumer environment, with
 separate locked test tooling and no project source or developer-local state.
@@ -174,8 +173,8 @@ schema-v1 fields, paths, and input limits.
 
 ## Consumer index registry
 
-Users can register, refresh, browse, and install skills from Git-backed Ritebook
-skill indexes.
+Register and refresh Git-backed Ritebook skill indexes, then browse and install
+their skills.
 
 Register a Git URL source:
 
@@ -232,9 +231,9 @@ uv run ritebook indexes update --all --force
 
 For Git URL registrations, `--force` fetches through a fresh managed clone and
 switches the registry only after the committed root `ritebook-index.json` validates.
-For local repository registrations, it re-reads the clean committed repository but
-never deletes or mutates it. The previous coherent registry/cache binding remains
-usable if rebuilding fails. A superseded managed clone is removed only after no
+For local repository registrations, it re-reads the clean committed repository
+without deleting or mutating it. The previous coherent registry/cache binding
+remains usable if rebuilding fails. A superseded managed clone is removed only after no
 other registry alias references it. This flag repairs consumer state; it does not
 generate or publish an upstream index.
 
@@ -252,7 +251,7 @@ List registered indexes:
 uv run ritebook indexes list
 ```
 
-List skills from all locally cached registered indexes:
+List skills from all cached registered indexes:
 
 ```bash
 uv run ritebook skills list
@@ -457,8 +456,8 @@ uv run ritebook skills sync \
 ```
 
 `target = "nickname"` resolves to `<targets.nickname>/<final-skill-name>`.
-`target_path` is used exactly as the target path for that skill entry. Each skill
-entry must use exactly one of `target` or `target_path`. Sync targets are portable
+`target_path` specifies the exact target path for that skill entry. Each entry
+must use exactly one of `target` or `target_path`. Sync targets are portable
 paths relative to the requirements-file directory; absolute paths and parent
 traversal are rejected.
 
@@ -512,11 +511,10 @@ without inspecting its contents. See the
 [installation specification](docs/specs/skill-installation-spec.md) for the full
 sync and direct-install contracts.
 
-Sync never deletes a directory merely because its entry was removed from
-`ritebook.toml`. The next sync leaves that directory untouched and removes it from
-generated lock state. Delete or archive an undeclared skill directory when it is
-no longer wanted. If declared again later, the path is unmanaged and requires
-`--force` to replace.
+Removing an entry from `ritebook.toml` makes the next sync remove it from generated
+lock state while leaving its directory untouched. Delete or archive an undeclared
+skill directory when it is no longer wanted. If declared again later, the path is
+unmanaged and requires `--force` to replace.
 
 Older valid schema-v3 state may contain `desired: false` entries. Ritebook still
 parses those files, but such entries do not establish ownership and disappear
@@ -548,10 +546,9 @@ uv run ritebook skills contribute platform-skills/code-review
 
 The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
 path without falling back to `skill_name`. Collection-only references are not
-expanded. By default, Ritebook reads
-`ritebook.lock` from the current working directory and creates or reuses an
-isolated Ritebook-owned checkout under `~/.cache/ritebook/contributions`. Tests and
-automation can override both paths:
+expanded. By default, Ritebook reads `ritebook.lock` from the current working
+directory and creates or reuses an isolated Ritebook-owned checkout under
+`~/.cache/ritebook/contributions`. Tests and automation can override both paths:
 
 ```bash
 uv run ritebook skills contribute platform-skills/code-review \
@@ -568,9 +565,8 @@ No local changes to publish for platform-skills/code-review
 
 When local changes exist, Ritebook copies only that skill into the isolated
 checkout, validates it, regenerates `ritebook-index.json`, and creates a local
-branch and commit. Branches use
-`ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>` in UTC. For a portable Git
-URL source with a usable `origin`, output resembles:
+branch and commit. Branches use `ritebook/<skill-path-with-dashes>-<YYYYMMDDHHMMSS>`
+in UTC. For a portable Git URL source with a usable `origin`, output resembles:
 
 ```text
 Prepared contribution for platform-skills/code-review
@@ -580,9 +576,8 @@ Checkout: /path/to/contributions/0123456789abcdef/platform-skills-code-review-01
 Next: cd /path/to/contributions/0123456789abcdef/platform-skills-code-review-01234567 && git push origin ritebook/code-review-20260718201534
 ```
 
-Ritebook does not run the suggested command, push any branch, or open a merge
-request or pull request. Inspect the checkout and commit before following the
-suggested next step. The
+Ritebook does not run the suggested command, push a branch, or open a merge
+request or pull request. Inspect the checkout and commit before following it. The
 [Skill Contribution specification](docs/specs/skill-contribution-spec.md) defines
 provenance checks, checkout ownership, and failure behavior.
 
@@ -593,8 +588,8 @@ Contribution publishing accepts only desired schema-v3 lock entries with
 with guidance to re-register by Git URL and regenerate the lockfile.
 
 If the selected upstream skill path changed after the lockfile's
-`source_revision`, Ritebook stops instead of attempting to merge or overwrite the
-upstream change. Refresh/reinstall the skill and reconcile the changes manually
+`source_revision`, Ritebook stops without merging or overwriting the upstream
+change. Refresh/reinstall the skill and reconcile the changes manually
 before retrying.
 
 ## Publishing
@@ -604,7 +599,7 @@ linting, type checking, non-E2E tests, package builds, Docker E2E, patch
 releases, and PyPI publishing. Docker E2E runs as a separate mandatory job in
 parallel with the main quality-check job, and releases require both jobs to pass.
 
-During the early project lifecycle, releases stay on the `0.1.x` line and every
+During initial development, releases stay on the `0.1.x` line and every
 accepted push to `master` increments the patch version. The CI/CD workflow uses
 Python Semantic Release to:
 
@@ -620,11 +615,10 @@ Python Semantic Release to:
 The release commit becomes the new `master` head, keeping repository metadata in
 sync with Git tags and published packages. Its commit body contains `[skip ci]`,
 so the generated push does not start another CI/CD workflow after the parent
-commit has already passed quality and Docker E2E. The release job also skips
-commits whose message starts with `release: bump version to` as defense in depth
-against a release loop. When the project is ready to move beyond patch-only
-`0.1.x` releases, the same Semantic Release tooling can be used for normal
-commit-derived SemVer releases.
+commit has passed quality and Docker E2E. The release job also skips commits whose
+message starts with `release: bump version to` to guard against release loops.
+When the project is ready to move beyond patch-only `0.1.x` releases, the same
+Semantic Release tooling can support normal commit-derived SemVer releases.
 
 The default branch requires the stable `Quality checks` and `Docker E2E` status
 checks. The repository owner retains an explicit ruleset bypass for the current

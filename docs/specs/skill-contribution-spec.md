@@ -12,12 +12,9 @@
 
 ## Objective and Context
 
-Ritebook provides a safe contribution workflow for developers who improve
-repo-local installed skills and want to propose those changes back to the
-original curated skill repository.
-
-The first workflow is a platform-neutral Git contribution core exposed through a
-`skills contribute` command. It prepares a reviewable branch and local commit
+Ritebook lets developers safely propose improvements to repo-local installed
+skills back to their original curated repository. Its initial platform-neutral
+Git workflow, `skills contribute`, prepares a reviewable branch and local commit
 in a Ritebook-owned isolated checkout. It prints a suggested `git push` command
 when a usable origin exists, or manual inspection guidance otherwise. It must not
 directly mutate canonical source branches, managed index cache clones, or
@@ -70,8 +67,6 @@ handoff. Prepared branches and commits remain local for user review.
 
 ## Requirements
 
-The following groups define the normative contribution contract.
-
 ### R1 — Contribute one installed skill change
 
 A developer can prepare a contribution for one repo-local installed skill:
@@ -80,8 +75,8 @@ A developer can prepare a contribution for one repo-local installed skill:
 uv run ritebook skills contribute platform-skills/code-review
 ```
 
-The command prepares a proposed change for review. It does not publish directly
-to the upstream default branch.
+The command prepares a change for review without publishing directly to the
+upstream default branch.
 
 Requirements:
 
@@ -92,8 +87,8 @@ Requirements:
   segment using the canonical 1–64 character Ritebook kebab-case identifier form.
   A collection selector is not a skill and cannot be used as a contribution
   target.
-- The command only supports skills installed from `ritebook.toml` and recorded in
-  `ritebook.lock` for the MVP.
+- The MVP supports only skills installed from `ritebook.toml` and recorded in
+  `ritebook.lock`.
 - Ritebook reads `ritebook.lock` from the current working directory by default.
 - Ritebook resolves exactly one lockfile entry for the requested skill reference.
 - Ritebook uses the lockfile entry to locate:
@@ -104,8 +99,8 @@ Requirements:
   - the exact cached-index digest used for installation,
   - the source skill directory path, and
   - the source `SKILL.md` path.
-- Ritebook fails clearly when no matching lockfile entry exists, the target path
-  is missing, or the lockfile does not contain enough provenance.
+- Ritebook fails clearly when the matching lockfile entry, target path, or required
+  provenance is missing.
 - Ritebook verifies that the locked commit and index binding are available before
   comparing the installed repo-local skill directory with the source skill
   directory at the selected upstream base.
@@ -192,7 +187,7 @@ Requirements:
 - Leave the prepared checkout in place after success so the developer can inspect,
   push, amend, or discard it manually.
 
-The MVP uses reusable deterministic contribution clones under the Ritebook-owned
+The MVP uses reusable deterministic clones under the Ritebook-owned
 contribution root. Each checkout path combines a source digest with the local
 alias, skill-path slug, and requirement digest. Ritebook marks owned clones,
 rejects unmarked directories at a reusable checkout path, and resets/cleans only
@@ -218,9 +213,8 @@ Requirements:
   `index_digest`, fail before copying installed content or creating a branch
   commit. Do not substitute a current branch or tag.
 - The MVP fails instead of attempting automatic conflict resolution.
-- The error should include enough guidance for the developer to update/reinstall
-  the skill or manually reconcile the upstream change without dumping raw skill
-  contents.
+- The error should guide the developer to update/reinstall the skill or manually
+  reconcile the upstream change without dumping raw skill contents.
 
 ### R5 — Commit behavior
 
@@ -245,9 +239,9 @@ Update code-review skill from Ritebook contribution
 
 ### R6 — Data and provenance requirements
 
-The MVP depends on the end-to-end provenance contract in
-[Shared Catalog Contract](shared-catalog-contract-spec.md) and on lockfile provenance
-from requirements-file installation.
+The MVP depends on the provenance contracts in
+[Shared Catalog Contract](shared-catalog-contract-spec.md) and the lockfile from
+requirements-file installation.
 
 Required lockfile fields for each publishable entry:
 
@@ -266,9 +260,9 @@ Required lockfile fields for each publishable entry:
 - `source_branch`: required canonical `refs/heads/...` branch retained from index
   registration. It is retrieval metadata; immutable identity remains the commit
   and exact index digest.
-- `index_digest`: required SHA-256 digest that both the exact cached index used to
-  resolve the installation and root `ritebook-index.json` at `source_revision`
-  were verified to match.
+- `index_digest`: required SHA-256 digest verified against both the exact cached
+  index used to resolve installation and root `ritebook-index.json` at
+  `source_revision`.
 - `skill_path`: source skill directory path relative to the source repository.
 - `skill_file`: source `SKILL.md` path relative to the source repository.
 - `index_schema_version`: publisher index schema version used at install time.
@@ -404,8 +398,7 @@ Cover:
   `ritebook: error: ...` messages.
 
 Default tests must not rely on live external services, global developer state, or
-network access. Git behavior should use temporary local repositories or fakes in
-the default suite.
+network access. Git tests should use temporary local repositories or fakes.
 
 ### Commands and validation
 

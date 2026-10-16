@@ -49,10 +49,8 @@ authenticity. Signatures and approval policy are separate concerns.
 
 ## Requirements
 
-The following groups define the normative shared contract.
-
-All consuming slices use the terminology, catalog structure, compatibility rules,
-and provenance requirements defined below rather than redefining them locally.
+All consuming slices use the terminology, catalog structure, compatibility
+rules, and provenance requirements below rather than redefine them locally.
 
 ### R1 — Shared terminology and identity
 
@@ -174,8 +172,8 @@ and `skill_file` equals `<path>/SKILL.md` exactly.
 
 ### R5 — Compatibility-sensitive names
 
-The following schema and CLI names remain unchanged in version 1 even where their
-names are less specific than their semantics:
+These schema and CLI names remain unchanged in version 1, even where less
+specific than their semantics:
 
 - Publisher `index.name` and `indexes publish --name` carry the published name.
 - Consumer `indexes.json` field `name`, `indexes update <local-alias>`, and
@@ -185,8 +183,8 @@ names are less specific than their semantics:
 - Generated `ritebook.lock` fields `skill_path` and `skill_file` are safe paths
   relative to the source repository, not catalog-relative selectors.
 
-A rename requires an explicitly versioned migration. Documentation and
-diagnostics must state the semantic role of these fields in the meantime.
+A rename requires an explicitly versioned migration. Until then, documentation
+and diagnostics must state each field's semantic role.
 
 ### R6 — Source provenance contract
 
@@ -206,8 +204,8 @@ diagnostics must state the semantic role of these fields in the meantime.
   recorded commit and digest. It must not fall back to a mutable source `HEAD`, a
   skill name, or a repository-relative path.
 - Missing provenance is invalid. Ritebook must give regeneration or explicit
-  recovery guidance instead of inferring the identity of old bytes from mutable
-  sources. Publisher indexes use schema v1, registries use schema v2, and
+  recovery guidance, never infer old bytes' identity from mutable sources.
+  Publisher indexes use schema v1, registries use schema v2, and
   installation state uses schema v3; each owning specification defines recovery.
 - The consumer-owned digest does not alter the publisher schema and does not by
   itself authenticate the publisher.

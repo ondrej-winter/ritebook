@@ -12,7 +12,7 @@
 
 ## Objective and Context
 
-Ritebook provides a validation-only workflow for skill authors, maintainers, CI,
+Ritebook's validation-only workflow serves skill authors, maintainers, CI,
 and the publisher slice. It discovers catalog candidates, validates each
 `SKILL.md` header, and emits deterministic path-scoped diagnostics without
 modifying publisher or consumer state.
@@ -26,9 +26,9 @@ standard optional fields, such as flat string lifecycle metadata, without making
 those fields mandatory for portable validity.
 
 The linter owns discovery and YAML parsing. A complete immutable snapshot lets
-the publisher use the validated data without a second read that could observe
-changed files. This is an in-process boundary; committed-source verification
-still protects installation and contribution.
+the publisher use validated data without a second read that could observe changed
+files. This in-process boundary complements the committed-source verification
+that protects installation and contribution.
 
 ### Current-state evidence
 
@@ -58,8 +58,6 @@ still protects installation and contribution.
 
 ## Requirements
 
-The following groups define the normative linter contract.
-
 ### R1 — Validation workflow
 
 ```bash
@@ -82,7 +80,7 @@ uv run ritebook skills lint --root <path>
   discovery count.
 - Treat an existing, readable root with no candidates as a valid empty catalog.
 - Accept the minimal standard header containing only `name` and `description`.
-- Validate standard optional fields when they are present without requiring
+- Validate standard optional fields when present without requiring
   Ritebook-specific metadata.
 - Accept compatible profiles and extensions only when they remain valid under the
   canonical Agent Skills schema.
@@ -129,8 +127,8 @@ Validation requirements:
   65,536 UTF-8 bytes. The closing delimiter may occur after any number of lines
   within that byte bound; there is no line-count limit.
 - The bounded frontmatter block parses with safe YAML semantics to a mapping.
-- Duplicate mapping keys are invalid at every nesting level rather than being
-  resolved by last-value-wins behavior.
+- Duplicate mapping keys are invalid at every nesting level; last-value-wins
+  resolution is prohibited.
 - Only `name`, `description`, `license`, `compatibility`, `metadata`, and
   `allowed-tools` are accepted as top-level frontmatter fields.
 - `name` is required and is a non-empty string of at most 64 characters.
@@ -177,8 +175,8 @@ Validation requirements:
 - Validation output identifies the skill file path and violated rule without
   printing the file contents.
 - Multiple findings are ordered deterministically.
-- The stable diagnostic contract is the path and message. Ritebook does not
-  promise diagnostic codes that are not present in the application result.
+- The stable diagnostic contract is the path and message. Ritebook promises no
+  diagnostic codes beyond those in the application result.
 - Control characters reaching the CLI are rendered as visible deterministic ASCII
   escapes such as `\\n`, `\\t`, or `\\x1b`.
 - Missing or unreadable roots and malformed frontmatter produce concise
@@ -204,7 +202,7 @@ conventional-commits/SKILL.md: metadata values must be strings.
 
 ### R4 — Validated publication snapshot
 
-- A completely successful lint returns one immutable `ValidatedSkill` for every
+- A successful lint returns one immutable `ValidatedSkill` for every
   discovered regular candidate, sorted deterministically by catalog path.
 - Each snapshot contains the catalog-relative path, validated name,
   catalog-relative skill-file path, and normalized description derived from the

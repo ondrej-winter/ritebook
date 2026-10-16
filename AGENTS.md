@@ -42,7 +42,7 @@ indexes.
 - Before editing, read relevant source, tests, specifications, and nearby examples.
   Do not infer behavior from filenames alone.
 - Look for existing patterns or focused skills before introducing an approach.
-- Make the smallest complete change. Exclude unrelated cleanup and speculative
+- Make the smallest complete change, excluding unrelated cleanup and speculative
   refactors.
 - Split large refactors into reviewable steps unless the user explicitly approves
   broader scope.
@@ -59,10 +59,10 @@ indexes.
   Active specifications govern code, tests, CLI help, and derived documentation.
 - Update the owning specification and implementation evidence together when
   behavior, compatibility, data formats, or supported workflows change.
-- Keep material architecture, dependency, data, security, and boundary decisions
-  with their rationale and trade-offs in the owning specification. Use a shared
-  specification when several slices consume the same contract; do not duplicate
-  it in a separate decision record.
+- Keep material architecture, dependency, data, security, and boundary decisions,
+  rationale, and trade-offs in the owning specification. Use a shared specification
+  when several slices consume the same contract; do not duplicate it in a separate
+  decision record.
 - Update `README.md` when setup, supported usage, configuration, or operator
   guidance changes. Keep detailed product requirements in specifications.
 - Maintain the current contract in place. Remove obsolete narratives and completed
@@ -121,9 +121,9 @@ point inward.
 - Keep modules cohesive. Consider splitting a module around 300 lines or when it
   has multiple responsibilities; modules above 500 lines need a clear reason to
   remain whole.
-- Use Google-style docstrings where a public contract or non-obvious invariant,
-  side effect, unit, encoding, timezone, cancellation rule, or security boundary
-  needs explanation. Avoid comments that restate the code.
+- Use Google-style docstrings where public contracts or non-obvious invariants,
+  side effects, units, encodings, timezones, cancellation rules, or security
+  boundaries need explanation. Avoid comments that restate the code.
 
 ## Logging, configuration, and secrets
 
@@ -145,8 +145,8 @@ point inward.
 
 ## Performance and observability
 
-- Before claiming a hot-path improvement, benchmark representative workloads.
-  Record before-and-after measurements and the relevant dataset or environment.
+- Before claiming a hot-path improvement, benchmark representative workloads and
+  record before-and-after measurements and the relevant dataset or environment.
 - Do not justify heavy dependencies or optimizations with toy inputs or
   unmeasured assumptions.
 - When the observability stack supports it, measure critical workflow duration,
@@ -241,7 +241,7 @@ make verify
   audits locked runtime and development dependencies without updating the lockfile.
 - Dependency changes must update `pyproject.toml` and `uv.lock` together.
 - Do not conceal failures by disabling checks or adding ad hoc final-run flags.
-  Fix the cause or report the exact unverified check and reason.
+  Fix the cause or identify the unverified check and reason.
 
 ## Git and external actions
 

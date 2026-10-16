@@ -12,15 +12,12 @@
 
 ## Objective and Context
 
-Ritebook provides a consumer-facing index registry workflow for end
-users who consume curated internal Agent Skills from company-maintained Git
-repositories.
-
-The workflow lets a user add a Git-backed Ritebook skill index, cache the current
-root `ritebook-index.json` locally, list registered indexes, and update one or
-all cached copies later from their remembered Git sources. The registry is the
-consumer-side catalog foundation used by the implemented `skills list`,
-`skills install`, and requirements-file `skills sync` workflows.
+Ritebook's index registry serves users of curated internal Agent Skills from
+company-maintained Git repositories. Users can add a Git-backed skill index,
+cache its current root `ritebook-index.json` locally, list registered indexes,
+and update one or all cached copies from remembered Git sources. The registry
+supports the implemented `skills list`, `skills install`, and requirements-file
+`skills sync` workflows.
 
 ### Design rationale
 
@@ -66,8 +63,6 @@ registrations for retry without treating old cached bytes or paths as authority.
 
 ## Requirements
 
-The following groups define the normative index-registry contract.
-
 ### R1 — Add index
 
 A user can register a curated skill index from either:
@@ -98,11 +93,11 @@ Ritebook distinguishes two index identifiers:
   defaults to the published name and can be set with `--alias` when published
   names collide or a different local namespace is useful.
 
-The local alias is used for registry lookups, cache paths, update selection,
-skill listing, and `<local-alias>/<skill-path>` installation references. Setting
-an alias does not rewrite the published name or cached index contents. Projects
-that share alias-based references in `ritebook.toml` or `ritebook.lock` must ensure
-that collaborators and CI register the source under the same alias.
+The local alias identifies registry lookups, cache paths, update selection,
+skill listing, and `<local-alias>/<skill-path>` installation references. It does
+not rewrite the published name or cached index contents. Projects sharing
+alias-based references in `ritebook.toml` or `ritebook.lock` must ensure that
+collaborators and CI register the source under the same alias.
 
 Requirements:
 
@@ -116,9 +111,9 @@ Requirements:
   are invalid legacy catalog metadata.
 - Every collection and skill segment in `skills[].path` must use the canonical
   1–64 character Ritebook kebab-case identifier form.
-- An index must not contain both a root skill path `<name>` and any collected skill
-  path beginning `<name>/`. That path set would make the first segment both a skill
-  and a collection and is invalid schema-v1 metadata.
+- An index must not contain both a root skill path `<name>` and a collected skill
+  path beginning `<name>/`; that would make the first segment both a skill and a
+  collection, violating schema v1.
 - `indexes add`, including forced replacement, must reject a structurally invalid
   schema-v1 index before committing cache or registry state and direct the user to
   reorganize and republish the source catalog.
@@ -133,10 +128,10 @@ Requirements:
 - If `--alias` is provided, Ritebook uses it as the local registry namespace
   without changing the published name.
 - Registry schema v2 persists `alias_origin = "published_name"` for the default
-  and `alias_origin = "explicit"` for a supplied alias. Update preserves the
-  origin while preserving the local alias.
-- Ritebook caches the exact validated index contents locally under the local
-  alias as bytes without decode/re-encode normalization.
+  and `alias_origin = "explicit"` for a supplied alias. Updates preserve both
+  the origin and local alias.
+- Ritebook caches the exact validated index bytes under the local alias without
+  decode/re-encode normalization.
 - Ritebook persists the source locator and type, full `source_revision`, and
   `index_digest` with the cached-index path.
 - Git URL sources must not contain standard-URL authority user-info. Ritebook
@@ -146,8 +141,8 @@ Requirements:
 - scp-like SSH syntax such as `git@github.com:company/internal-skills.git` remains
   supported; its username is treated as an SSH identity, not embedded URL
   credentials.
-- If a local alias is already registered, Ritebook refuses to
-  overwrite it unless an explicit replacement flag is provided.
+- Ritebook refuses to overwrite a registered local alias without an explicit
+  replacement flag.
 
 Recommended duplicate replacement flag:
 
@@ -235,8 +230,8 @@ uv run ritebook indexes update --all --force
 
 Requirements:
 
-- Ritebook looks up the registered index by the positional local alias. It does not
-  refer to the publisher-owned name.
+- Ritebook looks up the registered index by the positional local alias, never the
+  publisher-owned name.
 - For a Git URL source, Ritebook fetches, pulls, or reclones as needed in its
   managed cache.
 - For a local Git repository source, Ritebook reads the repository at the
@@ -407,8 +402,7 @@ Registry provenance follows the
   the registry commit remains or becomes authoritative.
 - The deterministic registry file is the commit record. Ritebook writes and
   synchronizes a uniquely named same-directory temporary registry file, then
-  atomically replaces `indexes.json` so readers see either the old entry or the new
-  entry, never a partially written entry.
+  atomically replaces `indexes.json` so readers see a complete old or new entry.
 - Before replacement, the temporary registry file receives POSIX mode `0600` where
   supported so newly written user-owned registry state is private.
 - Registry readers reject legacy entries containing standard-URL user-info and
@@ -479,9 +473,9 @@ Registry provenance follows the
 - Standard URLs containing authority user-info are rejected before Git or
   filesystem mutation. This includes username-only, password/token, and
   percent-encoded forms; scp-like SSH sources remain supported.
-- Source identifiers displayed by the CLI are credential-redacted first and then
-  have any terminal control characters rendered as visible deterministic escapes.
-  A remembered source cannot inject additional output lines or ANSI formatting.
+- The CLI redacts credentials from source identifiers, then renders terminal
+  control characters as visible deterministic escapes. Remembered sources cannot
+  inject output lines or ANSI formatting.
 - Ritebook surfaces a stable, generic Git failure without exposing raw subprocess
   stdout or stderr, which may contain credentials.
 

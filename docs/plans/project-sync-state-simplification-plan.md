@@ -14,9 +14,8 @@ Requirements were confirmed by the user on October 16, 2026.
 **Readiness:** Ready — outcomes, boundaries, source ownership, task dependencies,
 and verification commands are known. Implementation has not started.
 
-**Next action:** T1 when implementation is requested. The current request covers
-specifications and this plan only; it does not request runtime changes or deletion
-of existing state.
+**Next action:** T1 when implementation is requested. This review updates only
+the plan; it does not request runtime changes or deletion of existing state.
 
 ## Scope and decisions
 
@@ -53,14 +52,20 @@ All paths below exist unless explicitly labeled **proposed**.
   `adapters/outbound/installation_transaction/adapter.py` implement the shared
   lock/journal/rollback protocol. Both use cases receive the same adapter from
   `src/ritebook/cli.py`; removing it globally would change direct install.
-- `adapters/outbound/filesystem_installer/adapter.py`, `safe_filesystem.py`, and
-  `tree_digest.py` provide existing staging, descriptor-relative filesystem
-  operations, inspection, hashing, and cleanup.
+- `adapters/outbound/filesystem_installer/adapter.py`,
+  `adapters/outbound/safe_filesystem.py`, and `adapters/outbound/tree_digest.py`
+  provide existing staging, descriptor-relative filesystem operations, inspection,
+  hashing, and cleanup. Atomic state persistence currently lives in the transaction
+  adapter's `_atomic_write_bytes`, not the JSON state renderer.
 - `adapters/inbound/cli/commands.py` renders sync issues. Current local-change
   messages preserve files but do not explain the force/contribution choice.
 - `tests/integration/test_installation_process_recovery.py` exercises the shared
   transaction adapter directly. Its `.ritebook/` fixture names do not make those
   guarantees sync-only; retain coverage for the direct-install adapter.
+- `tests/unit/adapters/inbound/cli/test_adapter.py` owns CLI argument, diagnostic,
+  and exit-code tests; `tests/unit/test_cli.py` owns composition-root tests.
+  Existing filesystem/contribution CLI workflows are Docker E2E tests. Source-CLI
+  integration workflows named below are new coverage, not existing fixtures.
 - `Makefile` confirms `make test`, `make architecture`, `make quality`, and
   `make verify`. Run from the repository root with the locked development
   environment installed by `make setup`. Focus a `make test` invocation with
@@ -99,7 +104,9 @@ are implementation details; they must not become durable recovery state.
   sequential delivery keeps the direct-install boundary reviewable.
 - T1 is an intermediate implementation slice: it removes ledger authority while
   retaining the old execution adapter until T2. It does not establish conformance
-  to all of revision 3.4 on its own.
+  to all of revision 3.4 on its own. That adapter can still replay a legacy journal
+  before baseline reading; do not release T1 as journal-free sync or claim legacy
+  artifacts remain untouched until T2 passes.
 
 ## Task details
 
@@ -129,9 +136,10 @@ application calls and focused test expectations change together.
 **Acceptance criteria:**
 
 - [ ] **T1-AC1** — Every sync reads the selected schema-v3 lockfile, including a
-  custom path, and renders only a lockfile candidate. A conflicting or malformed
-  local ledger supplies no authority and is not read or updated. Shared
-  direct-install ownership methods remain available.
+  custom path, and renders only a lockfile candidate. Reconciliation makes no
+  ledger existence, ownership-read, or ownership-render calls; conflicting or
+  malformed ledgers supply no baseline authority. Shared direct-install ownership
+  methods remain available. Legacy transaction replay is removed in T2.
 - [ ] **T1-AC2** — With no lockfile, missing targets install while existing
   directories are skipped without force, even if they match index content. Force
   replaces only safe selected targets and establishes a verified baseline.
@@ -172,7 +180,7 @@ baseline rules are in place. Do not remove the direct-install transaction adapte
   `application/use_cases/install_from_requirements.py`, and
   `adapters/outbound/json_installation_state/adapter.py` under that slice.
 - Existing filesystem installer, safe-filesystem helpers, and tree digest;
-  `src/ritebook/cli.py` composition wiring.
+  `src/ritebook/cli.py` composition wiring and `tests/unit/test_cli.py`.
 - Existing reconciliation fakes/tests and filesystem/state adapter tests;
   **proposed:** `tests/unit/features/skill_installation/adapters/outbound/test_filesystem_sync_writer.py`.
 - `tests/integration/test_adapter_integrations.py` and existing E2E sync assertions
@@ -197,8 +205,16 @@ leave direct-install transaction internals unchanged wherever practical.
   fails, preserve and report the remaining path. Do not undo other completed
   targets or add a persistent manifest.
 - Use a same-directory temporary file and atomic replacement for the lockfile,
-  following the existing state writer's persistence pattern. Keep direct-install
-  snapshot comparison intact; sync does not require it.
+  following `_atomic_write_bytes` in the existing transaction adapter. Reuse the
+  pattern without importing that adapter's private helper into the new adapter;
+  keep any extracted filesystem primitive adapter-owned. Translate raw I/O errors
+  to application errors. Keep direct-install snapshot comparison intact; sync
+  does not require it.
+- Attempt cleanup for every artifact owned by this invocation even if one cleanup
+  fails. Retain the primary failure and report remaining paths safely, including
+  a staging failure before `stage()` returns and a lockfile temporary-file cleanup
+  failure. Cleanup after successful placement must not trigger restoration of
+  the previous tree or success output when cleanup failed.
 - Pass the new writer only to `InstallFromRequirements` at the composition root.
   Remove sync-only ledger/path APIs and unused fakes after checking callers.
 
@@ -212,7 +228,10 @@ leave direct-install transaction internals unchanged wherever practical.
   or lockfile-write failure does not roll back earlier completed targets. A
   failed pre-replacement lockfile write preserves the previous whole document
   or leaves the path absent. Partial state never labels a failed target as
-  materialized. Handled cleanup failures report retained per-target artifacts.
+  materialized. Handled cleanup failures report retained artifacts and return
+  nonzero, including after lockfile replacement; a complete new lockfile may
+  already exist in that case. Earlier failures remain visible if cleanup also
+  fails, and cleanup attempts continue for other current-invocation artifacts.
 - [ ] **T2-AC3** — Direct install still uses its existing registry, operation lock,
   journal, rollback, and next-run recovery. Index refresh still uses the published
   registry port and registry locks. An old held sync lock does not block sync.
@@ -220,10 +239,13 @@ leave direct-install transaction internals unchanged wherever practical.
 **Verification:**
 
 - [ ] **T2-V1** — Write fault-injection adapter and orchestration tests, then run
-  `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/integration/test_adapter_integrations.py tests/integration/test_installation_process_recovery.py' make test`.
+  `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/test_cli.py tests/integration/test_adapter_integrations.py tests/integration/test_installation_process_recovery.py' make test`.
   Expect staged/atomic writes, partial progress, no transaction calls from sync,
   and existing direct transaction/process tests to pass. Add a held legacy-lock
   fixture without claiming support for two simultaneously mutating syncs.
+  Inject failures before and after directory placement, during local restoration,
+  before and after lockfile replacement, and during staging/backup/temp cleanup.
+  Inspect bytes and retained paths rather than only checking raised exceptions.
 - [ ] **T2-V2** — Run `make architecture`; expect all import contracts to pass.
   Inspect the composition root and published ports: direct install retains the
   recoverable transaction and sync receives only its writer and state contracts.
@@ -250,9 +272,15 @@ contribution guidance.
 - Existing reconciliation tests, `tests/e2e/test_cli_workflows.py`,
   `tests/e2e/test_skill_contribution_workflow.py`, and direct-install regression
   tests. Keep the shared recovery integration helper/tests scoped to direct install.
+- `tests/unit/adapters/inbound/cli/test_adapter.py` for command guidance,
+  terminal-control escaping, fatal partial-progress errors, and exit codes.
 - **Proposed:** `tests/integration/test_sync_interruption.py` and an explicit
   subprocess helper beside it. Use local Git/filesystem fixtures and a bounded
   readiness-marker handshake before process termination; no timing-only sleeps.
+- **Proposed:** `tests/integration/test_sync_workflows.py` for source-CLI relocation,
+  custom lockfile, legacy-artifact preservation, and sync/contribution workflows.
+  Use isolated HOME/config/cache paths and local Git fixtures; do not import the
+  wheel-only `run_cli` fixture from `tests/e2e/conftest.py`.
 - `README.md`, `docs/specs/skill-installation-spec.md`, `docs/specs/README.md`,
   and the implementation-status note in ADR 0009. Preserve historical ADR text.
 
@@ -265,12 +293,20 @@ results; the process fixture verifies the already implemented failure boundary.
   Diagnostics explain destructive `--force` and exact `skills contribute`
   guidance. Unmanaged or missing-lock skips explain force without inventing a
   contribution baseline. No diagnostic promises automatic push or MR creation.
+  Guidance includes the selected custom `--lockfile` where needed. Explain that
+  sync `--force` applies to all current declarations, so users review every
+  selected target before a force rerun.
 - [ ] **T3-AC2** — Terminate sync after a completed replacement and before lockfile
   writing. The next normal run preserves mismatched or unmanaged content,
   reports the uncertainty, and neither rolls back nor silently adopts it. A
   reviewed force rerun repairs the installation and creates a valid lockfile.
   Cover both stale-lock and absent-lock baselines. Fatal handled errors report
   possible partial progress; success is never reported for a failed lock write.
+  The stale-lock fixture must replace a previously recorded tree with a different
+  verified digest; otherwise it cannot prove mismatch preservation. Kill a child
+  executing the composed sync use case through the real writer, with a test-only
+  pause before lockfile writing. Reruns exercise the normal CLI. Bound waits and
+  reap the child in fixture cleanup; add no production pause switch.
 - [ ] **T3-AC3** — Sync workflows create no `.ritebook/` and work after checkout
   relocation and with custom lockfile paths. Conflicting/malformed old
   ledgers, journals, and unrelated sentinels are ignored and remain byte-identical.
@@ -285,7 +321,7 @@ results; the process fixture verifies the already implemented failure boundary.
 **Verification:**
 
 - [ ] **T3-V1** — Run
-  `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/features/skill_contribution tests/integration' make test`.
+  `PYTEST_ADDOPTS='tests/unit/features/skill_installation tests/unit/features/skill_contribution tests/unit/adapters/inbound/cli/test_adapter.py tests/unit/test_cli.py tests/integration' make test`.
   Expect exact diagnostics, deterministic interrupted-sync repair, untouched old
   artifacts, source-CLI filesystem/contribution workflows for T3-AC3, and retained
   direct-install/registry recovery coverage to pass.
@@ -338,9 +374,10 @@ from the earlier index-recovery work do not prove this contract.
 - **Concurrent writers:** Unsupported by explicit user choice. Do not add global
   locks, lockfile compare-and-swap promises, or new hidden state to mitigate it.
 - **Code rollback:** Restoring the old implementation does not undo target changes
-  or restore deleted local metadata. Existing schema-v3 lockfiles can still serve
-  as the old implementation's missing-ledger baseline; inspect mismatches before
-  any force operation.
+  or restore deleted local metadata. The old implementation prefers a surviving
+  ledger and may replay a legacy journal. Reconcile those artifacts before using
+  it; only when the ledger is absent does it use schema-v3 lockfile ownership.
+  Inspect mismatches before any force operation.
 
 ## Status and scope changes
 
@@ -351,7 +388,17 @@ from the earlier index-recovery work do not prove this contract.
   coverage, shared-adapter isolation, dependencies, and validation. Task reviews
   finish before the final installed-wheel gate; no task depends on that gate for
   its own completion.
-- Documentation validation: 9 documents and 55 local links checked; R1-R11 and
+- Preparation validation (recorded before this review): 9 documents and 55 local
+  links checked; R1-R11 and
   AC1-AC13 are present in order; all 21 plan checkbox IDs are unique and pending.
   Both staged and unstaged `git diff --check` passed. No runtime tests were run
   for this documentation-only change.
+- October 16, 2026 review: Added CLI test ownership and focused checks, proposed
+  source-CLI integration coverage, explicit cleanup/fault assertions, a differing
+  digest for the interruption fixture, and T1/rollback legacy-recovery limits.
+  Product decisions, task IDs, and pending progress are unchanged. This is a plan
+  review; implementation and runtime validation remain pending.
+- Review validation: All 21 pending checkbox IDs match the original plan, exactly
+  one readiness label remains, and both local Markdown links resolve. Final prose
+  reviewed with `condensed-prose-refactor`; `git diff --check` passes. No runtime
+  tests or `make verify` were run because this review changes only the plan.

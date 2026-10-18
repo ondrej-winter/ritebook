@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ritebook"
-version = "0.1.62"
+version = "0.1.63"
 description = "A CLI for validating, publishing, and installing Agent Skills and Git-backed skill indexes."
 readme = "README.md"
 requires-python = ">=3.13"

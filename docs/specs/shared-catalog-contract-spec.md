@@ -16,9 +16,8 @@ This specification defines the catalog identity, schema-v1 path model, source
 provenance, and trust-boundary rules shared by Ritebook's publisher, index
 registry, skill installation, and skill contribution feature slices.
 
-Feature specifications depend on this contract instead of redefining its terms.
-They remain responsible for workflow-specific orchestration, persistence,
-diagnostics, and recovery behavior.
+Feature specifications consume this contract without redefining its terms. They
+own workflow-specific orchestration, persistence, diagnostics, and recovery.
 
 ### Design rationale
 
@@ -49,8 +48,8 @@ authenticity. Signatures and approval policy are separate concerns.
 
 ## Requirements
 
-All consuming slices use the terminology, catalog structure, compatibility
-rules, and provenance requirements below rather than redefine them locally.
+Consuming slices use the terminology, catalog structure, compatibility rules, and
+provenance requirements below without redefining them locally.
 
 ### R1 — Shared terminology and identity
 
@@ -58,7 +57,7 @@ rules, and provenance requirements below rather than redefine them locally.
   `index.name` in `ritebook-index.json`. Application code may call this value
   `published_name`. Consumers must not rewrite it when choosing a local namespace.
 - A **local alias** is the consumer-owned namespace for a registered index. It
-  defaults to the published name, but `indexes add --alias` may choose another value.
+  defaults to the published name, but `indexes add --alias` may set another value.
 - A **catalog skill path** identifies one published skill relative to
   `skills_root`. In schema v1 it is `<skill>` or `<collection>/<skill>`.
 - A **catalog selector** is the catalog-relative portion after the local alias in a
@@ -70,8 +69,8 @@ rules, and provenance requirements below rather than redefine them locally.
 - A **collection selector** is `<local-alias>/<collection>` in `ritebook.toml`. It
   resolves only the collection's immediate child skills and is not accepted by
   exact-skill commands such as `skills install` or `skills contribute`.
-- A **repository-relative skill path** includes the published `skills_root` before
-  the catalog skill path. It may therefore contain more segments than a catalog
+- A **repository-relative skill path** prefixes the catalog skill path with the
+  published `skills_root`. It may therefore contain more segments than a catalog
   selector while remaining a safe relative path.
 
 ### R2 — Canonical identifiers
@@ -104,8 +103,8 @@ application use case.
   not `skills[].name`, is the unique identity and downstream resolution key.
 - Catalog entries must be ordered deterministically by path.
 
-The one-or-two-segment rule applies to catalog paths and selectors. It does not
-limit safe repository-relative paths formed by prefixing a catalog path with
+The one-or-two-segment rule applies to catalog paths and selectors, without
+limiting safe repository-relative paths that prefix a catalog path with
 `skills_root`.
 
 ### R4 — Publisher index schema v1
@@ -144,10 +143,10 @@ Field requirements:
 - `skills[].path` is the catalog skill path and satisfies the shared catalog
   structure rules.
 - `skills[].skill_file` is the path from `skills_root` to the skill's `SKILL.md`.
-- `skills[].description` is a required non-empty description copied from the
-  validated skill header after trimming leading and trailing whitespace. It is at
-  most 1024 Unicode scalar values, contains no C0, DEL, C1, or surrogate code
-  points, and is already in its normalized trimmed form.
+- `skills[].description` is required, non-empty, and copied from the validated
+  skill header after trimming leading and trailing whitespace. In this normalized
+  trimmed form, it is at most 1024 Unicode scalar values and contains no C0, DEL,
+  C1, or surrogate code points.
 
 The root object contains exactly `schema_version`, `index`, `generated_at`,
 `skills_root`, and `skills`. The `index` object contains exactly `name`. Every
@@ -210,8 +209,8 @@ and diagnostics must state each field's semantic role.
 - The consumer-owned digest does not alter the publisher schema and does not by
   itself authenticate the publisher.
 - Consumers preserve the committed index as exact `bytes`, verify cached bytes
-  against `index_digest` before decoding or parsing, and never substitute a
-  decoded-and-reencoded representation for the digest-bound artifact.
+  against `index_digest` before decoding or parsing, and never replace the
+  digest-bound artifact with a decoded-and-reencoded representation.
 
 ### R7 — Shared trust and path rules
 
@@ -229,8 +228,8 @@ and diagnostics must state each field's semantic role.
   deterministic ASCII escape rather than emitting terminal control bytes.
 - Never print secrets, Git credentials, raw index contents, or raw skill contents
   in diagnostics.
-- A mutating feature must define its own symlink, atomic-write, rollback, and
-  recovery semantics in its owning specification.
+- Each mutating feature's specification must define its symlink, atomic-write,
+  rollback, and recovery semantics.
 
 ## Implementation and Verification Evidence
 

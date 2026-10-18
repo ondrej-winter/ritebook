@@ -18,8 +18,8 @@ defined by the [Shared Catalog Contract](shared-catalog-contract-spec.md).
 
 ### Design rationale
 
-The installed-tree digest records the last installed baseline. An index describes
-candidate content; matching it cannot prove prior ownership or distinguish local
+The installed-tree digest records the last installed baseline. Matching an
+index's candidate content cannot prove prior ownership or distinguish local
 edits from an interrupted update.
 
 Project sync uses only the portable lockfile to avoid duplicate ownership state.
@@ -67,8 +67,8 @@ ownership without deleting files; destructive replacement requires explicit
 - Before target planning, staging, or mutation, Ritebook validates the selected
   committed `SKILL.md` through the linter's single-file API. Its validated `name`
   and normalized `description` must exactly match the selected index entry.
-- A missing target may be installed. Without `--force`, any existing target is
-  preserved and direct install exits nonzero.
+- Ritebook may install a missing target. Without `--force`, direct install
+  preserves any existing target and exits nonzero.
 - With `--force`, an existing normal directory is transactionally replaced even
   when it is unmanaged or differs from its last committed digest. Successful
   replacement establishes fresh ownership and the candidate tree digest.
@@ -102,8 +102,8 @@ ownership without deleting files; destructive replacement requires explicit
   local alias referenced by the parsed requirements file.
 - Refresh uses the index registry's normal source validation, immutable cache,
   and registry commit protocol.
-- A missing alias or any refresh failure aborts sync before target mutation and
-  before lock or ownership state is changed. Sync never falls back to stale
+- A missing alias or any refresh failure aborts sync before target mutation or
+  lock or ownership-state changes. Sync never falls back to stale
   cached metadata after a requested refresh fails.
 - After refresh, Ritebook opens and verifies the bound source snapshot before it
   parses the verified cached index and resolves skills from that snapshot.
@@ -163,15 +163,15 @@ ownership without deleting files; destructive replacement requires explicit
 - Direct-install ownership entries are sorted by `target_id` and record the
   owning workflow, requirement, target identity, canonical target, installed tree
   digest, and verified source provenance.
-- New sync lock state contains only targets selected by the current
-  requirements file. Omitted prior entries are dropped from generated state
-  without inspecting, modifying, or deleting their directories.
+- New sync lock state contains only targets selected by the current requirements
+  file. Omitted prior entries are dropped without inspecting, modifying, or
+  deleting their directories.
 - Direct-install ownership files use schema version 3, strict root and entry
   validation, no unknown fields, atomic same-directory replacement, and POSIX
   mode `0600` where supported.
-- Schema-v1 and schema-v2 direct-install registries are not
-  current ownership evidence. Ritebook rejects them with instructions to inspect
-  and remove or relocate legacy targets before reinstalling.
+- Schema-v1 and schema-v2 direct-install registries are not current ownership
+  evidence. Ritebook rejects them with instructions to inspect and remove or
+  relocate legacy targets before reinstalling.
 
 ### R6 — Declaration-scoped sync and explicit force replacement
 
@@ -233,7 +233,7 @@ targets and the lockfile. Direct install retains R7's transaction guarantees.
   current index content nor a suspected interrupted run authorizes adoption.
 - On handled failure, diagnostics must explain possible partial progress and
   manual repair. After interruption, users inspect affected content and rerun;
-  force replacement is an explicit choice after review, not an automatic retry.
+  force replacement requires explicit choice after review, never automatic retry.
 - Temporary staging and per-target replacement artifacts may exist beside a
   target. Clean up artifacts belonging to the current invocation when possible;
   report retained paths on handled cleanup failures. Interrupted runs may require

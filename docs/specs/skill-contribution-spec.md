@@ -12,11 +12,11 @@
 
 ## Objective and Context
 
-Ritebook lets developers safely propose improvements to repo-local installed
-skills back to their original curated repository. Its initial platform-neutral
-Git workflow, `skills contribute`, prepares a reviewable branch and local commit
-in a Ritebook-owned isolated checkout. It prints a suggested `git push` command
-when a usable origin exists, or manual inspection guidance otherwise. It must not
+Developers use Ritebook to safely propose improvements to repo-local installed
+skills in their original curated repository. The initial platform-neutral Git
+workflow, `skills contribute`, prepares a reviewable branch and local commit in a
+Ritebook-owned isolated checkout. It suggests a `git push` command when a usable
+origin exists, or manual inspection guidance otherwise. It must not
 directly mutate canonical source branches, managed index cache clones, or
 user-owned local source repositories.
 
@@ -27,9 +27,9 @@ isolated owned checkout. It compares the selected upstream path with the locked
 commit before copying edits, so unrelated upstream movement can be accepted
 without automatically merging changes to the same skill.
 
-The command fetches and prepares its contribution checkout. It does not refresh
-the index registry, rewrite installation provenance, or coordinate a registry
-handoff. Prepared branches and commits remain local for user review.
+The command fetches its source and prepares a contribution checkout. It does not
+refresh the index registry, rewrite installation provenance, or coordinate a
+registry handoff. Prepared branches and commits remain local for user review.
 
 ### Current-state evidence
 
@@ -75,7 +75,7 @@ A developer can prepare a contribution for one repo-local installed skill:
 uv run ritebook skills contribute platform-skills/code-review
 ```
 
-The command prepares a change for review without publishing directly to the
+The command prepares a reviewable change without publishing directly to the
 upstream default branch.
 
 Requirements:
@@ -104,13 +104,13 @@ Requirements:
 - Ritebook verifies that the locked commit and index binding are available before
   comparing the installed repo-local skill directory with the source skill
   directory at the selected upstream base.
-- Ritebook exits successfully with a concise no-op message when there are no local
-  skill changes to contribute.
+- With no local skill changes to contribute, Ritebook exits successfully with a
+  concise no-op message.
 - Ritebook creates a contribution branch in an isolated Ritebook-owned checkout
   when local changes exist.
 - Ritebook copies the installed repo-local skill directory back to the source
   skill directory inside the isolated checkout.
-- Ritebook runs existing skill validation before creating a commit.
+- Ritebook runs the existing skill validation before creating a commit.
 - Ritebook regenerates `ritebook-index.json` before creating a commit.
 - Index regeneration uses the publisher's exact successful validation snapshot;
   it must not rediscover or reparse skill files after validation.
@@ -182,16 +182,16 @@ Requirements:
 - Branch from the current upstream base for the MVP.
 - Warn or fail clearly when the current upstream base differs from the locked
   `source_revision` and the source skill changed upstream since installation.
-- Keep contribution checkout paths deterministic enough to be discoverable but
-  avoid unsafe collisions between indexes, sources, and skill paths.
+- Keep contribution checkout paths deterministic enough to find while avoiding
+  unsafe collisions between indexes, sources, and skill paths.
 - Leave the prepared checkout in place after success so the developer can inspect,
   push, amend, or discard it manually.
 
-The MVP uses reusable deterministic clones under the Ritebook-owned
-contribution root. Each checkout path combines a source digest with the local
-alias, skill-path slug, and requirement digest. Ritebook marks owned clones,
-rejects unmarked directories at a reusable checkout path, and resets/cleans only
-those marked clones before preparing another contribution. The default root is
+The MVP uses reusable deterministic clones under the Ritebook-owned contribution
+root. Each checkout path combines a source digest with the local alias, skill-path
+slug, and requirement digest. Ritebook marks owned clones, rejects unmarked
+directories at a reusable checkout path, and resets or cleans only marked clones
+before preparing another contribution. The default root is
 `~/.cache/ritebook/contributions`; `--contribution-root` overrides it for tests
 and automation.
 
@@ -258,8 +258,8 @@ Required lockfile fields for each publishable entry:
 - `source_revision`: required full commit object ID bound during index validation
   and used for installation.
 - `source_branch`: required canonical `refs/heads/...` branch retained from index
-  registration. It is retrieval metadata; immutable identity remains the commit
-  and exact index digest.
+  registration for retrieval. The commit and exact index digest remain the
+  immutable identity.
 - `index_digest`: required SHA-256 digest verified against both the exact cached
   index used to resolve installation and root `ritebook-index.json` at
   `source_revision`.
@@ -273,7 +273,7 @@ Required lockfile fields for each publishable entry:
   entries.
 - `target_ref`: optional requirements target nickname.
 
-Catalog depth and segment validation applies to the selector encoded in
+Catalog depth and segment validation applies to the selector in
 `requirement`, not to `skill_path` or `skill_file`. The latter include the
 published `skills_root`, may contain additional safe segments, and remain subject
 to repository-relative path validation before checkout or comparison.

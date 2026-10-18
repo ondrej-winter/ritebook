@@ -25,10 +25,10 @@ and validates catalog layout separately. Collection-specific profiles may requir
 standard optional fields, such as flat string lifecycle metadata, without making
 those fields mandatory for portable validity.
 
-The linter owns discovery and YAML parsing. A complete immutable snapshot lets
-the publisher use validated data without a second read that could observe changed
-files. This in-process boundary complements the committed-source verification
-that protects installation and contribution.
+The linter owns discovery and YAML parsing. Its complete immutable snapshot lets
+the publisher use validated data without rereading potentially changed files.
+This in-process boundary complements the committed-source verification that
+protects installation and contribution.
 
 ### Current-state evidence
 
@@ -120,7 +120,7 @@ allowed-tools: Bash(git:*) Read
 
 Validation requirements:
 
-- Frontmatter starts on the first line with `---` and has a closing `---` before
+- Frontmatter starts on the first line with `---` and closes with `---` before
   the Markdown body.
 - The complete file must be readable UTF-8 text.
 - The frontmatter block, including delimiters and line endings, must be at most
@@ -141,16 +141,15 @@ Validation requirements:
   characters after trimming leading and trailing whitespace.
 - Describing both what the skill does and when to use it is authoring guidance,
   not a deterministic validity rule.
-- The normalized trimmed `description` contains no C0, DEL, C1, or surrogate code
-  points. Ordinary Unicode scalar text remains valid and is preserved.
+- The normalized `description` contains no C0, DEL, C1, or surrogate code points.
+  Ordinary Unicode scalar text remains valid and is preserved.
 - `license` is optional. When present, it is a string naming the license or a
   bundled license file.
 - `compatibility` is optional. When present, it is a non-empty string of at most
   500 characters. Whether it describes meaningful environment requirements is
   authoring guidance, not a deterministic validity rule.
-- `metadata` is optional. When present, it is a flat mapping from string keys to
-  string values. Numeric, boolean, null, sequence, and nested mapping values are
-  invalid.
+- `metadata` is optional. When present, it is a flat string-to-string mapping.
+  Numeric, boolean, null, sequence, and nested mapping values are invalid.
 - Compatible local metadata keys, including reasonably unique or namespaced keys,
   are accepted when their values are strings. Ritebook treats them as opaque
   metadata and does not require them for portable validity.
@@ -167,7 +166,7 @@ Validation requirements:
   optional supporting files. Ritebook does not add custom top-level fields.
 - Upstream specification changes require a reviewed specification and test update;
   remote documentation changes do not silently alter released behavior.
-- The Markdown body after the frontmatter is outside the header schema and has no
+- The Markdown body is outside the frontmatter header schema and has no
   additional format restrictions.
 
 ### R3 — Diagnostics
@@ -175,10 +174,10 @@ Validation requirements:
 - Validation output identifies the skill file path and violated rule without
   printing the file contents.
 - Multiple findings are ordered deterministically.
-- The stable diagnostic contract is the path and message. Ritebook promises no
+- The path and message form the stable diagnostic contract. Ritebook promises no
   diagnostic codes beyond those in the application result.
-- Control characters reaching the CLI are rendered as visible deterministic ASCII
-  escapes such as `\\n`, `\\t`, or `\\x1b`.
+- Control characters reaching the CLI are rendered as visible, deterministic
+  ASCII escapes such as `\\n`, `\\t`, or `\\x1b`.
 - Missing or unreadable roots and malformed frontmatter produce concise
   user-facing errors at the adapter boundary.
 - Malformed YAML produces the exact path-scoped message
@@ -202,7 +201,7 @@ conventional-commits/SKILL.md: metadata values must be strings.
 
 ### R4 — Validated publication snapshot
 
-- A successful lint returns one immutable `ValidatedSkill` for every
+- A successful lint returns one immutable `ValidatedSkill` per
   discovered regular candidate, sorted deterministically by catalog path.
 - Each snapshot contains the catalog-relative path, validated name,
   catalog-relative skill-file path, and normalized description derived from the
@@ -262,7 +261,7 @@ conventional-commits/SKILL.md: metadata values must be strings.
   duplicate keys, the 65,536-byte boundary, and path-scoped parse failures.
 - CLI tests cover argument mapping, success and failure exit behavior, visible
   control-character escapes, and concise diagnostics.
-- Tests use temporary directories and do not depend on global state or network
+- Tests use temporary directories without depending on global state or network
   access.
 
 ## Constraints and Execution Boundaries
@@ -311,8 +310,8 @@ conventional-commits/SKILL.md: metadata values must be strings.
 - The [Agent Skills specification](https://agentskills.io/specification) and its
   [`skills-ref` reference validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)
   provide the external header compatibility baseline and optional comparison
-  tooling. The reference validator is not a runtime dependency; this
-  specification defines the deliberately adopted rules.
+  tooling. The validator is not a runtime dependency; this specification defines
+  the deliberately adopted rules.
 - Ritebook catalog path constraints remain separate from header compatibility and
   may be stricter where the shared catalog contract requires canonical ASCII
   identifiers.

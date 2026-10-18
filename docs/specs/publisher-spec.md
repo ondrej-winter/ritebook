@@ -14,8 +14,8 @@
 
 Ritebook lets corporate skill maintainers and curators generate a deterministic,
 reviewable index of approved internal agent skills from a private repository.
-The workflow supports controlled internal curation and downstream developer
-listing and installation without ad hoc shell scripts.
+It supports controlled internal curation and downstream developer listing and
+installation without ad hoc shell scripts.
 
 ### Design rationale
 
@@ -44,7 +44,7 @@ a second traversal from publishing data that did not pass validation.
 
 ## Requirements
 
-The requirements below govern JSON index generation and updates for a
+These requirements govern JSON index generation and updates for a
 maintainer-controlled skills repository.
 
 ### R1 — Publisher workflow
@@ -70,8 +70,7 @@ maintainer-controlled skills repository.
 - Linter-owned discovery applies the catalog structure and canonical identifier
   rules from the shared catalog contract.
 - Directories and files inside a valid skill package remain unrestricted unless
-  they contain another `SKILL.md`, which would declare an invalid nested candidate
-  skill.
+  another `SKILL.md` declares an invalid nested candidate skill.
 - Discovered skills are publishable only when the linter use case accepts every
   `SKILL.md`.
 - Publisher prechecks return publisher-owned `SkillEntry` values mapped from the
@@ -98,7 +97,7 @@ maintainer-controlled skills repository.
 - The index must be valid JSON.
 - The index uses the exact closed schema-v1 object shapes from the shared catalog
   contract and emits no extension members.
-- The index must include a schema version to support unambiguous evolution.
+- The index must include a schema version for unambiguous evolution.
 - The index must include enough data for future consumer commands to list and
   locate skills.
 - The index must be pretty-printed with two-space indentation for pull request
@@ -114,8 +113,8 @@ maintainer-controlled skills repository.
 - Serialization, temporary-write, flush, synchronization, or replacement failure
   must leave prior valid index content unchanged. Ritebook-owned temporary files
   must be removed after handled failures.
-- Schema v1 requires a valid `SKILL.md` header for every published skill, but need
-  not include the full parsed header in `ritebook-index.json`.
+- Schema v1 requires a valid `SKILL.md` header for every published skill but does
+  not require the full parsed header in `ritebook-index.json`.
 - Schema v1 does not include publisher-generated per-skill or repository content
   hashes. After the generated index is committed, consumers compute an
   `index_digest` over the exact committed index bytes and bind it to that Git
@@ -144,8 +143,8 @@ Requirements:
   for the MVP.
 - Always write the canonical `ritebook-index.json` in the invocation working
   directory; no output argument is needed.
-- Overwrite an existing generated index only when the command is explicitly run;
-  no background or implicit updates.
+- Overwrite an existing generated index only on explicit invocation; no background
+  or implicit updates.
 - `indexes publish` must reuse the skill-header validation flow as a hard
   precondition and must not write or overwrite the index when validation fails.
 - `indexes publish` must consume the exact precheck snapshot and must not perform a
@@ -161,7 +160,8 @@ Requirements:
 
 ### Project structure
 
-The implementation follows the repository's hexagonal vertical-slice direction.
+The implementation follows the repository's hexagonal vertical-slice
+architecture.
 
 - `src/ritebook/features/publisher/domain/`: pure catalog concepts and invariants.
 - `src/ritebook/features/publisher/application/`: publisher use case, ports, and
@@ -182,15 +182,14 @@ The implementation follows the repository's hexagonal vertical-slice direction.
 ### Commands and validation
 
 When changing this workflow, run focused checks, then `make verify` before
-handoff. It runs the standard formatting, linting, typing,
-import-contract, and non-E2E test checks, builds the distributions, and runs the
-clean installed-wheel Docker E2E gate.
+handoff. It checks formatting, linting, typing, import contracts, and non-E2E
+tests, builds distributions, and runs the clean installed-wheel Docker E2E gate.
 
 Dependency changes must update both `pyproject.toml` and `uv.lock`.
 
 ### Testing strategy
 
-The MVP should be covered primarily with fast, deterministic unit tests.
+Fast, deterministic unit tests should provide most MVP coverage.
 
 - Domain tests verify catalog entry creation, deterministic path ordering,
   duplicate names at distinct paths, and basic invariants.

@@ -1,8 +1,7 @@
 # Cline command execution
 
-These rules govern how Cline executes commands. Repository-wide safety policy,
-including Git authorization and remote-execution restrictions, lives in `AGENTS.md`
-at the repository root.
+These rules govern Cline command execution. Root `AGENTS.md` owns repository-wide
+safety policy, including Git authorization and remote-execution restrictions.
 
 - Treat `run_commands` as non-interactive. Never use it to launch an editor, pager,
   watcher, prompt, or other process that waits for terminal input, even when the
@@ -13,7 +12,7 @@ at the repository root.
   Ordinary non-interactive pipelines between commands remain allowed.
 - In Act mode, create necessary non-trivial helper scripts with a file-writing
   tool under the ignored `.tmp/cline/` directory. Use descriptive filenames and
-  execute each script with an explicit command containing its absolute path.
+  execute each script explicitly by absolute path.
 - In Plan mode, do not create helper files. Use a straightforward read-only
   command when possible; otherwise describe and defer the command until Act mode.
 - Disable Git paging, for example with `git --no-pager`, and use non-interactive

@@ -28,8 +28,8 @@ Install development dependencies:
 make setup
 ```
 
-Setup checks that `uv.lock` matches `pyproject.toml`; it does not update the
-lockfile implicitly.
+Setup checks that `uv.lock` matches `pyproject.toml`; it does not implicitly
+update the lockfile.
 
 Install the Git pre-commit hook:
 
@@ -37,15 +37,15 @@ Install the Git pre-commit hook:
 make install-hooks
 ```
 
-Run pre-commit across the repository when changing the hook
-configuration or before opening a PR:
+Run pre-commit across the repository when changing hook configuration or before
+opening a PR:
 
 ```bash
 make pre-commit
 ```
 
 Pre-commit checks file hygiene, Ruff formatting and linting, ty types, Import
-Linter architecture contracts, and tests. It complements the full quality gate.
+Linter architecture contracts, and tests. It supplements the full quality gate.
 
 The Ruff hooks check without rewriting Python files. Ruff, ty, and pytest run
 when Python files, `pyproject.toml`, `uv.lock`, `Makefile`, or
@@ -58,8 +58,8 @@ make quality
 ```
 
 This checks formatting, Ruff linting, ty types, Import Linter architecture
-contracts, and the default non-E2E pytest suite. `make help` lists the
-corresponding leaf targets and formatting or lint-fix commands.
+contracts, and the default non-E2E pytest suite. `make help` lists the leaf targets
+and formatting or lint-fix commands.
 
 `make architecture` enforces inward dependencies, private slice boundaries,
 shared-kernel and composition-root isolation, and an explicit I/O-library denylist,
@@ -67,9 +67,9 @@ including imports under `TYPE_CHECKING`. See [repository instructions](AGENTS.md
 for boundary rules. Dynamic imports and side effects through permitted APIs still
 need code review.
 
-Plain pytest deselects Docker E2E tests by default. The Docker image
-explicitly opts into them with `--run-e2e -m e2e`; direct host opt-in is rejected
-because it cannot establish the clean installed-wheel boundary.
+Plain pytest deselects Docker E2E tests. The Docker image opts in with
+`--run-e2e -m e2e`; direct host opt-in is rejected because it cannot establish the
+clean installed-wheel boundary.
 
 For implementation changes, run the complete verification gate before handoff:
 
@@ -188,7 +188,7 @@ standard URL: Ritebook rejects URL authority user-info before running Git or
 writing local state. scp-like SSH sources such as the example above remain
 supported.
 
-Register an already-cloned local Git repository without Ritebook mutating it:
+Register an existing local Git clone without Ritebook mutating it:
 
 ```bash
 uv run ritebook indexes add --source ./internal-skills
@@ -230,12 +230,12 @@ uv run ritebook indexes update --all --force
 ```
 
 For Git URL registrations, `--force` fetches through a fresh managed clone and
-switches the registry only after the committed root `ritebook-index.json` validates.
-For local repository registrations, it re-reads the clean committed repository
-without deleting or mutating it. The previous coherent registry/cache binding
-remains usable if rebuilding fails. A superseded managed clone is removed only after no
-other registry alias references it. This flag repairs consumer state; it does not
-generate or publish an upstream index.
+switches the registry only after the committed root `ritebook-index.json`
+validates. For local repository registrations, it re-reads the clean committed
+repository without deleting or mutating it. The previous coherent registry/cache
+binding remains usable if rebuilding fails. Ritebook removes a superseded managed
+clone only after no registry alias references it. This flag repairs consumer
+state; it does not generate or publish an upstream index.
 
 The same forced update recovers schema-v1 `indexes.json` registrations from their
 saved aliases and source locations. It discovers each source's current branch and
@@ -263,7 +263,7 @@ List skills from one local index alias:
 uv run ritebook skills list --index platform-skills
 ```
 
-Show cached skill descriptions when available:
+Show available cached skill descriptions:
 
 ```bash
 uv run ritebook skills list --show-description
@@ -293,9 +293,9 @@ Indexes
     └── skill-a — Helps with platform workflows.
 ```
 
-Relative paths identify skills within an index. Duplicate skill names are valid at
-different paths, such as `backend/code-review` and `frontend/code-review`; Ritebook
-does not fall back from a path to the final skill name.
+Relative paths identify skills within an index. Skill names may repeat at
+different paths, such as `backend/code-review` and `frontend/code-review`;
+Ritebook does not fall back from a path to the final skill name.
 
 When no registered cached skills are available, Ritebook prints:
 
@@ -313,12 +313,12 @@ Default registry and cache locations:
 ~/.cache/ritebook/registries/<registry-id>/git/<source-cache-id>/
 ```
 
-`<registry-id>` is the SHA-256 hex of the canonical registry path, separating
-caches even when registries share aliases and a cache root. Local aliases are
-single path-safe kebab-case segments. Each validated index is
-stored as an immutable generation under its alias, keyed by the lowercase SHA-256
-hex recorded in registry metadata. The registry file atomically switches to the
-new generation only after the complete cache file has been synchronized.
+`<registry-id>` is the canonical registry path's SHA-256 hex, separating caches
+even when registries share aliases and a cache root. Local aliases are single,
+path-safe kebab-case segments. Each validated index is stored as an immutable
+generation under its alias, keyed by the lowercase SHA-256 hex in registry
+metadata. The registry file atomically switches to the new generation only after
+the complete cache file has been synchronized.
 
 Tests and automation can override these locations:
 
@@ -375,14 +375,14 @@ uv run ritebook skills install platform-skills/browser/runtime-verification \
 `platform-skills/browser/runtime-verification`.
 
 Ritebook copies the whole skill directory and creates missing target parent
-directories. Without `--force`, an existing target is preserved and direct
-install exits nonzero. With `--force`, Ritebook transactionally replaces the
-exact existing directory even when it is unmanaged or locally edited. The
-previous tree is retained for rollback until ownership state commits. Symlinks,
-regular files, special files, dangerous paths, unsafe ancestry, and targets that
-change after inspection are still rejected.
+directories. Without `--force`, direct install preserves an existing target and
+exits nonzero. With `--force`, Ritebook transactionally replaces the exact
+existing directory even when it is unmanaged or locally edited. It retains the
+previous tree for rollback until ownership state commits. Symlinks, regular
+files, special files, dangerous paths, unsafe ancestry, and targets that change
+after inspection are still rejected.
 
-Before planning or mutating targets, Ritebook validates the selected committed
+Before planning target mutations, Ritebook validates the selected committed
 `SKILL.md` and requires its name and normalized description to match the
 digest-bound index entry.
 
@@ -404,8 +404,8 @@ writes `indexes.json` and `installations.json` with mode `0600`. Persisted sourc
 exclude standard-URL user-info; `indexes list` also strips it from displayed
 sources. Legacy or unsafe installation state requires inspection and regeneration.
 
-Tests and automation can override both the index registry and direct-install
-state paths:
+Tests and automation can override the index registry and direct-install state
+paths:
 
 ```bash
 uv run ritebook skills install platform-skills/code-review \
@@ -443,7 +443,7 @@ Refresh referenced indexes and process the skills declared by the default
 uv run ritebook skills sync
 ```
 
-Use `--file` to read a different requirements file, `--force` to replace any
+Use `--file` to read another requirements file, `--force` to replace any
 existing safe declared target directory with verified index content, and
 `--lockfile` to choose where generated lock state is written:
 
@@ -469,9 +469,9 @@ target base by its final skill name; it cannot use `target_path`. Expansion neve
 matches deeper descendants or searches by `skills[].name`. Direct `skills install`
 and `skills contribute` commands remain exact-only and never expand collections.
 
-Sync uses the selected schema-v3 `ritebook.lock` as its only persistent
+Sync uses the selected schema-v3 `ritebook.lock` as its sole persistent
 installation record and creates no `.ritebook/` bookkeeping. Commit the lockfile
-when a repository uses `ritebook.toml`. It records current owned declarations,
+when a repository uses `ritebook.toml`. It records owned declarations,
 installed-tree digests, provenance, status, and processing issues. Complete
 no-change syncs produce byte-identical lock state. Skipped targets produce
 `state = "partial"`, diagnostics, and a nonzero exit while independent successful
@@ -492,14 +492,14 @@ writer guarantee. Index-registry locking and direct-install recovery remain in
 place.
 
 Sync stages complete trees, revalidates each target, and atomically replaces the
-lockfile document. It has no whole-sync rollback or automatic next-run recovery.
-A failed or interrupted run may leave completed replacements with an older or
-absent lockfile, an absent target during a directory swap, or temporary sibling
-staging/previous-tree artifacts. Inspect targets, the lockfile, and reported
-retained paths; rerun normally to identify preserved mismatches or unmanaged
-targets. After reviewing or backing up valuable content in every declaration,
-use `--force` to establish verified baselines. Inspect interrupted-run artifacts
-before removing them; later syncs neither replay nor delete them automatically.
+lockfile document. It provides no whole-sync rollback or automatic next-run
+recovery. A failed or interrupted run may leave completed replacements with an
+older or absent lockfile, an absent target during a directory swap, or temporary
+sibling staging/previous-tree artifacts. Inspect targets, the lockfile, and
+reported retained paths; rerun normally to identify preserved mismatches or
+unmanaged targets. After reviewing or backing up valuable content in every
+declaration, use `--force` to establish verified baselines. Inspect interrupted-run
+artifacts before removing them; later syncs neither replay nor delete them.
 
 Existing `.ritebook/` files are ignored and left untouched. Before retiring old
 state, finish any pending recovery with the previous Ritebook version or inspect
@@ -516,9 +516,9 @@ lock state while leaving its directory untouched. Delete or archive an undeclare
 skill directory when it is no longer wanted. If declared again later, the path is
 unmanaged and requires `--force` to replace.
 
-Older valid schema-v3 state may contain `desired: false` entries. Ritebook still
-parses those files, but such entries do not establish ownership and disappear
-from newly generated state unless the target is currently declared.
+Older valid schema-v3 state may contain `desired: false` entries. Ritebook parses
+those files, but such entries do not establish ownership and disappear from newly
+generated state unless the target is declared.
 
 Schema-v1 and schema-v2 lockfiles and installation registries are rejected,
 including with `--force`; they lack current ownership or canonical source-branch
@@ -545,9 +545,9 @@ uv run ritebook skills contribute platform-skills/code-review
 ```
 
 The reference must be `<local-alias>/<skill-path>` and resolves by exact indexed
-path without falling back to `skill_name`. Collection-only references are not
-expanded. By default, Ritebook reads `ritebook.lock` from the current working
-directory and creates or reuses an isolated Ritebook-owned checkout under
+path without falling back to `skill_name` or expanding collection-only references.
+By default, Ritebook reads `ritebook.lock` from the current working directory and
+creates or reuses an isolated Ritebook-owned checkout under
 `~/.cache/ritebook/contributions`. Tests and automation can override both paths:
 
 ```bash

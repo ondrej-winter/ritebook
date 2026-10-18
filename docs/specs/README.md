@@ -52,9 +52,9 @@ Place a `Status` section immediately after the title with these exact fields:
 | `Dependencies` | Repository-relative links to consumed specifications, or `None`. |
 
 Requirements acceptance and implementation coverage are separate. `Implemented`
-means the current tree represents the contract with identifiable evidence;
-it does not establish that every verification gate ran. Partial coverage
-must identify remaining work and its owner or resolution condition.
+means the current tree represents the contract with identifiable evidence; it
+does not establish that every verification gate ran. Partial coverage must name
+the remaining work and its owner or resolution condition.
 
 ## Structure
 
@@ -70,10 +70,9 @@ Use these headings in order:
 8. `Assumptions`
 9. `Open Questions`
 
-Use a `Design rationale` subsection where choices or trade-offs need explanation.
-Describe the current design directly, without requiring readers to reconstruct a
-timeline. Detailed contracts may use subsections for schemas, provenance, path
-safety, or isolation.
+Use a `Design rationale` subsection to explain choices or trade-offs. Describe the
+current design directly, without making readers reconstruct a timeline. Detailed
+contracts may use subsections for schemas, provenance, path safety, or isolation.
 
 Requirements and acceptance checks use stable IDs. Each acceptance check names
 the requirement, starting conditions and action, observable pass condition, and
@@ -98,7 +97,7 @@ resolution condition. Uncommitted future ideas do not expand the supported scope
 2. Keep each obligation with its owning specification. Move necessary rationale
    with it, and update references before removing redundant documents.
 3. For a behavior, compatibility, data-format, or supported-workflow change,
-   settle the requirement decision and update the contract, implementation
+   settle the requirements and update the contract, implementation
    evidence, and acceptance checks together.
 4. Update `Revision` for material contract changes; editorial consolidation alone
    does not require a version change. Set `Last reviewed` only after review.

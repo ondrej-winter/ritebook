@@ -16,7 +16,7 @@ Provide a mandatory Docker end-to-end quality gate that proves Ritebook's
 release-critical CLI workflows through a clean, consumer-style installation of a
 wheel built from the commit under test.
 
-The gate is designed to catch failures that source-based tests can miss, including
+The gate targets failures that source-based tests can miss, including
 wheel-content omissions, invalid console-script packaging, incomplete runtime
 dependency declarations, and regressions across real CLI, filesystem, Git,
 registry, cache, installation, lockfile, and publisher boundaries. Docker is the
@@ -149,11 +149,10 @@ Docker E2E runs with normal container networking. Image construction and runtime
 may access public dependency indexes, public Git repositories, or other anonymous
 public services. Tests requiring credentials or private services are prohibited.
 
-There is no suite-wide retry, skip, timeout, or outage-classification policy for
-future live-service scenarios. Each scenario may define its own behavior. The
-gate also has no E2E-specific subprocess timeout, job timeout, or duration budget;
-platform and tool defaults apply unless an individual test chooses a narrower
-limit.
+Future live-service scenarios may each define retry, skip, timeout, and outage
+classification; there is no suite-wide policy. The gate also has no E2E-specific
+subprocess timeout, job timeout, or duration budget. Platform and tool defaults
+apply unless an individual test chooses a narrower limit.
 
 ### R7 — Explicit opt-in, parallel, and isolated test execution
 
@@ -198,8 +197,8 @@ detect dynamic imports.
 A failed Docker E2E check must block pull-request merge through existing
 repository configuration. The repository-controlled release job must declare a
 workflow dependency on both the standard quality job and Docker E2E so it cannot
-continue after either fails. Automated proof or auditing of the external GitHub
-ruleset is not required by this specification.
+continue after either fails. This specification does not require automated proof
+or auditing of the external GitHub ruleset.
 
 ### R9 — Evidence and portability boundaries
 

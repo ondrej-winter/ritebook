@@ -16,7 +16,7 @@ Ritebook's index registry serves users of curated internal Agent Skills from
 company-maintained Git repositories. Users can add a Git-backed skill index,
 cache its current root `ritebook-index.json` locally, list registered indexes,
 and update one or all cached copies from remembered Git sources. The registry
-supports the implemented `skills list`, `skills install`, and requirements-file
+supports `skills list`, `skills install`, and requirements-file
 `skills sync` workflows.
 
 ### Design rationale
@@ -27,7 +27,7 @@ Registry locks serialize read and write snapshots; namespacing caches by the
 canonical registry path prevents independent registries from claiming or cleaning
 each other's files.
 
-Legacy recovery rebuilds a binding from saved safe source locations. It preserves
+Legacy recovery rebuilds bindings from saved safe source locations, preserving
 registrations for retry without treating old cached bytes or paths as authority.
 
 ### Current-state evidence
@@ -68,7 +68,7 @@ registrations for retry without treating old cached bytes or paths as authority.
 A user can register a curated skill index from either:
 
 1. A Git repository URL that Ritebook clones into its own local cache.
-2. An already-cloned local Git repository path that Ritebook reads from.
+2. An existing local Git clone's path, which Ritebook reads.
 
 Example CLI shape:
 
@@ -101,7 +101,7 @@ collaborators and CI register the source under the same alias.
 
 Requirements:
 
-- `ritebook-index.json` must be located at the repository root.
+- `ritebook-index.json` must be at the repository root.
 - Ritebook must read and validate root `ritebook-index.json` before registering
   the index.
 - Source admission applies the shared bounded strict-JSON preflight and complete
@@ -253,10 +253,11 @@ Requirements:
 - If refresh, revision lookup, index read, validation, hashing, or persistence
   fails, Ritebook keeps the previous coherent binding intact.
 - A forced Git URL update switches `source_cache_path` only after candidate index
-  validation, cache synchronization, and registry replacement succeed. A failed
-  forced update best-effort removes its fresh unreferenced clone.
-- A successful forced update best-effort removes the superseded managed clone only
-  when no remaining registry alias references that exact `source_cache_path`.
+  validation, cache synchronization, and registry replacement succeed. After a
+  failed forced update, Ritebook attempts to remove its fresh unreferenced clone.
+- After a successful forced update, Ritebook attempts to remove the superseded
+  managed clone only when no remaining registry alias references that exact
+  `source_cache_path`.
 - Forced cache writing repairs the content-addressed generation even when the
   validated digest is unchanged and the existing local bytes are damaged.
 - An over-deep candidate index is a validation failure; update preserves the
@@ -266,9 +267,8 @@ Requirements:
 - `indexes update` requires exactly one target mode: `<local-alias>` or `--all`.
 - `update-index --all` refreshes all registered indexes in deterministic
   local-alias order.
-- If one index fails during `--all`, Ritebook continues updating the remaining
-  indexes, reports failed local aliases to stderr, and returns a non-zero exit
-  code after the batch completes.
+- If one index fails during `--all`, Ritebook continues updating the others,
+  reports failed local aliases to stderr, and exits non-zero after the batch.
 - `--force` repairs consumer-managed source and cache state only. It does not run
   publisher-side index discovery or regenerate `ritebook-index.json`.
 - Explicit force also permits schema-v1 registry recovery. Validate saved aliases,
@@ -303,10 +303,10 @@ Recommended default location:
 ~/.cache/ritebook/registries/<registry-id>/git/<source-cache-id>/
 ```
 
-Tests and automation should be able to override these paths with explicit CLI
-options or injected settings so unit tests do not mutate real user state.
+Tests and automation should support path overrides through explicit CLI options
+or injected settings so unit tests do not mutate real user state.
 
-Example current registry (schema v2):
+Current registry example (schema v2):
 
 The existing registry `name` field stores the local alias; `published_name`
 stores publisher-owned metadata; `alias_origin` records how the alias was chosen.
@@ -410,9 +410,9 @@ Registry provenance follows the
 - If candidate cache writing or registry replacement fails, the previous registry
   entry continues to reference its unchanged generation. Ritebook attempts to
   discard the unreferenced candidate without changing the reported commit failure.
-- Candidate and abandoned-generation cleanup is best-effort. The registry atomic
-  replacement result remains authoritative and cleanup failure never rewrites or
-  masks a successful registry commit.
+- Candidate and abandoned-generation cleanup is best-effort. Atomic registry
+  replacement remains authoritative; cleanup failure never rewrites or masks a
+  successful registry commit.
 - Forced Git URL updates apply the same rule to managed clones: failed candidates
   are best-effort discarded, and a superseded clone is discarded only after a
   successful registry commit and only when no other alias still references it.
@@ -427,8 +427,8 @@ Registry provenance follows the
 
 ### R7 — Duplicate behavior
 
-- Duplicate skill names are allowed across different indexes.
-- Duplicate skill names are also allowed within one index when their relative
+- Duplicate skill names are allowed across indexes.
+- Duplicate skill names are also allowed within an index when their relative
   skill paths differ, such as `backend/code-review` and `frontend/code-review`.
 - Valid relative skill paths contain one segment (`<skill>`) or two segments
   (`<collection>/<skill>`). Consumer validation rejects an index that uses the
@@ -474,8 +474,8 @@ Registry provenance follows the
   filesystem mutation. This includes username-only, password/token, and
   percent-encoded forms; scp-like SSH sources remain supported.
 - The CLI redacts credentials from source identifiers, then renders terminal
-  control characters as visible deterministic escapes. Remembered sources cannot
-  inject output lines or ANSI formatting.
+  control characters as visible, deterministic escapes. Remembered sources
+  cannot inject output lines or ANSI formatting.
 - Ritebook surfaces a stable, generic Git failure without exposing raw subprocess
   stdout or stderr, which may contain credentials.
 
@@ -485,13 +485,13 @@ Registry provenance follows the
 - Ritebook does not own or mutate the local repository. Registration requires
   a checked-out branch to record canonical retrieval metadata; refresh reads
   the saved branch without checking it out.
-- `indexes add` and `indexes update` reject staged, unstaged, or untracked changes and
-  provide guidance to commit or discard them.
+- `indexes add` and `indexes update` reject staged, unstaged, or untracked changes
+  and provide guidance to commit or discard them.
 - `indexes update --force` does not change that ownership boundary; it re-reads the
   clean committed repository without deleting or modifying it.
 - Ritebook reads root `ritebook-index.json` from the selected commit object without
   checking out, resetting, or cleaning the user-owned repository.
-- Whether the local repository is up to date is the user's responsibility.
+- Users are responsible for keeping local repositories up to date.
 - Ritebook does not snapshot local repositories. A missing repository or bound
   commit fails safely and requires the user to restore it or explicitly refresh
   the registration from a new clean committed state.

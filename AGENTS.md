@@ -8,8 +8,8 @@
 - Use matching task procedures under `.agents/skills/`. Keep project policy here,
   reusable procedures in skills, and client-only mechanics in adapters such as
   `.clinerules/`.
-- Repository constraints override generic skill defaults, including architecture,
-  tooling, safety, and project-state guidance.
+- Repository constraints, including architecture, tooling, safety, and
+  project-state guidance, override generic skill defaults.
 - Ritebook is in initial development. Prefer clear designs and direct migrations
   over backward-compatibility shims unless an active specification or the user
   requires compatibility.
@@ -59,10 +59,10 @@ indexes.
   Active specifications govern code, tests, CLI help, and derived documentation.
 - Update the owning specification and implementation evidence together when
   behavior, compatibility, data formats, or supported workflows change.
-- Keep material architecture, dependency, data, security, and boundary decisions,
-  rationale, and trade-offs in the owning specification. Use a shared specification
-  when several slices consume the same contract; do not duplicate it in a separate
-  decision record.
+- Keep material architecture, dependency, data, security, and boundary decisions
+  with their rationale and trade-offs in the owning specification. Use a shared
+  specification for contracts consumed by several slices; do not duplicate them
+  in separate decision records.
 - Update `README.md` when setup, supported usage, configuration, or operator
   guidance changes. Keep detailed product requirements in specifications.
 - Maintain the current contract in place. Remove obsolete narratives and completed

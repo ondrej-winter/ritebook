@@ -1,7 +1,7 @@
 # Cline Plan and Act modes
 
-The mode selected for the user's newest message governs the current turn,
-overriding the mode used for earlier messages.
+The mode selected for the user's newest message governs the current turn and
+overrides earlier modes.
 
 ## Plan mode
 
